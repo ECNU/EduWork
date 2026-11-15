@@ -45,7 +45,7 @@ async function run() {
   assert.equal(window.isAlwaysOnTop(), true)
   assert.equal(window.isFocusable(), false)
   assert.equal(window.isFocused(), false)
-  assert.deepEqual([bounds.width, bounds.height], [220, 232])
+  assert.deepEqual([bounds.width, bounds.height], [220, 248])
   assert.ok(bounds.y + 64 >= area.y && bounds.y + 64 + 128 <= area.y + area.height, 'the pet is inside the work area')
   report.window = { bounds, workArea: area }
   const page = script => window.webContents.executeJavaScript(script)
@@ -63,9 +63,18 @@ async function run() {
   report.bubble = await page(`document.getElementById('bubble').textContent`)
   assert.equal(report.badge, '!')
   assert.ok(!report.bubble.includes('Private'))
+  // A plugin reminder gives a two-line bubble. It anchors to the lower edge of the
+  // window, so the whole bubble has to fit: this is the real-window regression for
+  // the reported overflow (bottom 239.6 in a 232-high window).
+  pet.update({ items: new Map([['notice-1', { key: 'notice-1', kind: 'plugin', event: 'new-mail', label: '邮件', level: 'info', requiresAction: false, title: '关于 2026 年秋季学期课程安排调整的重要通知', createdAt: Date.now() }]]),
+    running: [], acknowledged: 0, preferences: { preview: true } })
+  await until(() => page(`!document.getElementById('bubble').hidden`), 'plugin bubble shown')
+  report.bubbleRect = await page(`(() => { const rect = document.getElementById('bubble').getBoundingClientRect(); return { top: rect.top, bottom: rect.bottom, height: rect.height, window: innerHeight } })()`)
+  assert.ok(report.bubbleRect.bottom <= report.bubbleRect.window, `the bubble fits inside the window: ${JSON.stringify(report.bubbleRect)}`)
+  assert.ok(report.bubbleRect.height > 30, 'the bubble is a real two-line bubble')
   for (const type of ['mouseMove', 'mouseDown', 'mouseUp']) window.webContents.sendInputEvent({ type, ...center, button: 'left', clickCount: 1 })
   await until(() => opened.length === 1, 'click opened the item')
-  assert.deepEqual(opened, ['done-1'])
+  assert.deepEqual(opened, ['notice-1'])
   // Viewing the item in the app clears its badge and, at once, its announcement.
   pet.update({ items: new Map([['done-2', { key: 'done-2', kind: 'completed', sessionId: 'session-2', title: '', createdAt: Date.now() }]]),
     running: [], acknowledged: 0, preferences: { preview: false } })
@@ -79,7 +88,7 @@ async function run() {
   await stranger.webContents.executeJavaScript(`window.eduworkPet.open('done-1'); window.eduworkPet.ready(); window.eduworkPet.menu()`)
   await wait(500)
   stranger.destroy()
-  assert.deepEqual(opened, ['done-1'])
+  assert.deepEqual(opened, ['notice-1'])
 
   assert.deepEqual(await pet.handle({ action: 'reset-position' }), { supported: true })
   // Hiding from a menu turns the setting off; showing again turns it back on.
@@ -93,7 +102,7 @@ async function run() {
   pet.retry()
   await until(() => petWindow()?.isVisible(), 'shown again after a failure')
   await pet.handle(configure({ size: 150 }))
-  await until(() => petWindow()?.isVisible() && petWindow().getBounds().height === 296, 'resized')
+  await until(() => petWindow()?.isVisible() && petWindow().getBounds().height === 312, 'resized')
   await pet.handle(configure({ enabled: false }))
   assert.equal(petWindow(), undefined)
   await until(() => processes().join() === before.join(), 'pet processes ended', 15_000)

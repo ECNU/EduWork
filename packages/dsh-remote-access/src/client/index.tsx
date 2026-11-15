@@ -2,7 +2,8 @@
  * The settings page on the Host's own screen: the switch and the relay
  * settings, the pairing QR code, confirmation of waiting devices and the list
  * of paired devices. Remote devices never see this page; the gate refuses its
- * methods to them, and they get DSH fitted to a phone instead (phone.tsx).
+ * methods to them, and they get DSH's own interface with view-only settings
+ * instead (device.tsx).
  */
 import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { encode } from 'uqr'
@@ -10,7 +11,7 @@ import type { PanelStatus, RelayTest } from '../plugin.ts'
 import { Close } from '../protocol/close-codes.ts'
 import TYPERT, { ACCESS_KEY_REF } from '../typert.ts'
 import { dictionaries, NS, type Key } from './locale.ts'
-import { inject as phoneInject, phone, REMOTE, type PhoneSurface } from './phone.tsx'
+import { device, REMOTE } from './device.tsx'
 
 export const inject = ['slots', 'locale', 'remote', 'remote.credentials', 'configForms']
 
@@ -402,9 +403,9 @@ export async function apply(ctx: Surface): Promise<(() => Promise<void>) | undef
   ctx.effect(() => ctx.locale.register(NS, dictionaries), 'remote-access: dictionaries')
   const bound = ctx.locale.bind(NS)
   const t: Translate = (key, values = {}) => bound(key).replace(/\{(\w+)\}/g, (_, name: string) => values[name] ?? '')
-  // A remote device gets DSH fitted to a phone instead of this page, whose methods the gate refuses it.
+  // A remote device gets view-only settings instead of this page, whose methods the gate refuses it.
   if (document.documentElement.hasAttribute(REMOTE)) {
-    ctx.inject<PhoneSurface>(phoneInject, surface => phone(surface, t))
+    device(ctx, t)
     return
   }
   const unmount = await ctx.remote.$mount({ package: TYPERT.package, descriptors: TYPERT.invocations })

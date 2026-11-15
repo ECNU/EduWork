@@ -1,0 +1,4 @@
+# Optional bundle; does not change the edition's default composition.
+- insert:
+    - id: eduwork-external-agents
+      name: '@eduwork/dsh-external-agents'

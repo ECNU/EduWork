@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { normalizeMediaConfig } from './config.js'
 import { generateImageForAgent, editImageForAgent, synthesizeSpeechForAgent } from './actions.js'
+import { executeGovernedTool } from '@eduwork/dsh-artifact-services/tool-execution'
 
 export const name = 'eduwork-media-openai'
 export const inject = ['artifactServices', 'tools', 'agents', 'credentials', 'fs']
@@ -12,8 +13,8 @@ function executionFor(ctx, { execution, sessionId, signal }) {
 }
 async function dispatchShared(ctx, name, args, request) {
   const execution = executionFor(ctx, request)
-  const result = await ctx.tools.execute({ callId: randomUUID(), rootCallId: execution.rootCallId || execution.callId,
-    parent: execution.token, agent: execution.agent, signal: request.signal, name,
+  const result = await executeGovernedTool(ctx, { callId: randomUUID(), rootCallId: execution.rootCallId || execution.callId,
+    parent: execution.token, agent: execution.agent, toolSet: execution.toolSet, signal: request.signal, name,
     arguments: Object.fromEntries(Object.entries(args).filter(([, value]) => value !== undefined)) })
   if (result.isError) throw new Error(result.error?.message || '媒体生成未获批准或生成失败')
   for (const context of result.additionalContexts || []) request.execution?.deferContext?.(context)

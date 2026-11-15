@@ -42,6 +42,7 @@ DSH 提供 Agent 运行时与插件体系；EduWork 复用上游的会话、工�
 | [本地记忆](packages/dsh-memory/README.md) | 管理本地记忆、检索历史对话，让后续任务接得上已有背景。记忆在本机管理。 |
 | [邮件助手](packages/dsh-mail/README.md) | 连接自己的邮箱，通过 IMAP 读取邮件，经授权通过 SMTP 发送，结合任务处理日常沟通。 |
 | [桌面宠物](packages/dsh-desktop-pet/README.md) | 用可选形象展示任务与通知状态，在设置中开启。独立 npm 插件，需要 EduWork 桌面桥接。 |
+| [外部智能体](packages/dsh-external-agents/README.md) | 连接本机 Codex、Cursor 或其他 ACP 智能体，在对话中委派任务。默认关闭，可在插件页启用并配置连接。 |
 | [远程访问](packages/dsh-remote-access/README.md) | 配对后从其他终端的浏览器继续本机会话、处理授权。在设置中配置自己的中继或发行版提供的机构接入，测试连接后开启。 |
 <!-- END GENERATED PLUGINS -->
 

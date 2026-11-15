@@ -32,6 +32,7 @@ export const personalDomain = defineDomain({
   version: 1,
   layout: 'per-record',
   tables: {
+    view_preferences: domainTable(z.object({ group: z.string().min(1), provider: z.string().nullable() }).strict()),
     annotations: domainTable(AnnotationSchema),
     source_receipts: domainTable(z.object({
       source: z.string().min(1), uid: z.string().min(1), legacyDescription: z.string().optional(), legacyExtensions: z.record(z.string(), z.unknown()).optional(),

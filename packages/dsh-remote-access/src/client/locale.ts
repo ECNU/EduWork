@@ -37,7 +37,7 @@ const zh = {
   approve: '允许', decline: '拒绝', unnamed: '未命名设备',
   devices: '已配对设备', noDevices: '暂无已配对的设备。',
   pairedAt: '配对于 {time}', lastSeen: '最近连接 {time}', deviceOnline: '在线', remove: '移除',
-  openSidebar: '打开侧边栏', newSession: '新建会话', settingsViewOnly: '仅可查看，请在电脑上修改',
+  settingsViewOnly: '仅可查看，请在电脑上修改',
 }
 
 const en: typeof zh = {
@@ -77,7 +77,7 @@ const en: typeof zh = {
   approve: 'Allow', decline: 'Decline', unnamed: 'Unnamed device',
   devices: 'Paired devices', noDevices: 'No paired devices.',
   pairedAt: 'Paired {time}', lastSeen: 'Last connected {time}', deviceOnline: 'Online', remove: 'Remove',
-  openSidebar: 'Open sidebar', newSession: 'New session', settingsViewOnly: 'View only. Change settings on the computer.',
+  settingsViewOnly: 'View only. Change settings on the computer.',
 }
 
 export type Key = keyof typeof zh

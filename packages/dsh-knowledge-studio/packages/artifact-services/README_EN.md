@@ -175,3 +175,7 @@ option.
 The built-in system TTS adapter supports Windows. Other platforms require a registered speech provider and compatible native resources. See [platform requirements](docs/PLATFORMS.md).
 
 Image providers may implement `edit(request)` with the same workspace, cancellation and output contract as `generate`. Inputs are an `images` path array and optional `mask`; use `images.edit(request)` / `image_edit`. The catalog declares `capabilities.edit:true` only for editing providers, with no generation fallback. Inputs and new output files stay within the workspace and reuse its write permission.
+
+### Internal DSH tool calls
+
+`@eduwork/dsh-artifact-services/tool-execution` exports `executeGovernedTool(ctx, input)` for one service-owned tool call. It uses the official `ToolExecutionPipeline` on 0.2.2-rc.1 and single-call dispatch on older hosts. Preserve the caller’s `agent`, `signal`, `toolSet`, `rootCallId` and `parent` when present. Model-generated batches remain owned by DSH’s executor; this helper does not replace batch scheduling.

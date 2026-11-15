@@ -7,29 +7,45 @@ import { ATTENTION_MAX_BYTES } from './task-notifications.mjs'
 const MAX_BODY = 512 * 1024
 const REF = /^[A-Za-z_][A-Za-z0-9_]{0,511}$/u
 
+function decodeVault(encryption, bytes) {
+  const value = JSON.parse(encryption.decryptString(bytes))
+  if (Number.isInteger(value?.schemaVersion) && value.schemaVersion !== 1) {
+    throw Object.assign(new Error('Unsupported credential vault version'), { code: 'VAULT_VERSION' })
+  }
+  if (value?.schemaVersion !== 1 || !value.values || typeof value.values !== 'object' || Array.isArray(value.values)) throw new Error('Invalid encrypted vault')
+  for (const [key, secret] of Object.entries(value.values)) if (!REF.test(key) || typeof secret !== 'string') throw new Error('Invalid encrypted vault entry')
+  return Object.assign(Object.create(null), value.values)
+}
+
 export class EncryptedVault {
-  constructor(path, encryption, { onUnreadable = () => {} } = {}) {
+  constructor(path, encryption, { confirmReplacement = () => false, onUnreadable = () => {} } = {}) {
     this.path = path
     this.encryption = encryption
+    this.confirmReplacement = confirmReplacement
     this.onUnreadable = onUnreadable
     this.queue = Promise.resolve()
   }
   async flush() { await this.queue }
-  async read() {
+  async read(operation = 'resolve') {
     let bytes
     try { bytes = await readFile(this.path) } catch (error) { if (error.code === 'ENOENT') return Object.create(null); throw error }
     try {
-      const value = JSON.parse(this.encryption.decryptString(bytes))
-      if (value.schemaVersion !== 1 || !value.values || typeof value.values !== 'object' || Array.isArray(value.values)) throw new Error('Invalid encrypted vault')
-      for (const [key, secret] of Object.entries(value.values)) if (!REF.test(key) || typeof secret !== 'string') throw new Error('Invalid encrypted vault entry')
-      return Object.assign(Object.create(null), value.values)
+      return decodeVault(this.encryption, bytes)
     } catch (error) {
-      // A vault this OS account can no longer decrypt (copied install, reset
-      // password, lost key) must not stop the app. Keep the bytes beside it and
-      // continue signed out; I/O errors above still fail instead.
-      const aside = `${this.path}.unreadable-${Date.now()}`
-      await rename(this.path, aside)
-      this.onUnreadable({ reason: error instanceof SyntaxError ? 'format' : /Invalid encrypted vault/.test(error?.message) ? 'schema' : 'decrypt', aside })
+      if (error.code === 'VAULT_VERSION') throw error
+      // A locked keychain and a permanently unreadable vault can look alike.
+      // A startup probe can continue signed out; the next read retries the original.
+      if (operation === 'resolve' || operation === 'describe') return Object.create(null)
+      if (operation !== 'set' || !await this.confirmReplacement()) throw error
+      const current = await readFile(this.path)
+      if (!current.equals(bytes)) throw new Error('Credential vault changed during recovery; retry')
+      try { return decodeVault(this.encryption, current) } catch (retryError) {
+        if (retryError.code === 'VAULT_VERSION') throw retryError
+      }
+      // Keep the original at its live path until the normal atomic write succeeds.
+      const aside = `${this.path}.unreadable-${randomBytes(12).toString('hex')}`
+      await writeFile(aside, bytes, { flag: 'wx', mode: 0o600 })
+      this.onUnreadable({ aside })
       return Object.create(null)
     }
   }
@@ -38,7 +54,7 @@ export class EncryptedVault {
     if (operation === 'set' && (typeof value !== 'string' || value.length === 0 || Buffer.byteLength(value) > 256 * 1024)) throw new Error('Invalid credential value')
     if (!['resolve', 'describe', 'set', 'unset'].includes(operation)) throw new Error('Invalid credential operation')
     const result = this.queue.then(async () => {
-      const values = await this.read()
+      const values = await this.read(operation)
       if (operation === 'set' || operation === 'unset') {
         if (operation === 'set') values[ref] = value
         else delete values[ref]

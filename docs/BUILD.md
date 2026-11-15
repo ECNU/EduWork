@@ -7,7 +7,7 @@
 | 场景 | 入口 | 产物 |
 | --- | --- | --- |
 | 本机开发 | `node scripts/local-desktop-pipeline.mjs` | 当前平台的开发包，可选择安装 |
-| main 更新后的 CI | `development-desktop.yml` | 双平台开发包 artifact |
+| main 产品输入更新后的 CI | `development-desktop.yml` | 双平台开发包 artifact |
 | feature 分支验证 | 手动运行 `development-desktop.yml`，选择分支和 `platform` | 所选平台的开发包与验收报告 artifact |
 | 手动候选 | `desktop-candidates.yml`，选择 `node` | 双平台候选 artifact；经授权可发布 GitHub Release |
 
@@ -15,9 +15,29 @@
 
 手动开发包验证不需要发行说明，也不会创建 Release。新 workflow 文件尚未进入仓库默认分支时，可运行已注册的 `desktop-candidates.yml`：选择 feature 分支、`build_mode=node`、`development=true`、开发版本及目标平台，并保持发布关闭、发行说明为空、审批未勾选。
 
+## CI 检查范围
+
+PR 和 main push 共用 `scripts/ci-changes.mjs` 判断变更范围。普通文档、网站、更新清单、独立 npm 包源码，以及只刷新时间和源码哈希的 `source-receipt.json`，不会触发产品装配。产品锁、Host、桌面外壳、Skill、资源、构建脚本和 CI 配置变化仍执行构建；未知路径或无法取得比较基准时执行完整检查。
+
+源码、收据格式和版本、文档检查始终保留。独立包执行对应的检查与打包；DSH 集成还覆盖直接读取源码的桌宠、memory、Studio、OIDC、mail、文献探针和各包 manifest。Windows 打包直接读取的语音模型清单变化也会触发装配。判断、必要任务失败或异常取消都会使结果检查失败。手动验证和正式候选继续执行完整检查，平台矩阵与发布流程保持一致。
+
 ## 本机构建
 
 机构发行可在 `edition/distribution.json` 中用 `excludedOptionalBundles` 声明本次不预装的可选插件，例如 `["@eduwork/dsh-remote-access"]`。装配时不复制对应 npm 包、不注册其默认入口，并在回执记录排除项；不会写入运行时禁用策略，用户仍可通过 DSH 的插件管理自行安装。仅允许排除公版明确列为可选的独立 bundle，核心组件和其他保留包依赖的 bundle 不能排除。npm 输入锁及其哈希仍完整校验，共享依赖保留。
+
+预装插件的首次默认开关使用 `extensionDefaults`：公版在 `config/distributions/generic.json` 中定义，机构可在 `edition/distribution.json` 中覆盖。例如：
+
+```json
+{
+  "extensionDefaults": {
+    "@eduwork/dsh-side-chat": true,
+    "@eduwork/dsh-mail": false,
+    "@eduwork/dsh-annotation": false
+  }
+}
+```
+
+仅接受[扩展目录](../dsh-plugins/client-ui-extensions/lib/catalog.js)中且已取得 npm 精确锁的包名及布尔值。未指定时沿用目录默认值；排除的包不会显示。用户可在“插件 → EduWork 扩展”中随时启停。默认值只初始化尚无选择的功能，不覆盖已有用户的启停状态；设置页中的邮箱收取、远控连接、桌宠显示等开关保持独立。装配回执记录 `optionalBundles`、`disabledByDefaultBundles`，不修改已发布 npm 包的内容。
 
 准备 Git、Node.js 24.22.1 和 Go 1.26.6。Windows 还需 Visual Studio 2022 Build Tools、x64 C++ 工具链、Windows SDK SignTool 和 VC++ Redist 输入；macOS 需 Xcode Command Line Tools 和 Python 3.10 或更新版本来制作 DMG。构建机要能访问锁定的 npm、GitHub 和原生资源。当前 Mac 为 macOS 27.0；macOS 15.4.1 与 27.0 的 Apple Silicon 候选装配和启动已有验证记录，实际覆盖范围以各次回执为准。
 
@@ -46,9 +66,9 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 
 ## 候选构建做什么
 
-当前内核、迁移规则及保留的适配见 [DSH 0.2.1 集成说明](CORE-021.md)。
+当前内核、迁移规则及保留的适配见 [DSH 0.2.2 集成说明](CORE-022.md)。
 
-本机开发包、自动开发包和手动候选的 Node 入口都按 `config/desktop-build.json` 选择同一锁定组合：从已校验的 npm 包准备 DSH `0.2.1-rc.5` Runtime 和十一个独立插件包，从锁定的上游提交构建 Host、Electron 壳，并构建产品专属扩展，然后安装平台原生资源、打包并启动归档中的应用。独立插件不在产品装配时重建或覆盖；其版本、来源与内容校验见[包维护与发布](PACKAGES.md#客户端装配)。保留的 PowerShell 候选也使用该组合；Node 负责阶段依赖、缓存和回执，不调用 PowerShell 脚本。[流程图](assets/build-pipeline.svg)和[流水线提案](proposals/build-pipeline-stages/README.md)给出阶段关系。
+本机开发包、自动开发包和手动候选的 Node 入口都按 `config/desktop-build.json` 选择同一锁定组合：从已校验的 npm 包准备 DSH `0.2.2-rc.1` Runtime 和十二个独立插件包，从锁定的上游提交构建 Host、Electron 壳，并构建产品专属扩展，然后安装平台原生资源、打包并启动归档中的应用。独立插件不在产品装配时重建或覆盖；其版本、来源与内容校验见[包维护与发布](PACKAGES.md#客户端装配)。保留的 PowerShell 候选也使用该组合；Node 负责阶段依赖、缓存和回执，不调用 PowerShell 脚本。[流程图](assets/build-pipeline.svg)和[流水线提案](proposals/build-pipeline-stages/README.md)给出阶段关系。
 
 稳定版要求 Windows 更新契约及 macOS Sparkle 配置；用户可在设置中控制软件更新，预发布沿用用户选择。候选的 Windows ZIP 与安装包、macOS ZIP 与 DMG 都会校验哈希、归档内容和启动结果。macOS DMG 从通过 ZIP 验收的同一应用生成，挂载只读镜像后核对应用签名与内容。签名仍是 ad-hoc；系统权限、机构登录、升级体验等人工验收见 [发行指南](RELEASE.md)。
 
@@ -58,7 +78,7 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 
 ## 依赖与复用
 
-桌面开发包与发布候选默认使用同一 DSH `0.2.1-rc.5` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 `--recipe npm` 配方及 `ci-eduwork-windows-release.ps1` / `ci-eduwork-macos-release.ps1` 已退役，会在构建前报错；`build-desktop-candidate.ps1` 使用锁定源码路线，仍可使用。请使用本文的 Node.js 入口；不指定配方或使用 `--recipe pinned-source` 均可。当前路线仍通过 npm 装配锁定的 Runtime 和已发布插件。旧 `build-shell.mjs` 调用须改为带 `--pinned-dsh-source --runtime <目录>` 的入口。
+桌面开发包与发布候选默认使用同一 DSH `0.2.2-rc.1` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 `--recipe npm` 配方及 `ci-eduwork-windows-release.ps1` / `ci-eduwork-macos-release.ps1` 已退役，会在构建前报错；`build-desktop-candidate.ps1` 使用锁定源码路线，仍可使用。请使用本文的 Node.js 入口；不指定配方或使用 `--recipe pinned-source` 均可。当前路线仍通过 npm 装配锁定的 Runtime 和已发布插件。旧 `build-shell.mjs` 调用须改为带 `--pinned-dsh-source --runtime <目录>` 的入口。
 
 候选流水线通过 `--reuse-workspace` 复用工作区，按阶段参数、输入和产物摘要决定是否重跑。`--jobs N` 控制并发，`--cache-root <目录>` 指定原生资源缓存；缓存命中后仍校验锁定哈希。上游升级需要同步更新依赖锁、Host 源码锚点、插件适配和验收回执，不能只修改版本字符串。
 

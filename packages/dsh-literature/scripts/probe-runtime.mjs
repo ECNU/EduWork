@@ -14,6 +14,17 @@ await mkdir(output, { recursive: true })
 const report = { success: false, scope: 'EduWork literature fork; synthetic retrieval/Agent; real tools, job registry and filesystem', checks: [] }
 try {
   for (const name of ['@deepseek-ai/dsh-system-prompt', '@deepseek-ai/dsh-tools']) await ctx.plugin((await load(name)).default)
+  // 0.2.2 exposes model batches at tools.execute. Tests that dispatch a single
+  // service call use the public pipeline, including admission and settlement.
+  const executeCall = typeof ctx.tools.setExecutor === 'function'
+    ? async input => {
+      const { ToolExecutionPipeline } = await load('@deepseek-ai/dsh-tools/pipeline')
+      const pipeline = new ToolExecutionPipeline(ctx)
+      const prepared = await pipeline.prepare(input)
+      const outcome = prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared
+      return pipeline.complete(prepared.exec, outcome)
+    }
+    : input => ctx.tools.execute(input)
   await ctx.plugin((await load('@deepseek-ai/dsh-fs-local')).default, { cwd: output })
   await ctx.plugin(LiteratureRuntime)
   for (const name of ['dblp', 'arxiv', 'tool']) await ctx.plugin(await load('@eduwork/dsh-literature/' + name))
@@ -25,7 +36,7 @@ try {
   ctx.literature.bibtex = async () => ({ bibtex: '@article{synthetic,title={Synthetic paper}}', source: 'dblp', published: true })
   ctx.literature.fulltext = async () => ({ id: 'synthetic', source: 'dblp', files: [{ path: 'paper.md', content: 'Synthetic full text', kind: 'markdown' }], summary: 'Synthetic full text' })
   for (const [name, args] of [['literature_search', { query: 'synthetic' }], ['literature_bibtex', { query: 'synthetic' }], ['literature_fulltext', { query: 'synthetic', run_in_background: false }]]) {
-    const result = await ctx.tools.execute({ callId: name, name, arguments: args, signal: new AbortController().signal })
+    const result = await executeCall({ callId: name, name, arguments: args, signal: new AbortController().signal })
     assert.equal(result.isError, false, JSON.stringify(result))
     if (name === 'literature_search') assert.equal(result.value.papers[0].title, record.title)
     if (name === 'literature_bibtex') assert.match(result.value.bibtex, /Synthetic paper/)
@@ -38,12 +49,12 @@ try {
   const workspace = join(output, 'calling-workspace')
   await mkdir(workspace)
   const parent = { options: { provider: 'probe', model: 'pdf' }, id: 'literature-session', ctx: ownerCtx, status: 'running',
-    session: { header: { cwd: workspace }, requestHeader: () => undefined }, inject() {} }
+    session: { header: { cwd: workspace }, requestHeader: () => undefined }, inbox: { nextStep: [] }, inject() {} }
   ctx.provide('agents')
   ctx.set('agents', { get: id => id === parent.id ? parent : undefined })
   await ctx.plugin((await load('@deepseek-ai/dsh-jobs-local')).default)
   await ctx.plugin(await load('@deepseek-ai/dsh-tool-jobs'))
-  const execute = (name, args) => ctx.tools.execute({ callId: name, name, arguments: args, agent: parent, signal: new AbortController().signal })
+  const execute = (name, args) => executeCall({ callId: name, name, arguments: args, agent: parent, signal: new AbortController().signal })
   let sandboxCalls = 0
   ctx.provide('sandboxPolicy')
   ctx.set('sandboxPolicy', { resolve: ({ session }) => { assert.equal(session, parent.session); sandboxCalls++; return { mode: 'workspace-write', writableRoots: [workspace] } } })

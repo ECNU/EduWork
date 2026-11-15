@@ -21,7 +21,7 @@ const { default: Agents } = await load('@deepseek-ai/dsh-agent')
 const { default: Fs } = await load('@deepseek-ai/dsh-fs-local')
 const { default: Projections } = await load('@deepseek-ai/dsh-session-projection')
 const { default: SystemPrompt } = await load('@deepseek-ai/dsh-system-prompt')
-const { turnBoundaryProjectionDefinition } = await load('@deepseek-ai/dsh-agent-loop')
+const { ToolExecutionPipeline } = await load('@deepseek-ai/dsh-tools/pipeline')
 const { createScope } = await load('@deepseek-ai/dsh-scope')
 const { Session, SESSION_FORMAT_VERSION } = await load('@deepseek-ai/dsh-session')
 const ctx = new Context(), root = join(output, 'workspace')
@@ -32,9 +32,9 @@ await writeFile(join(output, 'outside.txt'), 'Must not be published')
 await symlink(output, join(root, 'outside'), process.platform === 'win32' ? 'junction' : 'dir')
 const report = { success: false, scope: 'real DSH tools, filesystem, scopes and sessions; synthetic generator', checks: [] }
 try {
-  for (const plugin of [SystemPrompt, Tools, Agents, Projections]) await ctx.plugin(plugin)
+  for (const plugin of [SystemPrompt, Tools, Projections, Agents]) await ctx.plugin(plugin)
   await ctx.plugin(Fs, { cwd: root })
-  ctx.sessionProjections.register(turnBoundaryProjectionDefinition)
+  // The Agent service now owns and registers the built-in turn boundary.
   await ctx.plugin(productDeliveries)
   let sequence = 0
   const makeOwner = async () => {
@@ -54,7 +54,12 @@ try {
   ctx.tools.register(defineTool({ name: 'image_generate', description: 'Synthetic generator contract',
     parameters: { path: { type: 'string', required: true }, fail: { type: 'boolean' } }, output: outputContract,
     execute: async args => { if (args.fail) throw new Error('Synthetic generation failure'); return { relativePath: args.path } } }))
-  const execute = (name, args, agent = owner, signal = new AbortController().signal) => ctx.tools.execute({
+  const pipeline = new ToolExecutionPipeline(ctx)
+  const invoke = async input => {
+    const prepared = await pipeline.prepare(input)
+    return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+  }
+  const execute = (name, args, agent = owner, signal = new AbortController().signal) => invoke({
     callId: 'call-' + ++sequence, name, arguments: args, agent, signal })
   const deliveries = agent => agent.session.snapshotEvents().filter(event => event.type === 'deliverables/presented')
   assert.equal((await execute('image_generate', { path: '报告.txt' })).isError, false)
@@ -77,7 +82,7 @@ try {
   ctx.tools.register(defineTool({ name: 'synthetic_batch', description: 'Synthetic nested transport',
     parameters: { fail: { type: 'boolean' } }, output: outputContract,
     execute: async (args, exec) => {
-      await ctx.tools.execute({ callId: 'nested-' + ++sequence, rootCallId: exec.rootCallId, parent: exec.token,
+      await invoke({ callId: 'nested-' + ++sequence, rootCallId: exec.rootCallId, parent: exec.token,
         name: 'image_generate', arguments: { path: '报告.txt' }, agent: exec.agent, signal: exec.signal })
       assert.equal(deliveries(owner).length, 1, 'Nested delivery committed before its transport')
       if (args.fail) throw new Error('Synthetic outer failure')

@@ -331,7 +331,7 @@ async function withBrowser(calendar, panel, methods, body) {
 
 const METHODS = [
   'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'applySource', 'applyOverride', 'removeOverride',
-  'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'deleteCalendar', 'putEvent', 'updateEvent', 'putNote', 'removeNote', 'notes', 'setPersonal', 'personalFor', 'sourceStatuses', 'reminders', 'ackReminder',
+  'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'deleteCalendar', 'putEvent', 'updateEvent', 'putNote', 'removeNote', 'notes', 'setPersonal', 'personalFor', 'sourceStatuses', 'annotationsFor', 'annotationChoices', 'selectAnnotations', 'reminders', 'ackReminder',
 ]
 
 const panel = await bundlePanel()
@@ -1385,6 +1385,29 @@ await acceptance('快捷笔记保存期间暂锁编辑，失败保留输入且�
       await save.click()
       await input.waitFor({ state: 'detached' })
       assert.equal(calendar.notes(ref)[0]?.note.text, 'Corrected note')
+    })
+  }))
+})
+
+await acceptance('手动校历切换与不显示背景不影响日程', async () => {
+  await withRoot('calendar-browser-selection-', async root => withCalendar(root, async calendar => {
+    for (const [id, label] of [['a', '校历甲'], ['b', '校历乙']]) {
+      calendar.registerAnnotations({ id, label, selectionGroup: 'academic-calendar', annotationsFor: ({ from, to }) => ({
+        weeks: [{ firstDay: from, text: `${label}的周次` }], spans: [{ firstDay: from, lastDay: to, text: label }],
+      }) })
+    }
+    await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek }) => {
+      const day = await dayInWeek(1)
+      await call('putEvent', { uid: 'selection-kept', title: '校历切换保留日程', start: `${day}T09:00` })
+      const selector = page.getByLabel('选择校历', { exact: true })
+      await selector.selectOption('b')
+      await page.getByText(/校历乙 · 校历乙的周次/).waitFor()
+      assert.equal(calendar.annotationChoices().find(x => x.selected).id, 'b')
+      await selector.selectOption('')
+      await poll(() => calendar.annotationChoices().some(x => x.selected), false, 'background disabled')
+      await page.getByRole('button', { name: /校历切换保留日程/ }).waitFor()
+      assert.equal(calendar.snapshot().events.length, 1)
+      assert.deepEqual(await calendar.annotationsFor({ from: day, to: day }), { weeks: [], spans: [] })
     })
   }))
 })

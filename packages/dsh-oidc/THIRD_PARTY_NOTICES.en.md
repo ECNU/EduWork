@@ -6,7 +6,7 @@
 
 ## Runtime peers (not copied into this repository)
 
-- DeepSeek Harness packages `0.2.1-rc.2` and `@deepseek-ai/cordis` `4.0.5` — MIT, Copyright (c) 2026 DeepSeek, <https://github.com/deepseek-ai/deepseek-harness>
+- DeepSeek Harness packages and `@deepseek-ai/cordis` — MIT; development baseline `0.2.2-rc.2` / `4.1.0`, with supported host ranges in `package.json`. Copyright (c) 2026 DeepSeek, <https://github.com/deepseek-ai/deepseek-harness>
 - `@earendil-works/pi-ai` `1.1.0` — MIT, <https://github.com/earendil-works/pi>
 - React `18.x` — MIT, Copyright (c) Facebook, Inc. and its affiliates, <https://github.com/facebook/react>
 
@@ -44,11 +44,10 @@ Source: <https://github.com/colinhacks/zod>
 
 ## Development-only tools
 
-The lock pins the DSH 0.2.1-rc.2 test closure plus tsdown (MIT), TypeScript and Playwright Core (Apache-2.0), Ajv (MIT), YAML (ISC), and React types (MIT). Development tools are not copied into the published runtime files. Playwright Core does not download browser binaries during installation.
+The lock pins the DSH 0.2.2-rc.2 test closure plus tsdown (MIT), TypeScript and Playwright Core (Apache-2.0), Ajv (MIT), YAML (ISC), and React types (MIT). Development tools are not copied into the published runtime files. Playwright Core does not download browser binaries during installation.
 
-The current lock flags two lifecycle scripts: `@google/genai@1.52.0` has an echo-only preinstall; `protobufjs@7.6.6` reads local package manifests and may emit version-scheme warnings. Its reviewed postinstall contains no download or process execution. The local npm allow-scripts policy left these scripts unapproved; review them again when the lock changes. A successful install is not a security-audit result.
 
 `fast-sha256@1.3.0`, reached through pi-ai → Anthropic SDK → standardwebhooks, declares Unlicense. Its distributed LICENSE grants copying, modification and distribution and disclaims warranty. The license check records a package/version-specific exception, not a blanket waiver for unknown licenses; no source is copied into this repository.
 
 
-The development-only official DSH Host includes LibreOffice Kit (MPL-2.0) and sharp/libvips native packages (Apache-2.0 / LGPL-3.0-or-later). These packages are installed separately for Host tests and are not bundled in this plugin archive; their own license files remain with their packages.
+The development-only official DSH Host includes LibreOffice Kit 0.2.3 (MPL-2.0), sharp/libvips native packages (Apache-2.0 / LGPL-3.0-or-later), and lru-cache 11.5.3 ([Blue Oak Model License 1.0.0](https://blueoakcouncil.org/license/1.0.0)). These packages are installed separately for Host tests and are not bundled in this plugin archive; their own license files remain with their packages. Checks accept only the reviewed development-dependency versions.

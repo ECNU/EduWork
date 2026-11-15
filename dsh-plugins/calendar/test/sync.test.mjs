@@ -120,6 +120,24 @@ test('due reminders enter the durable calendar inbox once, survive restart and c
   })
 })
 
+test('the inbox follows source visibility without losing reminder history', { skip: !runtime }, async t => {
+  t.mock.method(Date, 'now', () => Date.parse('2040-01-02T09:45:01'))
+  await withRoot('calendar-reminder-visibility-', async root => withCalendar(root, async calendar => {
+    const source = calendar.registerSource({ provider: 'example.edu', account: 'student-a', feed: 'timetable' })
+    await source.apply({ events: [{ uid: 'class', title: 'Seminar', start: '2040-01-02T10:00' }] })
+    await calendar.setPersonal({ source: source.source, uid: 'class', patch: { reminder: { kind: 'relative', minutes: 15 } } })
+    await calendar.checkReminders()
+    const [receipt] = calendar.reminders().items
+    assert.equal(receipt.title, 'Seminar')
+    source.setActive(false)
+    assert.equal(calendar.reminders().unread, 0)
+    assert.deepEqual(calendar.reminders().items, [])
+    assert.deepEqual(await calendar.ackReminder({ id: receipt.id }), { updated: false })
+    source.setActive(true)
+    assert.deepEqual(calendar.reminders().items, [receipt])
+  }))
+})
+
 test('moving a class moves its due reminder, cancellation stops relative reminders and fixed reminders stay independent', { skip: !runtime }, async t => {
   let now = Date.parse('2040-01-02T09:00:00')
   t.mock.method(Date, 'now', () => now)
@@ -411,6 +429,34 @@ test('a rescheduled class keeps the note the user wrote on it', { skip: !runtime
       assert.equal(notes.length, 1, 'the note is still attached after the reschedule')
       assert.equal(notes[0].note.text, '期末要背 P187', 'and it is the same note, with its text intact')
       assert.deepEqual(calendar.unlinkedNotes(), [], 'nothing lost its anchor')
+    })
+  })
+})
+
+// `overrides` is the bulk form of a reschedule: a feed that freezes its series
+// and lists the one-off moves beside it (the `RECURRENCE-ID` shape an ICS
+// school export writes) sends them in one snapshot instead of one entry per
+// move. The snapshot is the whole truth for the series, so a later snapshot
+// without a move replaces one with it.
+test('a snapshot may state its one-off moves as overrides, the RECURRENCE-ID shape', { skip: !runtime }, async () => {
+  await withRoot('eduwork-calendar-source-overrides-', async root => {
+    await withCalendar(root, async calendar => {
+      await calendar.applySource({
+        source: SOURCE,
+        complete: true,
+        events: [classOn('2026-10-06T09:00', { overrides: [{ date: '2026-10-13', start: '2026-10-13T11:00' }] })],
+      })
+      const moved = calendar.occurrences({ from: '2026-10-13', to: '2026-10-13' }).occurrences
+      assert.equal(moved.length, 1)
+      assert.equal(moved[0].start, '2026-10-13T11:00', 'the moved date shows the new time, not the series one')
+      const regular = calendar.occurrences({ from: '2026-10-20', to: '2026-10-20' }).occurrences
+      assert.equal(regular[0].start, '2026-10-20T09:00', 'the other dates keep the series time')
+
+      // A complete snapshot replaces the moves along with the series: the
+      // school dropped the change, so the calendar must not keep showing it.
+      await calendar.applySource({ source: SOURCE, complete: true, events: [classOn('2026-10-06T09:00')] })
+      const restored = calendar.occurrences({ from: '2026-10-13', to: '2026-10-13' }).occurrences
+      assert.equal(restored[0].start, '2026-10-13T09:00', 'a later snapshot without the move undoes it')
     })
   })
 })

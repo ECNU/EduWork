@@ -2,7 +2,7 @@
 
 [中文](CORE-021.md)
 
-The current build recipe selects DSH `0.2.1-rc.5`, upstream commit `b830ec950faba0a46dda564be3e2d854afed94f1`. `config/desktop-build.json` points to the [candidate lock](../third_party/dsh/candidate-v0.2.1-rc.5/LOCK.json); npm Runtime, Host and Electron sources are verified separately. Product and core versions are independent. Selecting this recipe does not publish installers or change update feeds.
+This page records the 0.2.1 combination; see [DSH 0.2.2 integration](CORE-022_EN.md) for the current recipe. This combination selects DSH `0.2.1-rc.5`, upstream commit `b830ec950faba0a46dda564be3e2d854afed94f1`. `config/desktop-build.json` points to the [candidate lock](../third_party/dsh/candidate-v0.2.1-rc.5/LOCK.json); npm Runtime, Host and Electron sources are verified separately. Product and core versions are independent. Selecting this recipe does not publish installers or change update feeds.
 
 ## Capabilities and migration
 

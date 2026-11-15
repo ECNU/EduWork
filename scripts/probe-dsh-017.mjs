@@ -70,7 +70,8 @@ try {
   application = await runProfile({ environment, profile: 'upgrade-probe', resolvedProfile: { profile, installAnchor },
     patchFiles: [], args: ['--no-open', '--host', '127.0.0.1', '--port', '0'] })
   const ctx = application.ctx
-  report.services = Object.fromEntries(['settings', 'agentPresets', 'pluginManager', 'officeToPdf', 'workspaceFiles',
+  const officeService = manifest.dependencies['@deepseek-ai/dsh-office-kit'] ? 'officeKit' : 'officeToPdf'
+  report.services = Object.fromEntries(['settings', 'agentPresets', 'pluginManager', officeService, 'workspaceFiles',
     'configEditor', 'connection', 'webServer', 'llm'].map(key => [key, !!ctx.get(key)]))
   assert.ok(Object.values(report.services).every(Boolean), 'A required upstream service failed to activate')
   report.settingsMethods = Object.fromEntries(['register', 'get', 'installSection', 'configure', 'describe', 'update', 'mutate']

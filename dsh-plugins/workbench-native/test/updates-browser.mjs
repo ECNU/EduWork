@@ -13,7 +13,7 @@ const component=ts.transpileModule(await readFile(new URL('../src/updates.ts',im
  .replace(/import React, \{ useEffect, useSyncExternalStore \} from ['"]react['"];?/,'const {useEffect,useSyncExternalStore}=React;')
  .replace(/import \{ createPortal \} from ['"]react-dom['"];?/,'const {createPortal}=ReactDOM;')
 assert.doesNotMatch(component,/from ['"]react/)
-let policy='stable',state='up_to_date',downloaded=0,scheduled=false
+let policy='stable',state='up_to_date',downloaded=0,scheduled=false,shell='wails'
 let content=null,softwareEnabled=true,nativeUI=false,nativeUpdater=false,automaticDownload=false
 let nativeDetails={},canToggle=false
 const actions=[]
@@ -36,7 +36,7 @@ const server=createServer(async(request,response)=>{
   if(action==='test-complete')state='ready'
   if(action==='schedule-update')scheduled=true
   if(action==='install-update')state='applying'
-  response.setHeader('content-type','application/json');response.end(JSON.stringify({version:'0.3.5-dev.20260912.1',shell:'wails',phase:state,update:{nativeUI,nativeUpdater,...(canToggle?{canToggle:true,userEnabled:softwareEnabled}:{}),...(nativeUI||nativeUpdater?{automaticDownload,installOnQuit:automaticDownload&&state==='ready'}:{}),policies:['stable','development'],state,policy,enabled:softwareEnabled,latestVersion:'0.3.5',downloadedBytes:downloaded,totalBytes:1048576,installOnNextStart:scheduled,...nativeDetails},contentUpdate:content}));return
+  response.setHeader('content-type','application/json');response.end(JSON.stringify({version:'0.3.5-dev.20260912.1',shell,phase:state,update:{nativeUI,nativeUpdater,...(canToggle?{canToggle:true,userEnabled:softwareEnabled}:{}),...(nativeUI||nativeUpdater?{automaticDownload,installOnQuit:automaticDownload&&state==='ready'}:{}),policies:['stable','development'],state,policy,enabled:softwareEnabled,latestVersion:'0.3.5',downloadedBytes:downloaded,totalBytes:1048576,installOnNextStart:scheduled,...nativeDetails},contentUpdate:content}));return
  }
  response.setHeader('content-type','text/html');response.end(`<html><meta charset="utf-8"><body style="font:14px system-ui;margin:40px;max-width:600px"><div id="root"></div><script src="/react.js"></script><script src="/react-dom.js"></script><script type="module">import {createUpdateController,UpdatePanel,UpdateFooter} from '/component.js';const controller=createUpdateController(async action=>(await fetch('/api/'+action)).json());ReactDOM.createRoot(document.querySelector('#root')).render(React.createElement(React.Fragment,null,React.createElement(UpdatePanel,{controller}),React.createElement(UpdateFooter,{controller})));</script></body></html>`)
 })
@@ -169,7 +169,49 @@ try {
  nativeDetails={busy:true};await page.reload();await software.waitFor();assert.equal(await software.isDisabled(),true)
  nativeDetails={installOnQuit:true};await page.reload();await software.waitFor();assert.equal(await software.isDisabled(),true)
  assert.ok(actions.includes('disable-software-updates')&&actions.includes('enable-software-updates'))
+ // Native Electron carrier: software reminders belong to the official
+ // indicator/badge; the footer only carries configuration/Skills content.
+ await page.close()
+ shell='electron';softwareEnabled=true;state='available';nativeDetails={};canToggle=false;nativeUI=false;nativeUpdater=false;scheduled=false
+ content={enabled:true,configuration:true,skills:true,policy:'stable',state:'available',configurationRevision:3,skillsRevision:4,latestRevision:6,totalBytes:2048,downloadedBytes:0}
+ const desktop=await browser.newPage(),desktopErrors=[];desktop.on('pageerror',e=>desktopErrors.push(e.message))
+ await desktop.addInitScript(()=>{window.dshDesktop={protocolVersion:1}})
+ await desktop.goto(url)
+ const desktopPill=desktop.locator('[data-eduwork-update-entry]')
+ await desktopPill.waitFor()
+ assert.equal(await desktopPill.innerText(),'内容更新')
+ assert.equal(await desktopPill.getAttribute('aria-label'),'查看内容更新')
+ assert.equal(await desktopPill.getAttribute('title'),'查看配置与 Skills 更新')
+ assert.equal(await desktopPill.getAttribute('data-chatecnu-update-prompt'),'available')
+ await desktopPill.click()
+ const desktopDialog=desktop.getByRole('dialog',{name:'更新',exact:true});await desktopDialog.waitFor()
+ assert.equal(await desktopDialog.getByText('自动更新',{exact:true}).count(),1)
+ assert.equal(await desktopDialog.getByRole('button',{name:'下载内容更新',exact:true}).count(),1)
+ assert.equal(await desktop.evaluate(()=>document.activeElement?.getAttribute('data-eduwork-update-entry')),'true')
+ await desktop.evaluate(()=>{window.dispatchEvent(new Event('eduwork:open-updates'));window.dispatchEvent(new Event('eduwork:open-updates'))})
+ assert.equal(await desktop.getByRole('dialog').count(),1)
+ await desktopDialog.getByRole('button',{name:'关闭更新面板'}).click();await desktopDialog.waitFor({state:'detached'})
+ await desktopPill.click();await desktopDialog.waitFor()
+ await desktop.keyboard.press('Escape');await desktopDialog.waitFor({state:'detached'})
+ assert.equal(await desktop.evaluate(()=>document.activeElement?.getAttribute('data-eduwork-update-entry')),'true')
+ // Software-only updates must not duplicate the official reminder in the footer.
+ content=null
+ await desktop.reload();await desktop.waitForTimeout(120)
+ assert.equal(await desktopPill.count(),0)
+ assert.equal(await desktop.getByRole('dialog').count(),0)
+ // Content-ready and content-downloading remain content-specific footer entries.
+ content={enabled:true,configuration:true,skills:true,policy:'stable',state:'ready',configurationRevision:5,skillsRevision:6,downloadedBytes:2048,totalBytes:2048}
+ await desktop.reload();await desktopPill.waitFor()
+ assert.equal(await desktopPill.innerText(),'内容待生效')
+ await desktopPill.click();await desktopDialog.waitFor()
+ assert.equal(await desktopDialog.getByRole('button',{name:'重启使内容生效',exact:true}).count(),1)
+ await desktop.keyboard.press('Escape');await desktopDialog.waitFor({state:'detached'})
+ content={enabled:true,configuration:true,skills:true,policy:'stable',state:'downloading',configurationRevision:5,skillsRevision:6,downloadedBytes:1024,totalBytes:2048}
+ await desktop.reload();await desktopPill.waitFor()
+ assert.equal(await desktopPill.innerText(),'内容 50%')
+ assert.deepEqual(desktopErrors,[])
+ await desktop.close()
  assert.deepEqual(errors,[])
- await writeFile(join(evidence,'update-browser.json'),JSON.stringify({passed:true,sourceLayout:'0.2.0 / d8691cb UpdateSettings',channelSwitch:true,keyboardSwitch:true,themes:['blue','red'],persisted:true,bluePill:true,downloadProgress:50,progressAfterReloadAndModalClose:true,scheduleNextStart:true,channelLockedDuringDownload:true,actions:actions.filter(a=>a!=='status'),errors},null,2))
+ await writeFile(join(evidence,'update-browser.json'),JSON.stringify({passed:true,sourceLayout:'0.2.0 / d8691cb UpdateSettings',channelSwitch:true,keyboardSwitch:true,themes:['blue','red'],persisted:true,bluePill:true,downloadProgress:50,progressAfterReloadAndModalClose:true,scheduleNextStart:true,channelLockedDuringDownload:true,contentOnlyFooter:true,actions:actions.filter(a=>a!=='status'),errors},null,2))
  console.log('Shared update UI acceptance passed')
 } finally {await browser?.close();await new Promise(ok=>server.close(ok))}

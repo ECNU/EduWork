@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "name": "@eduwork/dsh-memory",
+  "version": "0.2.2",
+  "repository": "https://github.com/ECNU/EduWork",
+  "commit": "480eefef8571e78b17cb1925a943a6ad0001b323",
+  "publicationStatus": "published",
+  "tarballSHA256": "084d3db3c7414e35553d3ae130a2bbcb38a2115983071a5bf987c9ee1e2e2ddd",
+  "npm": {
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-memory/-/dsh-memory-0.2.2.tgz",
+    "integrity": "sha512-YjjQvu8C6LSBS7LZwNi25xHHcUpGT5eDmMz4gzy1CjEydPCR02mS4mD6kezzucU2llBYZs22cyYvvme7P2hYKw==",
+    "shasum": "b40d58ce8e87abef9e808b17f01b5f7ac79e0979"
+  }
+}

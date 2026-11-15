@@ -9,7 +9,7 @@ on:
         required: false
         type: string
       platform:
-        description: 'Platforms to validate; main pushes always build all three targets'
+        description: 'Platforms to validate; affected main pushes build all three targets'
         required: true
         default: both
         type: choice
@@ -24,16 +24,22 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
+      build: ${{ steps.changes.outputs.build }}
       development_version: ${{ steps.resolve.outputs.development_version }}
       targets: ${{ steps.resolve.outputs.targets }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24.22.1'
+      - name: Select product assembly changes
+        id: changes
+        run: node scripts/ci-changes.mjs
       - name: Resolve development version
+        if: steps.changes.outputs.build == 'true'
         id: resolve
         shell: bash
         env:
@@ -55,6 +61,7 @@ jobs:
   build:
     name: Build (${{ matrix.platform }})
     needs: version
+    if: needs.version.outputs.build == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -105,3 +112,18 @@ jobs:
           compression-level: 0
           retention-days: 7
           if-no-files-found: error
+  result:
+    name: Desktop build result
+    if: always()
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - run: node scripts/ci-result.mjs
+        env:
+          SELECTION_RESULT: ${{ needs.version.result }}
+          REQUIRED: ${{ needs.version.outputs.build }}
+          RESULTS: ${{ format('["{0}"]', needs.build.result) }}

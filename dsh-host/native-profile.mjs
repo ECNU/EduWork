@@ -13,6 +13,12 @@ export async function nativePresetPatches(runtime, parse) {
   const result = []
   const replaceSkills = rows => rows.map(row => ({ ...row,
     ...(row.name === '@deepseek-ai/dsh-skill-filesystem' ? { name: '@chatecnu-work/dsh-skill-control-native' } : {}),
+    // rc.2's native Office tools are admitted by the skill names the model
+    // actually loads. Keep upstream names as well as EduWork's public aliases.
+    ...(row.name === '@deepseek-ai/dsh-tool-office' ? { config: { ...row.config,
+      activationSkills: [...new Set([...(row.config?.activationSkills ?? ['office', 'office-docx', 'office-xlsx', 'office-pptx']),
+        'artifact-documents', 'artifact-spreadsheets', 'artifact-presentations'])],
+    } } : {}),
     ...(row.group === true && Array.isArray(row.config) ? { config: replaceSkills(row.config) } : {}),
   }))
   for (const name of ['standard', 'ptc', 'minimal', 'cordis']) {
@@ -186,8 +192,9 @@ export function nativeEntryIds(patches) {
 // Generated deployment defaults are an ordinary bundle BELOW the native user
 // patch. Never regenerate the latter: Settings writes it through configEditor.
 // This profile lives beside the 0.1.5 profile for rollback, in the same DSH home.
-export async function writeNativeProfile({ profile, home, bundles, optionalBundles = [], patches, parse = JSON.parse, yaml, migrateSchedule = false, builtinSchedule = false }) {
+export async function writeNativeProfile({ profile, home, bundles, optionalBundles = [], disabledByDefaultBundles = [], patches, parse = JSON.parse, yaml, migrateSchedule = false, builtinSchedule = false }) {
   if (!Array.isArray(optionalBundles) || optionalBundles.some(value => typeof value !== 'string' || !bundles.includes(value))) throw new Error('Optional bundles must belong to the product bundle list')
+  if (!Array.isArray(disabledByDefaultBundles) || disabledByDefaultBundles.some(value => !optionalBundles.includes(value))) throw new Error('Default-disabled bundles must be optional product bundles')
   const name = '@eduwork/generated-profile'
   const bundle = join(profile, 'node_modules', name)
   for (const path of [profile, join(profile, 'node_modules'), join(profile, 'node_modules/@eduwork'), bundle]) {
@@ -237,8 +244,9 @@ export async function writeNativeProfile({ profile, home, bundles, optionalBundl
   if (!Array.isArray(savedBundles) || savedBundles.some(value => typeof value !== 'string')) throw new Error('Invalid native profile bundle list')
   // An existing native bundle list is also the user's activation state. An
   // absent legacy/fork bundle means disabled, not an invitation to re-enable it.
+  const legacySelectable = ['@eduwork/dsh-literature', '@eduwork/dsh-mail']
   const inheritedBundles = savedManifest.dsh?.profile?.bundles === undefined ? bundles
-    : bundles.filter(value => value !== '@eduwork/dsh-literature')
+    : bundles.filter(value => !legacySelectable.includes(value))
   // Seed newly bundled optional plugins once, then let the native plugin
   // manager own activation. A prior manual install with no active bundle is
   // already disabled. Preserve that choice and avoid a second product entry.
@@ -249,7 +257,9 @@ export async function writeNativeProfile({ profile, home, bundles, optionalBundl
     defaults = inheritedBundles.filter(value => !optionalBundles.includes(value))
     for (const value of optionalBundles) {
       const manuallyDisabled = Object.hasOwn(savedManifest.dependencies ?? {}, value) && !savedBundles.includes(value)
-      if (!provisioned.includes(value) && !manuallyDisabled) defaults.push(value)
+      // Installation and activation are separate. Opt-in defaults never erase
+      // an existing native selection, which is retained in savedBundles below.
+      if (!provisioned.includes(value) && !manuallyDisabled && !disabledByDefaultBundles.includes(value) && inheritedBundles.includes(value)) defaults.push(value)
     }
     savedManifest.eduwork = { ...savedManifest.eduwork, optionalBundles: [...new Set([...provisioned, ...optionalBundles])] }
   }
