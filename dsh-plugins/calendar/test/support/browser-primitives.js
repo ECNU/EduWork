@@ -64,12 +64,12 @@ const Menu = ({ children, selectedId, className, open, anchor, items = [], onSel
  * and a footer of actions. When open, the header close button and the backdrop
  * both use the same close callback as the host primitive.
  */
-const Modal = ({ open, title, description, children, footer, onClose, className, closeLabel }) => {
+const Modal = ({ open, title, description, children, footer, onClose, className, closeLabel, headless }) => {
   if (!open) return null
   return h('div', { className: cx('ui-modal', className), style: { position: 'fixed', inset: 0, zIndex: 1000, overflowY: 'auto' } },
     h('div', { 'data-backdrop': '', onClick: onClose, style: { position: 'absolute', inset: 0 } }),
     h('div', { role: 'dialog', 'aria-label': title, style: { position: 'relative', background: 'white' } },
-      h('header', null,
+      !headless && h('header', null,
         title ? h('h2', null, title) : null,
         closeLabel ? h('button', { type: 'button', 'aria-label': closeLabel, onClick: onClose }, '×') : null),
       description ? h('p', null, description) : null,

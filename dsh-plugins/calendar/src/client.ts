@@ -7,6 +7,7 @@ import { mergeRemarks } from '../lib/model.js'
 import { PersonalSettings, occurrenceNote } from './personal-settings.js'
 import { addDays, localDate, monthRange, monthStart, parseDate, shiftMonth, startOfWeek } from './dates.js'
 import { AcademicYear, CalendarCanvas, CalendarStyles, PhaseSummary } from './calendar-views.js'
+import { EventEditorSurface, OccurrenceSurface } from './event-surfaces.js'
 
 /**
  * Resolve one icon from the loaded primitives package.
@@ -59,7 +60,7 @@ const LAYER = 'var(--dsw-alias-bg-layer-2, #f6f6f6)'
 
 /** 弹窗沿用宿主的焦点、关闭和遮罩行为，由日历定义不同内容的宽度。 */
 function Modal({ children, className, contentClassName, size, ...props }:
-  React.ComponentProps<typeof PrimitiveModal> & { size?: 'compact' | 'detail' }) {
+  React.ComponentProps<typeof PrimitiveModal> & { size?: 'compact' }) {
   return React.createElement(PrimitiveModal, {
     ...props,
     className: ['eduwork-calendar-dialog', size && `cal-dialog-${size}`, className].filter(Boolean).join(' '),
@@ -187,8 +188,8 @@ function seriesSummary(event: any) {
 }
 
 /** A labelled form row: the label above its control, as in the shell's own settings. */
-function Field({ label, children, hint }: any) {
-  return React.createElement('label', { className: 'cal-field' },
+function Field({ label, children, hint, className }: any) {
+  return React.createElement('label', { className: className ? `cal-field ${className}` : 'cal-field' },
     React.createElement('span', { className: 'cal-field-label' }, label),
     children,
     hint ? React.createElement('span', { className: 'cal-field-hint' }, hint) : undefined)
@@ -224,7 +225,7 @@ function IconButton({ label, icon, onClick, danger, disabled }: any) {
 }
 
 /** 在同一个弹窗内查看日程、修改单次安排、写笔记或确认删除。 */
-function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, sourceName }: any) {
+function OccurrenceWindow({ occurrence, event, note, service, onClose, run, onEdit, sourceName }: any) {
   const [mode, setMode] = useState<'details' | 'schedule' | 'note' | 'delete'>('details')
   const [form, setForm] = useState({ start: '', end: '', location: '' })
   const [noteDraft, setNoteDraft] = useState('')
@@ -252,7 +253,6 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
   const wholeDay = clockOf(occurrence.start) === ''
   const fromSource = occurrence.source !== 'manual'
   const remark = mergeRemarks(fromSource ? undefined : occurrence.description, occurrence.personal?.remark?.text)
-  const modal = { open: true, size: 'detail' as const, className: 'cal-dialog-event', closeLabel: '关闭', onClose }
   const cancel = () => {
     if (mode === 'details') return
     restoreFocus.current = mode
@@ -288,8 +288,8 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
       } })
     const canSave = form.start !== '' && Object.keys(patch).length > 0 && (series || event)
 
-    return React.createElement(Modal, {
-      ...modal,
+    return React.createElement(OccurrenceSurface, {
+      onClose,
       title: series ? '调整这次日程' : '修改时间和地点',
       description: occurrence.title,
       footer: React.createElement('div', { className: 'cal-dialog-primary' },
@@ -322,8 +322,8 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
 
   if (mode === 'note') {
     const isEmpty = noteDraft.trim() === ''
-    return React.createElement(Modal, {
-      ...modal,
+    return React.createElement(OccurrenceSurface, {
+      onClose,
       title: note ? '编辑笔记' : '写笔记',
       description: occurrence.title,
       footer: React.createElement('div', { className: 'cal-dialog-primary' },
@@ -346,8 +346,8 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
   }
 
   if (mode === 'delete') {
-    return React.createElement(Modal, {
-      ...modal,
+    return React.createElement(OccurrenceSurface, {
+      onClose,
       title: '删除这条日程？',
       footer: React.createElement('div', { className: 'cal-dialog-primary' },
         cancelButton(true),
@@ -361,69 +361,65 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
     }, React.createElement('p', { className: 'cal-event-delete-copy' }, `“${occurrence.title}”将从日历中移除。`))
   }
 
-  return React.createElement(Modal, {
-    ...modal,
+  const changeSchedule = () => {
+    if (wholeDay && event) {
+      onEdit(event.uid, event.source)
+      return
+    }
+    setForm({ start: occurrence.start, end: occurrence.end ?? '', location: occurrence.location ?? '' })
+    setMode('schedule')
+  }
+  const tools = React.createElement(React.Fragment, null,
+    occurrence.overridden && React.createElement(Button, {
+      variant: 'ghost', size: 'sm', disabled: isSaving,
+      onClick: () => perform(
+        () => service.removeOverride({ uid: occurrence.uid, date, source: occurrence.source }),
+        '已恢复原定安排', onClose,
+      ),
+    }, '撤销改期'),
+    series ? React.createElement(Button, {
+      variant: 'ghost', size: 'sm', disabled: isSaving,
+      onClick: () => perform(
+        () => service.cancelOccurrence({ uid: occurrence.uid, date, source: occurrence.source }),
+        `已取消：${shortDate(date)}`, onClose,
+      ),
+    }, '取消这一次') : React.createElement(Button, {
+      variant: 'ghost', size: 'sm', ref: deleteButton, icon: React.createElement(IconTrash),
+      'aria-label': '删除日程', title: '删除日程', onClick: () => setMode('delete'),
+    }, React.createElement('span', { className: 'cal-screen-reader' }, '删除日程')))
+
+  return React.createElement(OccurrenceSurface, {
+    onClose,
     title: occurrence.title,
-    footer: React.createElement('div', { className: 'cal-dialog-actions' },
-      React.createElement('div', { className: 'cal-dialog-secondary' },
-        occurrence.overridden && React.createElement(Button, {
-          variant: 'ghost',
-          onClick: () => perform(
-            () => service.removeOverride({ uid: occurrence.uid, date, source: occurrence.source }),
-            '已恢复原定安排', onClose,
-          ),
-        }, '撤销改期'),
-        series ? React.createElement(Button, {
-          variant: 'ghost',
-          onClick: () => perform(
-            () => service.cancelOccurrence({ uid: occurrence.uid, date, source: occurrence.source }),
-            `已取消：${shortDate(date)}`, onClose,
-          ),
-        }, '取消这一次') : React.createElement(Button, {
-          variant: 'ghost', className: 'cal-destructive', ref: deleteButton,
-          onClick: () => setMode('delete'),
-        }, '删除日程')),
-      event && React.createElement('div', { className: 'cal-dialog-primary' },
-        React.createElement(Button, { variant: 'outline', onClick: () => onEdit(event.uid, event.source) }, '编辑日程信息'))),
-  }, React.createElement('div', { className: 'cal-event-dialog-body' },
-    React.createElement('div', { className: 'cal-event-facts' },
-      React.createElement('div', { className: 'cal-event-when' },
-        React.createElement(IconClock, { 'aria-hidden': true }),
-        React.createElement('span', null, `${monthOf(startDate)}${dayNumber(startDate)}日 ${weekdayOf(startDate)} ${clockRange(occurrence)}`),
-        occurrence.overridden && React.createElement(Tag, { tone: 'info' }, '已改期')),
-      React.createElement('div', { className: 'cal-event-meta' },
-        occurrence.location && React.createElement('span', null, `地点：${occurrence.location}`),
-        event?.source && React.createElement('span', null, `日历：${sourceName(event.source)}`),
-        series && React.createElement('span', null, seriesSummary(event)))),
-    fromSource && occurrence.description && React.createElement('div', { className: 'cal-event-text' },
-      React.createElement('span', { className: 'cal-event-context' }, '来源说明'),
-      React.createElement('p', null, occurrence.description)),
-    remark && React.createElement('div', { className: 'cal-event-text' },
-      React.createElement('span', { className: 'cal-event-context' }, '日程备注'),
-      React.createElement('p', null, remark)),
-    note && React.createElement('div', { className: 'cal-event-text' },
-      React.createElement('span', { className: 'cal-event-context' }, '我的笔记'),
-      React.createElement('p', null, note)),
-    React.createElement('div', { className: 'cal-event-quick' },
-      React.createElement(Button, {
-        variant: 'ghost', size: 'sm', ref: scheduleButton,
-        onClick: () => {
-          if (wholeDay && event) {
-            onEdit(event.uid, event.source)
-            return
-          }
-          setForm({ start: occurrence.start, end: occurrence.end ?? '', location: occurrence.location ?? '' })
-          setMode('schedule')
-        },
-      }, wholeDay ? '改日期或地点' : series ? '改期或改地点' : '改时间或地点'),
+    context: event?.source ? `日历：${sourceName(event.source)}` : undefined,
+    tools,
+    footer: React.createElement('div', { className: 'cal-occurrence-commands' },
       React.createElement(Button, {
         variant: 'ghost', size: 'sm', ref: noteButton,
         onClick: () => { setNoteDraft(note ?? ''); setMode('note') },
       }, note ? '改笔记' : '写笔记'),
-      React.createElement(Button, {
-        variant: 'ghost', size: 'sm', 'aria-expanded': showPersonal, onClick: () => setShowPersonal(!showPersonal),
-      }, showPersonal ? '收起个人设置' : '更多个人设置')),
-    showPersonal && React.createElement(PersonalSettings, { identity: noteRefOf(occurrence), service, run, Field })))
+      event && React.createElement(Button, {
+        variant: 'primary', size: 'sm', onClick: () => onEdit(event.uid, event.source),
+      }, '编辑日程信息')),
+  },
+  React.createElement('div', { className: 'cal-occurrence-summary' },
+    React.createElement('div', { className: 'cal-occurrence-time' },
+      React.createElement(IconClock, { 'aria-hidden': true }),
+      React.createElement('span', null, `${monthOf(startDate)}${dayNumber(startDate)}日 ${weekdayOf(startDate)} ${clockRange(occurrence)}`)),
+    React.createElement(Button, { variant: 'ghost', size: 'sm', ref: scheduleButton, onClick: changeSchedule },
+      wholeDay ? '改日期或地点' : series ? '改期或改地点' : '改时间或地点')),
+  (occurrence.location || series || occurrence.overridden) && React.createElement('div', { className: 'cal-occurrence-meta' },
+    occurrence.location && React.createElement('span', null, occurrence.location),
+    series && React.createElement('span', null, seriesSummary(event)),
+    occurrence.overridden && React.createElement(Tag, { tone: 'info' }, '已改期')),
+  [fromSource ? occurrence.description : '', remark, note].map((text, index) => text && React.createElement('div', {
+    key: index, className: 'cal-occurrence-annotation',
+  }, React.createElement('span', null, ['来源说明', '日程备注', '我的笔记'][index]), React.createElement('p', null, text))),
+  React.createElement(Button, {
+    variant: 'ghost', size: 'sm', className: 'cal-occurrence-settings', 'aria-expanded': showPersonal,
+    icon: React.createElement(IconChevronDown), onClick: () => setShowPersonal(!showPersonal),
+  }, showPersonal ? '收起个人设置' : '更多个人设置'),
+  showPersonal && React.createElement(PersonalSettings, { identity: noteRefOf(occurrence), service, run, Field, showHeading: false }))
 }
 
 /** Read a dropped or chosen file as text, with the few checks a calendar import needs. */
@@ -635,15 +631,17 @@ function ExportDialog({ service, onClose, toast }: any) {
       }, '下载 .ics'),
       React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '完成')),
   },
-  React.createElement('div', { className: 'cal-export-options' }, React.createElement(Switch, {
-    label: '包含我的备注', checked: includeRemarks,
-    onChange: (checked: boolean) => {
-      setPreview(null)
-      setProblem(null)
-      setCopied(false)
-      setIncludeRemarks(checked)
-    },
-  })),
+  React.createElement('label', { className: 'cal-export-options' },
+    React.createElement(Switch, {
+      label: '包含我的备注', checked: includeRemarks,
+      onChange: (checked: boolean) => {
+        setPreview(null)
+        setProblem(null)
+        setCopied(false)
+        setIncludeRemarks(checked)
+      },
+    }),
+    React.createElement('span', null, '包含我的备注')),
   React.createElement('textarea', {
     'aria-label': '日历导出预览', readOnly: true, value: text, spellCheck: false,
     onFocus: (event: any) => event.target.select(),
@@ -780,7 +778,7 @@ function draftProblem(draft: any) {
  * The fields of one record, shared by the new-entry dialog and the entry page:
  * what the reader owns about an entry, as opposed to one date of a series.
  */
-function EventForm({ draft, onChange, autoFocus, sourceDescription, showDetails = true, showAllDay = false }: any) {
+function EventForm({ draft, onChange, autoFocus, sourceDescription, recordMode = false, showDetails = true, showAllDay = false }: any) {
   const set = (patch: any) => onChange({ ...draft, ...patch })
   const isAllDay = showAllDay && draft.start === '' && draft.end === ''
   const dateField = React.createElement(Field, { label: '日期' },
@@ -807,8 +805,8 @@ function EventForm({ draft, onChange, autoFocus, sourceDescription, showDetails 
     React.createElement('span', null, '全天'))
 
   return React.createElement(React.Fragment, null,
-    React.createElement(Field, { label: '标题' },
-      React.createElement(Input, {
+    React.createElement(Field, { label: '标题', className: recordMode ? 'cal-workspace-title' : undefined },
+      React.createElement(recordMode ? 'input' : Input, {
         value: draft.title, placeholder: '例如：组会、体检、回家', autoFocus,
         onChange: (event: any) => set({ title: event.target.value }),
       })),
@@ -940,7 +938,7 @@ function CreateDialog({ defaultDate, defaultStart, defaultEnd, defaultAllDay, se
  */
 type EventEditor = { event: any; draft: any; dirty: string[]; pending?: { draft: any; dirty: string[] } }
 
-function EventPage({ event, remark, agenda, noteIndex, service, run, onOpenOccurrence, onRestore, onCancel, onDelete, busy }: any) {
+function EventWorkspace({ event, remark, agenda, noteIndex, service, run, onOpenOccurrence, onRestore, onCancel, onDelete, busy, sourceName, onBack, tools }: any) {
   const sourceDescription = event?.source !== 'manual' ? event?.description : undefined
   const editable = mergeRemarks(event?.source === 'manual' ? event.description : undefined, remark)
   const formRecord = useMemo(() => event && { ...event, description: editable }, [event, editable])
@@ -1018,23 +1016,16 @@ function EventPage({ event, remark, agenda, noteIndex, service, run, onOpenOccur
     }, '日程信息已保存')
   }
 
-  const info = React.createElement('section', { className: 'cal-record-info', 'aria-label': '日程信息' },
-    React.createElement('div', { className: 'cal-record-heading' },
-      React.createElement('h2', null, '日程信息'),
-      event.recurrence && React.createElement(Muted, null, seriesSummary(event))),
-    React.createElement(EventForm, { draft, onChange: changeDraft, sourceDescription }),
-    React.createElement('div', { className: 'cal-record-save' },
-      dirty && React.createElement(Muted, null, complaint ?? '有未保存的改动'),
-      React.createElement(Button, {
-        variant: 'primary', disabled: !dirty || busy || Boolean(complaint), onClick: save,
-      }, '保存更改')))
+  const actions = React.createElement('div', { className: 'cal-workspace-save' },
+    dirty && React.createElement(Muted, null, complaint ?? '有未保存的改动'),
+    React.createElement(Button, {
+      variant: 'primary', disabled: !dirty || busy || Boolean(complaint), onClick: save,
+    }, '保存更改'))
 
-  const personal = React.createElement('details', { className: 'cal-record-personal' },
-    React.createElement('summary', null, '个人设置', React.createElement(IconChevronDown, { 'aria-hidden': true })),
-    React.createElement(PersonalSettings, {
-      identity: { source: event.source, uid: event.uid }, service, run, Field, allowOccurrence: false, showHeading: false,
-      copyLegacyRemark: (text: string) => changeDraft({ ...draft, description: mergeRemarks(draft.description, text) }),
-    }))
+  const personal = React.createElement(PersonalSettings, {
+    identity: { source: event.source, uid: event.uid }, service, run, Field, allowOccurrence: false, showHeading: false,
+    copyLegacyRemark: (text: string) => changeDraft({ ...draft, description: mergeRemarks(draft.description, text) }),
+  })
 
   const deletion = React.createElement('div', { className: 'cal-record-delete' },
     confirmingDelete
@@ -1059,10 +1050,7 @@ function EventPage({ event, remark, agenda, noteIndex, service, run, onOpenOccur
         label: `恢复 ${shortDate(date)}`, icon: React.createElement(IconRefreshSmall), onClick: () => onRestore(event, date),
       })))))
 
-  const times = React.createElement('section', { 'aria-label': '出现的时间' },
-    React.createElement('div', { className: 'cal-record-heading' },
-      React.createElement('h2', null, '出现的时间'),
-      React.createElement(Muted, null, `近一年 · ${occurrences.length} 次`)),
+  const times = React.createElement(React.Fragment, null,
     occurrences.length === 0
       ? React.createElement('p', { className: 'cal-record-empty' }, '近一年没有日程')
       : groups.map(([month, items]) => React.createElement('div', { className: 'cal-record-month', key: month },
@@ -1070,12 +1058,14 @@ function EventPage({ event, remark, agenda, noteIndex, service, run, onOpenOccur
         ...items.map((occurrence: any) => React.createElement(EventRow, {
           key: reactKeyOf(occurrence), occurrence, note: occurrenceNote(noteIndex, occurrence),
           onOpen: onOpenOccurrence, onCancel,
-        })))))
+        })))),
+    cancelledDates)
 
-  return React.createElement('div', { className: 'cal-record-scroll' },
-    React.createElement('div', { className: 'cal-record-layout' },
-      React.createElement('div', { className: 'cal-record-editor' }, info, personal, deletion),
-      React.createElement('aside', { className: 'cal-record-timeline' }, times, cancelledDates)))
+  return React.createElement(EventEditorSurface, {
+    fields: React.createElement(EventForm, { draft, onChange: changeDraft, sourceDescription, recordMode: true }),
+    occurrences: times, settings: personal, onBack, title: event.title, source: sourceName(event.source),
+    backIcon: React.createElement(IconChevronLeft), tools, actions, deletion,
+  })
 }
 
 /**
@@ -1269,13 +1259,9 @@ export function createCalendarPage(service: any) {
     /** The week on screen is today's, so an entry started from here means today. */
     const selectedAcademicCalendar = annotationChoices.find(choice => choice.group === 'academic-calendar' && choice.selected)
     const academicYear = academicSpans[0]?.text.match(/^\d{4}[-–]\d{4}/)?.[0]?.replace('-', '–')
-    const title = view.kind === 'week'
-      ? displayMode === 'year' ? (academicYear ? `${academicYear} 学年` : '学年总览') : monthOf(focusedDate)
-      : (current?.title ?? '日程')
+    const title = displayMode === 'year' ? (academicYear ? `${academicYear} 学年` : '学年总览') : monthOf(focusedDate)
     const weekNote = displayMode === 'week' ? annotations?.weeks?.find((week: any) => week.firstDay === anchor)?.text : undefined
-    const subtitle = view.kind === 'week'
-      ? displayMode === 'week' ? `${shortDate(anchor)} – ${shortDate(addDays(anchor, 6))}` : ''
-      : [current?.location, sourceName(current?.source), current && noteOf(current) !== '' ? '有备注' : ''].filter(Boolean).join(' · ')
+    const subtitle = displayMode === 'week' ? `${shortDate(anchor)} – ${shortDate(addDays(anchor, 6))}` : ''
 
     const recordItems = events.map((event: any) => ({
         id: `${event.source}\u0000${event.uid}`,
@@ -1289,6 +1275,22 @@ export function createCalendarPage(service: any) {
       { id: 'reminders', label: reminderInbox.unread ? `提醒记录 · ${reminderInbox.unread}` : '提醒记录', icon: React.createElement(IconAlarmClock) },
       { id: 'refresh', label: '刷新', icon: React.createElement(IconRefresh), disabled: loading },
     ]
+    const calendarTools = React.createElement(Menu, {
+      open: menuOpen,
+      onClose: () => setMenuOpen(false),
+      items: moreItems,
+      onSelect: (kind: string) => {
+        if (kind === 'refresh') void refresh()
+        else if (kind === 'create') setDialog({ kind, date: current ? dateOf(current.start) : focusedDate })
+        else setDialog({ kind })
+      },
+      align: 'end',
+      anchor: React.createElement(Button, {
+        variant: 'ghost', size: 'sm', className: 'cal-tool-button cal-more-button',
+        'aria-label': '更多日历操作', 'aria-haspopup': 'menu', 'aria-expanded': menuOpen,
+        icon: React.createElement(IconEllipsis), onClick: () => setMenuOpen(!menuOpen),
+      }, reminderInbox.unread ? React.createElement('span', { className: 'cal-action-count' }, reminderInbox.unread) : undefined),
+    })
     const pendingSources = sourceStatuses.filter(item => item.state !== 'ready')
     const visibleSpans = annotations.spans.filter((span: { firstDay: string; lastDay: string }) =>
       span.firstDay <= weekRange.to && span.lastDay >= weekRange.from)
@@ -1318,16 +1320,12 @@ export function createCalendarPage(service: any) {
       },
     },
     React.createElement(CalendarStyles),
-    React.createElement('header', { className: view.kind === 'event' ? 'cal-head cal-record-head' : 'cal-head' },
+    view.kind === 'week' && React.createElement('header', { className: 'cal-head' },
       React.createElement('div', { className: 'cal-period' },
-      view.kind === 'event' && React.createElement(Button, {
-        variant: 'ghost', size: 'sm', icon: React.createElement(IconChevronLeft),
-        onClick: () => setView({ kind: 'week' }),
-      }, '返回'),
       React.createElement('div', null,
         React.createElement('h1', null, title),
         subtitle && React.createElement('div', { className: 'cal-period-subtitle' }, subtitle)),
-      view.kind === 'week' && displayMode !== 'year' && React.createElement('nav', { className: 'cal-nav', 'aria-label': '日期导航' },
+      displayMode !== 'year' && React.createElement('nav', { className: 'cal-nav', 'aria-label': '日期导航' },
         React.createElement('div', { className: 'cal-arrows' },
         ...[-1, 1].map(direction => React.createElement('button', {
           key: direction, type: 'button',
@@ -1340,32 +1338,17 @@ export function createCalendarPage(service: any) {
           },
         }, '今天'))),
       React.createElement('div', { className: 'cal-actions' },
-        view.kind === 'week' && React.createElement('div', { className: 'cal-segmented', role: 'group', 'aria-label': '日历视图' },
+        React.createElement('div', { className: 'cal-segmented', role: 'group', 'aria-label': '日历视图' },
           ...(['month', 'week', ...(selectedAcademicCalendar || displayMode === 'year' ? ['year'] as const : [])] as const).map(mode =>
             React.createElement('button', { key: mode, type: 'button', 'aria-pressed': mode === displayMode, onClick: () => setDisplayMode(mode) },
               mode === 'month' ? '月' : mode === 'week' ? '周' : '学年'))),
-        view.kind === 'week' && React.createElement(Button, {
+        React.createElement(Button, {
           variant: 'ghost', size: 'sm', className: 'cal-tool-button cal-source-trigger',
           'aria-label': '日历来源', onClick: () => setDialog({ kind: 'sources' }),
         }, React.createElement('span', { className: 'cal-source-trigger-label' }, calendarSource === '*' ? '日历来源' : sourceName(calendarSource)),
           React.createElement(IconChevronDown)),
-        React.createElement(Menu, {
-          open: menuOpen,
-          onClose: () => setMenuOpen(false),
-          items: moreItems,
-          onSelect: (kind: string) => {
-            if (kind === 'refresh') void refresh()
-            else if (kind === 'create') setDialog({ kind, date: current ? dateOf(current.start) : focusedDate })
-            else setDialog({ kind })
-          },
-          align: 'end',
-          anchor: React.createElement(Button, {
-            variant: 'ghost', size: 'sm', className: 'cal-tool-button cal-more-button',
-            'aria-label': '更多日历操作', 'aria-haspopup': 'menu', 'aria-expanded': menuOpen,
-            icon: React.createElement(IconEllipsis), onClick: () => setMenuOpen(!menuOpen),
-          }, reminderInbox.unread ? React.createElement('span', { className: 'cal-action-count' }, reminderInbox.unread) : undefined),
-        }),
-        view.kind === 'week' && React.createElement(Button, {
+        calendarTools,
+        React.createElement(Button, {
           variant: 'primary', size: 'sm', className: 'cal-primary', icon: React.createElement(IconPlus),
           onClick: () => setDialog({ kind: 'create', date: focusedDate }),
         }, '新建日程'))),
@@ -1404,9 +1387,12 @@ export function createCalendarPage(service: any) {
             setDialog({ kind: 'create', date, allDay: true })
           },
         })
-      : React.createElement(EventPage, {
+      : React.createElement(EventWorkspace, {
         key: JSON.stringify([view.source, view.id]),
         event: current,
+        sourceName,
+        tools: calendarTools,
+        onBack: () => setView({ kind: 'week' }),
         remark: current && remarkIndex.get(`${current.source}\u0000${current.uid}\u0000`),
         service, run,
         agenda,
@@ -1474,7 +1460,7 @@ export function createCalendarPage(service: any) {
           openEvent(uid, source)
         } }, item.label)))),
     dialog?.kind === 'event'
-      ? React.createElement(EventDialog, {
+      ? React.createElement(OccurrenceWindow, {
         occurrence: selectedOccurrence,
         sourceName,
         event: events.find((item: any) =>

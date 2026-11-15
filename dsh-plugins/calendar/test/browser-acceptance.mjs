@@ -404,6 +404,7 @@ await acceptance('在真实浏览器里写笔记 → 保存 → 重新打开确�
         // Written where it belongs: the personal layer, not the record. The save is
         // asynchronous — the panel writes, then re-reads — so the note is waited for
         // rather than assumed to have landed by the time the click returns.
+        await field.waitFor({ state: 'detached' })
         await page.getByText('我的笔记').first().waitFor()
         await poll(
           async () => (await call('notes', { scope: 'source', source: 'manual', uid: 'personal-1' }))[0]?.note.text,
@@ -431,6 +432,7 @@ await acceptance('在真实浏览器里写笔记 → 保存 → 重新打开确�
         await again.fill('')
         assert.equal(await again.inputValue(), '', 'the textarea is empty')
         await page.getByRole('button', { name: '保存笔记' }).click()
+        await again.waitFor({ state: 'detached' })
         await page.getByRole('button', { name: '关闭' }).click()
 
         assert.deepEqual(
@@ -878,6 +880,7 @@ await acceptance('跨天改期详情显示实际日期，取消后可从日程�
         assert.equal(await page.locator('[data-occurrence]').count(),0)
         await moreAction(page, '日程记录')
         await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', {name:/跨天日期验收 · 已取消 1 次/}).click()
+        await page.getByRole('button', { name: '出现时间', exact: true }).click()
         await page.getByText('已取消的日期',{exact:true}).waitFor()
         await page.getByRole('button',{name:`恢复 ${Number(monday.slice(5,7))}月${Number(monday.slice(8))}日`,exact:true}).click()
         await poll(async()=> (await call('snapshot')).events[0].exceptions?.length??0,0,'cancellation restored')
@@ -920,6 +923,7 @@ await acceptance('记录页的出现时间只属于选中的来源', async()=> {
     await refresh()
     await page.getByRole('button',{name:/只看来源A/}).click()
     await page.getByRole('button',{name:'编辑日程信息',exact:true}).click()
+    await page.getByRole('button', { name: '出现时间', exact: true }).click()
     await page.getByRole('button',{name:/只看来源A/}).waitFor()
     assert.equal(await page.getByRole('button',{name:/不能显示来源B/}).count(),0)
   })))
@@ -1193,6 +1197,7 @@ await acceptance('隐藏单次后可从日程页恢复，私人备注与固定�
       await block.waitFor({ state: 'detached' })
       await moreAction(page, '日程记录')
       await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', { name: /Hidden settings class/ }).click()
+      await page.getByRole('button', { name: '出现时间', exact: true }).click()
       await page.getByRole('button', { name: /Hidden settings class.*已隐藏/ }).click({ timeout: 3000 })
       const dialog = page.getByRole('dialog')
       await dialog.getByRole('button', { name: '更多个人设置', exact: true }).click()
@@ -1244,9 +1249,11 @@ await acceptance('旧备注合并在一个字段内，导出需要主动选择',
       await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
       const field = page.getByRole('textbox', { name: '备注', exact: true })
       await poll(() => field.inputValue(), '原日程说明\n\n旧私人附注', '两个旧值都可在同一个字段编辑')
-      await page.locator('summary').filter({ hasText: /^个人设置$/ }).click()
-      assert.equal(await page.getByRole('combobox', { name: '备注设置' }).count(), 0)
       await field.fill('原日程说明\n\n旧私人附注\n合并后的增补')
+      await page.getByRole('button', { name: '个人设置', exact: true }).click()
+      assert.equal(await page.getByRole('combobox', { name: '备注设置' }).count(), 0)
+      await page.getByRole('button', { name: '编辑', exact: true }).click()
+      assert.equal(await field.inputValue(), '原日程说明\n\n旧私人附注\n合并后的增补')
       await page.getByRole('button', { name: '保存更改', exact: true }).click()
       await poll(() => calendar.personalFor(ref).remark, undefined, '保存后旧附注已归入日程备注')
       await page.getByRole('button', { name: '返回', exact: true }).click()
@@ -1263,9 +1270,10 @@ await acceptance('旧备注合并在一个字段内，导出需要主动选择',
       const preview = page.getByRole('textbox', { name: '日历导出预览' })
       const include = page.getByRole('switch', { name: '包含我的备注' })
       assert.equal(await include.getAttribute('aria-checked'), 'false')
+      assert.ok(await page.getByText('包含我的备注', { exact: true }).isVisible())
       await poll(async () => (await preview.inputValue()).includes('学校原始说明'), true, '默认保留来源说明')
       assert.doesNotMatch(await preview.inputValue(), /原日程说明|旧私人附注|自己的课程备注/)
-      await include.click()
+      await page.getByText('包含我的备注', { exact: true }).click()
       await poll(async () => (await preview.inputValue()).includes('自己的课程备注'), true, '主动选择后写入备注')
       assert.match(await preview.inputValue(), /旧私人附注/)
       await include.click()
@@ -1390,8 +1398,10 @@ await acceptance('保存等待期间再次编辑或改回原值也不丢失', as
         await save.click(); await request
         await title.fill('Pending original')
       } finally { release() }
-      await page.getByText('First submitted title', { exact: true }).first().waitFor()
+      await page.getByRole('button', { name: '出现时间', exact: true }).click()
+      await page.getByRole('heading', { name: 'First submitted title', exact: true }).waitFor()
       await poll(() => page.locator('.cal-workbench').getAttribute('aria-busy'), 'false', 'save refresh completed')
+      await page.getByRole('button', { name: '编辑', exact: true }).click()
       assert.equal(calendar.getEvent({ uid: 'pending' }).title, 'First submitted title')
       assert.equal(await title.inputValue(), 'Pending original', 'typing during the request must remain an unsaved edit, including reverting to the previous value')
       assert.equal(await save.isEnabled(), true)

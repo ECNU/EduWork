@@ -393,7 +393,8 @@ test('a notification focus opens an event outside the current week and clears fi
     try {
       await act(async () => focus({ source: event.source, uid: event.uid }))
       await act(async () => { await Promise.resolve() })
-      assert.match(rendered(container), /通知定位的未来日程/)
+      const title = container.descendants().find(element => element.localName === 'input' && element.parentNode.textContent === '标题')
+      assert.equal(title?.value, event.title)
       assert.equal(container.descendants().find(element => element.localName === 'input' && element.getAttribute('type') === 'date').value, '2028-03-13')
       assert.ok(findButton(container, /^返回$/))
     } finally { await act(async () => panel.unmount()) }
