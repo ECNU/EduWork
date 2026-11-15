@@ -23,6 +23,7 @@ import { startMacSparkleUpdates, editableMacUpdateConfiguration } from './mac-sp
 import { softwareUpdateControl, updatesWhenEnabled } from './software-update-control.mjs'
 import { workbenchAction } from './workbench-support.mjs'
 import { desktopLogger } from './desktop-log.mjs'
+import { startupHintMessage } from './startup-hint.mjs'
 import { attachExternalNavigation } from './external-navigation.mjs'
 import { ContentUpdates } from './content-updates.mjs'
 import { updateCoordinator } from './update-coordinator.mjs'
@@ -178,6 +179,7 @@ export function desktopWebRoot() {
 export function desktopStartupWindowPresent() {
   return desktopFailureShown
 }
+export function desktopStartupHint(locale) { return startupHintMessage(paths.logs, locale) }
 export function desktopBootBrand() {
   // Available before Host/plugins. Only a packaged image crosses the bridge;
   // cache a small PNG, and leave the ordinary wordmark if the asset is missing.
