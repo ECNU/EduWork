@@ -124,7 +124,21 @@ jobs:
           node core/scripts/assemble-windows-installed-candidate.mjs \
             --workspace "$RUNNER_TEMP/ew-development" --output "$RUNNER_TEMP/ew-installed"
           cd "$RUNNER_TEMP"
-          tar.exe -a -cf windows-installed-candidate.zip -C ew-installed .
+          # Windows tar.exe cannot write ZIP (-a only selects compression and
+          # silently produced a ustar tar named .zip); use the built-in .NET writer.
+          powershell.exe -NoProfile -Command 'Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path "ew-installed").Path, (Join-Path (Get-Location).Path "windows-installed-candidate.zip"), [System.IO.Compression.CompressionLevel]::Optimal, $false)'
+          node -e '
+            const fs = require("fs");
+            const fd = fs.openSync("windows-installed-candidate.zip", "r");
+            const size = fs.fstatSync(fd).size;
+            const head = Buffer.alloc(4); fs.readSync(fd, head, 0, 4, 0);
+            const tail = Buffer.alloc(Math.min(size, 65557)); fs.readSync(fd, tail, 0, tail.length, size - tail.length);
+            fs.closeSync(fd);
+            if (head.readUInt32LE(0) !== 0x04034b50) throw new Error("candidate archive is not ZIP (missing local header)");
+            let eocd = -1; for (let i = tail.length - 22; i >= 0; i--) if (tail.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+            if (eocd < 0) throw new Error("candidate archive is not ZIP (missing end-of-central-directory)");
+            console.log("ZIP format verified, bytes:", size);
+          '
           sha256sum windows-installed-candidate.zip > windows-installed-candidate.zip.sha256
       - name: Retain Windows installed-layout candidate
         if: matrix.script == 'windows' && inputs.windows_installed_candidate

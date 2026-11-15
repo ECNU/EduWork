@@ -1,9 +1,20 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, rm, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { installedCandidateReceipt } from '../scripts/assemble-windows-installed-candidate.mjs'
+
+test('the candidate archive step writes a real ZIP and verifies its format', async () => {
+  const workflow = await readFile(new URL('../.github/workflows/development-desktop.yml', import.meta.url), 'utf8')
+  const step = workflow.slice(workflow.indexOf('Assemble Windows installed-layout candidate'), workflow.indexOf('Retain Windows installed-layout candidate'))
+  // Windows tar.exe has no zip write support; -a only selects compression and
+  // silently produced a ustar tar named .zip.
+  assert.doesNotMatch(step, /^\s*tar\.exe/m)
+  assert.match(step, /ZipFile\]::CreateFromDirectory/)
+  assert.match(step, /0x04034b50/)
+  assert.match(step, /0x06054b50/)
+})
 
 test('installed artifact records its source and leaves runtime acceptance pending', async t => {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-installed-artifact-'))
