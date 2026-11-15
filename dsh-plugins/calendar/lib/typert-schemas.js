@@ -76,6 +76,7 @@ const importOutcome = z.object({
 /** What to call the exported calendar. */
 const exportInput = z.object({
   name: z.string().min(1).optional(),
+  includeRemarks: z.boolean().optional(),
 }).strict()
 
 const exportOutcome = z.object({ text: z.string() }).strict()
@@ -272,4 +273,6 @@ export const sourceStatusesResult = result('@eduwork/dsh-calendar#CalendarSource
   updatedAt: z.string().optional(), error: z.enum(['incomplete_snapshot', 'unattributable', 'sync_failed', 'sync_timeout']).optional(),
 }).strict()))
 
-export const updateEventParameter = jsonParameter('updateEvent', 'input', z.object({ uid: z.string().min(1), ...sourceRef, patch: EventPatchSchema }).strict())
+export const updateEventParameter = jsonParameter('updateEvent', 'input', z.object({
+  uid: z.string().min(1), ...sourceRef, patch: EventPatchSchema, remark: z.string().optional(),
+}).strict())

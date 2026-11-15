@@ -1166,6 +1166,32 @@ test('editing an imported description preserves a private remark across source r
 })
 
 
+test('export opts into whole-event and occurrence remarks without including private notes', { skip: !runtime }, async () => {
+  await withRoot('calendar-export-remarks-', async root => withCalendar(root, async calendar => {
+    const local = { source: 'manual', uid: 'local-export' }
+    const school = { source: SOURCE, uid: 'MATH101-01' }
+    await calendar.putEvent({ ...local, title: 'My event', start: '2026-10-06T13:00', description: 'Old local description' })
+    await calendar.setPersonal({ ...local, patch: { remark: { text: 'Old local remark' }, note: { text: 'Private note' } } })
+    await calendar.applySource({ source: SOURCE, events: [classOn('2026-10-06T09:00', { description: 'School description' })] })
+    await calendar.setPersonal({ ...school, patch: { remark: { text: 'Series remark' } } })
+    await calendar.setPersonal({ ...school, originalStart: '2026-10-06T09:00', patch: { remark: { text: 'One occurrence remark' } } })
+
+    const defaults = calendar.exportIcs().text
+    assert.match(defaults, /DESCRIPTION:School description/)
+    assert.doesNotMatch(defaults, /Old local|Series remark|One occurrence remark|Private note/)
+    const selected = calendar.exportIcs({ includeRemarks: true }).text
+    assert.match(selected, /DESCRIPTION:Old local description\\n\\nOld local remark/)
+    assert.match(selected, /DESCRIPTION:School description\\n\\nSeries remark/)
+    assert.match(selected, /RECURRENCE-ID:20261006T090000[\s\S]+?DESCRIPTION:School description\\n\\nOne occurrence remark/)
+    assert.doesNotMatch(selected, /Private note/)
+
+    await calendar.updateEvent({ ...local, patch: {}, remark: '' })
+    assert.equal(calendar.getEvent(local).description, undefined)
+    assert.equal(calendar.personalFor(local).remark, undefined)
+    assert.equal(calendar.personalFor(local).note.text, 'Private note')
+  }))
+})
+
 test('old unattributed descriptions remain available for review after upgrade and refresh', { skip: !runtime }, async () => {
   await withRoot('calendar-legacy-description-', async root => {
     await mkdir(join(root, 'storages'), { recursive: true })

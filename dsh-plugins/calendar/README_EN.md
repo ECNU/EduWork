@@ -10,7 +10,7 @@ A local calendar and schedule manager. The calendar opens in month view and keep
 - The week view places events on an hourly axis, splits overlapping entries into columns, and displays all-day and multi-day entries. Click or drag-select empty time to create an event. Click an empty area of a month cell to create an all-day event for that date, or uncheck All day to pick times. Open more options for location, notes, and recurrence.
 - Create, edit and confirm deletion. Choose no repetition, daily, weekly or selected weekdays, with an optional end date. Selected weekdays also support a week interval.
 - Move or cancel one occurrence without changing the others, undo a move, and restore cancelled dates from the record page under More → Event records.
-- An event description is exported in ICS. A private note belongs to one occurrence, is stored separately and is excluded from ICS. Rescheduling preserves the note when the occurrence retains its original identity.
+- Each event has one editable remark. Enable Include my remarks when exporting ICS to include it. The option is off by default. Private notes are stored separately and follow rescheduled occurrences that retain their original identity.
 - Import an ICS file by selection, drag-and-drop or pasted text. The filename supplies the default calendar name. Distinct calendars coexist; a matching identifier within one calendar updates that event. Missing entries are preserved unless removal is explicitly enabled for that calendar.
 - Select an imported calendar to delete it with confirmation. Other calendars, private notes, remarks and reminder settings are preserved. The default personal calendar and managed school calendars cannot be deleted through this action. Managed calendars display their registered labels.
 - Copy or download ICS. It excludes private notes and is not a complete backup.
@@ -46,7 +46,7 @@ The public plugin registers, enables and updates sources. Institution plugins ow
 
 Annotation providers registered through `registerAnnotations` supply teaching weeks, examination phases, and breaks. Week labels appear in the week subtitle and beside each Monday in the month grid. Highlighted phases appear above the corresponding dates with their ranges. A query can target the selected provider in a `group`. When a view requests original calendar dates with `includeOriginalSpan`, providers can return `originalFirstDay` and `originalLastDay` for clipped endpoints. The academic-year overview reads the selected `academic-calendar` provider. An answer that throws, times out (three seconds per provider), or fails validation is dropped without affecting events or other providers.
 
-Source descriptions and private remarks are stored separately. Private content is excluded from ICS. Unattributed descriptions and extension metadata from older versions are backed up for review in personal settings.
+Calendar source descriptions are read-only and included in exports. ICS includes personal remarks only when opted in. Notes and other personal settings stay on the device. Unattributed descriptions and extension metadata from older versions are backed up for review in personal settings.
 
 ## Build and validation
 

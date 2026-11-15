@@ -162,6 +162,13 @@ export const EventFields = {
   extensions: z.record(z.string(), z.unknown()).optional(),
 }
 
+/** 合并旧日程说明与私人备注，重试时已保存的内容不会重复拼接。 */
+export function mergeRemarks(description, remark) {
+  if (!remark) return description ?? ''
+  if (!description || remark === description) return remark
+  return description.endsWith(`\n\n${remark}`) ? description : `${description}\n\n${remark}`
+}
+
 /** Durable shape of one event: the shared fields plus series bookkeeping. */
 export const EventSchema = z
   .object({
@@ -537,11 +544,11 @@ export function occurrencesOf(event, range = {}) {
  * @param event - Stored event.
  * @returns `YYYY-MM-DDTHH:mm` instants, in series order.
  */
-export function seriesInstants(event) {
+export function seriesInstants(event, through = '9999-12-31') {
   const anchor = dateOf(event.start)
   const time = timeOf(event.start)
   if (!event.recurrence) return [event.originalStart ?? `${anchor}${time}`]
-  return recurrenceDates(event.recurrence, event.start, '9999-12-31').map(date => `${date}${time}`)
+  return recurrenceDates(event.recurrence, event.start, through).map(date => `${date}${time}`)
 }
 
 /** Occurrences in display order: by start, then by the occurrence key. */

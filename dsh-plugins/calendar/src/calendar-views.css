@@ -241,6 +241,9 @@
 .cal-record-info .cal-field { margin-bottom: 14px; }
 .cal-record-info .cal-field :is(input, select, textarea) { min-width: 0; width: 100%; font-size: 14px; }
 .cal-record-info .cal-field :is(input, select) { min-height: 36px; }
+.cal-record-source-description { margin-bottom: 14px; }
+.cal-record-source-description p { margin: 5px 0 0; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cal-export-options { margin-bottom: 12px; }
 .cal-record-save, .cal-personal-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
 .cal-record-personal, .cal-record-delete { border-top: 1px solid var(--cal-line); margin-top: 18px; }
 .cal-record-personal summary { display: flex; justify-content: space-between; align-items: center; min-height: 44px; cursor: pointer; font-size: 14px; font-weight: 600; }

@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef,
 import { Button, Input, Menu, Modal as PrimitiveModal, Switch, Tag, Toast, Tooltip, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import * as primitives from '@deepseek-ai/dsh-client-ui-primitives'
 import calendarRemote from '../lib/typert.remote-client.js'
+import { mergeRemarks } from '../lib/model.js'
 import { PersonalSettings, occurrenceNote } from './personal-settings.js'
 import { addDays, localDate, monthRange, monthStart, parseDate, shiftMonth, startOfWeek } from './dates.js'
 import { AcademicYear, CalendarCanvas, CalendarStyles, PhaseSummary } from './calendar-views.js'
@@ -249,6 +250,8 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
   const date = occurrence.occurrenceDate ?? startDate
   const series = Boolean(event?.recurrence)
   const wholeDay = clockOf(occurrence.start) === ''
+  const fromSource = occurrence.source !== 'manual'
+  const remark = mergeRemarks(fromSource ? undefined : occurrence.description, occurrence.personal?.remark?.text)
   const modal = { open: true, size: 'detail' as const, className: 'cal-dialog-event', closeLabel: '关闭', onClose }
   const cancel = () => {
     if (mode === 'details') return
@@ -392,10 +395,12 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
         occurrence.location && React.createElement('span', null, `地点：${occurrence.location}`),
         event?.source && React.createElement('span', null, `日历：${sourceName(event.source)}`),
         series && React.createElement('span', null, seriesSummary(event)))),
-    occurrence.description && React.createElement('div', { className: 'cal-event-text' },
-      React.createElement('span', { className: 'cal-event-context' },
-        event?.source && event.source !== 'manual' ? `日历备注（${sourceName(event.source)}）` : '日程备注'),
+    fromSource && occurrence.description && React.createElement('div', { className: 'cal-event-text' },
+      React.createElement('span', { className: 'cal-event-context' }, '来源说明'),
       React.createElement('p', null, occurrence.description)),
+    remark && React.createElement('div', { className: 'cal-event-text' },
+      React.createElement('span', { className: 'cal-event-context' }, '日程备注'),
+      React.createElement('p', null, remark)),
     note && React.createElement('div', { className: 'cal-event-text' },
       React.createElement('span', { className: 'cal-event-context' }, '我的笔记'),
       React.createElement('p', null, note)),
@@ -583,16 +588,18 @@ function ImportDialog({ initialText, initialName, calendars = [], service, onClo
 
 /** The export dialog: the calendar text, ready to copy or to download. */
 function ExportDialog({ service, onClose, toast }: any) {
-  const [text, setText] = useState('')
+  const [includeRemarks, setIncludeRemarks] = useState(false)
+  const [preview, setPreview] = useState<{ text: string; includeRemarks: boolean } | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const text = preview?.includeRemarks === includeRemarks ? preview.text : ''
   useEffect(() => {
     let alive = true
-    service.exportIcs({})
-      .then((result: any) => { if (alive) setText(result.text) })
+    service.exportIcs({ includeRemarks })
+      .then((result: { text: string }) => { if (alive) setPreview({ text: result.text, includeRemarks }) })
       .catch((error: unknown) => { if (alive) setProblem(messageOf(error)) })
     return () => { alive = false }
-  }, [service])
+  }, [service, includeRemarks])
 
   const save = () => {
     const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' })
@@ -628,8 +635,17 @@ function ExportDialog({ service, onClose, toast }: any) {
       }, '下载 .ics'),
       React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '完成')),
   },
+  React.createElement('div', { className: 'cal-export-options' }, React.createElement(Switch, {
+    label: '包含我的备注', checked: includeRemarks,
+    onChange: (checked: boolean) => {
+      setPreview(null)
+      setProblem(null)
+      setCopied(false)
+      setIncludeRemarks(checked)
+    },
+  })),
   React.createElement('textarea', {
-    readOnly: true, value: text, spellCheck: false,
+    'aria-label': '日历导出预览', readOnly: true, value: text, spellCheck: false,
     onFocus: (event: any) => event.target.select(),
     style: {
       width: '100%', minHeight: 300, maxHeight: '46vh', resize: 'vertical', boxSizing: 'border-box', padding: 10,
@@ -764,7 +780,7 @@ function draftProblem(draft: any) {
  * The fields of one record, shared by the new-entry dialog and the entry page:
  * what the reader owns about an entry, as opposed to one date of a series.
  */
-function EventForm({ draft, onChange, autoFocus, sourceOwned = false, showDetails = true, showAllDay = false }: any) {
+function EventForm({ draft, onChange, autoFocus, sourceDescription, showDetails = true, showAllDay = false }: any) {
   const set = (patch: any) => onChange({ ...draft, ...patch })
   const isAllDay = showAllDay && draft.start === '' && draft.end === ''
   const dateField = React.createElement(Field, { label: '日期' },
@@ -814,9 +830,12 @@ function EventForm({ draft, onChange, autoFocus, sourceOwned = false, showDetail
         value: draft.location, placeholder: '可留空',
         onChange: (event: any) => set({ location: event.target.value }),
       })),
-    React.createElement(Field, { label: sourceOwned ? '来源备注（只读）' : '备注', hint: sourceOwned ? '自己的备注请写在下方个人设置中' : '随导出写进日历，不会同步到任何服务' },
+    sourceDescription && React.createElement('div', { className: 'cal-record-source-description' },
+      React.createElement('span', { className: 'cal-field-label' }, '来源说明'),
+      React.createElement('p', null, sourceDescription)),
+    React.createElement(Field, { label: '备注', hint: '导出时可选择是否包含' },
       React.createElement('textarea', {
-        'aria-label': sourceOwned ? '来源备注（只读）' : '备注', readOnly: sourceOwned, value: draft.description, rows: 3, spellCheck: false,
+        'aria-label': '备注', value: draft.description, rows: 3, spellCheck: false,
         onChange: (event: any) => set({ description: event.target.value }),
         style: {
           width: '100%', boxSizing: 'border-box', padding: '6px 8px', borderRadius: 8, resize: 'vertical',
@@ -921,18 +940,21 @@ function CreateDialog({ defaultDate, defaultStart, defaultEnd, defaultAllDay, se
  */
 type EventEditor = { event: any; draft: any; dirty: string[]; pending?: { draft: any; dirty: string[] } }
 
-function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, onRestore, onCancel, onDelete, busy, sourceName }: any) {
-  const [editor, setEditor] = useState<EventEditor>(() => ({ event, draft: draftOf(event), dirty: [] }))
+function EventPage({ event, remark, agenda, noteIndex, service, run, onOpenOccurrence, onRestore, onCancel, onDelete, busy }: any) {
+  const sourceDescription = event?.source !== 'manual' ? event?.description : undefined
+  const editable = mergeRemarks(event?.source === 'manual' ? event.description : undefined, remark)
+  const formRecord = useMemo(() => event && { ...event, description: editable }, [event, editable])
+  const [editor, setEditor] = useState<EventEditor>(() => ({ event: formRecord, draft: draftOf(formRecord), dirty: [] }))
   const [problem, setProblem] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   // A snapshot replaces object identities even when another calendar changed.
   // Adopt fresh values before rendering children, retaining only local edits.
-  if (editor.event !== event) {
-    const incoming = draftOf(event)
+  if (editor.event !== formRecord) {
+    const incoming = draftOf(formRecord)
     const protectedFields = [...new Set([...editor.dirty, ...(editor.pending?.dirty ?? [])])]
     const dirty = protectedFields.filter(field => editor.pending?.dirty.includes(field)
       || JSON.stringify(editor.draft[field]) !== JSON.stringify(incoming[field]))
-    setEditor({ ...editor, event, draft: { ...incoming, ...Object.fromEntries(dirty.map(field => [field, editor.draft[field]])) }, dirty })
+    setEditor({ ...editor, event: formRecord, draft: { ...incoming, ...Object.fromEntries(dirty.map(field => [field, editor.draft[field]])) }, dirty })
   }
   const { draft } = editor
   const changeDraft = (draft: any) => {
@@ -976,7 +998,10 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
     void run(async () => {
       setEditor(current => ({ ...current, pending: { draft: submitted.draft, dirty: submitted.dirty } }))
       try {
-        await service.updateEvent({ uid: event.uid, source: event.source, patch: patchOf(submitted.draft, submitted.event) })
+        const { description, ...patch } = patchOf(submitted.draft, submitted.event)
+        await service.updateEvent({ uid: event.uid, source: event.source, patch,
+          ...(description !== undefined && { remark: description ?? '' }),
+        })
       } catch (error) {
         setEditor(current => {
           const baseline = draftOf(current.event)
@@ -997,7 +1022,7 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
     React.createElement('div', { className: 'cal-record-heading' },
       React.createElement('h2', null, '日程信息'),
       event.recurrence && React.createElement(Muted, null, seriesSummary(event))),
-    React.createElement(EventForm, { draft, onChange: changeDraft, sourceOwned: event.source !== 'manual' }),
+    React.createElement(EventForm, { draft, onChange: changeDraft, sourceDescription }),
     React.createElement('div', { className: 'cal-record-save' },
       dirty && React.createElement(Muted, null, complaint ?? '有未保存的改动'),
       React.createElement(Button, {
@@ -1008,6 +1033,7 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
     React.createElement('summary', null, '个人设置', React.createElement(IconChevronDown, { 'aria-hidden': true })),
     React.createElement(PersonalSettings, {
       identity: { source: event.source, uid: event.uid }, service, run, Field, allowOccurrence: false, showHeading: false,
+      copyLegacyRemark: (text: string) => changeDraft({ ...draft, description: mergeRemarks(draft.description, text) }),
     }))
 
   const deletion = React.createElement('div', { className: 'cal-record-delete' },
@@ -1081,6 +1107,7 @@ export function createCalendarPage(service: any) {
     // The reader's own content, read from the host and kept apart from the
     // entries: it belongs to the person, not to any data source.
     const [noteIndex, setNoteIndex] = useState<Map<string, string>>(() => new Map())
+    const [remarkIndex, setRemarkIndex] = useState<Map<string, string>>(() => new Map())
     const [loading, setLoading] = useState(true)
     const [problem, setProblem] = useState<string | null>(null)
     const [toast, setToast] = useState<string | null>(null)
@@ -1155,12 +1182,15 @@ export function createCalendarPage(service: any) {
     const loadNotes = useCallback(async () => {
       const records = await service.notes({ scope: 'source' })
       const index = new Map<string, string>()
+      const remarks = new Map<string, string>()
       for (const record of records ?? []) {
         const text = record?.note?.text ?? (record?.note?.off ? '' : undefined)
-        if (typeof text !== 'string') continue
-        index.set(`${record.source}\u0000${record.uid}\u0000${record.originalStart ?? ''}`, text)
+        const key = `${record.source}\u0000${record.uid}\u0000${record.originalStart ?? ''}`
+        if (typeof text === 'string') index.set(key, text)
+        if (!record.originalStart && typeof record.remark?.text === 'string') remarks.set(key, record.remark.text)
       }
       setNoteIndex(index)
+      setRemarkIndex(remarks)
     }, [service])
 
     const refresh = useCallback(async () => {
@@ -1377,7 +1407,7 @@ export function createCalendarPage(service: any) {
       : React.createElement(EventPage, {
         key: JSON.stringify([view.source, view.id]),
         event: current,
-        sourceName,
+        remark: current && remarkIndex.get(`${current.source}\u0000${current.uid}\u0000`),
         service, run,
         agenda,
         noteIndex,

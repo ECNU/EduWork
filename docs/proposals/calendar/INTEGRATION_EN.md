@@ -75,7 +75,7 @@ const settings = ctx.calendar.personalFor({ source: source.source, uid: 'demo-1'
 
 `notes` reads raw personal records; `personalFor` reads effective settings. Removing a note does not delete reminder or visibility fields. Patches, clears and deletion share the per-target read/merge/write queue. This is a single-process guarantee.
 
-User edits to imported descriptions become private remarks. Pre-upgrade description/extension ownership cannot be inferred reliably, so source receipts retain a review copy, visible in personal settings. Old extension data never automatically enables delivery. Private settings are excluded from ICS.
+User edits to imported descriptions become private remarks. Pre-upgrade description/extension ownership cannot be inferred reliably, so source receipts retain a review copy, visible in personal settings. Old extension data never automatically enables delivery. `exportIcs` retains source descriptions by default. Pass `includeRemarks: true` to include personal remarks. Notes and other personal settings stay on the device.
 
 ## Reminder plans and delivery
 

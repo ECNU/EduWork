@@ -1224,10 +1224,53 @@ await acceptance('编辑只发送改动字段，同步更新后保存备注不�
       await page.getByLabel('备注', { exact: true }).fill('Private from browser')
       await page.getByRole('button', { name: '保存更改', exact: true }).click()
       await poll(() => calendar.getEvent({ uid: 'sparse-ui', source: 'manual' }).description, 'Private from browser', 'private remark saved')
-      assert.deepEqual(sent, { uid: 'sparse-ui', source: 'manual', patch: { description: 'Private from browser' } })
+      assert.deepEqual(sent, { uid: 'sparse-ui', source: 'manual', patch: {}, remark: 'Private from browser' })
       const event = calendar.getEvent({ uid: 'sparse-ui', source: 'manual' })
       assert.equal(event.title, 'Synced title')
       assert.equal(event.location, 'B')
+    })
+  }))
+})
+
+await acceptance('旧备注合并在一个字段内，导出需要主动选择', async () => {
+  await withRoot('calendar-browser-remarks-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek, refresh }) => {
+      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'local-remark' }
+      await call('putEvent', { ...ref, title: '旧版个人日程', start: `${day}T09:00`, description: '原日程说明' })
+      await call('setPersonal', { ...ref, patch: { remark: { text: '旧私人附注' } } })
+      await call('applySource', { source: SOURCE, events: [{ uid: 'school-remark', title: '学校日程', start: `${day}T11:00`, description: '学校原始说明' }] })
+      await refresh()
+      await page.getByRole('button', { name: /旧版个人日程/ }).click()
+      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
+      const field = page.getByRole('textbox', { name: '备注', exact: true })
+      await poll(() => field.inputValue(), '原日程说明\n\n旧私人附注', '两个旧值都可在同一个字段编辑')
+      await page.locator('summary').filter({ hasText: /^个人设置$/ }).click()
+      assert.equal(await page.getByRole('combobox', { name: '备注设置' }).count(), 0)
+      await field.fill('原日程说明\n\n旧私人附注\n合并后的增补')
+      await page.getByRole('button', { name: '保存更改', exact: true }).click()
+      await poll(() => calendar.personalFor(ref).remark, undefined, '保存后旧附注已归入日程备注')
+      await page.getByRole('button', { name: '返回', exact: true }).click()
+      await page.getByRole('button', { name: /学校日程/ }).click()
+      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
+      await page.getByText('学校原始说明', { exact: true }).waitFor()
+      await field.fill('自己的课程备注')
+      await page.getByRole('button', { name: '保存更改', exact: true }).click()
+      const school = { source: SOURCE, uid: 'school-remark' }
+      await poll(() => calendar.personalFor(school).remark?.text, '自己的课程备注', '来源说明保持独立')
+      assert.equal(calendar.getEvent(school).description, '学校原始说明')
+
+      await moreAction(page, '导出日历')
+      const preview = page.getByRole('textbox', { name: '日历导出预览' })
+      const include = page.getByRole('switch', { name: '包含我的备注' })
+      assert.equal(await include.getAttribute('aria-checked'), 'false')
+      await poll(async () => (await preview.inputValue()).includes('学校原始说明'), true, '默认保留来源说明')
+      assert.doesNotMatch(await preview.inputValue(), /原日程说明|旧私人附注|自己的课程备注/)
+      await include.click()
+      await poll(async () => (await preview.inputValue()).includes('自己的课程备注'), true, '主动选择后写入备注')
+      assert.match(await preview.inputValue(), /旧私人附注/)
+      await include.click()
+      await poll(async () => (await preview.inputValue()).includes('学校原始说明'), true, '关闭时重新生成预览')
+      assert.doesNotMatch(await preview.inputValue(), /旧私人附注|自己的课程备注/)
     })
   }))
 })
@@ -1391,14 +1434,11 @@ await acceptance('保存失败后草稿保留，后台刷新后仍可重试', as
 await acceptance('个人设置保存中继续编辑笔记、备注和提醒，后续草稿保留', async () => {
   await withRoot('calendar-browser-personal-pending-', async root => withCalendar(root, async calendar => {
     await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek, refresh }) => {
-      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'personal-pending' }
+      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'personal-pending', originalStart: `${day}T09:00` }
       await call('putEvent', { ...ref, title: 'Personal pending', start: `${day}T09:00` })
       await refresh()
       await page.getByRole('button', { name: /Personal pending/ }).click()
-      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
-      const settings = page.locator('summary').filter({ hasText: /^个人设置$/ })
-      assert.equal(await page.getByRole('button', { name: '保存个人设置', exact: true }).count(), 0)
-      await settings.click()
+      await page.getByRole('button', { name: '更多个人设置', exact: true }).click()
       await page.getByLabel('备注设置', { exact: true }).selectOption('custom')
       const remark = page.getByLabel('我的备注', { exact: true })
       const save = page.getByRole('button', { name: '保存个人设置', exact: true })
@@ -1434,12 +1474,11 @@ await acceptance('个人设置保存中继续编辑笔记、备注和提醒，�
 await acceptance('个人设置保存失败可保留草稿重试', async () => {
   await withRoot('calendar-browser-personal-retry-', async root => withCalendar(root, async calendar => {
     await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek, refresh }) => {
-      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'personal-retry' }
+      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'personal-retry', originalStart: `${day}T09:00` }
       await call('putEvent', { ...ref, title: 'Personal retry', start: `${day}T09:00` })
       await refresh()
       await page.getByRole('button', { name: /Personal retry/ }).click()
-      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
-      await page.locator('summary').filter({ hasText: /^个人设置$/ }).click()
+      await page.getByRole('button', { name: '更多个人设置', exact: true }).click()
       await page.getByLabel('备注设置', { exact: true }).selectOption('custom')
       const remark = page.getByLabel('我的备注', { exact: true })
       const save = page.getByRole('button', { name: '保存个人设置', exact: true })
@@ -1462,11 +1501,11 @@ await acceptance('切换设置范围后，旧保存的迟到读取不覆盖当�
     await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek }) => {
       const day = await dayInWeek(1), ref = { source: SOURCE, uid: 'personal-scope' }
       await call('applySource', { source: SOURCE, events: [{ uid: ref.uid, title: 'Personal scope', start: `${day}T09:00`, recurrence: { freq: 'weekly', count: 3 } }] })
-      await call('setPersonal', { ...ref, patch: { remark: { text: 'Series remark' } } })
+      await call('setPersonal', { ...ref, patch: { note: { text: 'Series note' } } })
       await page.getByRole('button', { name: /Personal scope/ }).click()
       await page.getByRole('button', { name: '更多个人设置', exact: true }).click()
-      await page.getByLabel('备注设置', { exact: true }).selectOption('custom')
-      const remark = page.getByLabel('我的备注', { exact: true })
+      await page.getByLabel('笔记设置', { exact: true }).selectOption('custom')
+      const note = page.getByLabel('默认笔记', { exact: true })
       const save = page.getByRole('button', { name: '保存个人设置', exact: true })
       let release
       const gate = new Promise(done => { release = done })
@@ -1474,22 +1513,22 @@ await acceptance('切换设置范围后，旧保存的迟到读取不覆盖当�
       const oldResponse = page.waitForResponse(response => isOnce(response.request()))
       await page.route('**/api/personalFor', async route => { if (isOnce(route.request())) await gate; await route.continue() })
       try {
-        await remark.fill('Saved for one occurrence')
+        await note.fill('Saved for one occurrence')
         const request = page.waitForRequest(isOnce)
         await save.click(); await request
         await page.getByLabel('设置范围', { exact: true }).selectOption('series')
-        await poll(() => remark.inputValue(), 'Series remark', 'series editor loaded')
-        await remark.fill('Unsaved series remark')
+        await poll(() => note.inputValue(), 'Series note', 'series editor loaded')
+        await note.fill('Unsaved series note')
       } finally { release() }
       // Observe completion of the old read before asserting it cannot replace this target.
       await (await oldResponse).finished()
       await page.unrouteAll({ behavior: 'wait' })
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
-      assert.equal(await remark.inputValue(), 'Unsaved series remark')
+      assert.equal(await note.inputValue(), 'Unsaved series note')
       assert.equal(await save.isEnabled(), true)
       await save.click()
-      await poll(() => calendar.personalFor(ref).remark?.text, 'Unsaved series remark', 'current target remains independently saveable')
-      assert.equal(calendar.personalFor({ ...ref, originalStart: `${day}T09:00` }).remark.text, 'Saved for one occurrence')
+      await poll(() => calendar.personalFor(ref).note?.text, 'Unsaved series note', 'current target remains independently saveable')
+      assert.equal(calendar.personalFor({ ...ref, originalStart: `${day}T09:00` }).note.text, 'Saved for one occurrence')
     })
   }))
 })

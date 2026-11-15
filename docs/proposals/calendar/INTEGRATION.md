@@ -83,7 +83,7 @@ const settings = ctx.calendar.personalFor({ source: source.source, uid: 'demo-1'
 
 `notes` 读取原始个人记录，`personalFor` 读取继承后的设置。清笔记只删除 note 字段，不删除提醒和隐藏设置。所有写、清除和删除共享按目标排队的读改写路径。保证限于单进程。
 
-用户编辑导入日程的备注会存到私人 remark。升级前 `description` / `extensions` 的归属无法可靠推断，首次升级在独立来源回执中保留待确认备份，可从个人设置查看。不会据旧附加字段自动启用通知。私人设置不随 ICS 导出。
+用户编辑导入日程的备注会存到私人 remark。升级前 `description` / `extensions` 的归属无法可靠推断，首次升级在独立来源回执中保留待确认备份，可从个人设置查看。不会据旧附加字段自动启用通知。`exportIcs` 默认只保留来源说明。传入 `includeRemarks: true` 会包含个人备注，笔记和其他个人设置留在本机。
 
 ## 提醒计划与投递边界
 
