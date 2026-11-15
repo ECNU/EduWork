@@ -2,19 +2,19 @@
 
 [简体中文](README.md) | **English**
 
-A local calendar and schedule manager. The week view arranges time within a day; the month view provides a monthly overview. Both use the same events and private notes. This plugin is in development.
+A local calendar and schedule manager. The calendar opens in month view and keeps the focused date when switching to week view. Both use the same events and private notes. With a school calendar selected, the academic-year overview links each phase to its month. This plugin is in development.
 
 ## Features
 
-- An empty calendar shows the week grid. Switch between week and month, navigate dates, return to today, and filter by calendar source.
-- The week view places events on an hourly axis, splits overlapping entries into columns, and displays all-day and multi-day entries. Drag or double-click empty time to create an event. The month view supports creation on a date and expanding additional entries.
+- Navigate dates, return to today, and choose and filter calendars from Calendar sources. Open additional entries on a month cell using its +N link.
+- The week view places events on an hourly axis, splits overlapping entries into columns, and displays all-day and multi-day entries. Click or drag-select empty time to create an event. Click an empty area of a month cell to create an all-day event for that date, or uncheck All day to pick times. Open more options for location, notes, and recurrence.
 - Create, edit and confirm deletion. Choose no repetition, daily, weekly or selected weekdays, with an optional end date. Selected weekdays also support a week interval.
-- Move or cancel one occurrence without changing the others, undo a move, and restore cancelled dates from the record page reached through the event menu.
+- Move or cancel one occurrence without changing the others, undo a move, and restore cancelled dates from the record page under More → Event records.
 - An event description is exported in ICS. A private note belongs to one occurrence, is stored separately and is excluded from ICS. Rescheduling preserves the note when the occurrence retains its original identity.
 - Import an ICS file by selection, drag-and-drop or pasted text. The filename supplies the default calendar name. Distinct calendars coexist; a matching identifier within one calendar updates that event. Missing entries are preserved unless removal is explicitly enabled for that calendar.
 - Select an imported calendar to delete it with confirmation. Other calendars, private notes, remarks and reminder settings are preserved. The default personal calendar and managed school calendars cannot be deleted through this action. Managed calendars display their registered labels.
 - Copy or download ICS. It excludes private notes and is not a complete backup.
-- Personal settings support series defaults, occurrence overrides and restoring inheritance for notes, private remarks, visibility and relative/fixed reminders. Hidden occurrences remain manageable from the event menu and record page.
+- Personal settings support series defaults, occurrence overrides and restoring inheritance for notes, private remarks, visibility and relative/fixed reminders. Hidden occurrences remain manageable from More → Event records.
 - Agent tools read and edit events, occurrences, notes and personal settings. Writes follow the existing session permission policy.
 - Open panels refresh after external source or Agent writes and resubscribe after disconnection.
 
@@ -44,13 +44,13 @@ ICS files carrying managed institution sources cannot overwrite those sources; t
 
 The public plugin registers, enables and updates sources. Institution plugins own authentication, fetching, conversion, polling and login/reconnect retries. Stable identities separate accounts and logical feeds; failures retain cached data, and unregistering hides cached events without deleting notes. The [academic-calendar plugin](../../packages/dsh-academic-calendar/README_EN.md) supplies education semantics, calendar selection and complete timetable imports. Remote school APIs remain unconnected. Attributing a school reschedule requires information identifying the original occurrence; ambiguous changes are reported rather than guessed. Automatic association after a change to the entire recurrence rule is unsupported. See the [source and reminder interface guide](../../docs/proposals/calendar/INTEGRATION_EN.md).
 
-Background structure such as teaching weeks, examination phases and school breaks never enters the event stream. Annotation providers registered through `registerAnnotations` answer date ranges instead: week labels reach the week-view subtitle and the month view's week column (the column appears only when a week is labelled), toned bands reach the day headers and the month background while neutral phases draw nothing, and a week without a label falls back to the covering band's name in the subtitle. Annotations are decoration only — the public calendar holds none of their meaning, and an answer that throws, times out (three seconds per provider) or does not match the contract is dropped for that read without touching events or other providers.
+Annotation providers registered through `registerAnnotations` supply teaching weeks, examination phases, and breaks. Week labels appear in the week subtitle and beside each Monday in the month grid. Highlighted phases appear above the corresponding dates with their ranges. A query can target the selected provider in a `group`. When a view requests original calendar dates with `includeOriginalSpan`, providers can return `originalFirstDay` and `originalLastDay` for clipped endpoints. The academic-year overview reads the selected `academic-calendar` provider. An answer that throws, times out (three seconds per provider), or fails validation is dropped without affecting events or other providers.
 
 Source descriptions and private remarks are stored separately. Private content is excluded from ICS. Unattributed descriptions and extension metadata from older versions are backed up for review in personal settings.
 
 ## Build and validation
 
-The project-pinned compiler builds the client through `build-client.mjs` / `build-client.ps1`, called by the shared product assembly flow. React and UI primitives come from the host. See the [module proposal](../../docs/proposals/calendar/README_EN.md) and [package development guide](../../docs/PACKAGES.md).
+The project-pinned compiler builds the client through `build-client.mjs` / `build-client.ps1`, called by the shared product assembly flow. FullCalendar is bundled into the calendar client. When the plugin is assembled, React, UI primitives and the active palette come from the host. See the [module proposal](../../docs/proposals/calendar/README_EN.md) and [package development guide](../../docs/PACKAGES.md).
 
 After preparing the project Runtime, set `EDUWORK_TEST_RUNTIME` to its `product/d` directory and run `npm test` in this plugin directory. Run `npm run test:browser` for browser panel checks; the default browser channel is locally installed Edge, overridable through `EDUWORK_BROWSER_CHANNEL`.
 

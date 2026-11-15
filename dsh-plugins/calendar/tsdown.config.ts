@@ -1,4 +1,5 @@
 import { defineConfig } from 'tsdown'
+import { readFile } from 'node:fs/promises'
 
 const external = (specifier: string): boolean =>
   ['react', 'react-dom', '@deepseek-ai/dsh-client-ui-primitives'].includes(specifier)
@@ -12,6 +13,19 @@ export default defineConfig({
   format: 'cjs',
   platform: 'browser',
   target: 'es2022',
+  plugins: [{
+    name: 'calendar-inline-css',
+    async resolveId(source, importer) {
+      if (!source.endsWith('.css')) return null
+      const resolved = await this.resolve(source, importer, { skipSelf: true })
+      return resolved ? `\0calendar-css:${resolved.id}.js` : null
+    },
+    async load(id) {
+      if (!id.startsWith('\0calendar-css:')) return null
+      const path = id.slice('\0calendar-css:'.length, -'.js'.length)
+      return `export default ${JSON.stringify(await readFile(path, 'utf8'))}`
+    },
+  }],
   dts: false,
   sourcemap: true,
   clean: false,

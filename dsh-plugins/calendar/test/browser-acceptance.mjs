@@ -127,7 +127,8 @@ async function bundlePanel() {
     target: 'es2022',
     jsx: 'automatic',
     define: { 'process.env.NODE_ENV': '"production"' },
-    nodePaths: [join(runtime, 'node_modules')],
+    nodePaths: [join(pluginRoot, 'build-deps/node_modules'), join(runtime, 'node_modules')],
+    loader: { '.css': 'text' },
     plugins: [{
       name: 'from-the-page',
       setup(context) {
@@ -287,12 +288,13 @@ body { font: 14px system-ui; margin: 0 }
  * Node-side instance keeps one writer: both are the same calendar, but a call made
  * through the page is a call the panel's own view is looking at.
  */
-async function withBrowser(calendar, panel, methods, body) {
+async function withBrowser(calendar, panel, methods, body, { initialView = 'week', viewport = { width: 1000, height: 900 }, date } = {}) {
   const { server, url } = await serve(calendar, panel, methods)
   let browser
   try {
     browser = await chromium.launch({ channel: process.env.EDUWORK_BROWSER_CHANNEL || 'msedge', headless: true })
-    const page = await browser.newPage({ viewport: { width: 1000, height: 900 }, locale: 'zh-CN' })
+    const page = await browser.newPage({ viewport, locale: 'zh-CN' })
+    if (date) await page.clock.setFixedTime(date)
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
     page.on('console', message => { if (message.type() === 'error') errors.push(`console: ${message.text()}`) })
@@ -300,12 +302,17 @@ async function withBrowser(calendar, panel, methods, body) {
     // How many reads the panel makes for one screen. A view that re-reads on every
     // render is a view that never settles, and the count is what shows it.
     let reads = 0
-    page.on('request', request => { if (request.url().includes('/api/occurrences')) reads += 1 })
+    page.on('request', request => {
+      if (!request.url().endsWith('/api/occurrences')) return
+      const { from, to } = request.postDataJSON()?.args?.[0] ?? {}
+      if (Date.parse(to) - Date.parse(from) === 6 * 86_400_000) reads += 1
+    })
+    const openView = async () => {
+      await page.getByRole('region', { name: '月日历' }).waitFor()
+      if (initialView === 'week') await page.getByRole('button', { name: '周', exact: true }).click()
+    }
     await page.goto(url)
-    // The panel reads what it needs in effects; the first redraw is when those reads
-    // have landed. Nothing is asserted here — each pass seeds its own entries and then
-    // waits for what it seeded.
-    await page.waitForFunction(() => typeof window.__dayInWeek === 'function' && document.querySelector('#calendar')?.textContent?.includes('我的日历'))
+    await openView()
     /** A date inside the week the panel is drawing, from the panel's own clock. */
     const dayInWeek = offset => page.evaluate(offset => window.__dayInWeek(offset), offset)
     /** One call to the calendar the page is using, so both sides see the same writes. */
@@ -321,7 +328,7 @@ async function withBrowser(calendar, panel, methods, body) {
     /** Read the calendar back, so an assertion is about the data and not the drawing. */
     const events = async () => (await call('snapshot')).events
     /** Redraw from the service, which is what the panel does after it writes. */
-    const refresh = () => page.reload()
+    const refresh = async () => { await page.reload(); await openView() }
     return await body({ page, errors, dayInWeek, call, events, refresh, reads: () => reads })
   } finally {
     await browser?.close()
@@ -335,6 +342,22 @@ const METHODS = [
 ]
 
 const panel = await bundlePanel()
+async function moreAction(page, name) {
+  await page.getByRole('button', { name: '更多日历操作' }).click()
+  await page.getByRole('menuitem', { name, exact: typeof name === 'string' }).click()
+}
+
+async function openSources(page) {
+  await page.getByRole('button', { name: '日历来源', exact: true }).click()
+  const selector = page.getByRole('dialog', { name: '日历来源' }).getByRole('combobox', { name: '显示日程', exact: true })
+  await selector.waitFor()
+  return selector
+}
+
+async function closeList(page) {
+  await page.getByRole('dialog').getByRole('button', { name: '完成', exact: true }).click()
+}
+
 const report = []
 let failures = 0
 
@@ -634,9 +657,8 @@ await acceptance('空日历直接显示周网格', async () => {
   await withRoot('eduwork-browser-empty-grid-', async root => {
     await withCalendar(root, async calendar => {
       await withBrowser(calendar, panel, METHODS, async ({ page }) => {
-        await page.getByText('周一', { exact: true }).waitFor({ timeout: 2000 })
-        assert.equal(await page.getByText('日历还是空的').count(), 0)
-        assert.equal(await page.getByText('09:00', { exact: true }).count(), 1)
+        await page.getByRole('region', { name: '周日历' }).waitFor({ timeout: 2000 })
+        assert.equal(await page.locator('[data-occurrence]').count(), 0)
       })
     })
   })
@@ -648,7 +670,7 @@ await acceptance('默认导入不同文件不会覆盖已有日历', async () =>
     await withCalendar(root, async calendar => {
       await withBrowser(calendar, panel, METHODS, async ({ page, events }) => {
         for (const title of ['基础日历', '来源A']) {
-          await page.getByRole('button', { name: '导入', exact: true }).click()
+          await moreAction(page, '导入日历')
           const text = ['BEGIN:VCALENDAR','VERSION:2.0','BEGIN:VEVENT','UID:shared-id',`SUMMARY:${title}`,'DTSTART:20261019T090000','DTEND:20261019T100000','END:VEVENT','END:VCALENDAR'].join('\r\n')
           await page.locator('input[type=file]').setInputFiles({ name: `${title}.ics`, mimeType: 'text/calendar', buffer: Buffer.from(text) })
           const dialog = page.getByRole('dialog')
@@ -676,6 +698,7 @@ await acceptance('重复可选每天和自选星期', async () => {
           const dialog = page.getByRole('dialog')
           await dialog.getByLabel('标题', { exact: true }).fill(`Repeat ${mode}`)
           await dialog.getByLabel('日期', { exact: true }).fill(monday)
+          await dialog.getByRole('button', { name: '更多选项', exact: true }).click()
           await dialog.getByRole('combobox', { name: '重复', exact: true }).selectOption(mode)
           if (mode === 'custom') {
             await dialog.getByRole('button', { name: '周一', exact: true }).click()
@@ -702,18 +725,17 @@ await acceptance('周月切换、跨月导航和月视图编辑共用同一条�
     await withCalendar(root, async calendar => {
       await withBrowser(calendar, panel, METHODS, async ({ page, call, events, refresh, errors }) => {
         const dates = await page.evaluate(() => {
-          const d = new Date(); const fmt = v => `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-01`;
+          const d = new Date(); const fmt = v => `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-15`;
           return [fmt(d), fmt(new Date(d.getFullYear(),d.getMonth()+1,1))]
         })
         await call('putEvent', {uid:'month-one',title:'本月月视图日程',start:`${dates[0]}T09:00`,end:`${dates[0]}T10:00`})
         await call('putEvent', {uid:'month-two',title:'下月月视图日程',start:`${dates[1]}T09:00`})
         await refresh()
         await page.getByRole('button',{name:'月',exact:true}).click()
-        await page.getByRole('grid',{name:'月日历'}).waitFor({timeout:2000})
-        assert.equal(await page.getByRole('gridcell').count(),42)
+        await page.getByRole('region', { name: '月日历' }).waitFor({timeout:2000})
         const monthEntry=page.getByRole('button',{name:/本月月视图日程/})
         await monthEntry.waitFor()
-        assert.equal(await monthEntry.evaluate(node=>getComputedStyle(node).borderLeftWidth),'3px','month entries retain their source colour marker')
+        assert.ok(await monthEntry.getAttribute('data-occurrence'), 'timed entries retain their occurrence identity')
         await page.getByRole('button',{name:/本月月视图日程/}).click()
         await page.getByRole('button',{name:'写笔记',exact:true}).click()
         await page.getByRole('textbox',{name:'我的笔记'}).fill('从月视图写的笔记')
@@ -726,9 +748,62 @@ await acceptance('周月切换、跨月导航和月视图编辑共用同一条�
         await page.getByRole('button',{name:'下一周',exact:true}).waitFor()
         assert.equal((await events()).length,2)
         assert.deepEqual(errors,[])
-      })
+      }, { initialView: 'month' })
     })
   })
+})
+
+await acceptance('校历首屏、周月日期保持和学年下钻', async () => {
+  await withRoot('eduwork-browser-academic-views-', async root => withCalendar(root, async calendar => {
+    calendar.registerAnnotations({
+      id: 'school-calendar', label: '2026–2027 本科校历', selectionGroup: 'academic-calendar',
+      annotationsFor: () => ({
+        weeks: [{ firstDay: '2027-01-11', text: '第 18 周 · 考试周', tone: 'highlight' }],
+        spans: [
+          { firstDay: '2026-09-14', lastDay: '2027-01-01', text: '秋季学期' },
+          { firstDay: '2027-01-04', lastDay: '2027-01-15', text: '期末考试', tone: 'highlight' },
+          { firstDay: '2027-01-18', lastDay: '2027-02-20', text: '寒假', tone: 'quiet' },
+        ],
+      }),
+    })
+    const scheduled = { uid: 'exam-review', title: '复习讨论', start: '2027-01-13T14:00', end: '2027-01-13T15:00' }
+    await calendar.putEvent(scheduled)
+    await withBrowser(calendar, panel, METHODS, async ({ page, events, errors }) => {
+      const grid = page.getByRole('region', { name: '月日历' })
+      await page.getByRole('heading', { name: '2027年1月' }).waitFor()
+      await grid.getByRole('button', { name: /复习讨论/ }).waitFor()
+      await page.locator('.cal-phase-key').filter({ hasText: '1/18–2/20' }).waitFor()
+      await grid.locator('[data-phase-end="2027-01-15"]').first().waitFor()
+      assert.ok(await grid.evaluate(node => node.getBoundingClientRect().bottom <= innerHeight))
+      const screenshotDir = process.env.EDUWORK_CALENDAR_SCREENSHOTS
+      if (screenshotDir) await page.screenshot({ path: join(screenshotDir, 'calendar-january.png') })
+
+      await page.getByRole('button', { name: '周', exact: true }).click()
+      await page.getByText(/1月11日 – 1月17日/).waitFor()
+      await page.getByRole('button', { name: '月', exact: true }).click()
+      await page.getByRole('button', { name: '周', exact: true }).click()
+      await page.getByText(/1月11日 – 1月17日/).waitFor()
+
+      await page.getByRole('button', { name: '学年', exact: true }).click()
+      await page.getByRole('list', { name: '学年阶段' }).getByRole('button', { name: /寒假/ }).click()
+      await grid.locator('[data-calendar-day="2027-01-18"]').getByRole('link').press('Enter')
+      const dialog = page.getByRole('dialog')
+      assert.ok(await dialog.getByRole('checkbox', { name: '全天' }).isChecked())
+      await dialog.getByLabel('标题', { exact: true }).fill('开始放假')
+      await dialog.getByRole('button', { name: '新建', exact: true }).click()
+      await dialog.waitFor({ state: 'hidden' })
+      assert.equal((await events()).find(record => record.title === '开始放假')?.start, '2027-01-18')
+
+      const nextMonth = page.getByRole('button', { name: '下一月', exact: true })
+      for (const month of [2, 3, 4, 5]) {
+        await nextMonth.click()
+        await page.getByRole('heading', { name: `2027年${month}月` }).waitFor()
+      }
+      assert.equal(await grid.locator('[data-calendar-day]').count(), 42)
+      assert.ok(await grid.evaluate(node => node.getBoundingClientRect().bottom <= innerHeight))
+      assert.deepEqual(errors, [])
+    }, { initialView: 'month', viewport: { width: 1000, height: 800 }, date: new Date(2027, 0, 13, 12) })
+  }))
 })
 
 await acceptance('跨天改期详情显示实际日期，取消后可从日程菜单恢复', async()=> {
@@ -750,9 +825,9 @@ await acceptance('跨天改期详情显示实际日期，取消后可从日程�
         await page.getByText(`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 周三 14:00–15:00`,{exact:true}).waitFor()
         await page.getByRole('button',{name:'取消这一次',exact:true}).click()
         await page.getByRole('dialog').waitFor({state:'detached'})
-        assert.equal(await page.locator('button[data-occurrence]').count(),0)
-        await page.getByRole('button',{name:'日程',exact:true}).click()
-        await page.getByRole('menuitem',{name:/跨天日期验收 · 已取消 1 次/}).click()
+        assert.equal(await page.locator('[data-occurrence]').count(),0)
+        await moreAction(page, '日程记录')
+        await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', {name:/跨天日期验收 · 已取消 1 次/}).click()
         await page.getByText('已取消的日期',{exact:true}).waitFor()
         await page.getByRole('button',{name:`恢复 ${Number(monday.slice(5,7))}月${Number(monday.slice(8))}日`,exact:true}).click()
         await poll(async()=> (await call('snapshot')).events[0].exceptions?.length??0,0,'cancellation restored')
@@ -855,7 +930,7 @@ await acceptance('损坏文件开启替换导入后仍保留日程和笔记', as
           'BEGIN:VCALENDAR\r\nEND:WRONG\r\n',
           'BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:unfinished\r\n',
         ]) {
-          await page.getByRole('button', { name: '导入', exact: true }).click()
+          await moreAction(page, '导入日历')
           await page.locator('input[type=file]').setInputFiles({ name: 'structure.ics', mimeType: 'text/calendar', buffer: Buffer.from(text) })
           const dialog = page.getByRole('dialog')
           await dialog.getByRole('switch').click()
@@ -887,7 +962,7 @@ await acceptance('全天导入拒绝无效结束日期，合法的一天仍正�
           const next = new Date(`${day}T12:00:00`)
           next.setDate(next.getDate() + 1)
           const end = valid ? `${next.getFullYear()}${String(next.getMonth() + 1).padStart(2, '0')}${String(next.getDate()).padStart(2, '0')}` : compact
-          await page.getByRole('button', { name: '导入', exact: true }).click()
+          await moreAction(page, '导入日历')
           await page.locator('input[type=file]').setInputFiles({ name: 'all-day.ics', mimeType: 'text/calendar', buffer: Buffer.from(text(end)) })
           const dialog = page.getByRole('dialog')
           await dialog.getByRole('switch').click()
@@ -967,7 +1042,7 @@ await acceptance('提醒到点后自动进入提醒记录，标为已读后重�
       const at = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
       await call('putEvent', { uid: 'due', title: '我的到点提醒', start: `${await dayInWeek(1)}T09:00` })
       await call('setPersonal', { source: 'manual', uid: 'due', patch: { reminder: { kind: 'fixed', at } } })
-      await page.getByRole('button', { name: '提醒记录', exact: true }).click({ timeout: 3000 })
+      await moreAction(page, /提醒记录/)
       const dialog = page.getByRole('dialog')
       await dialog.getByText('我的到点提醒', { exact: true }).waitFor({ timeout: 4000 })
       assert.ok((await dialog.innerText()).includes('应用内提醒'))
@@ -975,7 +1050,7 @@ await acceptance('提醒到点后自动进入提醒记录，标为已读后重�
       await poll(async () => (await call('reminders')).unread, 0, 'receipt acknowledged')
       await page.getByRole('button', { name: '关闭', exact: true }).click()
       await page.reload()
-      await page.getByRole('button', { name: '提醒记录', exact: true }).click()
+      await moreAction(page, /提醒记录/)
       await page.getByRole('dialog').getByText('已读', { exact: true }).waitFor()
       assert.deepEqual(errors, [])
     })
@@ -988,13 +1063,15 @@ await acceptance('同步日历用可读名称显示，内部来源不暴露为�
     await withBrowser(calendar, panel, METHODS, async ({ page, dayInWeek, errors }) => {
       const day = await dayInWeek(1)
       await handle.apply({ events: [{ uid: 'label', title: '可读名称课程', start: `${day}T09:00`, end: `${day}T10:00` }] })
-      await page.getByRole('group', { name: '筛选日历' }).getByRole('button', { name: '学校校历', exact: true }).waitFor({ timeout: 3000 })
+      await openSources(page)
+      await page.getByRole('option', { name: '学校校历', exact: true }).waitFor({ state: 'attached' })
       assert.equal(await page.getByRole('button', { name: '删除所选日历', exact: true }).count(), 0)
+      await closeList(page)
       await page.getByRole('button', { name: /09:00.*可读名称课程/ }).click()
       await page.getByText('日历：学校校历', { exact: true }).waitFor({ timeout: 3000 })
       assert.ok(!(await page.locator('body').innerText()).includes(handle.source))
       await page.getByRole('button', { name: '关闭', exact: true }).click()
-      await page.getByRole('button', { name: '导入', exact: true }).click()
+      await moreAction(page, '导入日历')
       assert.equal(await page.locator('#calendar-import-names option').count(), 0, 'managed calendars cannot be file import targets')
       assert.deepEqual(errors, [])
     })
@@ -1008,17 +1085,24 @@ await acceptance('删除导入日历须确认，可取消，删除后其他日�
       const day = await dayInWeek(1)
       for (const source of ['导入A', '导入B', 'manual']) await call('putEvent', { source, uid: 'shared', title: source, start: `${day}T09:00` })
       await call('putNote', { source: '导入A', uid: 'shared', text: '保留我的笔记' })
-      const filters = page.getByRole('group', { name: '筛选日历' })
-      await filters.getByRole('button', { name: '导入A', exact: true }).click()
-      await page.getByRole('button', { name: '删除所选日历', exact: true }).click({ timeout: 3000 })
-      await page.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click()
+      const filters = await openSources(page)
+      const sources = page.getByRole('dialog', { name: '日历来源' })
+      const originalPanel = await sources.elementHandle()
+      await filters.selectOption('导入A')
+      await sources.getByRole('button', { name: '删除所选日历', exact: true }).click({ timeout: 3000 })
+      await sources.getByText('删除“导入A”及其中的全部日程？', { exact: true }).waitFor()
+      assert.equal(await page.getByRole('dialog').count(), 1)
+      assert.ok(await originalPanel.evaluate(element => element.isConnected))
+      await sources.getByRole('button', { name: '取消', exact: true }).click()
       assert.equal(calendar.snapshot().events.length, 3)
-      await page.getByRole('button', { name: '删除所选日历', exact: true }).click()
-      await page.getByRole('dialog').getByRole('button', { name: '删除日历', exact: true }).click()
+      assert.equal(await filters.inputValue(), '导入A')
+      await sources.getByRole('button', { name: '删除所选日历', exact: true }).click()
+      await sources.getByRole('button', { name: '删除日历', exact: true }).click()
       await poll(async () => calendar.snapshot().events.map(e => e.source).sort(), ['manual', '导入B'].sort(), 'only the chosen calendar is removed')
-      await poll(() => filters.getByRole('button', { name: '导入A', exact: true }).count(), 0, 'deleted calendar filter disappears')
+      await poll(() => filters.getByRole('option', { name: '导入A', exact: true }).count(), 0, 'deleted calendar filter disappears')
+      assert.equal(await filters.inputValue(), '*')
       assert.equal(calendar.unlinkedNotes()[0].note.text, '保留我的笔记')
-      await filters.getByRole('button', { name: '个人日程', exact: true }).click()
+      await filters.selectOption('manual')
       assert.equal(await page.getByRole('button', { name: '删除所选日历', exact: true }).count(), 0)
       assert.deepEqual(errors, [])
     })
@@ -1032,7 +1116,7 @@ await acceptance('来源状态显示失败并保留已有课表，重试成功�
     await withBrowser(calendar, panel, METHODS, async ({ page }) => {
       await page.getByText('测试课表：同步失败，保留上次数据', { exact: true }).waitFor({ timeout: 3000 })
       await handle.apply({ complete: true, events: [] })
-      await page.getByText('测试课表：已更新', { exact: true }).waitFor({ timeout: 3000 })
+      await page.getByText('测试课表：同步失败，保留上次数据', { exact: true }).waitFor({ state: 'hidden', timeout: 3000 })
       assert.ok(!(await page.locator('body').innerText()).includes('token=never-display'))
     })
     handle.dispose()
@@ -1057,8 +1141,8 @@ await acceptance('隐藏单次后可从日程页恢复，私人备注与固定�
       await poll(() => calendar.personalFor(ref).hidden, true, 'hidden persisted')
       await page.getByRole('button', { name: '关闭', exact: true }).click()
       await block.waitFor({ state: 'detached' })
-      await page.getByRole('button', { name: '日程', exact: true }).click()
-      await page.getByRole('menuitem', { name: /Hidden settings class/ }).click()
+      await moreAction(page, '日程记录')
+      await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', { name: /Hidden settings class/ }).click()
       await page.getByRole('button', { name: /Hidden settings class.*已隐藏/ }).click({ timeout: 3000 })
       const dialog = page.getByRole('dialog')
       await dialog.getByRole('button', { name: '更多个人设置', exact: true }).click()
@@ -1107,15 +1191,15 @@ await acceptance('编辑草稿不受其他来源的后台刷新影响', async ()
       await refresh()
       await page.getByRole('button', { name: /Personal original/ }).click()
       await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
-      await page.getByRole('button', { name: '刷新', exact: true }).click()
-      await poll(() => page.getByRole('button', { name: '刷新', exact: true }).isEnabled(), true, 'initial reads settled')
+      await moreAction(page, '刷新')
+      await poll(() => page.locator('.cal-workbench').getAttribute('aria-busy'), 'false', 'initial reads settled')
       const title = page.getByLabel('标题', { exact: true })
       await title.fill('User unsaved title')
       for (const next of ['Other refreshed once', 'Other refreshed twice']) {
         await calendar.updateEvent({ source: 'other', uid: 'draft', patch: { title: next } })
-        await page.getByRole('button', { name: '日程', exact: true }).click()
-        await page.getByRole('menuitem', { name: new RegExp(next) }).waitFor()
-        await page.getByRole('button', { name: '日程', exact: true }).click()
+        await moreAction(page, '日程记录')
+        await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', { name: new RegExp(next) }).waitFor()
+        await closeList(page)
         assert.equal(await title.inputValue(), 'User unsaved title', 'an unrelated source refresh must preserve the unsaved title')
       }
       await page.getByRole('button', { name: '保存更改', exact: true }).click()
@@ -1171,12 +1255,12 @@ await acceptance('切换同编号不同来源及返回后重置草稿，保存�
       await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
       const title = page.getByLabel('标题', { exact: true })
       await title.fill('Do not copy this draft')
-      await page.getByRole('button', { name: '日程', exact: true }).click()
-      await page.getByRole('menuitem', { name: /Other reset/ }).click()
+      await moreAction(page, '日程记录')
+      await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', { name: /Other reset/ }).click()
       assert.equal(await title.inputValue(), 'Other reset')
       await title.fill('Discard on switching')
-      await page.getByRole('button', { name: '日程', exact: true }).click()
-      await page.getByRole('menuitem', { name: /Personal reset/ }).click()
+      await moreAction(page, '日程记录')
+      await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', { name: /Personal reset/ }).click()
       assert.equal(await title.inputValue(), 'Personal reset')
       assert.equal(await page.getByRole('button', { name: '保存更改', exact: true }).isDisabled(), true)
       await title.fill('Discard on return')
@@ -1214,7 +1298,7 @@ await acceptance('保存等待期间再次编辑或改回原值也不丢失', as
         await title.fill('Pending original')
       } finally { release() }
       await page.getByText('First submitted title', { exact: true }).first().waitFor()
-      await poll(() => page.getByRole('button', { name: '刷新', exact: true }).isEnabled(), true, 'save refresh completed')
+      await poll(() => page.locator('.cal-workbench').getAttribute('aria-busy'), 'false', 'save refresh completed')
       assert.equal(calendar.getEvent({ uid: 'pending' }).title, 'First submitted title')
       assert.equal(await title.inputValue(), 'Pending original', 'typing during the request must remain an unsaved edit, including reverting to the previous value')
       assert.equal(await save.isEnabled(), true)
@@ -1242,9 +1326,9 @@ await acceptance('保存失败后草稿保留，后台刷新后仍可重试', as
       assert.equal(await title.inputValue(), 'Retry unsaved title')
       assert.equal(calendar.getEvent({ uid: 'retry' }).title, 'Retry original')
       await calendar.putEvent({ source: 'other', uid: 'retry', title: 'Refresh after failure', start: `${day}T13:00` })
-      await page.getByRole('button', { name: '日程', exact: true }).click()
-      await page.getByRole('menuitem', { name: /Refresh after failure/ }).waitFor()
-      await page.getByRole('button', { name: '日程', exact: true }).click()
+      await moreAction(page, '日程记录')
+      await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', { name: /Refresh after failure/ }).waitFor()
+      await closeList(page)
       assert.equal(await title.inputValue(), 'Retry unsaved title')
       await page.unroute('**/api/updateEvent')
       await save.click()
@@ -1399,12 +1483,14 @@ await acceptance('手动校历切换与不显示背景不影响日程', async ()
     await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek }) => {
       const day = await dayInWeek(1)
       await call('putEvent', { uid: 'selection-kept', title: '校历切换保留日程', start: `${day}T09:00` })
+      await openSources(page)
       const selector = page.getByLabel('选择校历', { exact: true })
       await selector.selectOption('b')
-      await page.getByText(/校历乙 · 校历乙的周次/).waitFor()
+      await page.getByText(/校历乙的周次/).waitFor()
       assert.equal(calendar.annotationChoices().find(x => x.selected).id, 'b')
       await selector.selectOption('')
       await poll(() => calendar.annotationChoices().some(x => x.selected), false, 'background disabled')
+      await closeList(page)
       await page.getByRole('button', { name: /校历切换保留日程/ }).waitFor()
       assert.equal(calendar.snapshot().events.length, 1)
       assert.deepEqual(await calendar.annotationsFor({ from: day, to: day }), { weeks: [], spans: [] })

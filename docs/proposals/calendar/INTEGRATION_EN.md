@@ -108,7 +108,7 @@ Keep the Host running. Restart catches up at most 24 hours and receipts remain f
 
 `calendar.changes(signal)` uses the existing Runtime Remote logical stream for `{revision}` invalidations, coalescing rapid changes. It is not a consistent snapshot or durable event log. The panel rereads current data, resubscribes after disconnection and cancels on unmount. Both source and personal writes trigger refresh.
 
-Week/month views share data. Separate institution academic-calendar/timetable entries, default views and preset source filters remain future work.
+The panel opens in month view and shares its focused date with week view. Institution plugins can supply calendars, and users choose and filter them in Calendar sources. The academic-year timeline queries the selected provider with `group: "academic-calendar"`. When `includeOriginalSpan: true` requests original calendar dates, providers can preserve clipped endpoints in `originalFirstDay` and `originalLastDay`.
 
 
 ## Complete instances and education calendars

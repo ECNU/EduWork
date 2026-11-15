@@ -1,34 +1,11 @@
-// Client half of the calendar panel: the week view, one entry's page, and the
-// ICS dialogs.
-//
-// A calendar shows time, not rows: the week is drawn on an hour axis with one
-// column per day, and an entry is a block whose top and height come from its
-// clock. Two entries at the same hour split their day's width instead of
-// stacking, and everything that is not a clock time lives in the all-day row
-// above the axis. The arithmetic of that placement is in `src/layout.js`; this
-// file scales it to pixels and paints it.
-//
-// The panel holds events, never courses. A timetable is one data source that an
-// institution plugin may feed in, and it arrives as ordinary entries carrying
-// that source's stamp: the panel groups and colours by source for exactly that
-// reason, and an entry the reader writes by hand is a `manual` one.
-//
-// The panel is built from the product's own primitives (buttons, dialogs, menu,
-// inputs, icons) rather than hand-rolled controls, so it looks like the rest of
-// the shell in both light and dark themes and keeps their keyboard behaviour.
-// The two generations of this package that the product ships name their icons
-// differently: the earlier one carries the drawn size in the name
-// (`IconPlusOutline16`), the later one drops it and offers stroke variants with
-// the size as a prop (`IconPlusOutlineRegular`). The components below are the
-// same in both; each icon is resolved from whichever set is loaded, so the panel
-// draws on either runtime instead of importing a name one of them lacks.
+/** 日历插件的客户端入口；由工作台注册面板、提供控件和主题。 */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input, Menu, Modal as PrimitiveModal, Switch, Tag, Toast, Tooltip, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import * as primitives from '@deepseek-ai/dsh-client-ui-primitives'
 import calendarRemote from '../lib/typert.remote-client.js'
 import { PersonalSettings, occurrenceNote } from './personal-settings.js'
-import { dayWindow, layoutWeek, minutesOf } from './layout.js'
-import { MonthGrid, monthRange, monthStart, shiftMonth } from './month-view.js'
+import { addDays, localDate, monthRange, monthStart, parseDate, shiftMonth, startOfWeek } from './dates.js'
+import { AcademicYear, CalendarCanvas, CalendarStyles, PhaseSummary } from './calendar-views.js'
 
 /**
  * Resolve one icon from the loaded primitives package.
@@ -49,6 +26,7 @@ const IconChevronRight = icon(['IconChevronRightOutline14', 'IconChevronRightOut
 const IconClock = icon(['IconClockOutline16', 'IconClockOutlineRegular'], 16)
 const IconCopy = icon(['IconCopyOutline16', 'IconCopyOutlineRegular'], 16)
 const IconDownload = icon(['IconDownloadOutline16', 'IconDownloadOutlineRegular'], 16)
+const IconEllipsis = icon(['IconEllipsisOutline16', 'IconEllipsisOutlineRegular'], 16)
 const IconFolderOpen = icon(['IconFolderOpenOutline16', 'IconFolderOpenOutlineRegular'], 16)
 const IconPlus = icon(['IconPlusOutline16', 'IconPlusOutlineRegular'], 16)
 const IconRefresh = icon(['IconRefreshOutline16', 'IconRefreshOutlineRegular'], 16)
@@ -71,51 +49,24 @@ const newUid = () => (globalThis.crypto?.randomUUID
   ? `manual-${globalThis.crypto.randomUUID()}`
   : `manual-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`)
 
-/** Row height of one hour on the axis, in pixels; the axis is drawn from this. */
-const HOUR_HEIGHT = 48
-const PX_PER_MINUTE = HOUR_HEIGHT / 60
-/** Width of the hour gutter, in pixels. */
+// 与详情页的时间标签对齐。
 const GUTTER = 54
-/**
- * The axis is a whole day, as in the calendars this view follows. A fixed
- * working day left the lower half of a tall window empty; with the whole day on
- * the axis the grid always reaches the bottom, and the view scrolls to where
- * this week's entries are instead of cropping them to office hours.
- */
-const DAY_MINUTES = 24 * 60
-
 const PAGE_BACKGROUND = 'var(--dsw-alias-bg-base, #fff)'
 const PRIMARY = 'var(--dsw-alias-label-primary, #222)'
 const SECONDARY = 'var(--dsw-alias-label-secondary, #666)'
-const TERTIARY = 'var(--dsw-alias-label-tertiary, #888)'
-/** The three tones an annotation may carry: what each looks like as a small band. */
-const TONE_BAR: Record<string, string> = {
-  neutral: 'rgba(136,136,136,0.45)',
-  highlight: 'rgba(77,107,254,0.55)',
-  quiet: 'rgba(63,133,98,0.55)',
-}
-/** The same tones as solid dots, for the legend that names what is on screen. */
-const TONE_DOT: Record<string, string> = {
-  neutral: '#888',
-  highlight: 'var(--dsw-alias-state-business-primary, #4d6bfe)',
-  quiet: '#3f8562',
-}
 const HAIRLINE = '.5px solid var(--dsw-alias-border-l1, #00000014)'
 const CARD_BORDER = '1px solid var(--dsw-alias-border-l2, #0000001f)'
 const LAYER = 'var(--dsw-alias-bg-layer-2, #f6f6f6)'
 const HOVER = 'var(--dsw-alias-interactive-bg-hover, #0000000a)'
 
-/** The shared Modal leaves its size and scrolling to the consuming surface. */
-function Modal({ children, className, contentClassName, ...props }: React.ComponentProps<typeof PrimitiveModal>) {
+/** 弹窗沿用宿主的焦点、关闭和遮罩行为，由日历定义不同内容的宽度。 */
+function Modal({ children, className, contentClassName, size, ...props }:
+  React.ComponentProps<typeof PrimitiveModal> & { size?: 'compact' | 'detail' }) {
   return React.createElement(PrimitiveModal, {
     ...props,
-    className: ['eduwork-calendar-dialog', className].filter(Boolean).join(' '),
+    className: ['eduwork-calendar-dialog', size && `cal-dialog-${size}`, className].filter(Boolean).join(' '),
     contentClassName: ['eduwork-calendar-dialog-content', contentClassName].filter(Boolean).join(' '),
-  }, React.createElement('style', null, `
-    .eduwork-calendar-dialog { width: min(640px, 100%); max-height: 100%; }
-    .eduwork-calendar-dialog-content { min-height: 0; overflow-y: auto; }
-    .eduwork-calendar-dialog > :not(.eduwork-calendar-dialog-content) { flex-shrink: 0; }
-  `), children)
+  }, children)
 }
 
 /** The hues a source is drawn in, as the product's static palette names; the fallbacks are for themes without them. */
@@ -129,20 +80,6 @@ function useHover() {
 }
 
 const pad2 = (value: number) => String(value).padStart(2, '0')
-/** Local `YYYY-MM-DD` of a date. */
-const localDate = (value = new Date()) => `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`
-/** Local midnight of a `YYYY-MM-DD` string. */
-function parseDate(date: string) {
-  const [year, month, day] = date.split('-').map(Number)
-  return new Date(year, month - 1, day)
-}
-const addDays = (date: string, days: number) => {
-  const value = parseDate(date)
-  value.setDate(value.getDate() + days)
-  return localDate(value)
-}
-/** Monday of the week a date belongs to. */
-const startOfWeek = (date: string = localDate()) => addDays(date, -((parseDate(date).getDay() + 6) % 7))
 const dateOf = (value: string) => value.slice(0, 10)
 /** Clock part of a local time string, empty for a whole-day value. */
 const clockOf = (value?: string) => (value && value.length > 10 ? value.slice(11, 16) : '')
@@ -150,12 +87,10 @@ const weekdayOf = (date: string) => WEEKDAYS[(parseDate(date).getDay() + 6) % 7]
 const dayNumber = (date: string) => parseDate(date).getDate()
 const shortDate = (date: string) => `${parseDate(date).getMonth() + 1}月${parseDate(date).getDate()}日`
 const monthOf = (date: string) => `${parseDate(date).getFullYear()}年${parseDate(date).getMonth() + 1}月`
-const hourLabel = (minutes: number) => `${pad2(Math.floor(minutes / 60))}:00`
 /** Minutes from midnight of an `HH:mm` clock string. */
 const clockMinutes = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5))
 /** The `HH:mm` clock string of minutes from midnight. */
 const clockAt = (minutes: number) => `${pad2(Math.floor(minutes / 60))}:${pad2(minutes % 60)}`
-const isToday = (date: string) => date === localDate()
 
 /**
  * The clock a new entry is offered: the next whole hour when it is for today,
@@ -261,10 +196,10 @@ function seriesSummary(event: any) {
 
 /** A labelled form row: the label above its control, as in the shell's own settings. */
 function Field({ label, children, hint }: any) {
-  return React.createElement('label', { style: { display: 'block', marginBottom: 12 } },
-    React.createElement('span', { style: { display: 'block', marginBottom: 6, fontSize: 12, color: SECONDARY } }, label),
+  return React.createElement('label', { className: 'cal-field' },
+    React.createElement('span', { className: 'cal-field-label' }, label),
     children,
-    hint ? React.createElement('span', { style: { display: 'block', marginTop: 4, fontSize: 11, color: TERTIARY } }, hint) : undefined)
+    hint ? React.createElement('span', { className: 'cal-field-hint' }, hint) : undefined)
 }
 
 
@@ -294,408 +229,6 @@ function IconButton({ label, icon, onClick, danger, disabled }: any) {
       'aria-label': label,
       style: danger ? { color: 'var(--dsw-alias-state-error-primary, #d4553f)' } : undefined,
     }))
-}
-
-/**
- * One entry on the axis.
- *
- * The block is a button so a keyboard reaches it, and its width is the lane the
- * layout gave it: `100 / lanes` percent, inset by a hairline so neighbours stay
- * apart.
- */
-function Block({ entry, axisStart, tint, note, onSelect }: any) {
-  const [hovered, hover] = useHover()
-  const width = 100 / entry.lanes
-  const height = entry.height * PX_PER_MINUTE
-  const inner = height - 8
-  const label = `${clockRange(entry.occurrence)} ${entry.occurrence.title}${entry.occurrence.location ? ` · ${entry.occurrence.location}` : ''}`
-  // A block shows what fits: the clock and the title always, the place when
-  // there is room for a third line.
-  const line = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
-  return React.createElement('button', {
-    type: 'button',
-    title: label,
-    'aria-label': label,
-    // Names the occurrence the block stands for, so a test acts on the same
-    // identity the note is stored under rather than on a button's position.
-    'data-occurrence': occurrenceKeyOf(entry.occurrence),
-    onClick: () => onSelect(entry.occurrence),
-    ...hover,
-    style: {
-      position: 'absolute', top: (entry.top - axisStart) * PX_PER_MINUTE, height,
-      left: `calc(${entry.lane * width}% + 2px)`, width: `calc(${width}% - 4px)`,
-      display: 'block', overflow: 'hidden', textAlign: 'left', cursor: 'pointer',
-      padding: '3px 6px', border: 'none', borderLeft: `3px solid ${tint.accent}`, borderRadius: 6,
-      background: tint.background, color: PRIMARY, fontFamily: 'inherit',
-      boxShadow: hovered ? 'var(--dsw-elevation-panel, 0 6px 18px rgba(0, 0, 0, .16))' : 'none',
-      transition: 'box-shadow .12s ease', zIndex: hovered ? 2 : 1,
-    },
-  },
-  React.createElement('div', { style: { ...line, fontSize: 11, lineHeight: '15px', color: SECONDARY, fontVariantNumeric: 'tabular-nums' } }, clockRange(entry.occurrence)),
-  React.createElement('div', {
-    style: { ...line, marginTop: 1, fontSize: 12, lineHeight: '17px', fontWeight: 600 },
-  }, entry.occurrence.title),
-  inner >= 34 && entry.occurrence.location
-    ? React.createElement('div', { style: { ...line, fontSize: 11, lineHeight: '15px', color: SECONDARY } }, entry.occurrence.location)
-    : undefined,
-  // The reader's own note, when the block has room for it. A note that is only
-  // visible after opening the class is a note the reader has to remember writing.
-  inner >= 50 && note
-    ? React.createElement('div', { style: { ...line, fontSize: 11, lineHeight: '15px', color: PRIMARY, opacity: .75 } }, `笔记：${note}`)
-    : undefined)
-}
-
-/**
- * The bands a data plugin laid over the range on screen, named once beside the
- * title. A wash or a thin bar shows that a stretch is special; the legend says
- * what it is called, so the reader does not have to hover to learn a colour.
- * `tones` narrows it to the bands the rest of the header does not already
- * speak: the week's subtitle names its own band, so only highlighted ones —
- * which the week's own label outranks — need the legend, while the month's
- * subtitle names nothing and every band is listed.
- */
-function SpanLegend({ spans, from, to, tones }: any) {
-  if (!spans) return undefined
-  const seen = new Set<string>()
-  const items: any[] = []
-  for (const span of [...spans].sort((left: any, right: any) => (left.firstDay < right.firstDay ? -1 : 1))) {
-    if (span.firstDay > to || span.lastDay < from) continue
-    if (tones && !tones.includes(span.tone ?? 'neutral')) continue
-    if (seen.has(span.text)) continue
-    seen.add(span.text)
-    items.push(span)
-    if (items.length === 4) break
-  }
-  if (items.length === 0) return undefined
-  return React.createElement('div', {
-    role: 'list',
-    'aria-label': '阶段图例',
-    style: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 },
-  },
-  ...items.map((span: any) => React.createElement('div', {
-    key: span.text,
-    title: `${span.firstDay} – ${span.lastDay}`,
-    style: { display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: SECONDARY, whiteSpace: 'nowrap' },
-  },
-  React.createElement('span', {
-    'aria-hidden': true,
-    style: { width: 8, height: 8, borderRadius: 999, background: TONE_DOT[span.tone ?? 'neutral'] ?? TONE_DOT.neutral, flex: '0 0 auto' },
-  }),
-  span.text)))
-}
-
-/**
- * The week: a day header row and the hour axis below it. The axis is one scroll
- * container so the day columns can never drift apart vertically. A record that
- * arrives without a clock is drawn as a block at midnight, not in a row of its
- * own, so the week has a single geometry.
- *
- * Dragging on an empty spot starts an entry spanning what was dragged, and a
- * double click starts a one-hour one there: between them the view is writable
- * rather than only readable.
- */
-function WeekGrid({ anchor, occurrences, noteIndex, annotations, onSelect, onCreate }: any) {
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60_000)
-    return () => clearInterval(timer)
-  }, [])
-
-  const days = useMemo(() => Array.from({ length: 7 }, (_, index) => {
-    const date = addDays(anchor, index)
-    return { key: date, label: WEEKDAYS[index], day: dayNumber(date), today: isToday(date) }
-  }), [anchor])
-  // The whole day is drawn; the entries of the week decide what the view opens on.
-  const focus = useMemo(() => dayWindow(occurrences).start, [occurrences])
-  const scroller = useRef<HTMLDivElement | null>(null)
-  const scrolledTo = useRef('')
-  useEffect(() => {
-    const node = scroller.current
-    const key = `${anchor}:${focus}`
-    if (!node || scrolledTo.current === key) return
-    scrolledTo.current = key
-    node.scrollTop = Math.max(0, focus * PX_PER_MINUTE - 8)
-  }, [anchor, focus])
-  const axis = useMemo(() => ({ start: 0, end: DAY_MINUTES }), [])
-  const hours = useMemo(() => {
-    const list: number[] = []
-    for (let minutes = axis.start; minutes < axis.end; minutes += 60) list.push(minutes)
-    return list
-  }, [axis])
-  const axisHeight = (axis.end - axis.start) * PX_PER_MINUTE
-  // A pointer gesture on empty space: `press` is what has been started, `dragging`
-  // what is drawn while it runs. The column captures the pointer, so the gesture
-  // keeps tracking after the cursor leaves it.
-  const [dragging, setDragging] = useState<{ day: string; from: number; to: number } | null>(null)
-  const press = useRef<{ day: string; from: number; pointerId: number; moved: boolean } | null>(null)
-  /** The fifteen-minute slot under a pointer inside one column. */
-  const slotAt = (event: any) => {
-    const box = event.currentTarget.getBoundingClientRect()
-    const raw = axis.start + (event.clientY - box.top) / PX_PER_MINUTE
-    return Math.max(0, Math.min(DAY_MINUTES - 15, Math.round(raw / 15) * 15))
-  }
-  const timed = useMemo(() => (occurrences ?? []).filter((occurrence: any) => clockOf(occurrence.start) !== ''), [occurrences])
-  const byDay = useMemo(() => layoutWeek(timed), [timed])
-  /**
-   * Whole-day occurrences laid out as bars on one seven-column track under the
-   * day headers.
-   *
-   * A value that arrived without a clock (`DTSTART;VALUE=DATE`, which is what a
-   * holiday or an academic calendar is made of) has no slot on the axis, so it is
-   * drawn above it: visible whatever the axis is scrolled to, and not claiming a
-   * time it does not have. One record is one bar across every day it covers —
-   * the way a calendar draws a vacation — rather than a chip per day, so a
-   * reader sees one thing that spans days, not a thing that happens to repeat.
-   *
-   * A bar says its whole range in its label; the day headers above the track
-   * say which day is which, so nothing needs to be said twice. Overlapping
-   * bars stack in lanes, two of them; the rest are counted, not drawn, the same
-   * deal the per-day chips gave.
-   */
-  const allDayLaid = useMemo(() => {
-    const first = anchor
-    const last = addDays(anchor, 6)
-    const records: any[] = []
-    for (const occurrence of occurrences ?? []) {
-      if (clockOf(occurrence.start) !== '') continue
-      const start = dateOf(occurrence.start)
-      const spanned = occurrence.end && clockOf(occurrence.end) === '' && dateOf(occurrence.end) > start
-        ? dateOf(occurrence.end)
-        : start
-      if (spanned < first || start > last) continue
-      const label = `全天 · ${spanned > start ? `${shortDate(start)}–${shortDate(spanned)}` : shortDate(start)} ${occurrence.title}`
-      records.push({ occurrence, from: start < first ? first : start, to: spanned > last ? last : spanned, label })
-    }
-    records.sort((left, right) => left.from < right.from ? -1 : left.from > right.from ? 1 : left.to < right.to ? 1 : left.to > right.to ? -1 : 0)
-    const laneEnds: string[] = []
-    const bars: any[] = []
-    let hidden = 0
-    for (const record of records) {
-      // The first lane whose record ended before this one starts, or a new lane
-      // when none did. Longer records at the same start claim their lane first,
-      // so a spanning bar is never pushed below a one-day chip it contains. A
-      // record that fits no lane within the two drawn is counted, not drawn —
-      // the same deal the per-day chips gave.
-      const lane = laneEnds.findIndex(end => end < record.from)
-      if (lane === -1 && laneEnds.length >= 2) { hidden++; continue }
-      if (lane === -1) laneEnds.push(record.to)
-      else laneEnds[lane] = record.to
-      bars.push({ ...record, lane: lane === -1 ? laneEnds.length - 1 : lane })
-    }
-    return { bars, hidden }
-  }, [occurrences, anchor])
-
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
-  const nowVisible = days.some(day => day.today)
-
-  // The pieces are built apart and assembled at the end: the nesting of one
-  // expression per row was unreadable, and a misread parenthesis there is a
-  // silent layout bug rather than a syntax error.
-  /** The band a data plugin laid over this day, if any: its tone names the colour. */
-  const spanOfDay = (date: string) => (annotations?.spans ?? []).find((span: any) => span.firstDay <= date && date <= span.lastDay)
-
-  const headerRow = React.createElement('div', {
-    style: { display: 'flex', borderBottom: CARD_BORDER, background: PAGE_BACKGROUND, paddingRight: 8 },
-  },
-  React.createElement('div', { style: { width: GUTTER, flex: '0 0 auto' } }),
-  ...days.map(day => {
-    const span = spanOfDay(day.key)
-    return React.createElement('div', {
-      key: day.key,
-      style: { flex: '1 1 0', minWidth: 0, padding: '8px 4px', textAlign: 'center', borderLeft: HAIRLINE },
-    },
-    React.createElement('div', { style: { fontSize: 11, color: day.today ? PRIMARY : SECONDARY } }, day.label),
-    React.createElement('div', {
-      style: day.today
-        ? {
-          width: 26, height: 26, margin: '2px auto 0', borderRadius: 999, lineHeight: '26px',
-          fontSize: 13, fontWeight: 650, background: 'var(--dsw-alias-state-business-primary, #4d6bfe)', color: '#fff',
-        }
-        : { marginTop: 2, fontSize: 13, fontWeight: 600, lineHeight: '26px', color: PRIMARY },
-    }, day.day),
-    // A thin bar under the date says a day sits in a band worth noticing. The
-    // neutral tone — the default when a span names none — is the background of
-    // ordinary weeks, so it draws nothing here, exactly as it washes nothing in
-    // the month view.
-    span && (span.tone ?? 'neutral') !== 'neutral' ? React.createElement('div', {
-      title: span.text,
-      'aria-label': `${day.key} ${span.text}`,
-      style: { width: 22, height: 3, borderRadius: 2, margin: '3px auto 0', background: TONE_BAR[span.tone ?? 'neutral'] },
-    }) : undefined)
-  }))
-
-  /**
-   * The whole-day track: one row under the day headers, its bars positioned by
-   * the fraction of the week they cover. The day columns are equal widths, so a
-   * percentage of the track lands on a column edge — a bar crosses the day
-   * borders instead of repeating inside each column.
-   */
-  const LANE_HEIGHT = 19
-  const allDayTrack = allDayLaid.bars.length + allDayLaid.hidden === 0 ? undefined : React.createElement('div', {
-    style: { display: 'flex', borderBottom: CARD_BORDER, background: PAGE_BACKGROUND, paddingRight: 8 },
-  },
-  React.createElement('div', { style: { width: GUTTER, flex: '0 0 auto' } }),
-  React.createElement('div', {
-    role: 'list',
-    'aria-label': '全天条目',
-    style: {
-      position: 'relative', flex: '1 1 0', minWidth: 0,
-      height: Math.max(...allDayLaid.bars.map((bar: any) => bar.lane)) * LANE_HEIGHT + 21
-        + (allDayLaid.hidden > 0 ? LANE_HEIGHT : 0),
-    },
-  },
-  ...allDayLaid.bars.map(({ occurrence, from, to, label, lane }: any) => {
-    const tint = tintOf(occurrence.source ?? occurrence.uid)
-    const first = days.findIndex(day => day.key === from)
-    const width = days.findIndex(day => day.key === to) - first + 1
-    return React.createElement('button', {
-      key: reactKeyOf(occurrence),
-      type: 'button',
-      title: label,
-      'aria-label': label,
-      // Names the occurrence the bar stands for, so a test acts on the same
-      // identity the note is stored under rather than on a button's position.
-      'data-occurrence': occurrenceKeyOf(occurrence),
-      onClick: () => onSelect(occurrence),
-      style: {
-        position: 'absolute', top: lane * LANE_HEIGHT + 2,
-        left: `calc(${(first / 7) * 100}% + 2px)`, width: `calc(${(width / 7) * 100}% - 4px)`,
-        height: 17, display: 'block', padding: '1px 5px', border: 'none', borderRadius: 4, cursor: 'pointer',
-        textAlign: 'left', fontSize: 11, lineHeight: '16px', fontWeight: 500, fontFamily: 'inherit', color: PRIMARY,
-        background: tint.background, borderLeft: `3px solid ${tint.accent}`,
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      },
-    }, occurrence.title)
-  }),
-  allDayLaid.hidden > 0
-    ? React.createElement('div', {
-      style: { position: 'absolute', right: 8, bottom: 2, fontSize: 10, lineHeight: '14px', color: SECONDARY },
-    }, `还有 ${allDayLaid.hidden} 条全天`)
-    : undefined))
-
-  const hourLabels = hours.map((minutes, index) => React.createElement('div', {
-    key: minutes,
-    style: {
-      // The label sits on its line, half above and half below; the first line is
-      // the top edge of the axis, so it moves inside instead of being cut off.
-      position: 'absolute', top: index === 0 ? 2 : (minutes - axis.start) * PX_PER_MINUTE - 6, right: 8,
-      fontSize: 11, color: TERTIARY, fontVariantNumeric: 'tabular-nums',
-    },
-  }, hourLabel(minutes)))
-
-  // One column per day: its hour lines, then its blocks, then today's "now" line.
-  const columns = days.map(day => React.createElement('div', {
-    key: day.key,
-    // Empty space in the column is a time on that day. A drag across it asks for
-    // an entry spanning what was dragged; a double click asks for a one-hour one,
-    // because a single click would fire while the reader is only looking. A press
-    // that lands on a block belongs to that block, so the gesture starts only when
-    // the column itself is the target — and the decorative lines below take no
-    // pointer events, so they never become one.
-    onPointerDown: (event: any) => {
-      if (!onCreate || event.target !== event.currentTarget) return
-      // Touch keeps its own scrolling: a finger dragged down the axis must pan it.
-      if (event.pointerType === 'touch' || event.button !== 0) return
-      const from = slotAt(event)
-      press.current = { day: day.key, from, pointerId: event.pointerId, moved: false }
-      event.currentTarget.setPointerCapture(event.pointerId)
-      setDragging({ day: day.key, from, to: from })
-      event.preventDefault()
-    },
-    onPointerMove: (event: any) => {
-      const active = press.current
-      if (!active || active.pointerId !== event.pointerId) return
-      const to = slotAt(event)
-      if (!active.moved && Math.abs(to - active.from) < 15) return
-      active.moved = true
-      setDragging({ day: active.day, from: Math.min(active.from, to), to: Math.max(active.from, to) })
-    },
-    onPointerUp: (event: any) => {
-      const active = press.current
-      if (!active || active.pointerId !== event.pointerId) return
-      press.current = null
-      setDragging(null)
-      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-      if (!active.moved) return
-      const to = slotAt(event)
-      if (Math.abs(to - active.from) < 15) return
-      onCreate(day.key, Math.min(active.from, to), Math.max(active.from, to))
-    },
-    onPointerCancel: (event: any) => {
-      if (press.current?.pointerId !== event.pointerId) return
-      press.current = null
-      setDragging(null)
-    },
-    onDoubleClick: (event: any) => {
-      if (!onCreate || event.target !== event.currentTarget) return
-      const from = slotAt(event)
-      onCreate(day.key, from, Math.min(from + 60, 24 * 60 - 1))
-    },
-    style: {
-      position: 'relative', flex: '1 1 0', minWidth: 0, borderLeft: HAIRLINE,
-      background: day.today ? 'color-mix(in srgb, var(--dsw-alias-state-business-primary, #4d6bfe) 4%, transparent)' : undefined,
-    },
-  },
-  ...hours.map(minutes => React.createElement('div', {
-    key: minutes,
-    style: {
-      position: 'absolute', left: 0, right: 0, top: (minutes - axis.start) * PX_PER_MINUTE,
-      height: 1, background: 'var(--dsw-alias-border-l1, #00000010)', pointerEvents: 'none',
-    },
-  })),
-  dragging?.day === day.key
-    ? React.createElement('div', {
-      key: 'drag-preview',
-      'aria-hidden': true,
-      style: {
-        position: 'absolute', left: 2, right: 2,
-        top: dragging.from * PX_PER_MINUTE,
-        height: Math.max(22, dragging.to - dragging.from) * PX_PER_MINUTE,
-        borderRadius: 6, pointerEvents: 'none', zIndex: 2,
-        border: '1px dashed var(--dsw-alias-state-business-primary, #4d6bfe)',
-        background: 'color-mix(in srgb, var(--dsw-alias-state-business-primary, #4d6bfe) 14%, transparent)',
-      },
-    },
-    dragging.to > dragging.from
-      ? React.createElement('div', {
-        style: { padding: '2px 6px', fontSize: 11, color: PRIMARY, fontVariantNumeric: 'tabular-nums' },
-      }, `${clockAt(dragging.from)}–${clockAt(dragging.to)}`)
-      : undefined)
-    : undefined,
-  ...(byDay.get(day.key) ?? []).map(entry => React.createElement(Block, {
-    key: reactKeyOf(entry.occurrence),
-    entry,
-    axisStart: axis.start,
-    tint: tintOf(entry.occurrence.source ?? entry.occurrence.uid),
-    note: occurrenceNote(noteIndex, entry.occurrence),
-    onSelect,
-  }))))
-
-  const nowLine = nowVisible ? React.createElement('div', {
-    'aria-hidden': true,
-    style: {
-      position: 'absolute', left: 0, right: 0, top: (nowMinutes - axis.start) * PX_PER_MINUTE,
-      height: 2, background: 'var(--dsw-alias-state-error-primary, #d4553f)', zIndex: 3, pointerEvents: 'none',
-    },
-  }) : undefined
-
-  const axisRow = React.createElement('div', {
-    // A whole day is taller than most panels; `minHeight` keeps the day columns
-    // and their rules running to the bottom edge of a very tall one.
-    style: { display: 'flex', height: axisHeight + 12, minHeight: '100%', paddingRight: 8 },
-  },
-  React.createElement('div', { style: { position: 'relative', width: GUTTER, flex: '0 0 auto' } }, ...hourLabels),
-  React.createElement('div', { style: { position: 'relative', flex: '1 1 0', display: 'flex' } }, ...columns, nowLine))
-
-  return React.createElement('div', {
-    style: { display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0 },
-  },
-  headerRow,
-  allDayTrack,
-  React.createElement('div', {
-    ref: scroller,
-    style: { flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overflowX: 'hidden' },
-  }, axisRow))
 }
 
 /** The details of one occurrence, and every change the panel can make to it. */
@@ -752,66 +285,69 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
       ...(form.location !== (occurrence.location ?? '') ? { location: form.location || null } : {}),
     } }))
 
-  const actions = []
+  const quickActions = []
+  const footerActions = []
   if (!editing) {
-    actions.push(React.createElement(Button, {
-      key: 'when', variant: 'outline', size: 'sm',
+    quickActions.push(React.createElement(Button, {
+      key: 'when', variant: 'ghost', size: 'sm', icon: React.createElement(IconClock),
       onClick: () => (wholeDay && event ? onEdit(event.uid, event.source) : setEditing(true)),
     }, wholeDay ? '改日期或地点' : series ? '改期或改地点' : '改时间或地点'))
   }
-  actions.push(React.createElement(Button, {
-    key: 'note', variant: 'outline', size: 'sm',
+  quickActions.push(React.createElement(Button, {
+    key: 'note', variant: 'ghost', size: 'sm',
     onClick: () => setWritingNote(!writingNote),
   }, note ? '改笔记' : '写笔记'))
-  actions.push(React.createElement(Button, {
-    key: 'personal', variant: 'outline', size: 'sm', onClick: () => setShowPersonal(!showPersonal),
+  quickActions.push(React.createElement(Button, {
+    key: 'personal', variant: 'ghost', size: 'sm', 'aria-expanded': showPersonal, onClick: () => setShowPersonal(!showPersonal),
   }, showPersonal ? '收起个人设置' : '更多个人设置'))
   // The dialog speaks for one occurrence; the title, the date and the repeat
   // rule belong to the record, and the record has a page of its own.
-  if (event) {
-    actions.push(React.createElement(Button, {
-      key: 'record', variant: 'ghost', size: 'sm', onClick: () => onEdit(event.uid, event.source),
-    }, '编辑日程信息'))
-  }
   if (occurrence.overridden) {
-    actions.push(React.createElement(Button, {
+    footerActions.push(React.createElement(Button, {
       key: 'undo', variant: 'ghost', size: 'sm', disabled: false,
       onClick: () => run(() => service.removeOverride({ uid: occurrence.uid, date, source: occurrence.source }), '已恢复原定安排').then(ok => ok && onClose()),
     }, '撤销改期'))
   }
   if (series) {
-    actions.push(React.createElement(Button, {
+    footerActions.push(React.createElement(Button, {
       key: 'cancel', variant: 'ghost', size: 'sm',
       onClick: () => run(() => service.cancelOccurrence({ uid: occurrence.uid, date, source: occurrence.source }), `已取消：${shortDate(date)}`).then(ok => ok && onClose()),
     }, '取消这一次'))
   } else {
-    actions.push(React.createElement(Button, {
+    footerActions.push(React.createElement(Button, {
       key: 'delete', variant: 'ghost', size: 'sm',
-      style: { color: 'var(--dsw-alias-state-error-primary, #d4553f)' },
+      className: 'cal-destructive',
       onClick: () => setConfirming(true),
     }, '删除日程'))
   }
 
   return React.createElement(Modal, {
     open: true,
+    size: 'detail',
     onClose,
     title: occurrence.title,
     closeLabel: '关闭',
     description: series ? seriesSummary(event) : undefined,
-    footer: React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } },
-      ...actions,
-      React.createElement('span', { style: { flex: '1 1 auto' } }),
-      React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '关闭')),
+    footer: React.createElement('div', { className: 'cal-dialog-actions' },
+      React.createElement('div', { className: 'cal-dialog-secondary' }, ...footerActions),
+      React.createElement('div', { className: 'cal-dialog-primary' },
+        React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '关闭'),
+        event && React.createElement(Button, {
+          variant: 'outline', size: 'sm', onClick: () => onEdit(event.uid, event.source),
+        }, '编辑日程信息'))),
   },
-  React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
-    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
-      React.createElement('span', { style: { fontSize: 13, color: PRIMARY, fontVariantNumeric: 'tabular-nums' } },
+  React.createElement('div', { className: 'cal-event-dialog-body' },
+    React.createElement('div', { className: 'cal-event-facts' },
+      React.createElement('div', { className: 'cal-event-when' },
+      React.createElement(IconClock, { 'aria-hidden': true }),
+      React.createElement('span', null,
         `${monthOf(dateOf(occurrence.start))}${dayNumber(dateOf(occurrence.start))}日 ${weekdayOf(dateOf(occurrence.start))} ${clockRange(occurrence)}`),
       occurrence.overridden ? React.createElement(Tag, { tone: 'info' }, '已改期') : undefined,
-      series ? React.createElement(Tag, { tone: 'outline' }, '重复日程中的一次') : React.createElement(Tag, { tone: 'quiet' }, '单次日程')),
-    occurrence.location
-      ? React.createElement('div', { style: { fontSize: 13, color: PRIMARY } }, `地点：${occurrence.location}`)
-      : undefined,
+      series ? React.createElement(Tag, { tone: 'outline' }, '重复日程中的一次') : undefined),
+      React.createElement('div', { className: 'cal-event-meta' },
+        occurrence.location && React.createElement('span', null, `地点：${occurrence.location}`),
+        event?.source && React.createElement('span', null, `日历：${sourceName(event.source)}`))),
+    React.createElement('div', { className: 'cal-event-quick' }, ...quickActions),
     occurrence.description
       ? React.createElement('div', null,
         React.createElement(Muted, { style: { display: 'block', marginBottom: 2 } },
@@ -823,15 +359,13 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
     // record, and why it lives outside the school's own fields.
     note && !writingNote
       ? React.createElement('div', {
-        style: { padding: '8px 10px', borderRadius: 8, background: LAYER, whiteSpace: 'pre-wrap', fontSize: 13 },
+        style: { whiteSpace: 'pre-wrap', fontSize: 13 },
       },
       React.createElement(Muted, { style: { display: 'block', marginBottom: 3 } }, '我的笔记'),
       note)
       : undefined,
     writingNote
-      ? React.createElement('div', {
-        style: { marginTop: 4, padding: 12, borderRadius: 10, background: LAYER, display: 'flex', flexDirection: 'column', gap: 10 },
-      },
+      ? React.createElement('div', { className: 'cal-event-edit' },
       React.createElement(Field, { label: '我的笔记', hint: '只属于这次日程。改期后保留，独立于日程备注，不随 ICS 导出。' },
         React.createElement('textarea', {
           value: noteDraft, rows: 4, spellCheck: false, autoFocus: true, disabled: savingNote,
@@ -865,11 +399,8 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
         noteDraft !== (note ?? '') ? React.createElement(Muted, null, '笔记只属于这次日程') : undefined))
       : undefined,
     showPersonal ? React.createElement(PersonalSettings, { identity: noteRefOf(occurrence), service, run, Field }) : undefined,
-    event?.source ? React.createElement('div', null, React.createElement(Muted, null, `日历：${sourceName(event.source)}`)) : undefined,
     editing
-      ? React.createElement('div', {
-        style: { marginTop: 4, padding: 12, borderRadius: 10, background: LAYER, display: 'flex', flexDirection: 'column', gap: 10 },
-      },
+      ? React.createElement('div', { className: 'cal-event-edit' },
       React.createElement(Field, { label: '开始' },
         React.createElement(Input, {
           type: 'datetime-local', value: form.start,
@@ -894,16 +425,14 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
         React.createElement(Muted, null, series ? '只改这一次，系列其他日期不受影响' : '只改这一条日程')))
       : undefined,
     confirming
-      ? React.createElement('div', {
-        style: { marginTop: 4, padding: 12, borderRadius: 10, background: LAYER, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-      },
-      React.createElement('span', { style: { fontSize: 13 } }, '确定删除这条日程？'),
+      ? React.createElement('div', { className: 'cal-inline-confirm' },
+      React.createElement('p', null, '确定删除这条日程？'),
+      React.createElement('div', { className: 'cal-dialog-primary' },
+      React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setConfirming(false) }, '取消'),
       React.createElement(Button, {
-        variant: 'primary', size: 'sm',
-        style: { background: 'var(--dsw-alias-state-error-primary, #d4553f)' },
+        variant: 'outline', size: 'sm', className: 'cal-destructive',
         onClick: () => run(() => service.deleteEvent({ uid: occurrence.uid, source: occurrence.source }), '已删除这条日程').then(ok => ok && onClose()),
-      }, '删除'),
-      React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setConfirming(false) }, '取消'))
+      }, '删除')))
       : undefined))
 }
 
@@ -1271,33 +800,44 @@ function draftProblem(draft: any) {
  * The fields of one record, shared by the new-entry dialog and the entry page:
  * what the reader owns about an entry, as opposed to one date of a series.
  */
-function EventForm({ draft, onChange, autoFocus, sourceOwned = false }: any) {
+function EventForm({ draft, onChange, autoFocus, sourceOwned = false, showDetails = true, showAllDay = false }: any) {
   const set = (patch: any) => onChange({ ...draft, ...patch })
+  const isAllDay = showAllDay && draft.start === '' && draft.end === ''
+  const dateField = React.createElement(Field, { label: '日期' },
+    React.createElement(Input, { type: 'date', value: draft.date, onChange: (event: any) => set({ date: event.target.value }) }))
+  const timeFields = React.createElement('div', { className: 'cal-time-fields' },
+    React.createElement(Field, { label: '开始' },
+      React.createElement(Input, { type: 'time', value: draft.start, onChange: (event: any) => set({ start: event.target.value }) })),
+    React.createElement(Field, { label: '结束', hint: draft.end ? undefined : '留空按 45 分钟显示' },
+      React.createElement(Input, { type: 'time', value: draft.end, onChange: (event: any) => set({ end: event.target.value }) })))
+
+  const allDayToggle = showAllDay && React.createElement('label', { className: 'cal-all-day' },
+    React.createElement('input', {
+      type: 'checkbox', checked: isAllDay,
+      onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.checked) {
+          set({ start: '', end: '', endDayOffset: 0 })
+          return
+        }
+        const start = suggestedStart(draft.date)
+        set({ start: clockAt(start), end: clockAt(Math.min(start + 60, 23 * 60 + 59)) })
+      },
+    }),
+    React.createElement('span', { 'aria-hidden': true, className: 'cal-switch-track' }),
+    React.createElement('span', null, '全天'))
+
   return React.createElement(React.Fragment, null,
     React.createElement(Field, { label: '标题' },
       React.createElement(Input, {
         value: draft.title, placeholder: '例如：组会、体检、回家', autoFocus,
         onChange: (event: any) => set({ title: event.target.value }),
       })),
-    React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
-      React.createElement('div', { style: { flex: '1 1 150px' } },
-        React.createElement(Field, { label: '日期' },
-          React.createElement(Input, {
-            type: 'date', value: draft.date,
-            onChange: (event: any) => set({ date: event.target.value }),
-          }))),
-      React.createElement('div', { style: { flex: '1 1 90px' } },
-        React.createElement(Field, { label: '开始' },
-          React.createElement(Input, {
-            type: 'time', value: draft.start,
-            onChange: (event: any) => set({ start: event.target.value }),
-          }))),
-      React.createElement('div', { style: { flex: '1 1 90px' } },
-        React.createElement(Field, { label: '结束', hint: '留空按 45 分钟显示' },
-          React.createElement(Input, {
-            type: 'time', value: draft.end,
-            onChange: (event: any) => set({ end: event.target.value }),
-          })))),
+    showAllDay
+      ? React.createElement('div', { className: 'cal-schedule-fields' },
+        React.createElement('div', { className: 'cal-schedule-day' }, dateField, allDayToggle),
+        !isAllDay && timeFields)
+      : React.createElement('div', { className: 'cal-edit-dates' }, dateField, timeFields),
+    showDetails && React.createElement(React.Fragment, null,
     draft.start !== '' && draft.end !== '' && draft.endDayOffset !== 0
       ? React.createElement(Field, { label: '跨天结束日期', hint: '这条日程跨过午夜；修改日期会保留这个天数跨度' },
         React.createElement(Input, {
@@ -1346,22 +886,23 @@ function EventForm({ draft, onChange, autoFocus, sourceOwned = false }: any) {
           type: 'date', value: draft.until,
           onChange: (event: any) => set({ until: event.target.value }),
         }))
-      : undefined)
+      : undefined))
 }
 
 /** The dialog that creates one entry by hand. */
-function CreateDialog({ defaultDate, defaultStart, defaultEnd, service, onClose, run, onSaved }: any) {
+function CreateDialog({ defaultDate, defaultStart, defaultEnd, defaultAllDay, service, onClose, run, onSaved }: any) {
   const [draft, setDraft] = useState(() => {
     const date = defaultDate ?? localDate()
     const start = defaultStart ?? clockAt(suggestedStart(date))
     return {
       ...draftOf(null),
       date,
-      start,
-      end: defaultEnd ?? clockAt(Math.min(clockMinutes(start) + 60, 23 * 60 + 59)),
+      start: defaultAllDay ? '' : start,
+      end: defaultAllDay ? '' : defaultEnd ?? clockAt(Math.min(clockMinutes(start) + 60, 23 * 60 + 59)),
     }
   })
   const [problem, setProblem] = useState<string | null>(null)
+  const [showDetails, setShowDetails] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const saving = useRef(false)
   const complaint = draftProblem(draft)
@@ -1385,20 +926,23 @@ function CreateDialog({ defaultDate, defaultStart, defaultEnd, service, onClose,
 
   return React.createElement(Modal, {
     open: true,
+    size: 'compact',
     onClose,
     title: '新建日程',
     closeLabel: '关闭',
-    description: '写进本机日历，随时可以再改。',
-    footer: React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
-      React.createElement(Muted, null, REPEAT_LABELS[draft.repeatMode] ?? '单次日程'),
-      React.createElement('span', { style: { flex: '1 1 auto' } }),
-      React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '取消'),
+    footer: React.createElement('div', { className: 'cal-dialog-actions' },
       React.createElement(Button, {
-        variant: 'primary', size: 'sm', disabled: Boolean(complaint) || submitting, onClick: submit,
-      }, submitting ? '正在保存…' : '新建')),
+        variant: 'ghost', size: 'sm', icon: React.createElement(IconChevronDown),
+        'aria-expanded': showDetails, onClick: () => setShowDetails(!showDetails),
+      }, showDetails ? '收起选项' : '更多选项'),
+      React.createElement('div', { className: 'cal-dialog-primary' },
+        React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '取消'),
+        React.createElement(Button, {
+          variant: 'primary', size: 'sm', disabled: Boolean(complaint) || submitting, onClick: submit,
+        }, submitting ? '正在保存…' : '新建'))),
   },
-  React.createElement('div', null,
-    React.createElement(EventForm, { draft, onChange: setDraft, autoFocus: true }),
+  React.createElement('div', { className: 'cal-quick-form' },
+    React.createElement(EventForm, { draft, onChange: setDraft, autoFocus: true, showDetails, showAllDay: true }),
     problem
       ? React.createElement('div', {
         style: { fontSize: 12, color: 'var(--dsw-alias-state-error-primary, #d4553f)' },
@@ -1593,9 +1137,10 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
 export function createCalendarPage(service: any) {
   return function CalendarPanel() {
     const [view, setView] = useState<{ kind: string; id?: string; source?: string }>({ kind: 'week' })
-    const [anchor, setAnchor] = useState(() => startOfWeek())
-    const [displayMode, setDisplayMode] = useState<'week' | 'month'>('week')
-    const [monthAnchor, setMonthAnchor] = useState(() => monthStart(localDate()))
+    const [focusedDate, setFocusedDate] = useState(() => localDate())
+    const [displayMode, setDisplayMode] = useState<'week' | 'month' | 'year'>('month')
+    const anchor = startOfWeek(focusedDate)
+    const monthAnchor = monthStart(focusedDate)
     const [calendarSource, setCalendarSource] = useState('*')
     const [snapshot, setSnapshot] = useState<any>(null)
     const [sourceStatuses, setSourceStatuses] = useState<any[]>([])
@@ -1603,6 +1148,7 @@ export function createCalendarPage(service: any) {
     const [week, setWeek] = useState<any>(null)
     const [agenda, setAgenda] = useState<any>(null)
     const [annotations, setAnnotations] = useState<any>({ weeks: [], spans: [] })
+    const [academicSpans, setAcademicSpans] = useState<React.ComponentProps<typeof AcademicYear>['spans']>([])
     const [annotationChoices, setAnnotationChoices] = useState<any[]>([])
     // The reader's own content, read from the host and kept apart from the
     // entries: it belongs to the person, not to any data source.
@@ -1662,12 +1208,16 @@ export function createCalendarPage(service: any) {
       if (!service.annotationsFor) return
       const read = ++latestAnnotationRead.current
       try {
-        const result = await service.annotationsFor(weekRange)
-        if (read === latestAnnotationRead.current && currentRange.current === weekRange) setAnnotations(result)
+        const result = await service.annotationsFor(displayMode === 'year'
+          ? { group: 'academic-calendar', includeOriginalSpan: true }
+          : { ...weekRange, includeOriginalSpan: true })
+        if (read !== latestAnnotationRead.current || currentRange.current !== weekRange) return
+        if (displayMode === 'year') setAcademicSpans(result.spans)
+        else setAnnotations(result)
       } catch {
         /* Decorations never gate the events. */
       }
-    }, [service, weekRange])
+    }, [service, weekRange, displayMode])
     const loadAgenda = useCallback(async () => { setAgenda((await service.occurrences(agendaRange)).occurrences) }, [service, view.id])
     /**
      * Read every note once and index it by the identity of the class it is about.
@@ -1694,7 +1244,7 @@ export function createCalendarPage(service: any) {
         if (service.reminders) setReminderInbox(await service.reminders())
         await loadNotes()
         await loadAnnotations()
-        if (view.kind === 'week') await loadWeek()
+        if (view.kind === 'week' && displayMode !== 'year') await loadWeek()
         if (view.kind === 'event') await loadAgenda()
         setProblem(null)
       } catch (error) {
@@ -1702,7 +1252,7 @@ export function createCalendarPage(service: any) {
       } finally {
         setLoading(false)
       }
-    }, [loadSnapshot, loadNotes, loadAnnotations, loadWeek, loadAgenda, view.kind])
+    }, [loadSnapshot, loadNotes, loadAnnotations, loadWeek, loadAgenda, view.kind, displayMode])
 
     useEffect(() => { void refresh() }, [refresh])
     const latestRefresh = useRef(refresh)
@@ -1745,7 +1295,7 @@ export function createCalendarPage(service: any) {
 
     /** A drag or a double click in the week asks for a new entry over that span. */
     const createAt = useCallback((date: string, from: number, to: number) => {
-      setDialog({ kind: 'create', date, start: clockAt(from), end: clockAt(Math.max(to, from + 15)) })
+      setDialog({ kind: 'create', date, start: clockAt(from), end: clockAt(Math.min(Math.max(to, from + 15), 24 * 60 - 1)) })
     }, [])
 
     const current = view.kind === 'event'
@@ -1758,38 +1308,35 @@ export function createCalendarPage(service: any) {
     // picked in the filter row. The subtitle's count comes from this same
     // list, so "2 条" is what is on screen, not what is on file.
     const visibleOccurrences = (week?.occurrences ?? []).filter((item: any) => calendarSource === '*' || item.source === calendarSource)
-    const weekCount = visibleOccurrences.length
     /** The week on screen is today's, so an entry started from here means today. */
-    const createDate = displayMode === 'month' ? (monthAnchor === monthStart(localDate()) ? localDate() : monthAnchor) : anchor === startOfWeek() ? localDate() : anchor
-    const title = view.kind === 'week' ? '我的日历' : (current?.title ?? '日程')
-    /**
-     * A data plugin's name for the week on screen: its week label — prefixed by
-     * the neutral band covering the week, which names the background the label
-     * sits in (a term) — or, when it gave no label (a vacation, an unnumbered
-     * short term), the covering band alone. Toned bands keep their own words
-     * out of the prefix: a highlighted week already says what it is.
-     */
-    const coveringBand = displayMode === 'week'
-      ? (annotations?.spans ?? []).find((span: any) => span.firstDay <= anchor && anchor <= span.lastDay)
-      : undefined
-    const weekNoteParts = [
-      ...(coveringBand && (coveringBand.tone ?? 'neutral') === 'neutral' ? [coveringBand.text] : []),
-      annotations?.weeks?.find((week: any) => week.firstDay === anchor)?.text ?? coveringBand?.text,
-    ].filter(Boolean)
-    const weekNote = displayMode === 'week' && weekNoteParts.length > 0 ? weekNoteParts.join(' · ') : undefined
+    const selectedAcademicCalendar = annotationChoices.find(choice => choice.group === 'academic-calendar' && choice.selected)
+    const academicYear = academicSpans[0]?.text.match(/^\d{4}[-–]\d{4}/)?.[0]?.replace('-', '–')
+    const title = view.kind === 'week'
+      ? displayMode === 'year' ? (academicYear ? `${academicYear} 学年` : '学年总览') : monthOf(focusedDate)
+      : (current?.title ?? '日程')
+    const weekNote = displayMode === 'week' ? annotations?.weeks?.find((week: any) => week.firstDay === anchor)?.text : undefined
     const subtitle = view.kind === 'week'
-      ? displayMode === 'month' ? `${monthOf(monthAnchor)} · 月视图` : `${monthOf(anchor)}${dayNumber(anchor)}日 – ${shortDate(addDays(anchor, 6))} · ${weekCount} 条${weekNote ? ` · ${weekNote}` : ''}`
+      ? displayMode === 'week' ? `${shortDate(anchor)} – ${shortDate(addDays(anchor, 6))}` : ''
       : [current?.location, sourceName(current?.source), current && noteOf(current) !== '' ? '有备注' : ''].filter(Boolean).join(' · ')
 
-    const menuItems = events.length === 0
-      ? [{ type: 'label' as const, id: 'none', text: '还没有日程' }]
-      : events.map((event: any) => ({
+    const recordItems = events.map((event: any) => ({
         id: `${event.source}\u0000${event.uid}`,
         label: `${event.source === 'manual' ? event.title : `${event.title}（${sourceName(event.source)}）`}${event.exceptions?.length ? ` · 已取消 ${event.exceptions.length} 次` : ''}`,
-        icon: React.createElement(IconClock),
       }))
+    const moreItems = [
+      { id: 'records', label: '日程记录', icon: React.createElement(IconClock) },
+      { id: 'import', label: '导入日历', icon: React.createElement(IconFolderOpen) },
+      { id: 'export', label: '导出日历', icon: React.createElement(IconDownload) },
+      { id: 'reminders', label: reminderInbox.unread ? `提醒记录 · ${reminderInbox.unread}` : '提醒记录', icon: React.createElement(IconAlarmClock) },
+      { id: 'refresh', label: '刷新', icon: React.createElement(IconRefresh), disabled: loading },
+    ]
+    const pendingSources = sourceStatuses.filter(item => item.state !== 'ready')
+    const visibleSpans = annotations.spans.filter((span: { firstDay: string; lastDay: string }) =>
+      span.firstDay <= weekRange.to && span.lastDay >= weekRange.from)
 
     return React.createElement('div', {
+      className: 'cal-workbench',
+      'aria-busy': loading,
       onDragEnter: (event: any) => { if (event.dataTransfer?.types?.includes('Files')) { event.preventDefault(); setDropping(true) } },
       onDragOver: (event: any) => { if (event.dataTransfer?.types?.includes('Files')) event.preventDefault() },
       onDragLeave: (event: any) => { if (event.currentTarget === event.target) setDropping(false) },
@@ -1811,113 +1358,58 @@ export function createCalendarPage(service: any) {
         minHeight: 0, background: PAGE_BACKGROUND, color: PRIMARY,
       },
     },
-    // Header: what is on screen, then the ways to move and to read or write a calendar file.
-    React.createElement('div', {
-      style: {
-        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-        padding: '12px 16px', borderBottom: CARD_BORDER, flex: '0 0 auto',
-      },
-    },
-    view.kind === 'event'
-      ? React.createElement(Button, {
+    React.createElement(CalendarStyles),
+    React.createElement('header', { className: 'cal-head' },
+      React.createElement('div', { className: 'cal-period' },
+      view.kind === 'event' && React.createElement(Button, {
         variant: 'ghost', size: 'sm', icon: React.createElement(IconChevronLeft),
         onClick: () => setView({ kind: 'week' }),
-      }, '返回')
-      : undefined,
-    React.createElement('div', { style: { minWidth: 0 } },
-      React.createElement('div', { style: { fontSize: 16, fontWeight: 650, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, title),
-      React.createElement('div', { style: { fontSize: 12, color: SECONDARY } }, loading ? '正在读取…' : subtitle)),
-    view.kind === 'week'
-      ? SpanLegend({
-        spans: annotations?.spans,
-        from: weekRange.from,
-        to: weekRange.to,
-        tones: displayMode === 'month' ? undefined : ['highlight'],
-      })
-      : undefined,
-    React.createElement('span', { style: { flex: '1 1 auto' } }),
-    view.kind === 'week'
-      ? React.createElement(React.Fragment, null,
-        React.createElement('div', { role: 'group', 'aria-label': '日历视图', style: { display: 'flex', gap: 2, padding: 3, borderRadius: 10, background: LAYER, marginRight: 6 } },
-          ...(['week', 'month'] as const).map(mode => React.createElement(Button, {
-            key: mode, size: 'sm', variant: displayMode === mode ? 'outline' : 'ghost', 'aria-pressed': displayMode === mode,
-            onClick: () => {
-              if (mode === displayMode) return
-              if (mode === 'month') setMonthAnchor(monthStart(anchor === startOfWeek() ? localDate() : anchor))
-              else setAnchor(startOfWeek(monthAnchor === monthStart(localDate()) ? localDate() : monthAnchor))
-              setDisplayMode(mode)
-            },
-          }, mode === 'week' ? '周' : '月'))),
+      }, '返回'),
+      React.createElement('div', null,
+        React.createElement('h1', null, title),
+        subtitle && React.createElement('div', { className: 'cal-period-subtitle' }, subtitle)),
+      view.kind === 'week' && displayMode !== 'year' && React.createElement('nav', { className: 'cal-nav', 'aria-label': '日期导航' },
+        React.createElement('div', { className: 'cal-arrows' },
+        ...[-1, 1].map(direction => React.createElement('button', {
+          key: direction, type: 'button',
+          'aria-label': `${direction < 0 ? '上一' : '下一'}${displayMode === 'month' ? '月' : '周'}`,
+          onClick: () => setFocusedDate(date => displayMode === 'month' ? shiftMonth(date, direction) : addDays(date, direction * 7)),
+        }, React.createElement(direction < 0 ? IconChevronLeft : IconChevronRight)))),
+        React.createElement('button', { type: 'button', className: 'cal-today-button',
+          onClick: () => {
+            setFocusedDate(localDate())
+          },
+        }, '今天'))),
+      React.createElement('div', { className: 'cal-actions' },
+        view.kind === 'week' && React.createElement('div', { className: 'cal-segmented', role: 'group', 'aria-label': '日历视图' },
+          ...(['month', 'week', ...(selectedAcademicCalendar || displayMode === 'year' ? ['year'] as const : [])] as const).map(mode =>
+            React.createElement('button', { key: mode, type: 'button', 'aria-pressed': mode === displayMode, onClick: () => setDisplayMode(mode) },
+              mode === 'month' ? '月' : mode === 'week' ? '周' : '学年'))),
+        view.kind === 'week' && React.createElement(Button, {
+          variant: 'ghost', size: 'sm', className: 'cal-tool-button cal-source-trigger',
+          'aria-label': '日历来源', onClick: () => setDialog({ kind: 'sources' }),
+        }, React.createElement('span', { className: 'cal-source-trigger-label' }, calendarSource === '*' ? '日历来源' : sourceName(calendarSource)),
+          React.createElement(IconChevronDown)),
+        React.createElement(Menu, {
+          open: menuOpen,
+          onClose: () => setMenuOpen(false),
+          items: moreItems,
+          onSelect: (kind: string) => {
+            if (kind === 'refresh') void refresh()
+            else setDialog({ kind })
+          },
+          align: 'end',
+          anchor: React.createElement(Button, {
+            variant: 'ghost', size: 'sm', className: 'cal-tool-button cal-more-button',
+            'aria-label': '更多日历操作', 'aria-haspopup': 'menu', 'aria-expanded': menuOpen,
+            icon: React.createElement(IconEllipsis), onClick: () => setMenuOpen(!menuOpen),
+          }, reminderInbox.unread ? React.createElement('span', { className: 'cal-action-count' }, reminderInbox.unread) : undefined),
+        }),
         React.createElement(Button, {
-          variant: 'outline', size: 'sm',
-          onClick: () => { setAnchor(startOfWeek()); setMonthAnchor(monthStart(localDate())) },
-        }, '今天'),
-        ...[-1, 1].map(direction => {
-          const label = `${direction < 0 ? '上一' : '下一'}${displayMode === 'month' ? '月' : '周'}`
-          return React.createElement(Tooltip, { key: direction, label, side: 'bottom' },
-            React.createElement(Button, {
-              variant: 'ghost', size: 'sm', 'aria-label': label,
-              icon: React.createElement(direction < 0 ? IconChevronLeft : IconChevronRight),
-              onClick: () => displayMode === 'month' ? setMonthAnchor(shiftMonth(monthAnchor, direction)) : setAnchor(addDays(anchor, direction * 7)),
-            }))
-        }))
-      : undefined,
-    React.createElement(Button, {
-      variant: 'primary', size: 'sm', icon: React.createElement(IconPlus),
-      onClick: () => setDialog({ kind: 'create', date: view.kind === 'event' && current ? dateOf(current.start) : createDate }),
-    }, '新建日程'),
-    React.createElement(Menu, {
-      open: menuOpen,
-      onClose: () => setMenuOpen(false),
-      items: menuItems,
-      selectedId: view.kind === 'event' ? `${view.source}\u0000${view.id}` : undefined,
-      onSelect: (id: string) => {
-        const [source, uid] = String(id).split('\u0000')
-        if (events.some((event: any) => event.uid === uid && event.source === source)) openEvent(uid, source)
-      },
-      align: 'end',
-      anchor: React.createElement(Button, {
-        variant: 'ghost', size: 'sm',
-        icon: React.createElement(IconClock),
-        onClick: () => setMenuOpen(!menuOpen),
-      }, '日程', React.createElement(IconChevronDown)),
-    }),
-    React.createElement(Button, {
-      variant: 'ghost', size: 'sm', icon: React.createElement(IconFolderOpen),
-      onClick: () => setDialog({ kind: 'import' }),
-    }, '导入'),
-    React.createElement(Button, {
-      variant: 'ghost', size: 'sm', icon: React.createElement(IconDownload),
-      onClick: () => setDialog({ kind: 'export' }),
-    }, '导出'),
-    React.createElement(Button, { variant: 'ghost', size: 'sm', 'aria-label': '提醒记录', onClick: () => setDialog({ kind: 'reminders' }) },
-      reminderInbox.unread ? `提醒 · ${reminderInbox.unread}` : '提醒'),
-    React.createElement(Tooltip, { label: '刷新', side: 'bottom' },
-      React.createElement(Button, {
-        variant: 'ghost', size: 'sm', 'aria-label': '刷新', disabled: loading,
-        icon: React.createElement(IconRefresh),
-        onClick: () => void refresh(),
-      }))),
-    annotationChoices.length > 0 ? React.createElement('div', { style: { padding: '6px 16px', display: 'flex', gap: 12 } },
-      ...[...new Set(annotationChoices.map((choice: any) => choice.group))].map((group: string) => React.createElement('label', { key: group },
-        group === 'academic-calendar' ? '校历 ' : '背景 ',
-        React.createElement('select', { 'aria-label': group === 'academic-calendar' ? '选择校历' : `选择${group}`,
-          value: annotationChoices.find((choice: any) => choice.group === group && choice.selected)?.id ?? '',
-          disabled: busy,
-          onChange: (event: any) => void run(() => service.selectAnnotations({ group, id: event.target.value || null })),
-        }, React.createElement('option', { value: '' }, '不显示'),
-        ...annotationChoices.filter((choice: any) => choice.group === group).map((choice: any) => React.createElement('option', { key: choice.id, value: choice.id }, choice.label)))))) : undefined,
-    view.kind === 'week' && events.length > 0
-      ? React.createElement('div', { role: 'group', 'aria-label': '筛选日历', style: { display: 'flex', gap: 6, padding: '9px 16px', overflowX: 'auto', flex: '0 0 auto', borderBottom: HAIRLINE } },
-        ...['*', ...new Set(events.map((event: any) => event.source))].map((source: any) => React.createElement(Button, {
-          key: source, size: 'sm', variant: calendarSource === source ? 'outline' : 'ghost', 'aria-pressed': calendarSource === source,
-          onClick: () => setCalendarSource(source), style: { whiteSpace: 'nowrap', borderRadius: 20 },
-        }, source !== '*' ? React.createElement('span', { 'aria-hidden': true, style: { display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: tintOf(source).accent, marginRight: 6 } }) : undefined,
-        source === '*' ? '全部日历' : sourceName(source))),
-        calendarSource !== '*' && calendarSource !== 'manual' && !calendarSource.startsWith('sync:')
-          ? React.createElement(Button, { size: 'sm', variant: 'ghost', disabled: busy, onClick: () => setDialog({ kind: 'delete-calendar', source: calendarSource }), style: { marginLeft: 'auto', whiteSpace: 'nowrap' } }, '删除所选日历')
-          : undefined)
-      : undefined,
+          variant: 'primary', size: 'sm', className: 'cal-primary', icon: React.createElement(IconPlus),
+          onClick: () => setDialog({ kind: 'create', date: view.kind === 'event' && current ? dateOf(current.start) : focusedDate }),
+        }, '新建日程'))),
+    view.kind === 'week' && displayMode !== 'year' && React.createElement(PhaseSummary, { spans: visibleSpans, weekLabel: weekNote }),
     problem
       ? React.createElement('div', {
         style: {
@@ -1927,17 +1419,30 @@ export function createCalendarPage(service: any) {
       },
       React.createElement(IconWarning), problem)
       : undefined,
-    sourceStatuses.length > 0 ? React.createElement('div', { role: 'status', style: { display: 'flex', gap: 12, flexWrap: 'wrap', padding: '6px 16px', fontSize: 12, color: SECONDARY } },
-      ...sourceStatuses.map(item => React.createElement('span', { key: item.source }, `${item.label}：${item.state === 'error' ? '同步失败，保留上次数据' : item.state === 'loading' ? '同步中' : item.state === 'ready' ? '已更新' : '等待同步'}`))) : undefined,
+    pendingSources.length > 0 ? React.createElement('div', { role: 'status', style: { display: 'flex', gap: 12, flexWrap: 'wrap', padding: '6px 16px', fontSize: 12, color: SECONDARY } },
+      ...pendingSources.map(item => React.createElement('span', { key: item.source }, `${item.label}：${item.state === 'error' ? '同步失败，保留上次数据' : item.state === 'loading' ? '同步中' : '等待同步'}`))) : undefined,
+    view.kind === 'week' && displayMode === 'year' && React.createElement(AcademicYear, {
+      focusedDate,
+      spans: selectedAcademicCalendar ? academicSpans : [],
+      onOpenMonth: (date: string) => {
+        setFocusedDate(date)
+        setDisplayMode('month')
+      },
+    }),
     view.kind === 'week'
-      ? React.createElement(displayMode === 'month' ? MonthGrid : WeekGrid, {
-          anchor: displayMode === 'month' ? monthAnchor : anchor,
+      ? displayMode !== 'year' && React.createElement(CalendarCanvas, {
+          mode: displayMode,
+          focusedDate,
           tintOf, occurrenceKeyOf,
           occurrences: visibleOccurrences,
           noteIndex,
           annotations,
           onSelect: (occurrence: any) => setDialog({ kind: 'event', occurrence }),
           onCreate: createAt,
+          onCreateDay: (date: string) => {
+            setFocusedDate(date)
+            setDialog({ kind: 'create', date, allDay: true })
+          },
         })
       : React.createElement(EventPage, {
         key: JSON.stringify([view.source, view.id]),
@@ -1956,6 +1461,58 @@ export function createCalendarPage(service: any) {
           `已取消 ${shortDate(occurrence.occurrenceDate ?? dateOf(occurrence.start))} 的日程`,
         ),
       }),
+    dialog?.kind === 'sources' && React.createElement(Modal, {
+      open: true, size: 'compact', title: '日历来源', closeLabel: '关闭',
+      onClose: () => { if (!busy) setDialog(null) },
+      footer: React.createElement('div', { className: 'cal-dialog-primary' },
+        React.createElement(Button, { variant: 'ghost', size: 'sm', disabled: busy, onClick: () => setDialog(null) }, '完成')),
+    }, React.createElement('div', { className: 'cal-source-list' },
+      ...[...new Set(annotationChoices.map(choice => choice.group as string))].map(group => React.createElement('label', { key: group },
+        group === 'academic-calendar' ? '校历' : '背景',
+        React.createElement('select', {
+          'aria-label': group === 'academic-calendar' ? '选择校历' : `选择${group}`,
+          value: annotationChoices.find(choice => choice.group === group && choice.selected)?.id ?? '',
+          disabled: busy,
+          onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void run(() => service.selectAnnotations({ group, id: event.target.value || null })),
+        }, React.createElement('option', { value: '' }, '不显示'),
+        ...annotationChoices.filter(choice => choice.group === group).map(choice => React.createElement('option', { key: choice.id, value: choice.id }, choice.label))))),
+      React.createElement('label', null, '显示日程',
+        React.createElement('select', {
+          value: calendarSource, disabled: busy,
+          onChange: (event: React.ChangeEvent<HTMLSelectElement>) => {
+            setCalendarSource(event.target.value)
+            if (dialog.deleteSource) setDialog({ kind: 'sources' })
+          },
+        },
+          React.createElement('option', { value: '*' }, '全部日历'),
+          ...[...new Set<string>(events.map((event: any) => event.source))].map(source =>
+            React.createElement('option', { key: source, value: source }, sourceName(source))))),
+      dialog.deleteSource === calendarSource
+        ? React.createElement('div', { className: 'cal-inline-confirm' },
+          React.createElement('p', null, `删除“${sourceName(calendarSource)}”及其中的全部日程？`),
+          React.createElement('p', null, '私人笔记、备注和提醒设置会保留。'),
+          React.createElement('div', { className: 'cal-dialog-primary' },
+            React.createElement(Button, { variant: 'ghost', size: 'sm', disabled: busy, onClick: () => setDialog({ kind: 'sources' }) }, '取消'),
+            React.createElement(Button, {
+              variant: 'outline', size: 'sm', className: 'cal-destructive', disabled: busy,
+              onClick: () => run(() => service.deleteCalendar({ source: calendarSource }), '已删除导入日历，私人笔记与备注已保留')
+                .then(ok => { if (ok) { setCalendarSource('*'); setDialog({ kind: 'sources' }) } }),
+            }, busy ? '正在删除…' : '删除日历')))
+        : calendarSource !== '*' && calendarSource !== 'manual' && !calendarSource.startsWith('sync:') &&
+          React.createElement('div', null,
+            React.createElement(Button, { variant: 'ghost', size: 'sm', className: 'cal-destructive', disabled: busy,
+              onClick: () => setDialog({ kind: 'sources', deleteSource: calendarSource }),
+            }, '删除所选日历')))),
+    dialog?.kind === 'records' && React.createElement(Modal, {
+      open: true, title: '日程记录', closeLabel: '关闭', onClose: () => setDialog(null),
+      footer: React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setDialog(null) }, '完成'),
+    }, recordItems.length === 0 ? React.createElement('p', null, '还没有日程') :
+      React.createElement('div', { style: { display: 'grid', gap: 4 } }, ...recordItems.map(item =>
+        React.createElement(Button, { key: item.id, variant: 'ghost', onClick: () => {
+          const [source, uid] = item.id.split('\u0000')
+          setDialog(null)
+          openEvent(uid, source)
+        } }, item.label)))),
     dialog?.kind === 'event'
       ? React.createElement(EventDialog, {
         occurrence: selectedOccurrence,
@@ -1974,6 +1531,7 @@ export function createCalendarPage(service: any) {
         defaultDate: dialog.date,
         defaultStart: dialog.start,
         defaultEnd: dialog.end,
+        defaultAllDay: dialog.allDay,
         service,
         run,
         onSaved: () => setDialog(null),
@@ -2005,17 +1563,6 @@ export function createCalendarPage(service: any) {
           item.read ? React.createElement(Muted, null, '已读') : React.createElement(Button, { variant: 'outline', size: 'sm', disabled: busy,
             onClick: () => run(() => service.ackReminder({ id: item.id }), '已标为已读'),
           }, '标为已读')))))
-      : undefined,
-    dialog?.kind === 'delete-calendar'
-      ? React.createElement(Modal, {
-        open: true, title: '删除导入日历', closeLabel: '关闭', onClose: () => { if (!busy) setDialog(null) },
-        footer: React.createElement('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: 8 } },
-          React.createElement(Button, { variant: 'ghost', size: 'sm', disabled: busy, onClick: () => setDialog(null) }, '取消'),
-          React.createElement(Button, { variant: 'primary', size: 'sm', disabled: busy, style: { background: 'var(--dsw-alias-state-error-primary, #d4553f)' },
-            onClick: () => run(() => service.deleteCalendar({ source: dialog.source }), '已删除导入日历，私人笔记与备注已保留').then(ok => { if (ok) { setDialog(null); setCalendarSource('*') } }),
-          }, busy ? '正在删除…' : '删除日历')),
-      }, React.createElement('p', null, `确定删除“${sourceName(dialog.source)}”及其中的全部日程？`),
-      React.createElement('p', null, '私人笔记、备注和提醒设置会保留，可通过智能体查看失联笔记。重新导入同一日历后，仍可关联到同编号的日程。'))
       : undefined,
     dialog?.kind === 'export'
       ? React.createElement(ExportDialog, { service, toast: setToast, onClose: () => setDialog(null) })

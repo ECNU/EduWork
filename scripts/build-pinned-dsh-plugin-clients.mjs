@@ -13,6 +13,7 @@ import { verifyMediaTemplate } from './verify-media-template.mjs'
 import { pinnedDshDirectory, verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
 import { readPublishedPackageLocks, verifyPublishedPackageInputs } from './published-package-inputs.mjs'
 import { verifyPluginNotificationConsumers, withPluginNotifications } from './plugin-notification-contract.mjs'
+import { calendarClientLicenseBanner, installCalendarClientDependencies } from '../dsh-plugins/calendar/client-dependencies.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' }, version: { type: 'string' } } })
 if (!values.runtime || !values.dependencies || !values.report || !values.output) throw new Error('Use --runtime <candidate> --dependencies <isolated dependencies> --output <new directory> --report <path>')
@@ -102,10 +103,14 @@ for (const [folder, entry] of clients) {
   const root = join(repository, folder)
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
   await mkdir(join(root, 'lib'), { recursive: true })
+  const calendarBuildDeps = folder === 'dsh-plugins/calendar' ? join(root, 'build-deps') : undefined
+  if (calendarBuildDeps) await installCalendarClientDependencies(calendarBuildDeps)
+  const licenseBanner = calendarBuildDeps ? await calendarClientLicenseBanner(calendarBuildDeps) : ''
   const result = await build({
     absWorkingDir: root, entryPoints: [entry], outfile: 'lib/client.js', bundle: true,
     platform: 'browser', format: 'cjs', target: 'es2022', jsx: 'automatic', minify: true, metafile: true,
-    nodePaths: [join(runtime, 'node_modules'), join(dependencies, 'node_modules')],
+    nodePaths: [join(runtime, 'node_modules'), join(dependencies, 'node_modules'), ...(calendarBuildDeps ? [join(calendarBuildDeps, 'node_modules')] : [])],
+    loader: calendarBuildDeps ? { '.css': 'text' } : undefined,
     external: ['react', 'react/*', 'react-dom', 'react-dom/*', '@deepseek-ai/cordis', '@deepseek-ai/dsh-client-store', '@deepseek-ai/dsh-client-ui-slots', '@deepseek-ai/dsh-client-ui-primitives', '@deepseek-ai/dsh-client-ui-dockkit'],
     define: { 'process.env.NODE_ENV': '"production"', __EDUWORK_PINNED_DSH__: 'true' },
     alias: localAliases,
@@ -121,7 +126,7 @@ for (const [folder, entry] of clients) {
           export default ${JSON.stringify(classes)};` }
       })
     } }],
-    banner: { js: `window.__ModuleLoader__.load({ id: ${JSON.stringify(manifest.name)}, factory: (require) => { var module = { exports: {} }; var exports = module.exports;` },
+    banner: { js: `${licenseBanner}window.__ModuleLoader__.load({ id: ${JSON.stringify(manifest.name)}, factory: (require) => { var module = { exports: {} }; var exports = module.exports;` },
     footer: { js: `const original = module.exports; return { ...original, async apply(...args) { try { return await original.apply(...args); } catch (error) { console.error(${JSON.stringify(manifest.name)}, error?.stack || String(error)); throw error; } } }; } });` },
   })
   report.packages.push({ name: manifest.name, output: join(root, 'lib/client.js'), inputs: Object.keys(result.metafile.inputs).length })

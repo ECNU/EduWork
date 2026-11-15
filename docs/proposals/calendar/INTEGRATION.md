@@ -117,7 +117,7 @@ ctx.effect(() => () => binding.dispose(), 'calendar: detach reminders')
 
 `calendar.changes(signal)` 通过 Runtime 已有的 Remote 逻辑流传递 `{revision}` 失效通知，合并密集变化。它不是一致快照或持久化日志。面板重读当前数据；断线重订阅、卸载取消，来源与个人域写入都能触发刷新。
 
-公版周/月视图共用数据。机构“校历/课表”两个入口、默认视图和来源筛选预设仍待单独实现，不以本接口宣称已完成。
+公版默认打开月历，周／月共享当前日期。机构插件可提供校历，用户在「日历来源」里选择校历和过滤日程。学年时间轴通过 `group: "academic-calendar"` 读取选中提供方的区间；`includeOriginalSpan: true` 请求校历原始日期，提供方可通过 `originalFirstDay` 和 `originalLastDay` 保留被查询范围裁剪的端点。
 
 
 ## 完整实例与教育校历
