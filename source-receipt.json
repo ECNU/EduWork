@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-15T05:42:07.519Z",
-  "fileSetSHA256": "ed90bb81d2ce696ade817c81f2786fd176e9d42c0852471d2320aba516d1e463",
+  "createdAt": "2026-11-15T07:10:04.783Z",
+  "fileSetSHA256": "2b1011be2e0d2d428733915817bfdd8d7a3a5a94aad167537f462920e5ee5597",
   "files": [
     {
       "path": ".gitattributes",
@@ -1341,7 +1341,7 @@
     },
     {
       "path": "dsh-electron/src/portable-import.mjs",
-      "sha256": "f0ef018a61e2e03579da67fcdef5a51279a6ed0c80c6e16d597fff93234a85f8"
+      "sha256": "87228d1bf89db51e823c9bedef0142adbbca9eec8741554f8f80e55ea3927087"
     },
     {
       "path": "dsh-electron/src/portable-updates.mjs",
@@ -1361,7 +1361,7 @@
     },
     {
       "path": "dsh-electron/src/session-header-remap.mjs",
-      "sha256": "96f81db0d3df5cc78cd3b5af8f2cfc2b5e368816244b92c208d591d305d81615"
+      "sha256": "5a4182076c3bfa883e926d1533730641ca403e459e52a3a3ee38b54636b7bdf3"
     },
     {
       "path": "dsh-electron/src/settings-open-request.mjs",
@@ -1569,7 +1569,7 @@
     },
     {
       "path": "dsh-electron/tests/portable-import.test.mjs",
-      "sha256": "af5f6e99bc530aa9e1ba839ec9a5bf4213c4f857befd789157d955a6daa733fa"
+      "sha256": "324b9141871cd020bf5f6f967ec32d791e8834f09f6b34db48f60bff92854813"
     },
     {
       "path": "dsh-electron/tests/portable-updates-startup.test.mjs",

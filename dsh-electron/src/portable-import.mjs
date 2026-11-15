@@ -3,7 +3,7 @@ import { createReadStream } from 'node:fs'
 import { copyFile, mkdir, readFile, readdir, lstat, realpath, rename, rm, rmdir, statfs, writeFile } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { assertSeparateRoots } from './desktop-paths.mjs'
-import { remapSessionLogCwd } from './session-header-remap.mjs'
+import { remapSessionLogCwd, sessionDirectoryCwd } from './session-header-remap.mjs'
 
 // First import of an old portable Electron installation into the installed
 // user directory. The Wails-era updater handshake stays in legacy-migration.mjs.
@@ -169,7 +169,9 @@ export async function buildCopyPlan(source, target) {
   }
   if ((await exists(source.config))?.isFile()) files.push({ sourcePath: source.config, target: 'config/eduwork.jsonc', bytes: (await lstat(source.config)).size, sha256: await fileDigest(source.config) })
   const dataDir = join(source.root, 'data')
-  for (const rel of ['configuration/state.json', 'configuration/eduwork.previous.jsonc', 'state/update-preferences.json', 'state/update-channel-040.json']) {
+  // software-update-preferences.json is the user's on/off choice;
+  // update-preferences.json only records the channel and cannot replace it.
+  for (const rel of ['configuration/state.json', 'configuration/eduwork.previous.jsonc', 'state/update-preferences.json', 'state/update-channel-040.json', 'state/software-update-preferences.json']) {
     if (await exists(join(dataDir, rel))) await addTree(dataDir, 'data', rel)
   }
   if (await exists(join(dataDir, 'state/updates'))) await addTree(dataDir, 'data', 'state/updates')
@@ -190,12 +192,39 @@ async function applyWorkspaceRemap({ stage, namespace, moves }) {
   const applied = []
   const registryPath = join(stage, 'data', namespace, 'dsh/storages/workspace.json')
   const registry = JSON.parse(await readFile(registryPath, 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error }))
+  const sessionsRoot = join(stage, 'data', namespace, 'dsh/sessions')
+  // The lossy project key can map several internal workspaces to one session
+  // directory; those sessions are split by header cwd, not given to the first.
+  const byOldKey = new Map()
+  for (const move of moves) {
+    if (move.missing) continue
+    const key = sessionProjectKey(move.oldPath)
+    if (!byOldKey.has(key)) byOldKey.set(key, [])
+    byOldKey.get(key).push(move)
+  }
   for (const move of moves) {
     if (move.missing) continue
     if (registry?.tables?.workspaces?.[move.id]) registry.tables.workspaces[move.id].path = move.newPath
-    const sessionsRoot = join(stage, 'data', namespace, 'dsh/sessions')
     const oldDir = join(sessionsRoot, sessionProjectKey(move.oldPath)), newDir = join(sessionsRoot, sessionProjectKey(move.newPath))
-    if (await exists(oldDir)) {
+    const shared = byOldKey.get(sessionProjectKey(move.oldPath))
+    if (shared.length > 1) {
+      if (await exists(oldDir)) {
+        for (const name of await readdir(oldDir)) {
+          const sessionDir = join(oldDir, name)
+          if (!(await lstat(sessionDir)).isDirectory()) continue
+          const cwd = await sessionDirectoryCwd(sessionDir)
+          const owner = shared.find(item => item.oldPath === cwd)
+          // Unreadable or foreign sessions stay in the old directory; losing
+          // them silently would be worse than leaving them unassigned.
+          if (!owner) continue
+          const ownerDir = join(sessionsRoot, sessionProjectKey(owner.newPath))
+          await mkdir(ownerDir, { recursive: true })
+          await rename(sessionDir, join(ownerDir, name))
+        }
+        if ((await readdir(oldDir)).length === 0) await rmdir(oldDir)
+      }
+      if (await exists(newDir)) await remapSessionLogCwd(newDir, move.oldPath, move.newPath)
+    } else if (await exists(oldDir)) {
       await rename(oldDir, newDir)
       // The runtime identifies a session by its header cwd; renaming the project
       // directory alone leaves the header pointing at the old workspace.

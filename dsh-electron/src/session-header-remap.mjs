@@ -96,3 +96,31 @@ export async function remapSessionLogCwd(projectDir, oldPath, newPath) {
   }
   return rewritten
 }
+
+function readSessionHeaderCwd(bytes, { compressed }) {
+  let text
+  if (compressed) {
+    const end = firstFrameEnd(bytes)
+    if (end < 0) return null
+    try { text = zstdDecompressSync(bytes.subarray(0, end)).toString('utf8') } catch { return null }
+  } else text = bytes.toString('utf8')
+  const newline = text.indexOf('\n')
+  try {
+    const header = JSON.parse(newline === -1 ? text : text.slice(0, newline))
+    return header?.type === 'session' && typeof header.cwd === 'string' ? header.cwd : null
+  } catch { return null }
+}
+
+// Classify a session subdirectory by its first readable header. Lossy project
+// keys can map two workspaces to one directory, so ownership must come from
+// the header cwd, never from the directory name. Null when nothing is readable.
+export async function sessionDirectoryCwd(sessionDir) {
+  for (const name of await readdir(sessionDir).catch(() => [])) {
+    if (!SESSION_LOG.test(name)) continue
+    const bytes = await readFile(join(sessionDir, name)).catch(() => null)
+    if (!bytes) continue
+    const cwd = readSessionHeaderCwd(bytes, { compressed: name.endsWith('.zstd') })
+    if (cwd !== null) return cwd
+  }
+  return null
+}

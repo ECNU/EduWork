@@ -6,6 +6,7 @@ import { join, sep } from 'node:path'
 import { createHash } from 'node:crypto'
 import { constants, zstdCompressSync, zstdDecompressSync } from 'node:zlib'
 import { importPortableData, inspectPortableSource, buildCopyPlan, sessionProjectKey, windowsSourceProcessLister } from '../src/portable-import.mjs'
+import { softwareUpdateControl } from '../src/software-update-control.mjs'
 
 const distribution = 'eduwork'
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
@@ -48,6 +49,7 @@ async function fixture() {
   await put('config/eduwork.jsonc', '{\n  "schemaVersion": 1\n}\n')
   await put('data/configuration/state.json', '{"initialized":true}')
   await put('data/state/update-preferences.json', '{"automaticUpdates":false}')
+  await put('data/state/software-update-preferences.json', '{"schemaVersion":1,"enabled":false}\n')
   await put('data/state/updates/transactions/0.4.13/health.ok', 'ok\n')
   await put('sample-workspace-internal/README.md', '# internal workspace\n')
   await mkdir(externalPath, { recursive: true })
@@ -96,6 +98,7 @@ test('normal import copies the allowlist, remaps the internal workspace and neve
     assert.equal(await read('data/eduwork-electron/browser/credentials.encrypted'), 'v10-encrypted-bytes')
     assert.equal(await read('config/eduwork.jsonc'), '{\n  "schemaVersion": 1\n}\n')
     assert.equal(await read('data/state/update-preferences.json'), '{"automaticUpdates":false}')
+    assert.equal(await read('data/state/software-update-preferences.json'), '{"schemaVersion":1,"enabled":false}\n')
     assert.equal(await read('data/configuration/state.json'), '{"initialized":true}')
     assert.equal(await read('workspaces/sample-workspace-internal/README.md'), '# internal workspace\n')
     for (const absent of ['data/eduwork-electron/dsh/logs', 'data/eduwork-electron/dsh/profiles/desktop-017/cordis.yml', 'data/eduwork-electron/dsh/profiles/desktop-017/pnpm-lock.yaml', 'data/eduwork-electron/browser/Cache', 'data/eduwork-electron/browser/GPUCache']) {
@@ -383,5 +386,96 @@ test('the imported session header cwd is remapped so the runtime identity check 
     // Header frame now names the new workspace; the event frame is untouched.
     assert.equal(zstdDecompressSync(imported.subarray(0, headerFrame.length)).toString('utf8'), headerLine(newPath))
     assert.deepEqual(imported.subarray(headerFrame.length), eventFrame)
+  } finally { await rm(base, { recursive: true, force: true }) }
+})
+
+test('colliding project keys split sessions by header cwd instead of giving all to the first workspace', async () => {
+  const { base, source, target, internalPath } = await fixture()
+  try {
+    // The upstream encoding collapses separator runs, so these two distinct
+    // internal workspaces share one session directory key.
+    const pathA = join(source, 'Projects/Team/Code'), pathB = join(source, 'Projects/Team-Code')
+    assert.equal(sessionProjectKey(pathA), sessionProjectKey(pathB))
+    for (const [path, title] of [[pathA, 'A'], [pathB, 'B']]) {
+      await mkdir(path, { recursive: true })
+      await writeFile(join(path, 'README.md'), `# ${title}\n`)
+    }
+    const registryPath = join(source, 'data/eduwork-electron/dsh/storages/workspace.json')
+    const registry = JSON.parse(await readFile(registryPath, 'utf8'))
+    delete registry.tables.workspaces['ws-internal']
+    const stamp = '2026-11-14T00:00:00.000Z'
+    registry.tables.workspaces['ws-a'] = { path: pathA, title: 'A', sessionIds: ['session-a'], createdAt: stamp, updatedAt: stamp }
+    registry.tables.workspaces['ws-b'] = { path: pathB, title: 'B', sessionIds: ['session-b'], createdAt: stamp, updatedAt: stamp }
+    registry.global.workspaceIds = ['ws-a', 'ws-b', 'ws-external']
+    await writeFile(registryPath, JSON.stringify(registry, null, 2))
+    await rm(join(source, `data/eduwork-electron/dsh/sessions/${sessionProjectKey(internalPath)}`), { recursive: true, force: true })
+    const checksum = { params: { [constants.ZSTD_c_checksumFlag]: 1 } }
+    const frame = text => zstdCompressSync(Buffer.from(text, 'utf8'), checksum)
+    const headerLine = (id, cwd) => JSON.stringify({ type: 'session', version: 4, id, createdAt: 1794645447166, cwd, isSeeded: false, delegationDepth: 0, agentPreset: 'standard' }) + '\n'
+    const eventA = frame('{"type":"event","seq":1,"kind":"message","payload":"a"}\n')
+    const eventB = frame('{"type":"event","seq":1,"kind":"message","payload":"b"}\n')
+    const shared = join(source, `data/eduwork-electron/dsh/sessions/${sessionProjectKey(pathA)}`)
+    await mkdir(join(shared, 'session-a'), { recursive: true })
+    await writeFile(join(shared, 'session-a/session.v4.jsonl.zstd'), Buffer.concat([frame(headerLine('session-a', pathA)), eventA]))
+    await mkdir(join(shared, 'session-b'), { recursive: true })
+    await writeFile(join(shared, 'session-b/session.v4.jsonl.zstd'), Buffer.concat([frame(headerLine('session-b', pathB)), eventB]))
+    // A torn session cannot be classified; it must survive in place, not vanish.
+    await mkdir(join(shared, 'session-corrupt'), { recursive: true })
+    await writeFile(join(shared, 'session-corrupt/session.v4.jsonl.zstd'), 'torn bytes')
+    const projcache = (id, cwd) => JSON.stringify({ version: 7, record: { identity: { formatVersion: 4, cwd }, rows: { workingDirectory: { ver: 1, seq: 1, val: cwd } } } }, null, 2)
+    const cacheDir = join(source, 'data/eduwork-electron/dsh/storages/session_projcache/sessions')
+    await writeFile(join(cacheDir, 'session-a.json'), projcache('session-a', pathA))
+    await writeFile(join(cacheDir, 'session-b.json'), projcache('session-b', pathB))
+    const before = await treeSnapshot(source)
+    const receipt = await run({ sourceRoot: source, targetRoot: target })
+    assert.deepEqual(receipt.workspacesMoved.map(move => move.id).sort(), ['ws-a', 'ws-b'])
+    const newA = join(target, 'workspaces', 'Code'), newB = join(target, 'workspaces', 'Team-Code')
+    const sessionsRoot = join(target, 'data/eduwork-electron/dsh/sessions')
+    const keyA = sessionProjectKey(newA), keyB = sessionProjectKey(newB)
+    assert.notEqual(keyA, keyB)
+    assert.deepEqual((await readdir(join(sessionsRoot, keyA))).sort(), ['session-a'])
+    assert.deepEqual((await readdir(join(sessionsRoot, keyB))).sort(), ['session-b'])
+    assert.deepEqual(await readdir(join(sessionsRoot, sessionProjectKey(pathA))), ['session-corrupt'])
+    const importedA = await readFile(join(sessionsRoot, keyA, 'session-a/session.v4.jsonl.zstd'))
+    const headerA = frame(headerLine('session-a', newA))
+    assert.equal(zstdDecompressSync(importedA.subarray(0, headerA.length)).toString('utf8'), headerLine('session-a', newA))
+    assert.deepEqual(importedA.subarray(headerA.length), eventA)
+    const importedB = await readFile(join(sessionsRoot, keyB, 'session-b/session.v4.jsonl.zstd'))
+    const headerB = frame(headerLine('session-b', newB))
+    assert.equal(zstdDecompressSync(importedB.subarray(0, headerB.length)).toString('utf8'), headerLine('session-b', newB))
+    assert.deepEqual(importedB.subarray(headerB.length), eventB)
+    assert.equal(await readFile(join(sessionsRoot, sessionProjectKey(pathA), 'session-corrupt/session.v4.jsonl.zstd'), 'utf8'), 'torn bytes')
+    const after = JSON.parse(await readFile(join(target, 'data/eduwork-electron/dsh/storages/workspace.json'), 'utf8'))
+    assert.equal(after.tables.workspaces['ws-a'].path, newA)
+    assert.equal(after.tables.workspaces['ws-b'].path, newB)
+    for (const [id, newPath] of [['session-a', newA], ['session-b', newB]]) {
+      const cache = JSON.parse(await readFile(join(target, `data/eduwork-electron/dsh/storages/session_projcache/sessions/${id}.json`), 'utf8'))
+      assert.equal(cache.record.identity.cwd, newPath)
+      assert.equal(cache.record.rows.workingDirectory.val, newPath)
+    }
+    assert.deepEqual(await treeSnapshot(source), before)
+  } finally { await rm(base, { recursive: true, force: true }) }
+})
+
+test('the migrated software-update choice keeps the backend off even when defaults enable it', async () => {
+  const { base, source, target } = await fixture()
+  try {
+    await run({ sourceRoot: source, targetRoot: target })
+    // The channel preference alone must not stand in for the user's switch.
+    const prefs = join(target, 'data/state/software-update-preferences.json')
+    const before = await readFile(prefs, 'utf8')
+    const starts = []
+    const control = await softwareUpdateControl({ dataRoot: join(target, 'data'), version: '0.4.13', defaultEnabled: true, supported: true,
+      start: async options => { starts.push(options); return {
+        action: async () => ({ shell: 'electron', version: '0.4.13', phase: 'ready', update: { enabled: true, state: 'up_to_date' } }),
+        close: async () => {},
+      } } })
+    assert.equal(starts.length, 0)
+    const status = await control.action('status')
+    assert.equal(status.update.userEnabled, false)
+    assert.equal(status.phase, 'disabled')
+    await assert.rejects(control.action('download-update'), /已关闭/)
+    await control.close()
+    assert.equal(await readFile(prefs, 'utf8'), before)
   } finally { await rm(base, { recursive: true, force: true }) }
 })
