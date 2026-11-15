@@ -44,11 +44,18 @@ func createDesktopShortcut(target string) error {
 	if err != nil {
 		return err
 	}
-	return saveShortcut(filepath.Join(desktop, identity.Product+".lnk"), target)
+	if err := saveShortcut(filepath.Join(desktop, identity.Product+".lnk"), target); err != nil {
+		return err
+	}
+	return saveShortcutWithArguments(filepath.Join(desktop, identity.Product+" TUI.lnk"), target, "--tui")
 }
 
 // Caller owns the UI thread's initialized COM apartment.
 func saveShortcut(path, target string) error {
+	return saveShortcutWithArguments(path, target, "")
+}
+
+func saveShortcutWithArguments(path, target, arguments string) error {
 	target, err := filepath.EvalSymlinks(target)
 	if err != nil {
 		return err
@@ -79,6 +86,16 @@ func saveShortcut(path, target string) error {
 		}
 		result, _, _ := syscall.SyscallN(property.method, uintptr(unsafe.Pointer(object)), uintptr(unsafe.Pointer(value)))
 		if err := shortcutResult("set shortcut "+property.name, result); err != nil {
+			return err
+		}
+	}
+	if arguments != "" {
+		value, err := windows.UTF16PtrFromString(arguments)
+		if err != nil {
+			return err
+		}
+		result, _, _ := syscall.SyscallN(methods.SetArguments, uintptr(unsafe.Pointer(object)), uintptr(unsafe.Pointer(value)))
+		if err := shortcutResult("set shortcut arguments", result); err != nil {
 			return err
 		}
 	}
