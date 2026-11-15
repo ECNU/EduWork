@@ -1,5 +1,5 @@
 /** 日历插件的客户端入口；由工作台注册面板、提供控件和主题。 */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input, Menu, Modal as PrimitiveModal, Switch, Tag, Toast, Tooltip, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import * as primitives from '@deepseek-ai/dsh-client-ui-primitives'
 import calendarRemote from '../lib/typert.remote-client.js'
@@ -231,209 +231,203 @@ function IconButton({ label, icon, onClick, danger, disabled }: any) {
     }))
 }
 
-/** The details of one occurrence, and every change the panel can make to it. */
+/** 在同一个弹窗内查看日程、修改单次安排、写笔记或确认删除。 */
 function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, sourceName }: any) {
-  const [editing, setEditing] = useState(false)
-  const [confirming, setConfirming] = useState(false)
-  const [form, setForm] = useState({
-    start: occurrence?.start ?? '',
-    end: occurrence?.end ?? '',
-    location: occurrence?.location ?? '',
-  })
-  // The reader's own note about this one class, kept apart from anything the
-  // school provided. It is edited on its own and saved on its own, so writing a
-  // note can never rewrite a school record and a school sync cannot touch it.
-  const [noteDraft, setNoteDraft] = useState<string>(note ?? '')
-  const [writingNote, setWritingNote] = useState(false)
-  const [savingNote, setSavingNote] = useState(false)
+  const [mode, setMode] = useState<'details' | 'schedule' | 'note' | 'delete'>('details')
+  const [form, setForm] = useState({ start: '', end: '', location: '' })
+  const [noteDraft, setNoteDraft] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
   const [showPersonal, setShowPersonal] = useState(false)
-  useEffect(() => {
-    setEditing(false)
-    setConfirming(false)
-    setNoteDraft(note ?? '')
-    setWritingNote(false)
-    setForm({ start: occurrence?.start ?? '', end: occurrence?.end ?? '', location: occurrence?.location ?? '' })
-  }, [occurrenceKeyOf(occurrence)])
-  useEffect(() => { if (!writingNote) setNoteDraft(note ?? '') }, [note, writingNote])
-  useEffect(() => { if (!editing) setForm({ start: occurrence?.start ?? '', end: occurrence?.end ?? '', location: occurrence?.location ?? '' }) }, [occurrence?.start, occurrence?.end, occurrence?.location, editing])
+  const formId = useId()
+  const restoreFocus = useRef<'schedule' | 'note' | 'delete' | null>(null)
+  const scheduleButton = useRef<HTMLButtonElement | null>(null)
+  const noteButton = useRef<HTMLButtonElement | null>(null)
+  const deleteButton = useRef<HTMLButtonElement | null>(null)
+
+  useLayoutEffect(() => {
+    if (mode !== 'details') return
+    const target = restoreFocus.current
+    restoreFocus.current = null
+    if (target === 'schedule') scheduleButton.current?.focus()
+    if (target === 'note') noteButton.current?.focus()
+    if (target === 'delete') deleteButton.current?.focus()
+  }, [mode])
 
   if (!occurrence) return null
-  const date = occurrence.occurrenceDate ?? dateOf(occurrence.start)
+  const startDate = dateOf(occurrence.start)
+  const date = occurrence.occurrenceDate ?? startDate
   const series = Boolean(event?.recurrence)
-  // A whole-day entry has no clock to move, so its dialog points at the page that
-  // owns the date and the place instead of offering two blank time fields.
   const wholeDay = clockOf(occurrence.start) === ''
-  const changed = form.start !== (occurrence.start ?? '') || form.end !== (occurrence.end ?? '') || form.location !== (occurrence.location ?? '')
-  const patch = withoutEmpty({
-    start: form.start !== occurrence.start ? form.start : undefined,
-    end: form.end !== (occurrence.end ?? '') ? form.end : undefined,
-    location: form.location !== (occurrence.location ?? '') ? form.location : undefined,
-  })
-
-  /**
-   * A series keeps one record per rule and marks the exceptions, so a change to
-   * a single occurrence of one is an override. A one-off entry has no series to
-   * keep in step: an override there would be a `RECURRENCE-ID` on a `VEVENT`
-   * without `RRULE`, which RFC 5545 does not allow, so the record itself is what
-   * gets edited.
-   */
-  const save = () => (series
-    ? service.applyOverride({ uid: occurrence.uid, date, patch, source: occurrence.source })
-    : service.updateEvent({ uid: occurrence.uid, source: occurrence.source, patch: {
-      ...(form.start !== occurrence.start ? { start: form.start } : {}),
-      ...(form.end !== (occurrence.end ?? '') ? { end: form.end || null } : {}),
-      ...(form.location !== (occurrence.location ?? '') ? { location: form.location || null } : {}),
-    } }))
-
-  const quickActions = []
-  const footerActions = []
-  if (!editing) {
-    quickActions.push(React.createElement(Button, {
-      key: 'when', variant: 'ghost', size: 'sm', icon: React.createElement(IconClock),
-      onClick: () => (wholeDay && event ? onEdit(event.uid, event.source) : setEditing(true)),
-    }, wholeDay ? '改日期或地点' : series ? '改期或改地点' : '改时间或地点'))
+  const modal = { open: true, size: 'detail' as const, className: 'cal-dialog-event', closeLabel: '关闭', onClose }
+  const cancel = () => {
+    if (mode === 'details') return
+    restoreFocus.current = mode
+    setMode('details')
   }
-  quickActions.push(React.createElement(Button, {
-    key: 'note', variant: 'ghost', size: 'sm',
-    onClick: () => setWritingNote(!writingNote),
-  }, note ? '改笔记' : '写笔记'))
-  quickActions.push(React.createElement(Button, {
-    key: 'personal', variant: 'ghost', size: 'sm', 'aria-expanded': showPersonal, onClick: () => setShowPersonal(!showPersonal),
-  }, showPersonal ? '收起个人设置' : '更多个人设置'))
-  // The dialog speaks for one occurrence; the title, the date and the repeat
-  // rule belong to the record, and the record has a page of its own.
-  if (occurrence.overridden) {
-    footerActions.push(React.createElement(Button, {
-      key: 'undo', variant: 'ghost', size: 'sm', disabled: false,
-      onClick: () => run(() => service.removeOverride({ uid: occurrence.uid, date, source: occurrence.source }), '已恢复原定安排').then(ok => ok && onClose()),
-    }, '撤销改期'))
+
+  const perform = async (action: () => Promise<unknown>, success: string, done: () => void) => {
+    if (isSaving) return
+    setIsSaving(true)
+    try {
+      if (await run(action, success)) done()
+    } finally {
+      setIsSaving(false)
+    }
   }
-  if (series) {
-    footerActions.push(React.createElement(Button, {
-      key: 'cancel', variant: 'ghost', size: 'sm',
-      onClick: () => run(() => service.cancelOccurrence({ uid: occurrence.uid, date, source: occurrence.source }), `已取消：${shortDate(date)}`).then(ok => ok && onClose()),
-    }, '取消这一次'))
-  } else {
-    footerActions.push(React.createElement(Button, {
-      key: 'delete', variant: 'ghost', size: 'sm',
-      className: 'cal-destructive',
-      onClick: () => setConfirming(true),
-    }, '删除日程'))
+  const cancelButton = (autoFocus = false) => React.createElement(Button, {
+    variant: 'ghost', disabled: isSaving, autoFocus, onClick: cancel,
+  }, '取消')
+
+  if (mode === 'schedule') {
+    const patch = withoutEmpty({
+      start: form.start !== occurrence.start ? form.start : undefined,
+      end: form.end !== (occurrence.end ?? '') ? form.end : undefined,
+      location: form.location !== (occurrence.location ?? '') ? form.location : undefined,
+    })
+    // 重复日程的改期属于单次例外，单次日程直接更新原记录。
+    const save = () => series
+      ? service.applyOverride({ uid: occurrence.uid, date, patch, source: occurrence.source })
+      : service.updateEvent({ uid: occurrence.uid, source: occurrence.source, patch: {
+        ...(form.start !== occurrence.start ? { start: form.start } : {}),
+        ...(form.end !== (occurrence.end ?? '') ? { end: form.end || null } : {}),
+        ...(form.location !== (occurrence.location ?? '') ? { location: form.location || null } : {}),
+      } })
+    const canSave = form.start !== '' && Object.keys(patch).length > 0 && (series || event)
+
+    return React.createElement(Modal, {
+      ...modal,
+      title: series ? '调整这次日程' : '修改时间和地点',
+      description: occurrence.title,
+      footer: React.createElement('div', { className: 'cal-dialog-primary' },
+        cancelButton(),
+        React.createElement(Button, {
+          variant: 'primary', type: 'submit', form: formId, disabled: !canSave || isSaving,
+        }, isSaving ? '保存中…' : '保存')),
+    }, React.createElement('form', {
+      id: formId, className: 'cal-event-form',
+      onSubmit: (submit: React.FormEvent<HTMLFormElement>) => {
+        submit.preventDefault()
+        if (canSave) void perform(save, series ? '已保存这次调整' : '已保存修改', onClose)
+      },
+    },
+    React.createElement('div', { className: 'cal-event-datetime' },
+      React.createElement(Field, { label: '开始' }, React.createElement(Input, {
+        type: 'datetime-local', value: form.start, required: true, autoFocus: true, disabled: isSaving,
+        onChange: (input: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, start: input.target.value }),
+      })),
+      React.createElement(Field, { label: '结束' }, React.createElement(Input, {
+        type: 'datetime-local', value: form.end, disabled: isSaving,
+        onChange: (input: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, end: input.target.value }),
+      }))),
+    React.createElement(Field, { label: '地点' }, React.createElement(Input, {
+      value: form.location, disabled: isSaving,
+      onChange: (input: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, location: input.target.value }),
+    })),
+    series && React.createElement('p', { className: 'cal-event-context' }, '仅修改这一次，重复规则保持不变。')))
+  }
+
+  if (mode === 'note') {
+    const isEmpty = noteDraft.trim() === ''
+    return React.createElement(Modal, {
+      ...modal,
+      title: note ? '编辑笔记' : '写笔记',
+      description: occurrence.title,
+      footer: React.createElement('div', { className: 'cal-dialog-primary' },
+        cancelButton(),
+        React.createElement(Button, {
+          variant: 'primary', disabled: isSaving || noteDraft === (note ?? ''),
+          onClick: () => perform(
+            () => isEmpty
+              ? service.removeNote(noteRefOf(occurrence))
+              : service.putNote({ ...noteRefOf(occurrence), text: noteDraft }),
+            isEmpty ? '已清空笔记' : '笔记已保存', cancel,
+          ),
+        }, '保存笔记')),
+    }, React.createElement('div', { className: 'cal-event-form' },
+      React.createElement(Field, { label: '我的笔记' }, React.createElement('textarea', {
+        className: 'cal-event-note-input', value: noteDraft, rows: 4, spellCheck: false, autoFocus: true,
+        disabled: isSaving, onChange: (input: React.ChangeEvent<HTMLTextAreaElement>) => setNoteDraft(input.target.value),
+      })),
+      React.createElement('p', { className: 'cal-event-context' }, '这条私人笔记仅关联本次日程。')))
+  }
+
+  if (mode === 'delete') {
+    return React.createElement(Modal, {
+      ...modal,
+      title: '删除这条日程？',
+      footer: React.createElement('div', { className: 'cal-dialog-primary' },
+        cancelButton(true),
+        React.createElement(Button, {
+          variant: 'outline', className: 'cal-destructive', disabled: isSaving,
+          onClick: () => perform(
+            () => service.deleteEvent({ uid: occurrence.uid, source: occurrence.source }),
+            '已删除这条日程', onClose,
+          ),
+        }, '删除')),
+    }, React.createElement('p', { className: 'cal-event-delete-copy' }, `“${occurrence.title}”将从日历中移除。`))
   }
 
   return React.createElement(Modal, {
-    open: true,
-    size: 'detail',
-    onClose,
+    ...modal,
     title: occurrence.title,
-    closeLabel: '关闭',
-    description: series ? seriesSummary(event) : undefined,
-    footer: confirming
-      ? React.createElement('div', { className: 'cal-dialog-actions' },
-        React.createElement('span', { className: 'cal-delete-question', role: 'status' }, '确定删除这条日程？'),
-        React.createElement('div', { className: 'cal-dialog-primary' },
-          React.createElement(Button, { variant: 'ghost', size: 'sm', autoFocus: true, onClick: () => setConfirming(false) }, '取消'),
-          React.createElement(Button, {
-            variant: 'outline', size: 'sm', className: 'cal-destructive',
-            onClick: async () => {
-              if (await run(() => service.deleteEvent({ uid: occurrence.uid, source: occurrence.source }), '已删除这条日程')) onClose()
-            },
-          }, '删除')))
-      : React.createElement('div', { className: 'cal-dialog-actions' },
-        React.createElement('div', { className: 'cal-dialog-secondary' }, ...footerActions),
-        event && React.createElement('div', { className: 'cal-dialog-primary' },
-          React.createElement(Button, {
-            variant: 'outline', size: 'sm', onClick: () => onEdit(event.uid, event.source),
-          }, '编辑日程信息'))),
-  },
-  React.createElement('div', { className: 'cal-event-dialog-body' },
+    footer: React.createElement('div', { className: 'cal-dialog-actions' },
+      React.createElement('div', { className: 'cal-dialog-secondary' },
+        occurrence.overridden && React.createElement(Button, {
+          variant: 'ghost',
+          onClick: () => perform(
+            () => service.removeOverride({ uid: occurrence.uid, date, source: occurrence.source }),
+            '已恢复原定安排', onClose,
+          ),
+        }, '撤销改期'),
+        series ? React.createElement(Button, {
+          variant: 'ghost',
+          onClick: () => perform(
+            () => service.cancelOccurrence({ uid: occurrence.uid, date, source: occurrence.source }),
+            `已取消：${shortDate(date)}`, onClose,
+          ),
+        }, '取消这一次') : React.createElement(Button, {
+          variant: 'ghost', className: 'cal-destructive', ref: deleteButton,
+          onClick: () => setMode('delete'),
+        }, '删除日程')),
+      event && React.createElement('div', { className: 'cal-dialog-primary' },
+        React.createElement(Button, { variant: 'outline', onClick: () => onEdit(event.uid, event.source) }, '编辑日程信息'))),
+  }, React.createElement('div', { className: 'cal-event-dialog-body' },
     React.createElement('div', { className: 'cal-event-facts' },
       React.createElement('div', { className: 'cal-event-when' },
-      React.createElement(IconClock, { 'aria-hidden': true }),
-      React.createElement('span', null,
-        `${monthOf(dateOf(occurrence.start))}${dayNumber(dateOf(occurrence.start))}日 ${weekdayOf(dateOf(occurrence.start))} ${clockRange(occurrence)}`),
-      occurrence.overridden ? React.createElement(Tag, { tone: 'info' }, '已改期') : undefined,
-      series ? React.createElement(Tag, { tone: 'outline' }, '重复日程中的一次') : undefined),
+        React.createElement(IconClock, { 'aria-hidden': true }),
+        React.createElement('span', null, `${monthOf(startDate)}${dayNumber(startDate)}日 ${weekdayOf(startDate)} ${clockRange(occurrence)}`),
+        occurrence.overridden && React.createElement(Tag, { tone: 'info' }, '已改期')),
       React.createElement('div', { className: 'cal-event-meta' },
         occurrence.location && React.createElement('span', null, `地点：${occurrence.location}`),
-        event?.source && React.createElement('span', null, `日历：${sourceName(event.source)}`))),
-    React.createElement('div', { className: 'cal-event-quick' }, ...quickActions),
-    occurrence.description
-      ? React.createElement('div', null,
-        React.createElement(Muted, { style: { display: 'block', marginBottom: 2 } },
-          event?.source && event.source !== 'manual' ? `日历备注（${sourceName(event.source)}）` : '日程备注'),
-        React.createElement('div', { style: { fontSize: 12, color: SECONDARY, whiteSpace: 'pre-wrap' } }, occurrence.description))
-      : undefined,
-    // The reader's note about this class. It follows the class when the school
-    // moves it, which is why it is shown with the occurrence rather than the
-    // record, and why it lives outside the school's own fields.
-    note && !writingNote
-      ? React.createElement('div', {
-        style: { whiteSpace: 'pre-wrap', fontSize: 13 },
-      },
-      React.createElement(Muted, { style: { display: 'block', marginBottom: 3 } }, '我的笔记'),
-      note)
-      : undefined,
-    writingNote
-      ? React.createElement('div', { className: 'cal-event-edit' },
-      React.createElement(Field, { label: '我的笔记', hint: '只属于这次日程。改期后保留，独立于日程备注，不随 ICS 导出。' },
-        React.createElement('textarea', {
-          value: noteDraft, rows: 4, spellCheck: false, autoFocus: true, disabled: savingNote,
-          placeholder: '例如：期末要背 P187',
-          onChange: (event: any) => setNoteDraft(event.target.value),
-          style: {
-            width: '100%', boxSizing: 'border-box', padding: '6px 8px', borderRadius: 8, resize: 'vertical',
-            border: CARD_BORDER, background: 'var(--dsw-alias-bg-layer-1, #fff)', color: PRIMARY, fontSize: 13,
-            fontFamily: 'inherit', lineHeight: 1.5,
-          },
-        })),
-      React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
-        React.createElement(Button, {
-          variant: 'primary', size: 'sm',
-          disabled: savingNote || noteDraft === (note ?? ''),
-          onClick: async () => {
-            if (savingNote) return
-            setSavingNote(true)
-            try {
-              const ok = await run(
-                () => (noteDraft.trim() === ''
-                  ? service.removeNote(noteRefOf(occurrence))
-                  : service.putNote({ ...noteRefOf(occurrence), text: noteDraft })),
-                noteDraft.trim() === '' ? '已清空笔记' : '笔记已保存',
-              )
-              if (ok) setWritingNote(false)
-            } finally { setSavingNote(false) }
-          },
-        }, '保存笔记'),
-        React.createElement(Button, { variant: 'ghost', size: 'sm', disabled: savingNote, onClick: () => { setNoteDraft(note ?? ''); setWritingNote(false) } }, '取消'),
-        noteDraft !== (note ?? '') ? React.createElement(Muted, null, '笔记只属于这次日程') : undefined))
-      : undefined,
-    showPersonal ? React.createElement(PersonalSettings, { identity: noteRefOf(occurrence), service, run, Field }) : undefined,
-    editing
-      ? React.createElement('div', { className: 'cal-event-edit' },
-      React.createElement(Field, { label: '开始' },
-        React.createElement(Input, {
-          type: 'datetime-local', value: form.start,
-          onChange: (event: any) => setForm({ ...form, start: event.target.value }),
-        })),
-      React.createElement(Field, { label: '结束', hint: '留空表示沿用原本的时长' },
-        React.createElement(Input, {
-          type: 'datetime-local', value: form.end,
-          onChange: (event: any) => setForm({ ...form, end: event.target.value }),
-        })),
-      React.createElement(Field, { label: '地点' },
-        React.createElement(Input, {
-          value: form.location, placeholder: '留空表示沿用原来的地点',
-          onChange: (event: any) => setForm({ ...form, location: event.target.value }),
-        })),
-      React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
-        React.createElement(Button, {
-          variant: 'primary', size: 'sm', disabled: Object.keys(patch).length === 0 || (!series && !event),
-          onClick: () => run(save, series ? '已保存这次调整' : '已保存修改').then(ok => ok && onClose()),
-        }, '保存'),
-        React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setEditing(false) }, '取消'),
-        React.createElement(Muted, null, series ? '只改这一次，系列其他日期不受影响' : '只改这一条日程')))
-      : undefined))
+        event?.source && React.createElement('span', null, `日历：${sourceName(event.source)}`),
+        series && React.createElement('span', null, seriesSummary(event)))),
+    occurrence.description && React.createElement('div', { className: 'cal-event-text' },
+      React.createElement('span', { className: 'cal-event-context' },
+        event?.source && event.source !== 'manual' ? `日历备注（${sourceName(event.source)}）` : '日程备注'),
+      React.createElement('p', null, occurrence.description)),
+    note && React.createElement('div', { className: 'cal-event-text' },
+      React.createElement('span', { className: 'cal-event-context' }, '我的笔记'),
+      React.createElement('p', null, note)),
+    React.createElement('div', { className: 'cal-event-quick' },
+      React.createElement(Button, {
+        variant: 'ghost', size: 'sm', ref: scheduleButton,
+        onClick: () => {
+          if (wholeDay && event) {
+            onEdit(event.uid, event.source)
+            return
+          }
+          setForm({ start: occurrence.start, end: occurrence.end ?? '', location: occurrence.location ?? '' })
+          setMode('schedule')
+        },
+      }, wholeDay ? '改日期或地点' : series ? '改期或改地点' : '改时间或地点'),
+      React.createElement(Button, {
+        variant: 'ghost', size: 'sm', ref: noteButton,
+        onClick: () => { setNoteDraft(note ?? ''); setMode('note') },
+      }, note ? '改笔记' : '写笔记'),
+      React.createElement(Button, {
+        variant: 'ghost', size: 'sm', 'aria-expanded': showPersonal, onClick: () => setShowPersonal(!showPersonal),
+      }, showPersonal ? '收起个人设置' : '更多个人设置')),
+    showPersonal && React.createElement(PersonalSettings, { identity: noteRefOf(occurrence), service, run, Field })))
 }
 
 /** Read a dropped or chosen file as text, with the few checks a calendar import needs. */

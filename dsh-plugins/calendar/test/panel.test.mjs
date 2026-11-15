@@ -295,7 +295,7 @@ test('a note written through the panel reaches the personal layer and survives t
 
         const editor = container.descendants().find(element => element.localName === 'textarea')
         assert.ok(editor, 'the dialog opened a note editor')
-        assert.match(editor.getAttribute('placeholder') ?? '', /P187/, 'the editor says what it is for')
+        assert.match(editor.parentNode.textContent, /我的笔记/, 'the editor has a visible label')
         // React keeps a handler in its own props object on the node rather than as
         // a DOM property, so that is where the editor's wiring is read from.
         const propsKey = Object.keys(editor).find(name => name.startsWith('__reactProps$'))

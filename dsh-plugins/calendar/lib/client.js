@@ -24102,8 +24102,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		//#region node_modules/fullcalendar/themes/monarch/theme.css.js
 		var theme_css_default = ".fc-monarch-n5m {\n  font-size: 16px;\n  line-height: 1.5;\n  --fc-monarch-border-style: solid;\n}\n\n.fc-monarch-Z9U {\n  appearance: button;\n  font: inherit;\n  font-feature-settings: inherit;\n  font-variation-settings: inherit;\n  letter-spacing: inherit;\n  color: inherit;\n  opacity: 1;\n  background-color: #0000;\n  border-radius: 0;\n  margin: 0;\n  border: 0;\n  padding: 0\n}\n\n.fc-monarch-JiE {\n  color: inherit;\n  text-decoration: inherit;\n}\n\n.fc-monarch-1EY {\n  position: absolute\n}\n\n.fc-monarch-eYX {\n  position: relative\n}\n\n.fc-monarch-MaV {\n  inset-inline: 0\n}\n\n.fc-monarch-AWB {\n  inset-block: 0\n}\n\n.fc-monarch-11a {\n  inset-inline-start: -4px\n}\n\n.fc-monarch-0fm {\n  inset-inline-start: -8px\n}\n\n.fc-monarch-4oC {\n  inset-inline-start: -12px\n}\n\n.fc-monarch-rbS {\n  inset-inline-start: 0\n}\n\n.fc-monarch-tHH {\n  inset-inline-start: 4px\n}\n\n.fc-monarch-Tuc {\n  inset-inline-end: -4px\n}\n\n.fc-monarch-eDA {\n  inset-inline-end: -8px\n}\n\n.fc-monarch-aYN {\n  inset-inline-end: 8px\n}\n\n.fc-monarch-dnf {\n  inset-inline-end: -3px\n}\n\n.fc-monarch-YDC {\n  top: -4px\n}\n\n.fc-monarch-uqG {\n  top: -16px\n}\n\n.fc-monarch-Fn5 {\n  top: -20px\n}\n\n.fc-monarch-DGM {\n  top: -1px\n}\n\n.fc-monarch-2ik {\n  top: 2px\n}\n\n.fc-monarch-1b8 {\n  top: 6px\n}\n\n.fc-monarch-ERR {\n  top: 50%\n}\n\n.fc-monarch-SKv {\n  top: 8px\n}\n\n.fc-monarch-fJL {\n  bottom: -4px\n}\n\n.fc-monarch-Uvq {\n  bottom: -1px\n}\n\n.fc-monarch-1V6 {\n  left: 50%\n}\n\n.fc-monarch-NPw {\n  order: 1\n}\n\n.fc-monarch-aAW {\n  margin: -6px\n}\n\n.fc-monarch-CH7 {\n  margin: -1px\n}\n\n.fc-monarch-XE0 {\n  margin: 2px\n}\n\n.fc-monarch-gMS {\n  margin: 4px\n}\n\n.fc-monarch-cGD {\n  margin: 6px\n}\n\n.fc-monarch-bvX {\n  margin: 8px\n}\n\n.fc-monarch-jD5 {\n  margin: 16px\n}\n\n.fc-monarch-TT0 {\n  margin: 1px\n}\n\n.fc-monarch-cKZ {\n  margin-inline: 2px\n}\n\n.fc-monarch-fn8 {\n  margin-inline: 8px\n}\n\n.fc-monarch-148 {\n  margin-inline: 1px\n}\n\n.fc-monarch-cJ3 {\n  margin-block: 2px\n}\n\n.fc-monarch-2tF {\n  margin-block: 8px\n}\n\n.fc-monarch-SEP {\n  margin-block: 1px\n}\n\n.fc-monarch-Jzj {\n  margin-inline-start: 2px\n}\n\n.fc-monarch-Wga {\n  margin-inline-start: 4px\n}\n\n.fc-monarch-Mde {\n  margin-inline-start: 8px\n}\n\n.fc-monarch-qvL {\n  margin-inline-start: 1px\n}\n\n.fc-monarch-p9t {\n  margin-inline-end: -6px\n}\n\n.fc-monarch-KYn {\n  margin-inline-end: 4px\n}\n\n.fc-monarch-OQ9 {\n  margin-inline-end: 12px\n}\n\n.fc-monarch-FvP {\n  margin-inline-end: 8px\n}\n\n.fc-monarch-B3G {\n  margin-inline-end: 2.5%\n}\n\n.fc-monarch-9hC {\n  margin-inline-end: 1px\n}\n\n.fc-monarch-Dq8 {\n  margin-top: -4px\n}\n\n.fc-monarch-9Rk {\n  margin-top: 8px\n}\n\n.fc-monarch-vUo {\n  margin-bottom: 4px\n}\n\n.fc-monarch-ohi {\n  margin-bottom: 8px\n}\n\n.fc-monarch-Ika {\n  margin-bottom: 1px\n}\n\n.fc-monarch-F99 {\n  margin-left: -4px\n}\n\n.fc-monarch-I48 {\n  display: block\n}\n\n.fc-monarch-dl1 {\n  display: flex\n}\n\n.fc-monarch-pps {\n  display: none\n}\n\n.fc-monarch-63n {\n  width: 0;\n  height: 0\n}\n\n.fc-monarch-3wQ {\n  width: 8px;\n  height: 8px\n}\n\n.fc-monarch-vnf {\n  width: 16px;\n  height: 16px\n}\n\n.fc-monarch-XUJ {\n  width: 20px;\n  height: 20px\n}\n\n.fc-monarch-IY5 {\n  width: 28px;\n  height: 28px\n}\n\n.fc-monarch-n6w {\n  width: 32px;\n  height: 32px\n}\n\n.fc-monarch-Pwv {\n  width: 100%;\n  height: 100%\n}\n\n.fc-monarch-uuA {\n  height: 8px\n}\n\n.fc-monarch-9ml {\n  height: 16px\n}\n\n.fc-monarch-oM6 {\n  height: 20px\n}\n\n.fc-monarch-TFV {\n  height: 24px\n}\n\n.fc-monarch-46Q {\n  height: 36px\n}\n\n.fc-monarch-84e {\n  min-height: 2px\n}\n\n.fc-monarch-jgW {\n  min-height: 16px\n}\n\n.fc-monarch-l5b {\n  min-height: 36px\n}\n\n.fc-monarch-toR {\n  min-height: 1px\n}\n\n.fc-monarch-roZ {\n  width: 50%\n}\n\n.fc-monarch-CjM {\n  width: 33.3333%\n}\n\n.fc-monarch-hza {\n  width: 8px\n}\n\n.fc-monarch-79F {\n  width: 20px\n}\n\n.fc-monarch-ilz {\n  width: 24px\n}\n\n.fc-monarch-Dhe {\n  width: 36px\n}\n\n.fc-monarch-4Tv {\n  width: 5px\n}\n\n.fc-monarch-aHX {\n  max-width: 160px\n}\n\n.fc-monarch-0i7 {\n  max-width: 176px\n}\n\n.fc-monarch-2KU {\n  min-width: 0\n}\n\n.fc-monarch-xcS {\n  min-width: 240px\n}\n\n.fc-monarch-yi0 {\n  flex-shrink: 0\n}\n\n.fc-monarch-1Zl {\n  flex-shrink: 1\n}\n\n.fc-monarch-OLq {\n  flex-shrink: 100\n}\n\n.fc-monarch-1El {\n  flex-grow: 1\n}\n\n.fc-monarch-KxI {\n  rotate: -90deg\n}\n\n.fc-monarch-z44 {\n  rotate: 90deg\n}\n\n.fc-monarch-jmT {\n  rotate: 180deg\n}\n\n.fc-monarch-sgX {\n  flex-direction: column\n}\n\n.fc-monarch-1sP {\n  flex-direction: row\n}\n\n.fc-monarch-dNl {\n  flex-wrap: wrap\n}\n\n.fc-monarch-XpK {\n  align-items: center\n}\n\n.fc-monarch-EF4 {\n  align-items: flex-start\n}\n\n.fc-monarch-N2M {\n  justify-content: space-between\n}\n\n.fc-monarch-E9P {\n  justify-content: center\n}\n\n.fc-monarch-LMv {\n  justify-content: flex-end\n}\n\n.fc-monarch-Bsl {\n  justify-content: flex-start\n}\n\n.fc-monarch-NWN {\n  gap: 4px\n}\n\n.fc-monarch-tgZ {\n  gap: 8px\n}\n\n.fc-monarch-wwb {\n  gap: 12px\n}\n\n.fc-monarch-OBr {\n  align-self: flex-end\n}\n\n.fc-monarch-pKG {\n  overflow: hidden\n}\n\n.fc-monarch-AAA {\n  border-radius: 3.40282e38px\n}\n\n.fc-monarch-hny {\n  border-radius: 8px\n}\n\n.fc-monarch-Fvv {\n  border-radius: 4px\n}\n\n.fc-monarch-NYF {\n  border-start-start-radius: 3.40282e38px;\n  border-end-start-radius: 3.40282e38px\n}\n\n.fc-monarch-kmj {\n  border-start-start-radius: 4px;\n  border-end-start-radius: 4px\n}\n\n.fc-monarch-dOc {\n  border-start-end-radius: 3.40282e38px;\n  border-end-end-radius: 3.40282e38px\n}\n\n.fc-monarch-Skl {\n  border-start-end-radius: 4px;\n  border-end-end-radius: 4px\n}\n\n.fc-monarch-Z7Q {\n  border-top-left-radius: 4px;\n  border-top-right-radius: 4px\n}\n\n.fc-monarch-2qh {\n  border-bottom-right-radius: 4px;\n  border-bottom-left-radius: 4px\n}\n\n.fc-monarch-9hN {\n  border-top-left-radius: 12px;\n  border-top-right-radius: 12px\n}\n\n.fc-monarch-KxZ {\n  border-bottom-right-radius: 12px;\n  border-bottom-left-radius: 12px\n}\n\n.fc-monarch-wsy,\n.fc-monarch-qQW {\n  border-style: var(--fc-monarch-border-style);\n  border-width: 1px\n}\n\n.fc-monarch-5JF {\n  border-style: var(--fc-monarch-border-style);\n  border-width: 4px\n}\n\n.fc-monarch-yDA {\n  border-style: var(--fc-monarch-border-style);\n  border-width: 5px\n}\n\n.fc-monarch-Vpk {\n  border-style: var(--fc-monarch-border-style);\n  border-width: 6px\n}\n\n.fc-monarch-1Wx {\n  border-inline-style: var(--fc-monarch-border-style);\n  border-inline-width: 1px\n}\n\n.fc-monarch-JIC {\n  border-block-style: var(--fc-monarch-border-style);\n  border-block-width: 1px\n}\n\n.fc-monarch-3J4 {\n  border-inline-start-style: var(--fc-monarch-border-style);\n  border-inline-start-width: 1px\n}\n\n.fc-monarch-USt {\n  border-inline-end-style: var(--fc-monarch-border-style);\n  border-inline-end-width: 1px\n}\n\n.fc-monarch-ku3 {\n  border-top-style: var(--fc-monarch-border-style);\n  border-top-width: 1px\n}\n\n.fc-monarch-zi1 {\n  border-bottom-style: var(--fc-monarch-border-style);\n  border-bottom-width: 1px\n}\n\n.fc-monarch-TN2 {\n  --fc-monarch-border-style: dotted;\n  border-style: dotted\n}\n\n.fc-monarch-lNM {\n  border-color: var(--fc-event-color)\n}\n\n.fc-monarch-jdl {\n  border-color: var(--fc-monarch-border)\n}\n\n.fc-monarch-nKh {\n  border-color: var(--fc-monarch-now)\n}\n\n.fc-monarch-yF0 {\n  border-color: var(--fc-monarch-primary)\n}\n\n.fc-monarch-zOd {\n  border-color: var(--fc-monarch-strong-border)\n}\n\n.fc-monarch-d0j {\n  border-color: #0000\n}\n\n.fc-monarch-YjJ {\n  background-color: var(--fc-event-color)\n}\n\n.fc-monarch-MAH {\n  background-color: var(--fc-monarch-background)\n}\n\n.fc-monarch-VTw {\n  background-color: var(--fc-monarch-faint)\n}\n\n.fc-monarch-PHz {\n  background-color: var(--fc-monarch-highlight)\n}\n\n.fc-monarch-4Xm {\n  background-color: var(--fc-monarch-muted)\n}\n\n.fc-monarch-9Mx {\n  background-color: var(--fc-monarch-popover)\n}\n\n.fc-monarch-zue {\n  background-color: var(--fc-monarch-primary)\n}\n\n.fc-monarch-XMK {\n  background-color: var(--fc-monarch-secondary)\n}\n\n.fc-monarch-y37 {\n  background-color: var(--fc-monarch-selected)\n}\n\n.fc-monarch-4os {\n  background-color: var(--fc-monarch-tertiary)\n}\n\n@media not print {\n  @supports (color:color-mix(in lab, red, red)) {\n    .fc-monarch-gTC {\n      background-color: color-mix(in oklab, var(--fc-event-color)15%, transparent)\n    }\n  }\n  @supports not (color:color-mix(in lab, red, red)) {\n    .fc-monarch-gTC {\n      position: relative;\n      isolation: isolate\n    }\n    .fc-monarch-gTC:before {\n      content: '';\n      position: absolute;\n      inset: 0;\n      background-color: var(--fc-event-color);\n      opacity: 0.15;\n      z-index: -1\n    }\n  }\n}\n\n.fc-monarch-KUX {\n  padding: 2px\n}\n\n.fc-monarch-iS4 {\n  padding: 4px\n}\n\n.fc-monarch-3N5 {\n  padding: 8px\n}\n\n.fc-monarch-lqx {\n  padding: 16px\n}\n\n.fc-monarch-7A6 {\n  padding: 1px\n}\n\n.fc-monarch-oQ2 {\n  padding-inline: 2px\n}\n\n.fc-monarch-aCI {\n  padding-inline: 4px\n}\n\n.fc-monarch-ZrE {\n  padding-inline: 6px\n}\n\n.fc-monarch-Nca {\n  padding-inline: 8px\n}\n\n.fc-monarch-Eaq {\n  padding-inline: 10px\n}\n\n.fc-monarch-Apf {\n  padding-inline: 12px\n}\n\n.fc-monarch-5su {\n  padding-inline: 20px\n}\n\n.fc-monarch-2rx {\n  padding-block: 2px\n}\n\n.fc-monarch-Jhn {\n  padding-block: 4px\n}\n\n.fc-monarch-End {\n  padding-block: 6px\n}\n\n.fc-monarch-dl6 {\n  padding-block: 8px\n}\n\n.fc-monarch-8cT {\n  padding-block: 10px\n}\n\n.fc-monarch-P9h {\n  padding-block: 60px\n}\n\n.fc-monarch-z5u {\n  padding-block: 1px\n}\n\n.fc-monarch-a7i {\n  padding-inline-start: 2px\n}\n\n.fc-monarch-C2j {\n  padding-inline-start: 4px\n}\n\n.fc-monarch-Utm {\n  padding-inline-end: 4px\n}\n\n.fc-monarch-8ub {\n  padding-bottom: 2px\n}\n\n.fc-monarch-x96 {\n  padding-bottom: 4px\n}\n\n.fc-monarch-lTO {\n  padding-bottom: 8px\n}\n\n.fc-monarch-b0n {\n  padding-bottom: 12px\n}\n\n.fc-monarch-2HE {\n  text-align: end\n}\n\n.fc-monarch-AVD {\n  font-size: 24px;\n  line-height: calc(2/1.5)\n}\n\n.fc-monarch-vQz {\n  font-size: 11px;\n  line-height: 1.09091\n}\n\n.fc-monarch-9ZS {\n  font-size: 18px;\n  line-height: calc(1.75/1.125)\n}\n\n.fc-monarch-1Po {\n  font-size: 16px;\n  line-height: calc(1.5/1)\n}\n\n.fc-monarch-9yp {\n  font-size: 14px;\n  line-height: calc(1.25/.875)\n}\n\n.fc-monarch-a3B {\n  font-size: 12px;\n  line-height: calc(1/.75)\n}\n\n.fc-monarch-DIS {\n  font-weight: 700\n}\n\n.fc-monarch-IPx {\n  text-overflow: ellipsis\n}\n\n.fc-monarch-TZ4 {\n  white-space: nowrap\n}\n\n.fc-monarch-jm6 {\n  white-space: pre\n}\n\n.fc-monarch-Mra {\n  color: var(--fc-event-color)\n}\n\n.fc-monarch-i9F {\n  color: var(--fc-event-contrast-color)\n}\n\n.fc-monarch-bZ0 {\n  color: var(--fc-monarch-faint-foreground)\n}\n\n.fc-monarch-PVh {\n  color: var(--fc-monarch-foreground)\n}\n\n.fc-monarch-JMv {\n  color: var(--fc-monarch-muted-foreground)\n}\n\n.fc-monarch-sT2 {\n  color: var(--fc-monarch-popover-foreground)\n}\n\n.fc-monarch-8ys {\n  color: var(--fc-monarch-primary-foreground)\n}\n\n.fc-monarch-c3e {\n  color: var(--fc-monarch-secondary-foreground)\n}\n\n.fc-monarch-bIt {\n  color: var(--fc-monarch-selected-foreground)\n}\n\n.fc-monarch-CCH {\n  color: var(--fc-monarch-tertiary-foreground)\n}\n\n.fc-monarch-XHd {\n  text-transform: uppercase\n}\n\n.fc-monarch-L1Y {\n  font-style: italic\n}\n\n.fc-monarch-lMo {\n  opacity: .5\n}\n\n.fc-monarch-iTG {\n  opacity: .75\n}\n\n.fc-monarch-1kP {\n  box-shadow: 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a\n}\n\n.fc-monarch-tkw {\n  box-shadow: 0 4px 6px -1px #0000001a, 0 2px 4px -2px #0000001a\n}\n\n.fc-monarch-A3h {\n  box-shadow: 0 0 0 1px var(--fc-monarch-ring-color, currentcolor)\n}\n\n.fc-monarch-GBJ {\n  box-shadow: 0 0 0 2px var(--fc-monarch-ring-color, currentcolor)\n}\n\n.fc-monarch-SC5 {\n  --fc-monarch-ring-color: var(--fc-monarch-background)\n}\n\n.fc-monarch-2R2 {\n  outline-style: solid;\n  outline-width: 1px\n}\n\n.fc-monarch-x7S {\n  outline-style: solid;\n  outline-width: 3px\n}\n\n.fc-monarch-07j {\n  outline-offset: -1px\n}\n\n.fc-monarch-MJY {\n  outline-color: var(--fc-monarch-outline)\n}\n\n.fc-monarch-hS8 {\n  outline-style: none !important /* HACK */\n}\n\n.fc-monarch-9LE {\n  background: linear-gradient(var(--fc-monarch-strong), var(--fc-monarch-strong))var(--fc-monarch-background)\n}\n\n.fc-monarch-iCr:not(:last-child) {\n  border-bottom-style: var(--fc-monarch-border-style);\n  border-bottom-width: 1px\n}\n\n@media (hover:hover) {\n  .fc-monarch-vs6:is(:where(.fc-monarch-bCs):hover *) {\n    display: block\n  }\n\n  .fc-monarch-JQh:is(:where(.fc-monarch-bCs):hover *) {\n    background-color: var(--fc-monarch-muted)\n  }\n\n  .fc-monarch-Yws:is(:where(.fc-monarch-bCs):hover *) {\n    background-color: var(--fc-monarch-tertiary-over)\n  }\n\n  .fc-monarch-rih:is(:where(.fc-monarch-bCs):hover *) {\n    color: var(--fc-monarch-foreground)\n  }\n\n  .fc-monarch-zn9:is(:where(.fc-monarch-bCs):hover *) {\n    color: var(--fc-monarch-strong-foreground)\n  }\n\n  .fc-monarch-Ogp:is(:where(.fc-monarch-bCs):hover *) {\n    text-decoration-line: underline\n  }\n}\n\n.fc-monarch-4Pp:is(:where(.fc-monarch-bCs):focus-visible *) {\n  background-color: var(--fc-monarch-muted)\n}\n\n.fc-monarch-8El:is(:where(.fc-monarch-bCs):focus-visible *) {\n  color: var(--fc-monarch-foreground)\n}\n\n.fc-monarch-Bpp:is(:where(.fc-monarch-bCs):focus-visible *) {\n  color: var(--fc-monarch-strong-foreground)\n}\n\n.fc-monarch-a9l:is(:where(.fc-monarch-bCs):focus-visible *) {\n  outline-style: solid;\n  outline-width: 3px\n}\n\n.fc-monarch-Hsn:is(:where(.fc-monarch-bCs):active *) {\n  background-color: var(--fc-monarch-strong)\n}\n\n.fc-monarch-jc4:is(:where(.fc-monarch-bCs):active *) {\n  background-color: var(--fc-monarch-tertiary-down)\n}\n\n@media (hover:hover) {\n  .fc-monarch-v08:hover {\n    background-color: var(--fc-monarch-muted)\n  }\n\n  .fc-monarch-4bi:hover {\n    background-color: var(--fc-monarch-primary-over)\n  }\n\n  .fc-monarch-ISM:hover {\n    background-color: var(--fc-monarch-secondary-over)\n  }\n\n  .fc-monarch-SJz:hover {\n    background-color: var(--fc-monarch-selected-over)\n  }\n\n  .fc-monarch-hbI:hover {\n    background-color: var(--fc-monarch-tertiary-over)\n  }\n\n  .fc-monarch-Frw:hover {\n    background-color: var(--fc-event-color)\n  }\n\n  @supports (color:color-mix(in lab, red, red)) {\n    .fc-monarch-Frw:hover {\n      background-color: color-mix(in oklab, var(--fc-event-color)92%, var(--fc-event-contrast-color))\n    }\n  }\n\n  .fc-monarch-Eu0:hover {\n    text-decoration-line: underline\n  }\n\n  .fc-monarch-r63:hover {\n    background: linear-gradient(var(--fc-monarch-stronger), var(--fc-monarch-stronger))var(--fc-monarch-background)\n  }\n}\n\n.fc-monarch-Yib:focus-visible {\n  background-color: var(--fc-monarch-muted)\n}\n\n.fc-monarch-sOR:focus-visible {\n  outline-style: solid;\n  outline-width: 3px\n}\n\n.fc-monarch-yEk:active {\n  background-color: var(--fc-monarch-primary-down)\n}\n\n.fc-monarch-KwH:active {\n  background-color: var(--fc-monarch-secondary-down)\n}\n\n.fc-monarch-MQC:active {\n  background-color: var(--fc-monarch-selected-down)\n}\n\n.fc-monarch-6MP:active {\n  background-color: var(--fc-monarch-strong)\n}\n\n.fc-monarch-yo2:active {\n  background-color: var(--fc-monarch-tertiary-down)\n}\n\n.fc-monarch-st8:active {\n  background-color: var(--fc-event-color)\n}\n\n@supports (color:color-mix(in lab, red, red)) {\n  .fc-monarch-st8:active {\n    background-color: color-mix(in oklab, var(--fc-event-color)85%, var(--fc-event-contrast-color))\n  }\n}\n\n.fc-monarch-ljX:active {\n  background: linear-gradient(var(--fc-monarch-strongest), var(--fc-monarch-strongest))var(--fc-monarch-background)\n}\n\n@media print {\n  .fc-monarch-jsy {\n    border-width: 1px\n  }\n\n  .fc-monarch-DO7 {\n    border-color: var(--fc-event-color)\n  }\n\n  .fc-monarch-4MR {\n    border-color: #000\n  }\n\n  .fc-monarch-vwH {\n    background-color: #fff\n  }\n\n  .fc-monarch-cfp {\n    color: #000\n  }\n}\n\n[dir=rtl] .fc-monarch-keW {\n  rotate: -90deg\n}\n\n[dir=rtl] .fc-monarch-jY6 {\n  rotate: none\n}\n\n[dir=rtl] .fc-monarch-ZW3 {\n  rotate: 90deg\n}\n\n[dir=rtl] .fc-monarch-asP {\n  rotate: 180deg\n}\n";
 		//#endregion
-		//#region \0calendar-css:D:\Zewang\JustForFun\EduWork-calendar-325\dsh-plugins\calendar\test\.render\compiler\packages\extensions\eduwork-calendar-build-7a96d48bf558455886affdd40374d1f7\src\calendar-views.css.js
-		var calendar_views_css_default = ".cal-workbench {\n  --cal-ink: var(--dsw-alias-label-primary, CanvasText);\n  --cal-muted: var(--dsw-alias-label-secondary, GrayText);\n  --cal-surface: var(--dsw-alias-bg-base, Canvas);\n  --cal-layer: var(--dsw-alias-bg-layer-1, Canvas);\n  --cal-line: var(--dsw-alias-border-l1, ButtonBorder);\n  --cal-accent: var(--dsw-alias-state-business-primary, Highlight);\n  --cal-accent-soft: var(--dsw-alias-state-business-tertiary, color-mix(in srgb, var(--cal-accent) 12%, Canvas));\n  --cal-rest: #487a61;\n  --cal-rest-soft: color-mix(in srgb, var(--cal-rest) 15%, var(--cal-surface));\n  isolation: isolate;\n  container-type: inline-size;\n  padding: 0 20px 18px;\n  box-sizing: border-box;\n}\n.cal-workbench *, .cal-workbench *::before, .cal-workbench *::after { box-sizing: border-box; }\n.cal-workbench button:focus-visible, .cal-workbench select:focus-visible {\n  outline: 2px solid var(--cal-accent);\n  outline-offset: 2px;\n}\n.cal-head {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  justify-content: space-between;\n  column-gap: 20px;\n  row-gap: 12px;\n  padding: 18px 0 12px;\n  flex: 0 0 auto;\n}\n.cal-period, .cal-actions, .cal-nav { display: flex; align-items: center; gap: 8px; }\n.cal-period { gap: 14px; min-width: 0; max-width: 100%; }\n.cal-period > div { min-width: 0; }\n.cal-period h1 { margin: 0; font-size: 24px; line-height: 1.25; letter-spacing: -.025em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.cal-period-subtitle { color: var(--cal-muted); margin-top: 4px; font-size: 12px; font-variant-numeric: tabular-nums; }\n.cal-actions { margin-left: auto; gap: 8px; }\n.cal-nav { gap: 7px; }\n.cal-arrows { display: flex; border-radius: 8px; border: 1px solid var(--cal-line); }\n.cal-arrows button + button { border-left: 1px solid var(--cal-line); border-top-left-radius: 0; border-bottom-left-radius: 0; }\n.cal-segmented {\n  display: flex;\n  gap: 2px;\n  padding: 2px;\n  background: var(--cal-layer);\n  border: 1px solid var(--cal-line);\n  border-radius: 9px;\n}\n.cal-segmented button, .cal-nav button {\n  font: inherit;\n  font-size: 13px;\n  color: var(--cal-muted);\n  background: transparent;\n  border: 0;\n  border-radius: 6px;\n  cursor: pointer;\n  min-height: 30px;\n  padding: 0 11px;\n  white-space: nowrap;\n}\n.cal-nav button { min-width: 31px; display: grid; place-items: center; padding: 0 8px; }\n.cal-segmented button:hover, .cal-nav button:hover { background: var(--cal-layer); color: var(--cal-ink); }\n.cal-nav .cal-today-button { min-height: 32px; }\n.cal-segmented button[aria-pressed=\"true\"] {\n  color: var(--cal-accent);\n  background: var(--cal-accent-soft);\n  font-weight: 650;\n}\n.cal-actions .cal-primary, .cal-actions .cal-tool-button { min-height: 34px; border-radius: 8px; }\n.cal-actions .cal-primary { padding-inline: 12px; }\n.cal-source-trigger-label { display: inline-block; max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.cal-actions .cal-more-button { min-width: 34px; padding-inline: 7px; }\n.cal-action-count { color: var(--cal-accent); font-size: 11px; font-variant-numeric: tabular-nums; }\n.cal-phase-summary {\n  display: flex;\n  gap: 9px 18px;\n  flex-wrap: wrap;\n  align-items: center;\n  color: var(--cal-muted);\n  padding: 0 0 13px;\n  font-size: 12px;\n}\n.cal-phase-key { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }\n.cal-phase-key strong, .cal-week-label { font-weight: 600; color: var(--cal-ink); }\n.cal-phase-key i { width: 7px; height: 7px; border-radius: 50%; background: var(--cal-accent); }\n.cal-phase-key[data-tone=\"quiet\"] i { background: var(--cal-rest); }\n.cal-week-label:not(:last-child) { padding-right: 16px; border-right: 1px solid var(--cal-line); }\n.cal-canvas {\n  border: 1px solid var(--cal-line);\n  border-radius: 11px;\n  background: var(--cal-surface);\n  flex: 1 1 0;\n  min-height: 0;\n  overflow: hidden;\n}\n.cal-engine {\n  height: 100%;\n  --fc-monarch-primary: var(--cal-accent);\n  --fc-monarch-primary-foreground: var(--dsw-alias-brand-primary-invert, #fff);\n  --fc-monarch-primary-over: var(--cal-accent);\n  --fc-monarch-primary-down: var(--cal-accent);\n  --fc-monarch-secondary: var(--cal-accent-soft);\n  --fc-monarch-secondary-foreground: var(--cal-accent);\n  --fc-monarch-secondary-over: var(--cal-accent-soft);\n  --fc-monarch-secondary-down: var(--cal-accent-soft);\n  --fc-monarch-event: var(--cal-accent);\n  --fc-monarch-event-contrast: var(--cal-ink);\n  --fc-monarch-highlight: var(--cal-accent-soft);\n  --fc-monarch-now: var(--cal-accent);\n  --fc-monarch-outline: var(--cal-accent);\n  --fc-monarch-background: var(--cal-surface);\n  --fc-monarch-popover: var(--cal-surface);\n  --fc-monarch-popover-foreground: var(--cal-ink);\n  --fc-monarch-foreground: var(--cal-ink);\n  --fc-monarch-faint-foreground: var(--dsw-alias-label-tertiary, GrayText);\n  --fc-monarch-muted-foreground: var(--cal-muted);\n  --fc-monarch-muted: var(--cal-layer);\n  --fc-monarch-faint: var(--cal-layer);\n  --fc-monarch-border: var(--cal-line);\n  --fc-monarch-strong-border: var(--cal-line);\n  --fc-monarch-strong: var(--cal-layer);\n  --fc-monarch-stronger: var(--cal-layer);\n  --fc-monarch-strongest: var(--cal-layer);\n  --fc-monarch-strong-foreground: var(--cal-ink);\n}\n.cal-engine .fc, .cal-engine .fc-monarch-n5m { font-family: inherit; font-size: 13px; color: var(--cal-ink); }\n.cal-column-heading {\n  background: var(--cal-layer);\n  color: var(--cal-muted);\n  font-size: 12px;\n  font-weight: 600;\n}\n.cal-cell-content { min-width: 0; }\n.cal-cell-top { padding: 4px 6px 1px; justify-content: flex-start; }\n.cal-day-top { display: flex; align-items: center; justify-content: space-between; gap: 2px; width: 100%; }\n.cal-day-number {\n  display: grid;\n  place-items: center;\n  min-width: 26px;\n  min-height: 26px;\n  padding: 0 3px;\n  border: 0;\n  border-radius: 50%;\n  background: transparent;\n  font: inherit;\n  font-size: 14px;\n  color: var(--cal-ink);\n  font-weight: 600;\n  font-variant-numeric: tabular-nums;\n  cursor: pointer;\n}\n.cal-cell-top [tabindex]:is(:hover, :focus-visible) .cal-day-number { background: var(--cal-accent-soft); color: var(--cal-accent); }\n.cal-day-number.cal-outside-day { color: var(--fc-monarch-faint-foreground); }\n.cal-day-number.cal-today { background: var(--cal-accent); color: var(--fc-monarch-primary-foreground); }\n.cal-focused-day { background: color-mix(in srgb, var(--cal-accent) 5%, var(--cal-surface)); }\n.cal-week-number { color: var(--cal-muted); font-size: 11px; white-space: nowrap; }\n.cal-event, .cal-selection-preview { font-size: 12px; }\n.cal-event { cursor: pointer; }\n.cal-event-details { display: grid; min-width: 0; }\n.cal-event-details > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.cal-event-note { color: var(--cal-muted); font-size: 11px; }\n.cal-event-block { border-inline-start: 2px solid var(--cal-event-ink) !important; }\n/* 拖选期间 Monarch 会为按下的事件加深颜色，预览应保持保存后的底色。 */\n.cal-engine .cal-selection-preview { background-color: var(--fc-event-color); }\n.cal-event:hover { filter: brightness(.97); }\n.cal-phase-band {\n  background: var(--cal-accent-soft) !important;\n  color: var(--cal-accent) !important;\n  border: 0 !important;\n  border-radius: 4px !important;\n  font-size: 11px;\n  font-weight: 600;\n  pointer-events: none;\n}\n.cal-phase-band[data-tone=\"quiet\"] {\n  background: var(--cal-rest-soft) !important;\n  color: var(--cal-rest) !important;\n}\n.cal-phase-continuation > * { visibility: hidden; }\n.cal-year { overflow: auto; border: 1px solid var(--cal-line); border-radius: 11px; flex: 0 1 auto; }\n.cal-year-inner { min-width: 620px; }\n.cal-year-axis, .cal-year-phase {\n  display: grid;\n  grid-template-columns: 168px minmax(0, 1fr);\n  align-items: stretch;\n}\n.cal-year-axis {\n  background: var(--cal-layer);\n  color: var(--cal-muted);\n  font-size: 12px;\n  border-bottom: 1px solid var(--cal-line);\n}\n.cal-year-axis > span { padding: 14px; font-weight: 600; }\n.cal-year-months, .cal-year-track { position: relative; margin-right: 12px; }\n.cal-year-months span {\n  position: absolute;\n  top: 50%;\n  transform: translateY(-50%);\n  padding-left: 5px;\n  white-space: nowrap;\n}\n.cal-year-stages { list-style: none; padding: 0; margin: 0; }\n.cal-year-phase {\n  width: 100%;\n  background: transparent;\n  color: var(--cal-ink);\n  border: 0;\n  border-bottom: 1px solid var(--cal-line);\n  text-align: left;\n  font: inherit;\n  padding: 0;\n  cursor: pointer;\n}\n.cal-year-stages li:last-child .cal-year-phase { border-bottom: 0; }\n.cal-year-phase:hover, .cal-year-phase[aria-current=\"date\"] { background: var(--cal-layer); }\n.cal-year-name { display: grid; gap: 3px; align-content: center; min-height: 58px; padding: 8px 14px; min-width: 0; }\n.cal-year-name strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.cal-year-name small { color: var(--cal-muted); font-size: 12px; font-variant-numeric: tabular-nums; }\n.cal-year-track i { position: absolute; inset-block: 0; width: 1px; background: var(--cal-line); }\n.cal-year-bar {\n  position: absolute;\n  top: 50%;\n  transform: translateY(-50%);\n  height: 10px;\n  min-width: 4px;\n  border-radius: 6px;\n  background: color-mix(in srgb, var(--cal-muted) 30%, var(--cal-surface));\n}\n.cal-year-phase[data-tone=\"highlight\"] .cal-year-bar { background: var(--cal-accent); }\n.cal-year-phase[data-tone=\"quiet\"] .cal-year-bar { background: var(--cal-rest); }\n.cal-year-empty { padding: 20px; color: var(--cal-muted); }\n.eduwork-calendar-dialog {\n  --cal-dialog-width: 600px;\n  width: min(var(--cal-dialog-width), calc(100vw - 32px));\n  max-height: calc(100dvh - 32px);\n  border-radius: 16px;\n  background: var(--dsw-alias-bg-overlay, Canvas);\n  border: 1px solid var(--dsw-alias-border-l1, ButtonBorder);\n}\n.eduwork-calendar-dialog.cal-dialog-compact { --cal-dialog-width: 440px; }\n.eduwork-calendar-dialog.cal-dialog-detail { --cal-dialog-width: 520px; }\n.eduwork-calendar-dialog-content { min-height: 0; overflow-y: auto; }\n.eduwork-calendar-dialog > :not(.eduwork-calendar-dialog-content) { flex-shrink: 0; }\n.cal-dialog-actions, .cal-dialog-primary, .cal-dialog-secondary {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 6px;\n}\n.cal-dialog-actions { justify-content: space-between; width: 100%; }\n.cal-dialog-primary { justify-content: flex-end; margin-left: auto; }\n.cal-dialog-primary button, .cal-dialog-secondary button { min-height: 32px; border-radius: 7px; }\n.cal-field { display: grid; gap: 6px; min-width: 0; margin-bottom: 12px; }\n.cal-field-label { font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary, GrayText); }\n.cal-field-hint { font-size: 11px; color: var(--dsw-alias-label-tertiary, GrayText); }\n.cal-quick-form .cal-field :is(input, select) { width: 100%; min-width: 0; box-sizing: border-box; }\n.cal-quick-form > .cal-field:first-child { margin-bottom: 16px; }\n.cal-quick-form > .cal-field:first-child input { min-height: 36px; font-size: 14px; }\n.cal-schedule-fields { display: grid; gap: 12px; margin-bottom: 14px; }\n.cal-schedule-day { display: flex; align-items: end; gap: 16px; }\n.cal-schedule-day .cal-field { flex: 1 1 auto; }\n.cal-schedule-fields .cal-field { margin-bottom: 0; }\n.cal-time-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }\n.cal-edit-dates { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 10px; }\n.cal-all-day {\n  position: relative;\n  display: inline-flex;\n  align-items: center;\n  justify-content: flex-end;\n  gap: 6px;\n  flex: 0 0 auto;\n  min-height: 34px;\n  font-size: 13px;\n  cursor: pointer;\n}\n.cal-all-day input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: inherit; }\n.cal-switch-track {\n  width: 29px;\n  height: 17px;\n  padding: 2px;\n  border-radius: 12px;\n  box-sizing: border-box;\n  background: var(--dsw-alias-border-l3, GrayText);\n}\n.cal-switch-track::before {\n  content: '';\n  display: block;\n  width: 13px;\n  height: 13px;\n  border-radius: 50%;\n  background: var(--dsw-alias-brand-primary-invert, Canvas);\n}\n.cal-all-day input:checked + .cal-switch-track { background: var(--dsw-alias-state-business-primary, Highlight); }\n.cal-all-day input:checked + .cal-switch-track::before { transform: translateX(12px); }\n.cal-all-day input:focus-visible + .cal-switch-track { outline: 2px solid var(--dsw-alias-state-business-primary, Highlight); outline-offset: 2px; }\n.cal-event-dialog-body { display: grid; gap: 10px; }\n.cal-event-facts { display: grid; gap: 6px; }\n.cal-event-when { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }\n.cal-event-when > svg { color: var(--dsw-alias-state-business-primary, Highlight); }\n.cal-event-meta { display: flex; flex-wrap: wrap; gap: 5px 14px; font-size: 12px; color: var(--dsw-alias-label-secondary, GrayText); padding-left: 22px; }\n.cal-event-quick { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }\n.cal-event-quick button { min-height: 32px; border-radius: 7px; }\n.cal-event-edit, .cal-inline-confirm {\n  display: grid;\n  gap: 8px;\n  padding-top: 12px;\n  border-top: 1px solid var(--dsw-alias-border-l1, ButtonBorder);\n}\n.cal-inline-confirm p { margin: 0; font-size: 13px; }\n.cal-inline-confirm p + p { color: var(--dsw-alias-label-secondary, GrayText); font-size: 12px; }\n.cal-delete-question { font-size: 13px; }\n.cal-destructive { color: var(--dsw-alias-state-error-primary, #d4553f); }\n.cal-source-list { display: grid; gap: 14px; }\n.cal-source-list label { display: grid; gap: 6px; font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary, GrayText); }\n.cal-source-list select {\n  width: 100%;\n  border: 1px solid var(--dsw-alias-border-l2);\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n  font-weight: 400;\n  border-radius: 8px;\n  min-height: 38px;\n  padding: 6px 10px;\n}\n@container (max-width: 750px) {\n  .cal-head { padding-top: 16px; gap: 10px; }\n  .cal-period h1 { font-size: 22px; }\n  .cal-actions { margin-left: 0; }\n}\n@media (max-width: 480px) {\n  .cal-edit-dates { grid-template-columns: 1fr; gap: 0; }\n  .cal-schedule-day { gap: 8px; }\n}\n";
+		//#region \0calendar-css:D:\Zewang\JustForFun\EduWork-calendar-325\dsh-plugins\calendar\test\.render\compiler\packages\extensions\eduwork-calendar-build-76b0f93d523d49a89521a38f52782d27\src\calendar-views.css.js
+		var calendar_views_css_default = ".cal-workbench {\n  --cal-ink: var(--dsw-alias-label-primary, CanvasText);\n  --cal-muted: var(--dsw-alias-label-secondary, GrayText);\n  --cal-surface: var(--dsw-alias-bg-base, Canvas);\n  --cal-layer: var(--dsw-alias-bg-layer-1, Canvas);\n  --cal-line: var(--dsw-alias-border-l1, ButtonBorder);\n  --cal-accent: var(--dsw-alias-state-business-primary, Highlight);\n  --cal-accent-soft: var(--dsw-alias-state-business-tertiary, color-mix(in srgb, var(--cal-accent) 12%, Canvas));\n  --cal-rest: #487a61;\n  --cal-rest-soft: color-mix(in srgb, var(--cal-rest) 15%, var(--cal-surface));\n  isolation: isolate;\n  container-type: inline-size;\n  padding: 0 20px 18px;\n  box-sizing: border-box;\n}\n.cal-workbench *, .cal-workbench *::before, .cal-workbench *::after { box-sizing: border-box; }\n.cal-workbench button:focus-visible, .cal-workbench select:focus-visible {\n  outline: 2px solid var(--cal-accent);\n  outline-offset: 2px;\n}\n.cal-head {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  justify-content: space-between;\n  column-gap: 20px;\n  row-gap: 12px;\n  padding: 18px 0 12px;\n  flex: 0 0 auto;\n}\n.cal-period, .cal-actions, .cal-nav { display: flex; align-items: center; gap: 8px; }\n.cal-period { gap: 14px; min-width: 0; max-width: 100%; }\n.cal-period > div { min-width: 0; }\n.cal-period h1 { margin: 0; font-size: 24px; line-height: 1.25; letter-spacing: -.025em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.cal-period-subtitle { color: var(--cal-muted); margin-top: 4px; font-size: 12px; font-variant-numeric: tabular-nums; }\n.cal-actions { margin-left: auto; gap: 8px; }\n.cal-nav { gap: 7px; }\n.cal-arrows { display: flex; border-radius: 8px; border: 1px solid var(--cal-line); }\n.cal-arrows button + button { border-left: 1px solid var(--cal-line); border-top-left-radius: 0; border-bottom-left-radius: 0; }\n.cal-segmented {\n  display: flex;\n  gap: 2px;\n  padding: 2px;\n  background: var(--cal-layer);\n  border: 1px solid var(--cal-line);\n  border-radius: 9px;\n}\n.cal-segmented button, .cal-nav button {\n  font: inherit;\n  font-size: 13px;\n  color: var(--cal-muted);\n  background: transparent;\n  border: 0;\n  border-radius: 6px;\n  cursor: pointer;\n  min-height: 30px;\n  padding: 0 11px;\n  white-space: nowrap;\n}\n.cal-nav button { min-width: 31px; display: grid; place-items: center; padding: 0 8px; }\n.cal-segmented button:hover, .cal-nav button:hover { background: var(--cal-layer); color: var(--cal-ink); }\n.cal-nav .cal-today-button { min-height: 32px; }\n.cal-segmented button[aria-pressed=\"true\"] {\n  color: var(--cal-accent);\n  background: var(--cal-accent-soft);\n  font-weight: 650;\n}\n.cal-actions .cal-primary, .cal-actions .cal-tool-button { min-height: 34px; border-radius: 8px; }\n.cal-actions .cal-primary { padding-inline: 12px; }\n.cal-source-trigger-label { display: inline-block; max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.cal-actions .cal-more-button { min-width: 34px; padding-inline: 7px; }\n.cal-action-count { color: var(--cal-accent); font-size: 11px; font-variant-numeric: tabular-nums; }\n.cal-phase-summary {\n  display: flex;\n  gap: 9px 18px;\n  flex-wrap: wrap;\n  align-items: center;\n  color: var(--cal-muted);\n  padding: 0 0 13px;\n  font-size: 12px;\n}\n.cal-phase-key { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }\n.cal-phase-key strong, .cal-week-label { font-weight: 600; color: var(--cal-ink); }\n.cal-phase-key i { width: 7px; height: 7px; border-radius: 50%; background: var(--cal-accent); }\n.cal-phase-key[data-tone=\"quiet\"] i { background: var(--cal-rest); }\n.cal-week-label:not(:last-child) { padding-right: 16px; border-right: 1px solid var(--cal-line); }\n.cal-canvas {\n  border: 1px solid var(--cal-line);\n  border-radius: 11px;\n  background: var(--cal-surface);\n  flex: 1 1 0;\n  min-height: 0;\n  overflow: hidden;\n}\n.cal-engine {\n  height: 100%;\n  --fc-monarch-primary: var(--cal-accent);\n  --fc-monarch-primary-foreground: var(--dsw-alias-brand-primary-invert, #fff);\n  --fc-monarch-primary-over: var(--cal-accent);\n  --fc-monarch-primary-down: var(--cal-accent);\n  --fc-monarch-secondary: var(--cal-accent-soft);\n  --fc-monarch-secondary-foreground: var(--cal-accent);\n  --fc-monarch-secondary-over: var(--cal-accent-soft);\n  --fc-monarch-secondary-down: var(--cal-accent-soft);\n  --fc-monarch-event: var(--cal-accent);\n  --fc-monarch-event-contrast: var(--cal-ink);\n  --fc-monarch-highlight: var(--cal-accent-soft);\n  --fc-monarch-now: var(--cal-accent);\n  --fc-monarch-outline: var(--cal-accent);\n  --fc-monarch-background: var(--cal-surface);\n  --fc-monarch-popover: var(--cal-surface);\n  --fc-monarch-popover-foreground: var(--cal-ink);\n  --fc-monarch-foreground: var(--cal-ink);\n  --fc-monarch-faint-foreground: var(--dsw-alias-label-tertiary, GrayText);\n  --fc-monarch-muted-foreground: var(--cal-muted);\n  --fc-monarch-muted: var(--cal-layer);\n  --fc-monarch-faint: var(--cal-layer);\n  --fc-monarch-border: var(--cal-line);\n  --fc-monarch-strong-border: var(--cal-line);\n  --fc-monarch-strong: var(--cal-layer);\n  --fc-monarch-stronger: var(--cal-layer);\n  --fc-monarch-strongest: var(--cal-layer);\n  --fc-monarch-strong-foreground: var(--cal-ink);\n}\n.cal-engine .fc, .cal-engine .fc-monarch-n5m { font-family: inherit; font-size: 13px; color: var(--cal-ink); }\n.cal-column-heading {\n  background: var(--cal-layer);\n  color: var(--cal-muted);\n  font-size: 12px;\n  font-weight: 600;\n}\n.cal-cell-content { min-width: 0; }\n.cal-cell-top { padding: 4px 6px 1px; justify-content: flex-start; }\n.cal-day-top { display: flex; align-items: center; justify-content: space-between; gap: 2px; width: 100%; }\n.cal-day-number {\n  display: grid;\n  place-items: center;\n  min-width: 26px;\n  min-height: 26px;\n  padding: 0 3px;\n  border: 0;\n  border-radius: 50%;\n  background: transparent;\n  font: inherit;\n  font-size: 14px;\n  color: var(--cal-ink);\n  font-weight: 600;\n  font-variant-numeric: tabular-nums;\n  cursor: pointer;\n}\n.cal-cell-top [tabindex]:is(:hover, :focus-visible) .cal-day-number { background: var(--cal-accent-soft); color: var(--cal-accent); }\n.cal-day-number.cal-outside-day { color: var(--fc-monarch-faint-foreground); }\n.cal-day-number.cal-today { background: var(--cal-accent); color: var(--fc-monarch-primary-foreground); }\n.cal-focused-day { background: color-mix(in srgb, var(--cal-accent) 5%, var(--cal-surface)); }\n.cal-week-number { color: var(--cal-muted); font-size: 11px; white-space: nowrap; }\n.cal-event, .cal-selection-preview { font-size: 12px; }\n.cal-event { cursor: pointer; }\n.cal-event-details { display: grid; min-width: 0; }\n.cal-event-details > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.cal-event-note { color: var(--cal-muted); font-size: 11px; }\n.cal-event-block { border-inline-start: 2px solid var(--cal-event-ink) !important; }\n/* 拖选期间 Monarch 会为按下的事件加深颜色，预览应保持保存后的底色。 */\n.cal-engine .cal-selection-preview { background-color: var(--fc-event-color); }\n.cal-event:hover { filter: brightness(.97); }\n.cal-phase-band {\n  background: var(--cal-accent-soft) !important;\n  color: var(--cal-accent) !important;\n  border: 0 !important;\n  border-radius: 4px !important;\n  font-size: 11px;\n  font-weight: 600;\n  pointer-events: none;\n}\n.cal-phase-band[data-tone=\"quiet\"] {\n  background: var(--cal-rest-soft) !important;\n  color: var(--cal-rest) !important;\n}\n.cal-phase-continuation > * { visibility: hidden; }\n.cal-year { overflow: auto; border: 1px solid var(--cal-line); border-radius: 11px; flex: 0 1 auto; }\n.cal-year-inner { min-width: 620px; }\n.cal-year-axis, .cal-year-phase {\n  display: grid;\n  grid-template-columns: 168px minmax(0, 1fr);\n  align-items: stretch;\n}\n.cal-year-axis {\n  background: var(--cal-layer);\n  color: var(--cal-muted);\n  font-size: 12px;\n  border-bottom: 1px solid var(--cal-line);\n}\n.cal-year-axis > span { padding: 14px; font-weight: 600; }\n.cal-year-months, .cal-year-track { position: relative; margin-right: 12px; }\n.cal-year-months span {\n  position: absolute;\n  top: 50%;\n  transform: translateY(-50%);\n  padding-left: 5px;\n  white-space: nowrap;\n}\n.cal-year-stages { list-style: none; padding: 0; margin: 0; }\n.cal-year-phase {\n  width: 100%;\n  background: transparent;\n  color: var(--cal-ink);\n  border: 0;\n  border-bottom: 1px solid var(--cal-line);\n  text-align: left;\n  font: inherit;\n  padding: 0;\n  cursor: pointer;\n}\n.cal-year-stages li:last-child .cal-year-phase { border-bottom: 0; }\n.cal-year-phase:hover, .cal-year-phase[aria-current=\"date\"] { background: var(--cal-layer); }\n.cal-year-name { display: grid; gap: 3px; align-content: center; min-height: 58px; padding: 8px 14px; min-width: 0; }\n.cal-year-name strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.cal-year-name small { color: var(--cal-muted); font-size: 12px; font-variant-numeric: tabular-nums; }\n.cal-year-track i { position: absolute; inset-block: 0; width: 1px; background: var(--cal-line); }\n.cal-year-bar {\n  position: absolute;\n  top: 50%;\n  transform: translateY(-50%);\n  height: 10px;\n  min-width: 4px;\n  border-radius: 6px;\n  background: color-mix(in srgb, var(--cal-muted) 30%, var(--cal-surface));\n}\n.cal-year-phase[data-tone=\"highlight\"] .cal-year-bar { background: var(--cal-accent); }\n.cal-year-phase[data-tone=\"quiet\"] .cal-year-bar { background: var(--cal-rest); }\n.cal-year-empty { padding: 20px; color: var(--cal-muted); }\n.eduwork-calendar-dialog {\n  --cal-dialog-width: 600px;\n  width: min(var(--cal-dialog-width), calc(100vw - 32px));\n  max-height: calc(100dvh - 32px);\n  border-radius: 16px;\n  background: var(--dsw-alias-bg-overlay, Canvas);\n  border: 1px solid var(--dsw-alias-border-l1, ButtonBorder);\n}\n.eduwork-calendar-dialog.cal-dialog-compact { --cal-dialog-width: 440px; }\n.eduwork-calendar-dialog.cal-dialog-detail { --cal-dialog-width: 540px; }\n.eduwork-calendar-dialog-content { min-height: 0; overflow-y: auto; }\n.eduwork-calendar-dialog > :not(.eduwork-calendar-dialog-content) { flex-shrink: 0; }\n.cal-dialog-actions, .cal-dialog-primary, .cal-dialog-secondary {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 6px;\n}\n.cal-dialog-actions { justify-content: space-between; width: 100%; }\n.cal-dialog-primary { justify-content: flex-end; margin-left: auto; }\n.cal-dialog-primary button, .cal-dialog-secondary button { min-height: 32px; border-radius: 7px; }\n.cal-field { display: grid; gap: 6px; min-width: 0; margin-bottom: 12px; }\n.cal-field-label { font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary, GrayText); }\n.cal-field-hint { font-size: 11px; color: var(--dsw-alias-label-tertiary, GrayText); }\n.cal-quick-form .cal-field :is(input, select) { width: 100%; min-width: 0; box-sizing: border-box; }\n.cal-quick-form > .cal-field:first-child { margin-bottom: 16px; }\n.cal-quick-form > .cal-field:first-child input { min-height: 36px; font-size: 14px; }\n.cal-schedule-fields { display: grid; gap: 12px; margin-bottom: 14px; }\n.cal-schedule-day { display: flex; align-items: end; gap: 16px; }\n.cal-schedule-day .cal-field { flex: 1 1 auto; }\n.cal-schedule-fields .cal-field { margin-bottom: 0; }\n.cal-time-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }\n.cal-edit-dates { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 10px; }\n.cal-all-day {\n  position: relative;\n  display: inline-flex;\n  align-items: center;\n  justify-content: flex-end;\n  gap: 6px;\n  flex: 0 0 auto;\n  min-height: 34px;\n  font-size: 13px;\n  cursor: pointer;\n}\n.cal-all-day input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: inherit; }\n.cal-switch-track {\n  width: 29px;\n  height: 17px;\n  padding: 2px;\n  border-radius: 12px;\n  box-sizing: border-box;\n  background: var(--dsw-alias-border-l3, GrayText);\n}\n.cal-switch-track::before {\n  content: '';\n  display: block;\n  width: 13px;\n  height: 13px;\n  border-radius: 50%;\n  background: var(--dsw-alias-brand-primary-invert, Canvas);\n}\n.cal-all-day input:checked + .cal-switch-track { background: var(--dsw-alias-state-business-primary, Highlight); }\n.cal-all-day input:checked + .cal-switch-track::before { transform: translateX(12px); }\n.cal-all-day input:focus-visible + .cal-switch-track { outline: 2px solid var(--dsw-alias-state-business-primary, Highlight); outline-offset: 2px; }\n.cal-dialog-event .eduwork-calendar-dialog-content > :first-child > h2 {\n  font-size: 20px;\n  line-height: 1.35;\n  font-weight: 600;\n  overflow-wrap: anywhere;\n}\n.cal-dialog-event .eduwork-calendar-dialog-content > p {\n  color: var(--dsw-alias-label-secondary, GrayText);\n  font-size: 13px;\n  overflow-wrap: anywhere;\n}\n.cal-dialog-event > :last-child:not(.eduwork-calendar-dialog-content) {\n  padding-block: 12px 16px;\n  border-top: 1px solid var(--dsw-alias-border-l1, ButtonBorder);\n}\n.cal-dialog-event :is(.cal-dialog-primary, .cal-dialog-secondary) button { min-height: 36px; border-radius: 8px; }\n.cal-dialog-event .cal-dialog-primary button { min-width: 64px; }\n.cal-event-dialog-body { display: grid; gap: 16px; padding-block: 2px 6px; }\n.cal-event-facts { display: grid; gap: 7px; }\n.cal-event-when { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums; }\n.cal-event-when > svg { color: var(--dsw-alias-label-secondary, GrayText); }\n.cal-event-meta { display: flex; flex-wrap: wrap; gap: 5px 14px; padding-inline-start: 24px; font-size: 12px; color: var(--dsw-alias-label-secondary, GrayText); overflow-wrap: anywhere; }\n.cal-event-text { display: grid; gap: 4px; min-width: 0; }\n.cal-event-text p { margin: 0; font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }\n.cal-event-quick { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-inline-start: -8px; }\n.cal-event-quick button { min-height: 30px; border-radius: 7px; }\n.cal-event-form { display: grid; gap: 14px; padding-block: 2px 6px; }\n.cal-event-datetime { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }\n.cal-event-form .cal-field { margin: 0; }\n.cal-event-form input { width: 100%; min-width: 0; min-height: 38px; font-size: 14px; box-sizing: border-box; }\n.cal-event-context { margin: 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-secondary, GrayText); }\n.cal-event-delete-copy { margin: 0; padding-block: 2px 8px; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }\n.cal-event-note-input {\n  width: 100%; min-height: 108px; box-sizing: border-box; padding: 9px 11px; resize: vertical;\n  border: 1px solid var(--dsw-alias-border-l2, ButtonBorder); border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1, Canvas); color: var(--dsw-alias-label-primary, CanvasText);\n  font: inherit; font-size: 14px; line-height: 1.55;\n}\n.cal-inline-confirm {\n  display: grid;\n  gap: 8px;\n  padding-top: 12px;\n  border-top: 1px solid var(--dsw-alias-border-l1, ButtonBorder);\n}\n.cal-inline-confirm p { margin: 0; font-size: 13px; }\n.cal-inline-confirm p + p { color: var(--dsw-alias-label-secondary, GrayText); font-size: 12px; }\n.cal-destructive { color: var(--dsw-alias-state-error-primary, #d4553f); }\n.cal-source-list { display: grid; gap: 14px; }\n.cal-source-list label { display: grid; gap: 6px; font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary, GrayText); }\n.cal-source-list select {\n  width: 100%;\n  border: 1px solid var(--dsw-alias-border-l2);\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n  font-weight: 400;\n  border-radius: 8px;\n  min-height: 38px;\n  padding: 6px 10px;\n}\n@container (max-width: 750px) {\n  .cal-head { padding-top: 16px; gap: 10px; }\n  .cal-period h1 { font-size: 22px; }\n  .cal-actions { margin-left: 0; }\n}\n@media (max-width: 480px) {\n  .cal-event-datetime { grid-template-columns: 1fr; }\n  .cal-edit-dates { grid-template-columns: 1fr; gap: 0; }\n  .cal-schedule-day { gap: 8px; }\n}\n";
 		//#endregion
 		//#region src/calendar-views.ts
 		/** 日历展示层，使用 FullCalendar 排版并沿用 EduWork 宿主的数据与编辑入口。 */
@@ -24633,265 +24633,225 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				style: danger ? { color: "var(--dsw-alias-state-error-primary, #d4553f)" } : void 0
 			}));
 		}
-		/** The details of one occurrence, and every change the panel can make to it. */
+		/** 在同一个弹窗内查看日程、修改单次安排、写笔记或确认删除。 */
 		function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, sourceName }) {
-			const [editing, setEditing] = (0, react.useState)(false);
-			const [confirming, setConfirming] = (0, react.useState)(false);
+			const [mode, setMode] = (0, react.useState)("details");
 			const [form, setForm] = (0, react.useState)({
-				start: occurrence?.start ?? "",
-				end: occurrence?.end ?? "",
-				location: occurrence?.location ?? ""
+				start: "",
+				end: "",
+				location: ""
 			});
-			const [noteDraft, setNoteDraft] = (0, react.useState)(note ?? "");
-			const [writingNote, setWritingNote] = (0, react.useState)(false);
-			const [savingNote, setSavingNote] = (0, react.useState)(false);
+			const [noteDraft, setNoteDraft] = (0, react.useState)("");
+			const [isSaving, setIsSaving] = (0, react.useState)(false);
 			const [showPersonal, setShowPersonal] = (0, react.useState)(false);
-			(0, react.useEffect)(() => {
-				setEditing(false);
-				setConfirming(false);
-				setNoteDraft(note ?? "");
-				setWritingNote(false);
-				setForm({
-					start: occurrence?.start ?? "",
-					end: occurrence?.end ?? "",
-					location: occurrence?.location ?? ""
-				});
-			}, [occurrenceKeyOf(occurrence)]);
-			(0, react.useEffect)(() => {
-				if (!writingNote) setNoteDraft(note ?? "");
-			}, [note, writingNote]);
-			(0, react.useEffect)(() => {
-				if (!editing) setForm({
-					start: occurrence?.start ?? "",
-					end: occurrence?.end ?? "",
-					location: occurrence?.location ?? ""
-				});
-			}, [
-				occurrence?.start,
-				occurrence?.end,
-				occurrence?.location,
-				editing
-			]);
+			const formId = (0, react.useId)();
+			const restoreFocus = (0, react.useRef)(null);
+			const scheduleButton = (0, react.useRef)(null);
+			const noteButton = (0, react.useRef)(null);
+			const deleteButton = (0, react.useRef)(null);
+			(0, react.useLayoutEffect)(() => {
+				if (mode !== "details") return;
+				const target = restoreFocus.current;
+				restoreFocus.current = null;
+				if (target === "schedule") scheduleButton.current?.focus();
+				if (target === "note") noteButton.current?.focus();
+				if (target === "delete") deleteButton.current?.focus();
+			}, [mode]);
 			if (!occurrence) return null;
-			const date = occurrence.occurrenceDate ?? dateOf(occurrence.start);
+			const startDate = dateOf(occurrence.start);
+			const date = occurrence.occurrenceDate ?? startDate;
 			const series = Boolean(event?.recurrence);
 			const wholeDay = clockOf(occurrence.start) === "";
-			form.start !== (occurrence.start ?? "") || form.end !== (occurrence.end ?? "") || (form.location, occurrence.location);
-			const patch = withoutEmpty({
-				start: form.start !== occurrence.start ? form.start : void 0,
-				end: form.end !== (occurrence.end ?? "") ? form.end : void 0,
-				location: form.location !== (occurrence.location ?? "") ? form.location : void 0
-			});
-			/**
-			* A series keeps one record per rule and marks the exceptions, so a change to
-			* a single occurrence of one is an override. A one-off entry has no series to
-			* keep in step: an override there would be a `RECURRENCE-ID` on a `VEVENT`
-			* without `RRULE`, which RFC 5545 does not allow, so the record itself is what
-			* gets edited.
-			*/
-			const save = () => series ? service.applyOverride({
-				uid: occurrence.uid,
-				date,
-				patch,
-				source: occurrence.source
-			}) : service.updateEvent({
-				uid: occurrence.uid,
-				source: occurrence.source,
-				patch: {
-					...form.start !== occurrence.start ? { start: form.start } : {},
-					...form.end !== (occurrence.end ?? "") ? { end: form.end || null } : {},
-					...form.location !== (occurrence.location ?? "") ? { location: form.location || null } : {}
+			const modal = {
+				open: true,
+				size: "detail",
+				className: "cal-dialog-event",
+				closeLabel: "关闭",
+				onClose
+			};
+			const cancel = () => {
+				if (mode === "details") return;
+				restoreFocus.current = mode;
+				setMode("details");
+			};
+			const perform = async (action, success, done) => {
+				if (isSaving) return;
+				setIsSaving(true);
+				try {
+					if (await run(action, success)) done();
+				} finally {
+					setIsSaving(false);
 				}
-			});
-			const quickActions = [];
-			const footerActions = [];
-			if (!editing) quickActions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				key: "when",
+			};
+			const cancelButton = (autoFocus = false) => react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				variant: "ghost",
+				disabled: isSaving,
+				autoFocus,
+				onClick: cancel
+			}, "取消");
+			if (mode === "schedule") {
+				const patch = withoutEmpty({
+					start: form.start !== occurrence.start ? form.start : void 0,
+					end: form.end !== (occurrence.end ?? "") ? form.end : void 0,
+					location: form.location !== (occurrence.location ?? "") ? form.location : void 0
+				});
+				const save = () => series ? service.applyOverride({
+					uid: occurrence.uid,
+					date,
+					patch,
+					source: occurrence.source
+				}) : service.updateEvent({
+					uid: occurrence.uid,
+					source: occurrence.source,
+					patch: {
+						...form.start !== occurrence.start ? { start: form.start } : {},
+						...form.end !== (occurrence.end ?? "") ? { end: form.end || null } : {},
+						...form.location !== (occurrence.location ?? "") ? { location: form.location || null } : {}
+					}
+				});
+				const canSave = form.start !== "" && Object.keys(patch).length > 0 && (series || event);
+				return react.default.createElement(Modal, {
+					...modal,
+					title: series ? "调整这次日程" : "修改时间和地点",
+					description: occurrence.title,
+					footer: react.default.createElement("div", { className: "cal-dialog-primary" }, cancelButton(), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+						variant: "primary",
+						type: "submit",
+						form: formId,
+						disabled: !canSave || isSaving
+					}, isSaving ? "保存中…" : "保存"))
+				}, react.default.createElement("form", {
+					id: formId,
+					className: "cal-event-form",
+					onSubmit: (submit) => {
+						submit.preventDefault();
+						if (canSave) perform(save, series ? "已保存这次调整" : "已保存修改", onClose);
+					}
+				}, react.default.createElement("div", { className: "cal-event-datetime" }, react.default.createElement(Field, { label: "开始" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
+					type: "datetime-local",
+					value: form.start,
+					required: true,
+					autoFocus: true,
+					disabled: isSaving,
+					onChange: (input) => setForm({
+						...form,
+						start: input.target.value
+					})
+				})), react.default.createElement(Field, { label: "结束" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
+					type: "datetime-local",
+					value: form.end,
+					disabled: isSaving,
+					onChange: (input) => setForm({
+						...form,
+						end: input.target.value
+					})
+				}))), react.default.createElement(Field, { label: "地点" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
+					value: form.location,
+					disabled: isSaving,
+					onChange: (input) => setForm({
+						...form,
+						location: input.target.value
+					})
+				})), series && react.default.createElement("p", { className: "cal-event-context" }, "仅修改这一次，重复规则保持不变。")));
+			}
+			if (mode === "note") {
+				const isEmpty = noteDraft.trim() === "";
+				return react.default.createElement(Modal, {
+					...modal,
+					title: note ? "编辑笔记" : "写笔记",
+					description: occurrence.title,
+					footer: react.default.createElement("div", { className: "cal-dialog-primary" }, cancelButton(), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+						variant: "primary",
+						disabled: isSaving || noteDraft === (note ?? ""),
+						onClick: () => perform(() => isEmpty ? service.removeNote(noteRefOf(occurrence)) : service.putNote({
+							...noteRefOf(occurrence),
+							text: noteDraft
+						}), isEmpty ? "已清空笔记" : "笔记已保存", cancel)
+					}, "保存笔记"))
+				}, react.default.createElement("div", { className: "cal-event-form" }, react.default.createElement(Field, { label: "我的笔记" }, react.default.createElement("textarea", {
+					className: "cal-event-note-input",
+					value: noteDraft,
+					rows: 4,
+					spellCheck: false,
+					autoFocus: true,
+					disabled: isSaving,
+					onChange: (input) => setNoteDraft(input.target.value)
+				})), react.default.createElement("p", { className: "cal-event-context" }, "这条私人笔记仅关联本次日程。")));
+			}
+			if (mode === "delete") return react.default.createElement(Modal, {
+				...modal,
+				title: "删除这条日程？",
+				footer: react.default.createElement("div", { className: "cal-dialog-primary" }, cancelButton(true), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					variant: "outline",
+					className: "cal-destructive",
+					disabled: isSaving,
+					onClick: () => perform(() => service.deleteEvent({
+						uid: occurrence.uid,
+						source: occurrence.source
+					}), "已删除这条日程", onClose)
+				}, "删除"))
+			}, react.default.createElement("p", { className: "cal-event-delete-copy" }, `“${occurrence.title}”将从日历中移除。`));
+			return react.default.createElement(Modal, {
+				...modal,
+				title: occurrence.title,
+				footer: react.default.createElement("div", { className: "cal-dialog-actions" }, react.default.createElement("div", { className: "cal-dialog-secondary" }, occurrence.overridden && react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					variant: "ghost",
+					onClick: () => perform(() => service.removeOverride({
+						uid: occurrence.uid,
+						date,
+						source: occurrence.source
+					}), "已恢复原定安排", onClose)
+				}, "撤销改期"), series ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					variant: "ghost",
+					onClick: () => perform(() => service.cancelOccurrence({
+						uid: occurrence.uid,
+						date,
+						source: occurrence.source
+					}), `已取消：${shortDate(date)}`, onClose)
+				}, "取消这一次") : react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					variant: "ghost",
+					className: "cal-destructive",
+					ref: deleteButton,
+					onClick: () => setMode("delete")
+				}, "删除日程")), event && react.default.createElement("div", { className: "cal-dialog-primary" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					variant: "outline",
+					onClick: () => onEdit(event.uid, event.source)
+				}, "编辑日程信息")))
+			}, react.default.createElement("div", { className: "cal-event-dialog-body" }, react.default.createElement("div", { className: "cal-event-facts" }, react.default.createElement("div", { className: "cal-event-when" }, react.default.createElement(IconClock, { "aria-hidden": true }), react.default.createElement("span", null, `${monthOf(startDate)}${dayNumber(startDate)}日 ${weekdayOf(startDate)} ${clockRange(occurrence)}`), occurrence.overridden && react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "info" }, "已改期")), react.default.createElement("div", { className: "cal-event-meta" }, occurrence.location && react.default.createElement("span", null, `地点：${occurrence.location}`), event?.source && react.default.createElement("span", null, `日历：${sourceName(event.source)}`), series && react.default.createElement("span", null, seriesSummary(event)))), occurrence.description && react.default.createElement("div", { className: "cal-event-text" }, react.default.createElement("span", { className: "cal-event-context" }, event?.source && event.source !== "manual" ? `日历备注（${sourceName(event.source)}）` : "日程备注"), react.default.createElement("p", null, occurrence.description)), note && react.default.createElement("div", { className: "cal-event-text" }, react.default.createElement("span", { className: "cal-event-context" }, "我的笔记"), react.default.createElement("p", null, note)), react.default.createElement("div", { className: "cal-event-quick" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant: "ghost",
 				size: "sm",
-				icon: react.default.createElement(IconClock),
-				onClick: () => wholeDay && event ? onEdit(event.uid, event.source) : setEditing(true)
-			}, wholeDay ? "改日期或地点" : series ? "改期或改地点" : "改时间或地点"));
-			quickActions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				key: "note",
+				ref: scheduleButton,
+				onClick: () => {
+					if (wholeDay && event) {
+						onEdit(event.uid, event.source);
+						return;
+					}
+					setForm({
+						start: occurrence.start,
+						end: occurrence.end ?? "",
+						location: occurrence.location ?? ""
+					});
+					setMode("schedule");
+				}
+			}, wholeDay ? "改日期或地点" : series ? "改期或改地点" : "改时间或地点"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant: "ghost",
 				size: "sm",
-				onClick: () => setWritingNote(!writingNote)
-			}, note ? "改笔记" : "写笔记"));
-			quickActions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				key: "personal",
+				ref: noteButton,
+				onClick: () => {
+					setNoteDraft(note ?? "");
+					setMode("note");
+				}
+			}, note ? "改笔记" : "写笔记"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant: "ghost",
 				size: "sm",
 				"aria-expanded": showPersonal,
 				onClick: () => setShowPersonal(!showPersonal)
-			}, showPersonal ? "收起个人设置" : "更多个人设置"));
-			if (occurrence.overridden) footerActions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				key: "undo",
-				variant: "ghost",
-				size: "sm",
-				disabled: false,
-				onClick: () => run(() => service.removeOverride({
-					uid: occurrence.uid,
-					date,
-					source: occurrence.source
-				}), "已恢复原定安排").then((ok) => ok && onClose())
-			}, "撤销改期"));
-			if (series) footerActions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				key: "cancel",
-				variant: "ghost",
-				size: "sm",
-				onClick: () => run(() => service.cancelOccurrence({
-					uid: occurrence.uid,
-					date,
-					source: occurrence.source
-				}), `已取消：${shortDate(date)}`).then((ok) => ok && onClose())
-			}, "取消这一次"));
-			else footerActions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				key: "delete",
-				variant: "ghost",
-				size: "sm",
-				className: "cal-destructive",
-				onClick: () => setConfirming(true)
-			}, "删除日程"));
-			return react.default.createElement(Modal, {
-				open: true,
-				size: "detail",
-				onClose,
-				title: occurrence.title,
-				closeLabel: "关闭",
-				description: series ? seriesSummary(event) : void 0,
-				footer: confirming ? react.default.createElement("div", { className: "cal-dialog-actions" }, react.default.createElement("span", {
-					className: "cal-delete-question",
-					role: "status"
-				}, "确定删除这条日程？"), react.default.createElement("div", { className: "cal-dialog-primary" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-					variant: "ghost",
-					size: "sm",
-					autoFocus: true,
-					onClick: () => setConfirming(false)
-				}, "取消"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-					variant: "outline",
-					size: "sm",
-					className: "cal-destructive",
-					onClick: async () => {
-						if (await run(() => service.deleteEvent({
-							uid: occurrence.uid,
-							source: occurrence.source
-						}), "已删除这条日程")) onClose();
-					}
-				}, "删除"))) : react.default.createElement("div", { className: "cal-dialog-actions" }, react.default.createElement("div", { className: "cal-dialog-secondary" }, ...footerActions), event && react.default.createElement("div", { className: "cal-dialog-primary" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-					variant: "outline",
-					size: "sm",
-					onClick: () => onEdit(event.uid, event.source)
-				}, "编辑日程信息")))
-			}, react.default.createElement("div", { className: "cal-event-dialog-body" }, react.default.createElement("div", { className: "cal-event-facts" }, react.default.createElement("div", { className: "cal-event-when" }, react.default.createElement(IconClock, { "aria-hidden": true }), react.default.createElement("span", null, `${monthOf(dateOf(occurrence.start))}${dayNumber(dateOf(occurrence.start))}日 ${weekdayOf(dateOf(occurrence.start))} ${clockRange(occurrence)}`), occurrence.overridden ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "info" }, "已改期") : void 0, series ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "outline" }, "重复日程中的一次") : void 0), react.default.createElement("div", { className: "cal-event-meta" }, occurrence.location && react.default.createElement("span", null, `地点：${occurrence.location}`), event?.source && react.default.createElement("span", null, `日历：${sourceName(event.source)}`))), react.default.createElement("div", { className: "cal-event-quick" }, ...quickActions), occurrence.description ? react.default.createElement("div", null, react.default.createElement(Muted, { style: {
-				display: "block",
-				marginBottom: 2
-			} }, event?.source && event.source !== "manual" ? `日历备注（${sourceName(event.source)}）` : "日程备注"), react.default.createElement("div", { style: {
-				fontSize: 12,
-				color: SECONDARY,
-				whiteSpace: "pre-wrap"
-			} }, occurrence.description)) : void 0, note && !writingNote ? react.default.createElement("div", { style: {
-				whiteSpace: "pre-wrap",
-				fontSize: 13
-			} }, react.default.createElement(Muted, { style: {
-				display: "block",
-				marginBottom: 3
-			} }, "我的笔记"), note) : void 0, writingNote ? react.default.createElement("div", { className: "cal-event-edit" }, react.default.createElement(Field, {
-				label: "我的笔记",
-				hint: "只属于这次日程。改期后保留，独立于日程备注，不随 ICS 导出。"
-			}, react.default.createElement("textarea", {
-				value: noteDraft,
-				rows: 4,
-				spellCheck: false,
-				autoFocus: true,
-				disabled: savingNote,
-				placeholder: "例如：期末要背 P187",
-				onChange: (event) => setNoteDraft(event.target.value),
-				style: {
-					width: "100%",
-					boxSizing: "border-box",
-					padding: "6px 8px",
-					borderRadius: 8,
-					resize: "vertical",
-					border: CARD_BORDER,
-					background: "var(--dsw-alias-bg-layer-1, #fff)",
-					color: PRIMARY,
-					fontSize: 13,
-					fontFamily: "inherit",
-					lineHeight: 1.5
-				}
-			})), react.default.createElement("div", { style: {
-				display: "flex",
-				gap: 8,
-				alignItems: "center",
-				flexWrap: "wrap"
-			} }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				variant: "primary",
-				size: "sm",
-				disabled: savingNote || noteDraft === (note ?? ""),
-				onClick: async () => {
-					if (savingNote) return;
-					setSavingNote(true);
-					try {
-						if (await run(() => noteDraft.trim() === "" ? service.removeNote(noteRefOf(occurrence)) : service.putNote({
-							...noteRefOf(occurrence),
-							text: noteDraft
-						}), noteDraft.trim() === "" ? "已清空笔记" : "笔记已保存")) setWritingNote(false);
-					} finally {
-						setSavingNote(false);
-					}
-				}
-			}, "保存笔记"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				variant: "ghost",
-				size: "sm",
-				disabled: savingNote,
-				onClick: () => {
-					setNoteDraft(note ?? "");
-					setWritingNote(false);
-				}
-			}, "取消"), noteDraft !== (note ?? "") ? react.default.createElement(Muted, null, "笔记只属于这次日程") : void 0)) : void 0, showPersonal ? react.default.createElement(PersonalSettings, {
+			}, showPersonal ? "收起个人设置" : "更多个人设置")), showPersonal && react.default.createElement(PersonalSettings, {
 				identity: noteRefOf(occurrence),
 				service,
 				run,
 				Field
-			}) : void 0, editing ? react.default.createElement("div", { className: "cal-event-edit" }, react.default.createElement(Field, { label: "开始" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
-				type: "datetime-local",
-				value: form.start,
-				onChange: (event) => setForm({
-					...form,
-					start: event.target.value
-				})
-			})), react.default.createElement(Field, {
-				label: "结束",
-				hint: "留空表示沿用原本的时长"
-			}, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
-				type: "datetime-local",
-				value: form.end,
-				onChange: (event) => setForm({
-					...form,
-					end: event.target.value
-				})
-			})), react.default.createElement(Field, { label: "地点" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
-				value: form.location,
-				placeholder: "留空表示沿用原来的地点",
-				onChange: (event) => setForm({
-					...form,
-					location: event.target.value
-				})
-			})), react.default.createElement("div", { style: {
-				display: "flex",
-				gap: 8,
-				alignItems: "center"
-			} }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				variant: "primary",
-				size: "sm",
-				disabled: Object.keys(patch).length === 0 || !series && !event,
-				onClick: () => run(save, series ? "已保存这次调整" : "已保存修改").then((ok) => ok && onClose())
-			}, "保存"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-				variant: "ghost",
-				size: "sm",
-				onClick: () => setEditing(false)
-			}, "取消"), react.default.createElement(Muted, null, series ? "只改这一次，系列其他日期不受影响" : "只改这一条日程"))) : void 0));
+			})));
 		}
 		/** Read a dropped or chosen file as text, with the few checks a calendar import needs. */
 		async function readCalendarFile(file) {

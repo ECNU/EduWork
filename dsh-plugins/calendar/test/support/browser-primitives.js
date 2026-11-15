@@ -18,9 +18,9 @@ const h = window.React.createElement
 const cx = (...values) => values.filter(Boolean).join(' ')
 
 /** A real `<button>`, so a click is a click and the role comes from the element. */
-const Button = ({ children, onClick, disabled, variant, size, icon, className, ...rest }) =>
-  h('button', { type: 'button', onClick, disabled: Boolean(disabled), className: cx('ui-button', className), ...rest },
-    icon ?? null, children)
+const Button = window.React.forwardRef(({ children, onClick, disabled, variant, size, icon, className, ...rest }, ref) =>
+  h('button', { ref, type: 'button', onClick, disabled: Boolean(disabled), className: cx('ui-button', className), ...rest },
+    icon ?? null, children))
 
 const Input = ({ className, ...rest }) => h('input', { className: cx('ui-input', className), ...rest })
 
