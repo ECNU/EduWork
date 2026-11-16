@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EduWork 快速入门</title>
+<style>
+  :root { color-scheme: light dark; --ink: #252321; --subtle: #645d59; --paper: #fffdfa; --line: #ded8d2; --tint: #f7efea; --accent: #8e3748; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --ink: #f0eae5; --subtle: #c5bbb5; --paper: #201e1d; --line: #4b4441; --tint: #342b2b; --accent: #eda5b2; }
+  }
+  :root[data-theme="dark"] { color-scheme: dark; --ink: #f0eae5; --subtle: #c5bbb5; --paper: #201e1d; --line: #4b4441; --tint: #342b2b; --accent: #eda5b2; }
+  :root[data-theme="light"] { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.75 system-ui,"Microsoft YaHei",sans-serif; }
+  main { max-width: 44rem; padding: clamp(1.3rem,5vw,3rem) 1.35rem 3rem; margin: auto; }
+  h1, h2, p { margin: 0; }
+  h1 { font-size: clamp(1.8rem,5vw,2.4rem); line-height: 1.25; }
+  header p { margin-top: .6rem; color: var(--subtle); }
+  ol { padding: 0; margin: 1.8rem 0; list-style-position: inside; }
+  li { padding: .9rem 0; border-top: 1px solid var(--line); }
+  li::marker { color: var(--accent); font-weight: 650; }
+  h2 { display: inline; font-size: 1.1rem; }
+  li p { margin-top: .3rem; }
+  blockquote { margin: .65rem 0 0; border-inline-start: 3px solid var(--accent); padding: .65rem 1rem; background: var(--tint); }
+  footer { border-top: 1px solid var(--line); padding-top: 1rem; color: var(--subtle); }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>EduWork 快速入门</h1>
+  <p>准备一份课程讲义，用它做一页复习提纲。</p>
+</header>
+<ol>
+  <li><h2>连接模型</h2><p>打开「设置 → 模型」，填写模型服务商提供的 API Key、接口地址和模型名称。如果你的机构提供登录入口，也可以登录后选择已获授权的模型。</p></li>
+  <li><h2>选一个工作区</h2><p>在电脑上新建文件夹，把讲义放进去。在 EduWork 点「新会话」，选择这个文件夹。要让它生成文件，将权限设为「工作区内修改」。</p></li>
+  <li><h2>说清楚想要的结果</h2><p>在输入框输入 <strong>@</strong> 选中讲义，再告诉它要交付什么。例如：</p>
+    <blockquote>请根据这份讲义整理一页复习提纲，列出三个核心概念，每个配一个例子。把结果保存为工作区里的「复习提纲.docx」。</blockquote></li>
+  <li><h2>打开成果，继续修改</h2><p>展开右侧文件栏，打开「复习提纲.docx」核对内容。要换个例子，直接在同一会话里说“把第二个例子换成日常生活中的场景”，再打开文件查看修改。</p></li>
+</ol>
+<footer><p>下次可以从「应用 → 使用教程」回到这里，或点面板上的「重新播放引导」再看一遍工作台各个位置。</p></footer>
+</main>
+</body>
+</html>
