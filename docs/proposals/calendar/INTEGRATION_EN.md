@@ -75,7 +75,7 @@ const settings = ctx.calendar.personalFor({ source: source.source, uid: 'demo-1'
 
 `notes` reads raw personal records; `personalFor` reads effective settings. Removing a note does not delete reminder or visibility fields. Patches, clears and deletion share the per-target read/merge/write queue. This is a single-process guarantee.
 
-User edits to imported descriptions become private remarks. Pre-upgrade description/extension ownership cannot be inferred reliably, so source receipts retain a review copy, visible in personal settings. Old extension data never automatically enables delivery. Private settings are excluded from ICS.
+User edits to imported descriptions become private remarks. Pre-upgrade description/extension ownership cannot be inferred reliably, so source receipts retain a review copy, visible in personal settings. Old extension data never automatically enables delivery. `exportIcs` retains source descriptions by default. Pass `includeRemarks: true` to include personal remarks. Notes and other personal settings stay on the device.
 
 ## Reminder plans and delivery
 
@@ -108,7 +108,7 @@ Keep the Host running. Restart catches up at most 24 hours and receipts remain f
 
 `calendar.changes(signal)` uses the existing Runtime Remote logical stream for `{revision}` invalidations, coalescing rapid changes. It is not a consistent snapshot or durable event log. The panel rereads current data, resubscribes after disconnection and cancels on unmount. Both source and personal writes trigger refresh.
 
-Week/month views share data. Separate institution academic-calendar/timetable entries, default views and preset source filters remain future work.
+The panel opens in month view and shares its focused date with week view. Institution plugins can supply calendars, and users choose and filter them in Calendar sources. The academic-year timeline queries the selected provider with `group: "academic-calendar"`. When `includeOriginalSpan: true` requests original calendar dates, providers can preserve clipped endpoints in `originalFirstDay` and `originalLastDay`.
 
 
 ## Complete instances and education calendars

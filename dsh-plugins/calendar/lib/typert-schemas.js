@@ -76,6 +76,7 @@ const importOutcome = z.object({
 /** What to call the exported calendar. */
 const exportInput = z.object({
   name: z.string().min(1).optional(),
+  includeRemarks: z.boolean().optional(),
 }).strict()
 
 const exportOutcome = z.object({ text: z.string() }).strict()
@@ -213,7 +214,10 @@ export const rangeParameter = jsonParameter('occurrences', 'range', rangeSchema)
 // Annotations speak in whole days: a range carrying clock parts or record
 // filters would be range vocabulary leaking into a decoration contract.
 const annotationDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD')
-export const annotationRangeSchema = z.object({ from: annotationDay.optional(), to: annotationDay.optional() }).strict()
+export const annotationRangeSchema = z.object({
+  from: annotationDay.optional(), to: annotationDay.optional(),
+  group: z.string().min(1).optional(), includeOriginalSpan: z.boolean().optional(),
+}).strict()
 export const annotationsRangeParameter = jsonParameter('annotationsFor', 'range', annotationRangeSchema)
 export const annotationSelectionParameter = jsonParameter('selectAnnotations', 'input', z.object({ group: z.string().min(1), id: z.string().nullable() }).strict())
 export const annotationChoicesResult = result('@eduwork/dsh-calendar#AnnotationChoices', z.array(z.object({
@@ -269,4 +273,6 @@ export const sourceStatusesResult = result('@eduwork/dsh-calendar#CalendarSource
   updatedAt: z.string().optional(), error: z.enum(['incomplete_snapshot', 'unattributable', 'sync_failed', 'sync_timeout']).optional(),
 }).strict()))
 
-export const updateEventParameter = jsonParameter('updateEvent', 'input', z.object({ uid: z.string().min(1), ...sourceRef, patch: EventPatchSchema }).strict())
+export const updateEventParameter = jsonParameter('updateEvent', 'input', z.object({
+  uid: z.string().min(1), ...sourceRef, patch: EventPatchSchema, remark: z.string().optional(),
+}).strict())

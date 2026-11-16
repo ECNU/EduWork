@@ -407,7 +407,7 @@ export function apply(ctx) {
   }
   ctx.tools.register(defineTool({
     name:'calendar_notes',
-    description:'Read the user’s private calendar notes, separately from the event description that is exported in ICS. Filter by source, uid and originalStart. unlinkedOnly reads preserved notes whose original class can no longer be found.',
+    description:'Read the user’s private calendar notes, separately from a source description or opt-in exported remark. Filter by source, uid and originalStart. unlinkedOnly reads preserved notes whose original class can no longer be found.',
     parameters:{source:sourceParameter,uid:{type:'string'},originalStart:{type:'string'},unlinkedOnly:{type:'boolean'}},
     output:{schema:{type:'object',additionalProperties:false,properties:{notes:{type:'array',required:true,items:{type:'object',additionalProperties:false,properties:noteFields}}}},
       render:(_args,value)=>[{type:'text',text:value.notes.length?value.notes.map(n=>`${n.source} / ${n.uid} / ${n.originalStart ?? '整条日程'}：${n.text}`).join('\n'):'没有符合条件的笔记。'}]},
@@ -448,7 +448,7 @@ export function apply(ctx) {
   }
   ctx.tools.register(defineTool({
     name: 'calendar_read_personal',
-    description: 'Read effective private note, remark, display and reminder settings for an event or occurrence. Omit originalStart for series defaults. Settings inherit per field; off disables that field. These values are local and excluded from ICS.',
+    description: 'Read effective private note, remark, display and reminder settings for an event or occurrence. Omit originalStart for series defaults. Settings inherit per field; off disables that field. These values are local. Only remarks can be included in an opt-in ICS export.',
     parameters: noteIdentity,
     output: settingsOutput,
     execute: args => {

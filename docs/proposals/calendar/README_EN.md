@@ -111,7 +111,7 @@ The core of the public contract. Fields follow ICS semantics so that no single d
 | `start` | string | yes | `DTSTART` | Local time `YYYY-MM-DDTHH:mm`, or a date `YYYY-MM-DD` |
 | `end` | string | no | `DTEND` | Inclusive for all-day events; timed ends must be later than starts and use the same format |
 | `location` | string | no | `LOCATION` | Room or other place |
-| `description` | string | no | `DESCRIPTION` | Event description exported to ICS, separate from private notes |
+| `description` | string | no | `DESCRIPTION` | Source description or a personal event remark. Source descriptions export by default, and personal remarks require opt-in |
 | `recurrence` | object | no | `RRULE` | See [Recurrence boundary](#recurrence-boundary) |
 | `exceptions` | string[] | no | `EXDATE` | Cancelled instances |
 | `source` | string | no | — | Source namespace, default `manual`; separate sources may share a `uid` |

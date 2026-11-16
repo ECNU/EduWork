@@ -25,6 +25,8 @@ export const weekAnnotationSchema = z.object({
 export const spanDecorationSchema = z.object({
   firstDay: localDate,
   lastDay: localDate,
+  originalFirstDay: localDate.optional(),
+  originalLastDay: localDate.optional(),
   text: z.string().min(1).max(32),
   tone: tone.optional(),
 }).strict()
@@ -88,7 +90,9 @@ export class AnnotationRegistry {
    * decoration, so a slow answer is worth nothing.
    */
   async annotationsFor(range = {}) {
-    const visible = [...this.providers.values()].filter(provider => !provider.selectionGroup || this.selected(provider.selectionGroup) === provider.id)
+    const visible = [...this.providers.values()].filter(provider =>
+      (!range.group || provider.selectionGroup === range.group)
+      && (!provider.selectionGroup || this.selected(provider.selectionGroup) === provider.id))
     const answers = await Promise.all(visible.map(async provider => {
       let answer
       try {

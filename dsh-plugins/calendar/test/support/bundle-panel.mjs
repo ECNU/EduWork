@@ -3,7 +3,7 @@
 // The client half is TypeScript written against the product's primitives package
 // and the desktop shell's runtime. This esbuild bundle is only a test fixture;
 // product artifacts use the locked tsdown build. The test maps UI primitives
-// to a plain-element stand-in. Everything else — the panel's own logic,
+// and the browser calendar to plain-element stand-ins. Everything else — the panel's own logic,
 // which service methods it calls, and the code that reads a note back — is the
 // real source, so a render proves the real client wiring rather than a copy of it.
 import { mkdir } from 'node:fs/promises'
@@ -42,6 +42,11 @@ await build({
   alias: {
     '@deepseek-ai/dsh-client-ui-primitives': join(pluginRoot, 'test/support/ui-primitives-stub.js'),
   },
+  plugins: [{ name: 'calendar-canvas-fixture', setup(builder) {
+    builder.onResolve({ filter: /^\.\/calendar-views\.js$/ }, () => ({
+      path: join(pluginRoot, 'test/support/calendar-views-stub.js'),
+    }))
+  } }],
   define: { 'process.env.NODE_ENV': '"test"', __EDUWORK_PINNED_DSH__: 'true' },
   logLevel: 'warning',
 })

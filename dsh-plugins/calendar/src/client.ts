@@ -1,34 +1,14 @@
-// Client half of the calendar panel: the week view, one entry's page, and the
-// ICS dialogs.
-//
-// A calendar shows time, not rows: the week is drawn on an hour axis with one
-// column per day, and an entry is a block whose top and height come from its
-// clock. Two entries at the same hour split their day's width instead of
-// stacking, and everything that is not a clock time lives in the all-day row
-// above the axis. The arithmetic of that placement is in `src/layout.js`; this
-// file scales it to pixels and paints it.
-//
-// The panel holds events, never courses. A timetable is one data source that an
-// institution plugin may feed in, and it arrives as ordinary entries carrying
-// that source's stamp: the panel groups and colours by source for exactly that
-// reason, and an entry the reader writes by hand is a `manual` one.
-//
-// The panel is built from the product's own primitives (buttons, dialogs, menu,
-// inputs, icons) rather than hand-rolled controls, so it looks like the rest of
-// the shell in both light and dark themes and keeps their keyboard behaviour.
-// The two generations of this package that the product ships name their icons
-// differently: the earlier one carries the drawn size in the name
-// (`IconPlusOutline16`), the later one drops it and offers stroke variants with
-// the size as a prop (`IconPlusOutlineRegular`). The components below are the
-// same in both; each icon is resolved from whichever set is loaded, so the panel
-// draws on either runtime instead of importing a name one of them lacks.
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+/** 日历插件的客户端入口；由工作台注册面板、提供控件和主题。 */
+import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input, Menu, Modal as PrimitiveModal, Switch, Tag, Toast, Tooltip, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import * as primitives from '@deepseek-ai/dsh-client-ui-primitives'
 import calendarRemote from '../lib/typert.remote-client.js'
+import { mergeRemarks } from '../lib/model.js'
 import { PersonalSettings, occurrenceNote } from './personal-settings.js'
-import { dayWindow, layoutWeek, minutesOf } from './layout.js'
-import { MonthGrid, monthRange, monthStart, shiftMonth } from './month-view.js'
+import { addDays, localDate, monthRange, monthStart, parseDate, shiftMonth, startOfWeek } from './dates.js'
+import { AcademicYear, CalendarCanvas, CalendarStyles } from './calendar-views.js'
+import { EventEditorSurface, OccurrenceSurface } from './event-surfaces.js'
+import { agendaFor, DailyAgenda, TimetableDetails, TimetableSidebar, type TimetableTextField, type TimetableTextScope } from './calendar-sidebar.js'
 
 /**
  * Resolve one icon from the loaded primitives package.
@@ -49,6 +29,7 @@ const IconChevronRight = icon(['IconChevronRightOutline14', 'IconChevronRightOut
 const IconClock = icon(['IconClockOutline16', 'IconClockOutlineRegular'], 16)
 const IconCopy = icon(['IconCopyOutline16', 'IconCopyOutlineRegular'], 16)
 const IconDownload = icon(['IconDownloadOutline16', 'IconDownloadOutlineRegular'], 16)
+const IconEllipsis = icon(['IconEllipsisOutline16', 'IconEllipsisOutlineRegular'], 16)
 const IconFolderOpen = icon(['IconFolderOpenOutline16', 'IconFolderOpenOutlineRegular'], 16)
 const IconPlus = icon(['IconPlusOutline16', 'IconPlusOutlineRegular'], 16)
 const IconRefresh = icon(['IconRefreshOutline16', 'IconRefreshOutlineRegular'], 16)
@@ -71,78 +52,32 @@ const newUid = () => (globalThis.crypto?.randomUUID
   ? `manual-${globalThis.crypto.randomUUID()}`
   : `manual-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`)
 
-/** Row height of one hour on the axis, in pixels; the axis is drawn from this. */
-const HOUR_HEIGHT = 48
-const PX_PER_MINUTE = HOUR_HEIGHT / 60
-/** Width of the hour gutter, in pixels. */
-const GUTTER = 54
-/**
- * The axis is a whole day, as in the calendars this view follows. A fixed
- * working day left the lower half of a tall window empty; with the whole day on
- * the axis the grid always reaches the bottom, and the view scrolls to where
- * this week's entries are instead of cropping them to office hours.
- */
-const DAY_MINUTES = 24 * 60
-
 const PAGE_BACKGROUND = 'var(--dsw-alias-bg-base, #fff)'
 const PRIMARY = 'var(--dsw-alias-label-primary, #222)'
 const SECONDARY = 'var(--dsw-alias-label-secondary, #666)'
-const TERTIARY = 'var(--dsw-alias-label-tertiary, #888)'
-/** The three tones an annotation may carry: what each looks like as a small band. */
-const TONE_BAR: Record<string, string> = {
-  neutral: 'rgba(136,136,136,0.45)',
-  highlight: 'rgba(77,107,254,0.55)',
-  quiet: 'rgba(63,133,98,0.55)',
-}
-/** The same tones as solid dots, for the legend that names what is on screen. */
-const TONE_DOT: Record<string, string> = {
-  neutral: '#888',
-  highlight: 'var(--dsw-alias-state-business-primary, #4d6bfe)',
-  quiet: '#3f8562',
-}
 const HAIRLINE = '.5px solid var(--dsw-alias-border-l1, #00000014)'
 const CARD_BORDER = '1px solid var(--dsw-alias-border-l2, #0000001f)'
 const LAYER = 'var(--dsw-alias-bg-layer-2, #f6f6f6)'
-const HOVER = 'var(--dsw-alias-interactive-bg-hover, #0000000a)'
 
-/** The shared Modal leaves its size and scrolling to the consuming surface. */
-function Modal({ children, className, contentClassName, ...props }: React.ComponentProps<typeof PrimitiveModal>) {
+/** 弹窗沿用宿主的焦点、关闭和遮罩行为，由日历定义不同内容的宽度。 */
+function Modal({ children, className, contentClassName, size, ...props }:
+  React.ComponentProps<typeof PrimitiveModal> & { size?: 'compact' }) {
   return React.createElement(PrimitiveModal, {
     ...props,
-    className: ['eduwork-calendar-dialog', className].filter(Boolean).join(' '),
+    className: ['eduwork-calendar-dialog', size && `cal-dialog-${size}`, className].filter(Boolean).join(' '),
     contentClassName: ['eduwork-calendar-dialog-content', contentClassName].filter(Boolean).join(' '),
-  }, React.createElement('style', null, `
-    .eduwork-calendar-dialog { width: min(640px, 100%); max-height: 100%; }
-    .eduwork-calendar-dialog-content { min-height: 0; overflow-y: auto; }
-    .eduwork-calendar-dialog > :not(.eduwork-calendar-dialog-content) { flex-shrink: 0; }
-  `), children)
+  }, children)
 }
 
 /** The hues a source is drawn in, as the product's static palette names; the fallbacks are for themes without them. */
 const TINTS: Record<string, string> = { blue: '#4d6bfe', amber: '#d99a2b', green: '#2f9e68', deepseek: '#4d6bfe', red: '#d4553f' }
 const TINT_FAMILIES = Object.keys(TINTS)
-
-/** Hover feedback for a row or a block, which inline styles cannot express. */
-function useHover() {
-  const [hovered, setHovered] = useState(false)
-  return [hovered, { onMouseEnter: () => setHovered(true), onMouseLeave: () => setHovered(false) }] as const
-}
+const COURSE_ACCENTS = [
+  'var(--dsw-static-blue-500, #4d6bfe)', '#9273cf', '#5595af', '#c27491',
+  'var(--dsw-static-green-500, #2f9e68)', '#9a962d', '#a87451', '#4e9b98',
+]
 
 const pad2 = (value: number) => String(value).padStart(2, '0')
-/** Local `YYYY-MM-DD` of a date. */
-const localDate = (value = new Date()) => `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`
-/** Local midnight of a `YYYY-MM-DD` string. */
-function parseDate(date: string) {
-  const [year, month, day] = date.split('-').map(Number)
-  return new Date(year, month - 1, day)
-}
-const addDays = (date: string, days: number) => {
-  const value = parseDate(date)
-  value.setDate(value.getDate() + days)
-  return localDate(value)
-}
-/** Monday of the week a date belongs to. */
-const startOfWeek = (date: string = localDate()) => addDays(date, -((parseDate(date).getDay() + 6) % 7))
 const dateOf = (value: string) => value.slice(0, 10)
 /** Clock part of a local time string, empty for a whole-day value. */
 const clockOf = (value?: string) => (value && value.length > 10 ? value.slice(11, 16) : '')
@@ -150,12 +85,10 @@ const weekdayOf = (date: string) => WEEKDAYS[(parseDate(date).getDay() + 6) % 7]
 const dayNumber = (date: string) => parseDate(date).getDate()
 const shortDate = (date: string) => `${parseDate(date).getMonth() + 1}月${parseDate(date).getDate()}日`
 const monthOf = (date: string) => `${parseDate(date).getFullYear()}年${parseDate(date).getMonth() + 1}月`
-const hourLabel = (minutes: number) => `${pad2(Math.floor(minutes / 60))}:00`
 /** Minutes from midnight of an `HH:mm` clock string. */
 const clockMinutes = (value: string) => Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5))
 /** The `HH:mm` clock string of minutes from midnight. */
 const clockAt = (minutes: number) => `${pad2(Math.floor(minutes / 60))}:${pad2(minutes % 60)}`
-const isToday = (date: string) => date === localDate()
 
 /**
  * The clock a new entry is offered: the next whole hour when it is for today,
@@ -176,14 +109,31 @@ function clockRange(occurrence: any) {
   return end === '' ? start : `${start}–${end}`
 }
 
-/** A stable hue per data source, so one import keeps its colour across views and restarts. */
-function tintOf(key?: string) {
+function paletteIndex(text: string, size: number) {
   let hash = 0
-  const text = key ?? 'event'
   for (let index = 0; index < text.length; index += 1) hash = (hash * 31 + text.charCodeAt(index)) % 100003
-  const family = TINT_FAMILIES[hash % TINT_FAMILIES.length]
+  return hash % size
+}
+
+/** 普通日程按来源配色，拖选创建沿用个人日历颜色。 */
+function tintOf(key?: string) {
+  const family = TINT_FAMILIES[paletteIndex(key ?? 'event', TINT_FAMILIES.length)]
   const accent = `var(--dsw-static-${family}-500, ${TINTS[family]})`
   return { accent, background: `color-mix(in srgb, ${accent} 15%, var(--dsw-alias-bg-layer-1, #fff))` }
+}
+
+/** 教学班身份跨上课时间和节次，供所有日历表面共用颜色。 */
+function entryAccent(entry: { source: string; extensions?: Record<string, unknown> }) {
+  const academic = entry.extensions?.['eduwork.academic']
+  if (academic && typeof academic === 'object'
+    && 'institution' in academic && typeof academic.institution === 'string'
+    && 'term' in academic && typeof academic.term === 'string'
+    && 'teachingClassCode' in academic && typeof academic.teachingClassCode === 'string'
+    && academic.teachingClassCode.trim()) {
+    const key = JSON.stringify([entry.source, academic.institution, academic.term, academic.teachingClassCode])
+    return COURSE_ACCENTS[paletteIndex(key, COURSE_ACCENTS.length)]
+  }
+  return tintOf(entry.source).accent
 }
 
 /** Drop undefined and blank entries, so a patch or an edit carries only what it means. */
@@ -260,11 +210,11 @@ function seriesSummary(event: any) {
 }
 
 /** A labelled form row: the label above its control, as in the shell's own settings. */
-function Field({ label, children, hint }: any) {
-  return React.createElement('label', { style: { display: 'block', marginBottom: 12 } },
-    React.createElement('span', { style: { display: 'block', marginBottom: 6, fontSize: 12, color: SECONDARY } }, label),
+function Field({ label, children, hint, className }: any) {
+  return React.createElement('label', { className: className ? `cal-field ${className}` : 'cal-field' },
+    React.createElement('span', { className: 'cal-field-label' }, label),
     children,
-    hint ? React.createElement('span', { style: { display: 'block', marginTop: 4, fontSize: 11, color: TERTIARY } }, hint) : undefined)
+    hint ? React.createElement('span', { className: 'cal-field-hint' }, hint) : undefined)
 }
 
 
@@ -296,615 +246,202 @@ function IconButton({ label, icon, onClick, danger, disabled }: any) {
     }))
 }
 
-/**
- * One entry on the axis.
- *
- * The block is a button so a keyboard reaches it, and its width is the lane the
- * layout gave it: `100 / lanes` percent, inset by a hairline so neighbours stay
- * apart.
- */
-function Block({ entry, axisStart, tint, note, onSelect }: any) {
-  const [hovered, hover] = useHover()
-  const width = 100 / entry.lanes
-  const height = entry.height * PX_PER_MINUTE
-  const inner = height - 8
-  const label = `${clockRange(entry.occurrence)} ${entry.occurrence.title}${entry.occurrence.location ? ` · ${entry.occurrence.location}` : ''}`
-  // A block shows what fits: the clock and the title always, the place when
-  // there is room for a third line.
-  const line = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
-  return React.createElement('button', {
-    type: 'button',
-    title: label,
-    'aria-label': label,
-    // Names the occurrence the block stands for, so a test acts on the same
-    // identity the note is stored under rather than on a button's position.
-    'data-occurrence': occurrenceKeyOf(entry.occurrence),
-    onClick: () => onSelect(entry.occurrence),
-    ...hover,
-    style: {
-      position: 'absolute', top: (entry.top - axisStart) * PX_PER_MINUTE, height,
-      left: `calc(${entry.lane * width}% + 2px)`, width: `calc(${width}% - 4px)`,
-      display: 'block', overflow: 'hidden', textAlign: 'left', cursor: 'pointer',
-      padding: '3px 6px', border: 'none', borderLeft: `3px solid ${tint.accent}`, borderRadius: 6,
-      background: tint.background, color: PRIMARY, fontFamily: 'inherit',
-      boxShadow: hovered ? 'var(--dsw-elevation-panel, 0 6px 18px rgba(0, 0, 0, .16))' : 'none',
-      transition: 'box-shadow .12s ease', zIndex: hovered ? 2 : 1,
-    },
-  },
-  React.createElement('div', { style: { ...line, fontSize: 11, lineHeight: '15px', color: SECONDARY, fontVariantNumeric: 'tabular-nums' } }, clockRange(entry.occurrence)),
-  React.createElement('div', {
-    style: { ...line, marginTop: 1, fontSize: 12, lineHeight: '17px', fontWeight: 600 },
-  }, entry.occurrence.title),
-  inner >= 34 && entry.occurrence.location
-    ? React.createElement('div', { style: { ...line, fontSize: 11, lineHeight: '15px', color: SECONDARY } }, entry.occurrence.location)
-    : undefined,
-  // The reader's own note, when the block has room for it. A note that is only
-  // visible after opening the class is a note the reader has to remember writing.
-  inner >= 50 && note
-    ? React.createElement('div', { style: { ...line, fontSize: 11, lineHeight: '15px', color: PRIMARY, opacity: .75 } }, `笔记：${note}`)
-    : undefined)
-}
-
-/**
- * The bands a data plugin laid over the range on screen, named once beside the
- * title. A wash or a thin bar shows that a stretch is special; the legend says
- * what it is called, so the reader does not have to hover to learn a colour.
- * `tones` narrows it to the bands the rest of the header does not already
- * speak: the week's subtitle names its own band, so only highlighted ones —
- * which the week's own label outranks — need the legend, while the month's
- * subtitle names nothing and every band is listed.
- */
-function SpanLegend({ spans, from, to, tones }: any) {
-  if (!spans) return undefined
-  const seen = new Set<string>()
-  const items: any[] = []
-  for (const span of [...spans].sort((left: any, right: any) => (left.firstDay < right.firstDay ? -1 : 1))) {
-    if (span.firstDay > to || span.lastDay < from) continue
-    if (tones && !tones.includes(span.tone ?? 'neutral')) continue
-    if (seen.has(span.text)) continue
-    seen.add(span.text)
-    items.push(span)
-    if (items.length === 4) break
-  }
-  if (items.length === 0) return undefined
-  return React.createElement('div', {
-    role: 'list',
-    'aria-label': '阶段图例',
-    style: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 },
-  },
-  ...items.map((span: any) => React.createElement('div', {
-    key: span.text,
-    title: `${span.firstDay} – ${span.lastDay}`,
-    style: { display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: SECONDARY, whiteSpace: 'nowrap' },
-  },
-  React.createElement('span', {
-    'aria-hidden': true,
-    style: { width: 8, height: 8, borderRadius: 999, background: TONE_DOT[span.tone ?? 'neutral'] ?? TONE_DOT.neutral, flex: '0 0 auto' },
-  }),
-  span.text)))
-}
-
-/**
- * The week: a day header row and the hour axis below it. The axis is one scroll
- * container so the day columns can never drift apart vertically. A record that
- * arrives without a clock is drawn as a block at midnight, not in a row of its
- * own, so the week has a single geometry.
- *
- * Dragging on an empty spot starts an entry spanning what was dragged, and a
- * double click starts a one-hour one there: between them the view is writable
- * rather than only readable.
- */
-function WeekGrid({ anchor, occurrences, noteIndex, annotations, onSelect, onCreate }: any) {
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60_000)
-    return () => clearInterval(timer)
-  }, [])
-
-  const days = useMemo(() => Array.from({ length: 7 }, (_, index) => {
-    const date = addDays(anchor, index)
-    return { key: date, label: WEEKDAYS[index], day: dayNumber(date), today: isToday(date) }
-  }), [anchor])
-  // The whole day is drawn; the entries of the week decide what the view opens on.
-  const focus = useMemo(() => dayWindow(occurrences).start, [occurrences])
-  const scroller = useRef<HTMLDivElement | null>(null)
-  const scrolledTo = useRef('')
-  useEffect(() => {
-    const node = scroller.current
-    const key = `${anchor}:${focus}`
-    if (!node || scrolledTo.current === key) return
-    scrolledTo.current = key
-    node.scrollTop = Math.max(0, focus * PX_PER_MINUTE - 8)
-  }, [anchor, focus])
-  const axis = useMemo(() => ({ start: 0, end: DAY_MINUTES }), [])
-  const hours = useMemo(() => {
-    const list: number[] = []
-    for (let minutes = axis.start; minutes < axis.end; minutes += 60) list.push(minutes)
-    return list
-  }, [axis])
-  const axisHeight = (axis.end - axis.start) * PX_PER_MINUTE
-  // A pointer gesture on empty space: `press` is what has been started, `dragging`
-  // what is drawn while it runs. The column captures the pointer, so the gesture
-  // keeps tracking after the cursor leaves it.
-  const [dragging, setDragging] = useState<{ day: string; from: number; to: number } | null>(null)
-  const press = useRef<{ day: string; from: number; pointerId: number; moved: boolean } | null>(null)
-  /** The fifteen-minute slot under a pointer inside one column. */
-  const slotAt = (event: any) => {
-    const box = event.currentTarget.getBoundingClientRect()
-    const raw = axis.start + (event.clientY - box.top) / PX_PER_MINUTE
-    return Math.max(0, Math.min(DAY_MINUTES - 15, Math.round(raw / 15) * 15))
-  }
-  const timed = useMemo(() => (occurrences ?? []).filter((occurrence: any) => clockOf(occurrence.start) !== ''), [occurrences])
-  const byDay = useMemo(() => layoutWeek(timed), [timed])
-  /**
-   * Whole-day occurrences laid out as bars on one seven-column track under the
-   * day headers.
-   *
-   * A value that arrived without a clock (`DTSTART;VALUE=DATE`, which is what a
-   * holiday or an academic calendar is made of) has no slot on the axis, so it is
-   * drawn above it: visible whatever the axis is scrolled to, and not claiming a
-   * time it does not have. One record is one bar across every day it covers —
-   * the way a calendar draws a vacation — rather than a chip per day, so a
-   * reader sees one thing that spans days, not a thing that happens to repeat.
-   *
-   * A bar says its whole range in its label; the day headers above the track
-   * say which day is which, so nothing needs to be said twice. Overlapping
-   * bars stack in lanes, two of them; the rest are counted, not drawn, the same
-   * deal the per-day chips gave.
-   */
-  const allDayLaid = useMemo(() => {
-    const first = anchor
-    const last = addDays(anchor, 6)
-    const records: any[] = []
-    for (const occurrence of occurrences ?? []) {
-      if (clockOf(occurrence.start) !== '') continue
-      const start = dateOf(occurrence.start)
-      const spanned = occurrence.end && clockOf(occurrence.end) === '' && dateOf(occurrence.end) > start
-        ? dateOf(occurrence.end)
-        : start
-      if (spanned < first || start > last) continue
-      const label = `全天 · ${spanned > start ? `${shortDate(start)}–${shortDate(spanned)}` : shortDate(start)} ${occurrence.title}`
-      records.push({ occurrence, from: start < first ? first : start, to: spanned > last ? last : spanned, label })
-    }
-    records.sort((left, right) => left.from < right.from ? -1 : left.from > right.from ? 1 : left.to < right.to ? 1 : left.to > right.to ? -1 : 0)
-    const laneEnds: string[] = []
-    const bars: any[] = []
-    let hidden = 0
-    for (const record of records) {
-      // The first lane whose record ended before this one starts, or a new lane
-      // when none did. Longer records at the same start claim their lane first,
-      // so a spanning bar is never pushed below a one-day chip it contains. A
-      // record that fits no lane within the two drawn is counted, not drawn —
-      // the same deal the per-day chips gave.
-      const lane = laneEnds.findIndex(end => end < record.from)
-      if (lane === -1 && laneEnds.length >= 2) { hidden++; continue }
-      if (lane === -1) laneEnds.push(record.to)
-      else laneEnds[lane] = record.to
-      bars.push({ ...record, lane: lane === -1 ? laneEnds.length - 1 : lane })
-    }
-    return { bars, hidden }
-  }, [occurrences, anchor])
-
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
-  const nowVisible = days.some(day => day.today)
-
-  // The pieces are built apart and assembled at the end: the nesting of one
-  // expression per row was unreadable, and a misread parenthesis there is a
-  // silent layout bug rather than a syntax error.
-  /** The band a data plugin laid over this day, if any: its tone names the colour. */
-  const spanOfDay = (date: string) => (annotations?.spans ?? []).find((span: any) => span.firstDay <= date && date <= span.lastDay)
-
-  const headerRow = React.createElement('div', {
-    style: { display: 'flex', borderBottom: CARD_BORDER, background: PAGE_BACKGROUND, paddingRight: 8 },
-  },
-  React.createElement('div', { style: { width: GUTTER, flex: '0 0 auto' } }),
-  ...days.map(day => {
-    const span = spanOfDay(day.key)
-    return React.createElement('div', {
-      key: day.key,
-      style: { flex: '1 1 0', minWidth: 0, padding: '8px 4px', textAlign: 'center', borderLeft: HAIRLINE },
-    },
-    React.createElement('div', { style: { fontSize: 11, color: day.today ? PRIMARY : SECONDARY } }, day.label),
-    React.createElement('div', {
-      style: day.today
-        ? {
-          width: 26, height: 26, margin: '2px auto 0', borderRadius: 999, lineHeight: '26px',
-          fontSize: 13, fontWeight: 650, background: 'var(--dsw-alias-state-business-primary, #4d6bfe)', color: '#fff',
-        }
-        : { marginTop: 2, fontSize: 13, fontWeight: 600, lineHeight: '26px', color: PRIMARY },
-    }, day.day),
-    // A thin bar under the date says a day sits in a band worth noticing. The
-    // neutral tone — the default when a span names none — is the background of
-    // ordinary weeks, so it draws nothing here, exactly as it washes nothing in
-    // the month view.
-    span && (span.tone ?? 'neutral') !== 'neutral' ? React.createElement('div', {
-      title: span.text,
-      'aria-label': `${day.key} ${span.text}`,
-      style: { width: 22, height: 3, borderRadius: 2, margin: '3px auto 0', background: TONE_BAR[span.tone ?? 'neutral'] },
-    }) : undefined)
-  }))
-
-  /**
-   * The whole-day track: one row under the day headers, its bars positioned by
-   * the fraction of the week they cover. The day columns are equal widths, so a
-   * percentage of the track lands on a column edge — a bar crosses the day
-   * borders instead of repeating inside each column.
-   */
-  const LANE_HEIGHT = 19
-  const allDayTrack = allDayLaid.bars.length + allDayLaid.hidden === 0 ? undefined : React.createElement('div', {
-    style: { display: 'flex', borderBottom: CARD_BORDER, background: PAGE_BACKGROUND, paddingRight: 8 },
-  },
-  React.createElement('div', { style: { width: GUTTER, flex: '0 0 auto' } }),
-  React.createElement('div', {
-    role: 'list',
-    'aria-label': '全天条目',
-    style: {
-      position: 'relative', flex: '1 1 0', minWidth: 0,
-      height: Math.max(...allDayLaid.bars.map((bar: any) => bar.lane)) * LANE_HEIGHT + 21
-        + (allDayLaid.hidden > 0 ? LANE_HEIGHT : 0),
-    },
-  },
-  ...allDayLaid.bars.map(({ occurrence, from, to, label, lane }: any) => {
-    const tint = tintOf(occurrence.source ?? occurrence.uid)
-    const first = days.findIndex(day => day.key === from)
-    const width = days.findIndex(day => day.key === to) - first + 1
-    return React.createElement('button', {
-      key: reactKeyOf(occurrence),
-      type: 'button',
-      title: label,
-      'aria-label': label,
-      // Names the occurrence the bar stands for, so a test acts on the same
-      // identity the note is stored under rather than on a button's position.
-      'data-occurrence': occurrenceKeyOf(occurrence),
-      onClick: () => onSelect(occurrence),
-      style: {
-        position: 'absolute', top: lane * LANE_HEIGHT + 2,
-        left: `calc(${(first / 7) * 100}% + 2px)`, width: `calc(${(width / 7) * 100}% - 4px)`,
-        height: 17, display: 'block', padding: '1px 5px', border: 'none', borderRadius: 4, cursor: 'pointer',
-        textAlign: 'left', fontSize: 11, lineHeight: '16px', fontWeight: 500, fontFamily: 'inherit', color: PRIMARY,
-        background: tint.background, borderLeft: `3px solid ${tint.accent}`,
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      },
-    }, occurrence.title)
-  }),
-  allDayLaid.hidden > 0
-    ? React.createElement('div', {
-      style: { position: 'absolute', right: 8, bottom: 2, fontSize: 10, lineHeight: '14px', color: SECONDARY },
-    }, `还有 ${allDayLaid.hidden} 条全天`)
-    : undefined))
-
-  const hourLabels = hours.map((minutes, index) => React.createElement('div', {
-    key: minutes,
-    style: {
-      // The label sits on its line, half above and half below; the first line is
-      // the top edge of the axis, so it moves inside instead of being cut off.
-      position: 'absolute', top: index === 0 ? 2 : (minutes - axis.start) * PX_PER_MINUTE - 6, right: 8,
-      fontSize: 11, color: TERTIARY, fontVariantNumeric: 'tabular-nums',
-    },
-  }, hourLabel(minutes)))
-
-  // One column per day: its hour lines, then its blocks, then today's "now" line.
-  const columns = days.map(day => React.createElement('div', {
-    key: day.key,
-    // Empty space in the column is a time on that day. A drag across it asks for
-    // an entry spanning what was dragged; a double click asks for a one-hour one,
-    // because a single click would fire while the reader is only looking. A press
-    // that lands on a block belongs to that block, so the gesture starts only when
-    // the column itself is the target — and the decorative lines below take no
-    // pointer events, so they never become one.
-    onPointerDown: (event: any) => {
-      if (!onCreate || event.target !== event.currentTarget) return
-      // Touch keeps its own scrolling: a finger dragged down the axis must pan it.
-      if (event.pointerType === 'touch' || event.button !== 0) return
-      const from = slotAt(event)
-      press.current = { day: day.key, from, pointerId: event.pointerId, moved: false }
-      event.currentTarget.setPointerCapture(event.pointerId)
-      setDragging({ day: day.key, from, to: from })
-      event.preventDefault()
-    },
-    onPointerMove: (event: any) => {
-      const active = press.current
-      if (!active || active.pointerId !== event.pointerId) return
-      const to = slotAt(event)
-      if (!active.moved && Math.abs(to - active.from) < 15) return
-      active.moved = true
-      setDragging({ day: active.day, from: Math.min(active.from, to), to: Math.max(active.from, to) })
-    },
-    onPointerUp: (event: any) => {
-      const active = press.current
-      if (!active || active.pointerId !== event.pointerId) return
-      press.current = null
-      setDragging(null)
-      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-      if (!active.moved) return
-      const to = slotAt(event)
-      if (Math.abs(to - active.from) < 15) return
-      onCreate(day.key, Math.min(active.from, to), Math.max(active.from, to))
-    },
-    onPointerCancel: (event: any) => {
-      if (press.current?.pointerId !== event.pointerId) return
-      press.current = null
-      setDragging(null)
-    },
-    onDoubleClick: (event: any) => {
-      if (!onCreate || event.target !== event.currentTarget) return
-      const from = slotAt(event)
-      onCreate(day.key, from, Math.min(from + 60, 24 * 60 - 1))
-    },
-    style: {
-      position: 'relative', flex: '1 1 0', minWidth: 0, borderLeft: HAIRLINE,
-      background: day.today ? 'color-mix(in srgb, var(--dsw-alias-state-business-primary, #4d6bfe) 4%, transparent)' : undefined,
-    },
-  },
-  ...hours.map(minutes => React.createElement('div', {
-    key: minutes,
-    style: {
-      position: 'absolute', left: 0, right: 0, top: (minutes - axis.start) * PX_PER_MINUTE,
-      height: 1, background: 'var(--dsw-alias-border-l1, #00000010)', pointerEvents: 'none',
-    },
-  })),
-  dragging?.day === day.key
-    ? React.createElement('div', {
-      key: 'drag-preview',
-      'aria-hidden': true,
-      style: {
-        position: 'absolute', left: 2, right: 2,
-        top: dragging.from * PX_PER_MINUTE,
-        height: Math.max(22, dragging.to - dragging.from) * PX_PER_MINUTE,
-        borderRadius: 6, pointerEvents: 'none', zIndex: 2,
-        border: '1px dashed var(--dsw-alias-state-business-primary, #4d6bfe)',
-        background: 'color-mix(in srgb, var(--dsw-alias-state-business-primary, #4d6bfe) 14%, transparent)',
-      },
-    },
-    dragging.to > dragging.from
-      ? React.createElement('div', {
-        style: { padding: '2px 6px', fontSize: 11, color: PRIMARY, fontVariantNumeric: 'tabular-nums' },
-      }, `${clockAt(dragging.from)}–${clockAt(dragging.to)}`)
-      : undefined)
-    : undefined,
-  ...(byDay.get(day.key) ?? []).map(entry => React.createElement(Block, {
-    key: reactKeyOf(entry.occurrence),
-    entry,
-    axisStart: axis.start,
-    tint: tintOf(entry.occurrence.source ?? entry.occurrence.uid),
-    note: occurrenceNote(noteIndex, entry.occurrence),
-    onSelect,
-  }))))
-
-  const nowLine = nowVisible ? React.createElement('div', {
-    'aria-hidden': true,
-    style: {
-      position: 'absolute', left: 0, right: 0, top: (nowMinutes - axis.start) * PX_PER_MINUTE,
-      height: 2, background: 'var(--dsw-alias-state-error-primary, #d4553f)', zIndex: 3, pointerEvents: 'none',
-    },
-  }) : undefined
-
-  const axisRow = React.createElement('div', {
-    // A whole day is taller than most panels; `minHeight` keeps the day columns
-    // and their rules running to the bottom edge of a very tall one.
-    style: { display: 'flex', height: axisHeight + 12, minHeight: '100%', paddingRight: 8 },
-  },
-  React.createElement('div', { style: { position: 'relative', width: GUTTER, flex: '0 0 auto' } }, ...hourLabels),
-  React.createElement('div', { style: { position: 'relative', flex: '1 1 0', display: 'flex' } }, ...columns, nowLine))
-
-  return React.createElement('div', {
-    style: { display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0 },
-  },
-  headerRow,
-  allDayTrack,
-  React.createElement('div', {
-    ref: scroller,
-    style: { flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overflowX: 'hidden' },
-  }, axisRow))
-}
-
-/** The details of one occurrence, and every change the panel can make to it. */
-function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, sourceName }: any) {
-  const [editing, setEditing] = useState(false)
-  const [confirming, setConfirming] = useState(false)
-  const [form, setForm] = useState({
-    start: occurrence?.start ?? '',
-    end: occurrence?.end ?? '',
-    location: occurrence?.location ?? '',
-  })
-  // The reader's own note about this one class, kept apart from anything the
-  // school provided. It is edited on its own and saved on its own, so writing a
-  // note can never rewrite a school record and a school sync cannot touch it.
-  const [noteDraft, setNoteDraft] = useState<string>(note ?? '')
-  const [writingNote, setWritingNote] = useState(false)
-  const [savingNote, setSavingNote] = useState(false)
+/** 在同一个弹窗内查看日程、修改单次安排、写笔记或确认删除。 */
+function OccurrenceWindow({ occurrence, event, note, service, onClose, run, onEdit, sourceName }: any) {
+  const [mode, setMode] = useState<'details' | 'schedule' | 'note' | 'delete'>('details')
+  const [form, setForm] = useState({ start: '', end: '', location: '' })
+  const [noteDraft, setNoteDraft] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
   const [showPersonal, setShowPersonal] = useState(false)
-  useEffect(() => {
-    setEditing(false)
-    setConfirming(false)
-    setNoteDraft(note ?? '')
-    setWritingNote(false)
-    setForm({ start: occurrence?.start ?? '', end: occurrence?.end ?? '', location: occurrence?.location ?? '' })
-  }, [occurrenceKeyOf(occurrence)])
-  useEffect(() => { if (!writingNote) setNoteDraft(note ?? '') }, [note, writingNote])
-  useEffect(() => { if (!editing) setForm({ start: occurrence?.start ?? '', end: occurrence?.end ?? '', location: occurrence?.location ?? '' }) }, [occurrence?.start, occurrence?.end, occurrence?.location, editing])
+  const formId = useId()
+  const restoreFocus = useRef<'schedule' | 'note' | 'delete' | null>(null)
+  const scheduleButton = useRef<HTMLButtonElement | null>(null)
+  const noteButton = useRef<HTMLButtonElement | null>(null)
+  const deleteButton = useRef<HTMLButtonElement | null>(null)
+
+  useLayoutEffect(() => {
+    if (mode !== 'details') return
+    const target = restoreFocus.current
+    restoreFocus.current = null
+    if (target === 'schedule') scheduleButton.current?.focus()
+    if (target === 'note') noteButton.current?.focus()
+    if (target === 'delete') deleteButton.current?.focus()
+  }, [mode])
 
   if (!occurrence) return null
-  const date = occurrence.occurrenceDate ?? dateOf(occurrence.start)
+  const startDate = dateOf(occurrence.start)
+  const date = occurrence.occurrenceDate ?? startDate
   const series = Boolean(event?.recurrence)
-  // A whole-day entry has no clock to move, so its dialog points at the page that
-  // owns the date and the place instead of offering two blank time fields.
   const wholeDay = clockOf(occurrence.start) === ''
-  const changed = form.start !== (occurrence.start ?? '') || form.end !== (occurrence.end ?? '') || form.location !== (occurrence.location ?? '')
-  const patch = withoutEmpty({
-    start: form.start !== occurrence.start ? form.start : undefined,
-    end: form.end !== (occurrence.end ?? '') ? form.end : undefined,
-    location: form.location !== (occurrence.location ?? '') ? form.location : undefined,
-  })
-
-  /**
-   * A series keeps one record per rule and marks the exceptions, so a change to
-   * a single occurrence of one is an override. A one-off entry has no series to
-   * keep in step: an override there would be a `RECURRENCE-ID` on a `VEVENT`
-   * without `RRULE`, which RFC 5545 does not allow, so the record itself is what
-   * gets edited.
-   */
-  const save = () => (series
-    ? service.applyOverride({ uid: occurrence.uid, date, patch, source: occurrence.source })
-    : service.updateEvent({ uid: occurrence.uid, source: occurrence.source, patch: {
-      ...(form.start !== occurrence.start ? { start: form.start } : {}),
-      ...(form.end !== (occurrence.end ?? '') ? { end: form.end || null } : {}),
-      ...(form.location !== (occurrence.location ?? '') ? { location: form.location || null } : {}),
-    } }))
-
-  const actions = []
-  if (!editing) {
-    actions.push(React.createElement(Button, {
-      key: 'when', variant: 'outline', size: 'sm',
-      onClick: () => (wholeDay && event ? onEdit(event.uid, event.source) : setEditing(true)),
-    }, wholeDay ? '改日期或地点' : series ? '改期或改地点' : '改时间或地点'))
-  }
-  actions.push(React.createElement(Button, {
-    key: 'note', variant: 'outline', size: 'sm',
-    onClick: () => setWritingNote(!writingNote),
-  }, note ? '改笔记' : '写笔记'))
-  actions.push(React.createElement(Button, {
-    key: 'personal', variant: 'outline', size: 'sm', onClick: () => setShowPersonal(!showPersonal),
-  }, showPersonal ? '收起个人设置' : '更多个人设置'))
-  // The dialog speaks for one occurrence; the title, the date and the repeat
-  // rule belong to the record, and the record has a page of its own.
-  if (event) {
-    actions.push(React.createElement(Button, {
-      key: 'record', variant: 'ghost', size: 'sm', onClick: () => onEdit(event.uid, event.source),
-    }, '编辑日程信息'))
-  }
-  if (occurrence.overridden) {
-    actions.push(React.createElement(Button, {
-      key: 'undo', variant: 'ghost', size: 'sm', disabled: false,
-      onClick: () => run(() => service.removeOverride({ uid: occurrence.uid, date, source: occurrence.source }), '已恢复原定安排').then(ok => ok && onClose()),
-    }, '撤销改期'))
-  }
-  if (series) {
-    actions.push(React.createElement(Button, {
-      key: 'cancel', variant: 'ghost', size: 'sm',
-      onClick: () => run(() => service.cancelOccurrence({ uid: occurrence.uid, date, source: occurrence.source }), `已取消：${shortDate(date)}`).then(ok => ok && onClose()),
-    }, '取消这一次'))
-  } else {
-    actions.push(React.createElement(Button, {
-      key: 'delete', variant: 'ghost', size: 'sm',
-      style: { color: 'var(--dsw-alias-state-error-primary, #d4553f)' },
-      onClick: () => setConfirming(true),
-    }, '删除日程'))
+  const fromSource = occurrence.source !== 'manual'
+  const remark = mergeRemarks(fromSource ? undefined : occurrence.description, occurrence.personal?.remark?.text)
+  const cancel = () => {
+    if (mode === 'details') return
+    restoreFocus.current = mode
+    setMode('details')
   }
 
-  return React.createElement(Modal, {
-    open: true,
+  const perform = async (action: () => Promise<unknown>, success: string, done: () => void) => {
+    if (isSaving) return
+    setIsSaving(true)
+    try {
+      if (await run(action, success)) done()
+    } finally {
+      setIsSaving(false)
+    }
+  }
+  const cancelButton = (autoFocus = false) => React.createElement(Button, {
+    variant: 'ghost', disabled: isSaving, autoFocus, onClick: cancel,
+  }, '取消')
+
+  if (mode === 'schedule') {
+    const patch = withoutEmpty({
+      start: form.start !== occurrence.start ? form.start : undefined,
+      end: form.end !== (occurrence.end ?? '') ? form.end : undefined,
+      location: form.location !== (occurrence.location ?? '') ? form.location : undefined,
+    })
+    // 重复日程的改期属于单次例外，单次日程直接更新原记录。
+    const save = () => series
+      ? service.applyOverride({ uid: occurrence.uid, date, patch, source: occurrence.source })
+      : service.updateEvent({ uid: occurrence.uid, source: occurrence.source, patch: {
+        ...(form.start !== occurrence.start ? { start: form.start } : {}),
+        ...(form.end !== (occurrence.end ?? '') ? { end: form.end || null } : {}),
+        ...(form.location !== (occurrence.location ?? '') ? { location: form.location || null } : {}),
+      } })
+    const canSave = form.start !== '' && Object.keys(patch).length > 0 && (series || event)
+
+    return React.createElement(OccurrenceSurface, {
+      onClose,
+      title: series ? '调整这次日程' : '修改时间和地点',
+      description: occurrence.title,
+      footer: React.createElement('div', { className: 'cal-dialog-primary' },
+        cancelButton(),
+        React.createElement(Button, {
+          variant: 'primary', type: 'submit', form: formId, disabled: !canSave || isSaving,
+        }, isSaving ? '保存中…' : '保存')),
+    }, React.createElement('form', {
+      id: formId, className: 'cal-event-form',
+      onSubmit: (submit: React.FormEvent<HTMLFormElement>) => {
+        submit.preventDefault()
+        if (canSave) void perform(save, series ? '已保存这次调整' : '已保存修改', onClose)
+      },
+    },
+    React.createElement('div', { className: 'cal-event-datetime' },
+      React.createElement(Field, { label: '开始' }, React.createElement(Input, {
+        type: 'datetime-local', value: form.start, required: true, autoFocus: true, disabled: isSaving,
+        onChange: (input: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, start: input.target.value }),
+      })),
+      React.createElement(Field, { label: '结束' }, React.createElement(Input, {
+        type: 'datetime-local', value: form.end, disabled: isSaving,
+        onChange: (input: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, end: input.target.value }),
+      }))),
+    React.createElement(Field, { label: '地点' }, React.createElement(Input, {
+      value: form.location, disabled: isSaving,
+      onChange: (input: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, location: input.target.value }),
+    })),
+    series && React.createElement('p', { className: 'cal-event-context' }, '仅修改这一次，重复规则保持不变。')))
+  }
+
+  if (mode === 'note') {
+    const isEmpty = noteDraft.trim() === ''
+    return React.createElement(OccurrenceSurface, {
+      onClose,
+      title: note ? '编辑笔记' : '写笔记',
+      description: occurrence.title,
+      footer: React.createElement('div', { className: 'cal-dialog-primary' },
+        cancelButton(),
+        React.createElement(Button, {
+          variant: 'primary', disabled: isSaving || noteDraft === (note ?? ''),
+          onClick: () => perform(
+            () => isEmpty
+              ? service.removeNote(noteRefOf(occurrence))
+              : service.putNote({ ...noteRefOf(occurrence), text: noteDraft }),
+            isEmpty ? '已清空笔记' : '笔记已保存', cancel,
+          ),
+        }, '保存笔记')),
+    }, React.createElement('div', { className: 'cal-event-form' },
+      React.createElement(Field, { label: '我的笔记' }, React.createElement('textarea', {
+        className: 'cal-event-note-input', value: noteDraft, rows: 4, spellCheck: false, autoFocus: true,
+        disabled: isSaving, onChange: (input: React.ChangeEvent<HTMLTextAreaElement>) => setNoteDraft(input.target.value),
+      })),
+      React.createElement('p', { className: 'cal-event-context' }, '这条私人笔记仅关联本次日程。')))
+  }
+
+  if (mode === 'delete') {
+    return React.createElement(OccurrenceSurface, {
+      onClose,
+      title: '删除这条日程？',
+      footer: React.createElement('div', { className: 'cal-dialog-primary' },
+        cancelButton(true),
+        React.createElement(Button, {
+          variant: 'outline', className: 'cal-destructive', disabled: isSaving,
+          onClick: () => perform(
+            () => service.deleteEvent({ uid: occurrence.uid, source: occurrence.source }),
+            '已删除这条日程', onClose,
+          ),
+        }, '删除')),
+    }, React.createElement('p', { className: 'cal-event-delete-copy' }, `“${occurrence.title}”将从日历中移除。`))
+  }
+
+  const changeSchedule = () => {
+    if (wholeDay && event) {
+      onEdit(event.uid, event.source)
+      return
+    }
+    setForm({ start: occurrence.start, end: occurrence.end ?? '', location: occurrence.location ?? '' })
+    setMode('schedule')
+  }
+  const tools = React.createElement(React.Fragment, null,
+    occurrence.overridden && React.createElement(Button, {
+      variant: 'ghost', size: 'sm', disabled: isSaving,
+      onClick: () => perform(
+        () => service.removeOverride({ uid: occurrence.uid, date, source: occurrence.source }),
+        '已恢复原定安排', onClose,
+      ),
+    }, '撤销改期'),
+    series ? React.createElement(Button, {
+      variant: 'ghost', size: 'sm', disabled: isSaving,
+      onClick: () => perform(
+        () => service.cancelOccurrence({ uid: occurrence.uid, date, source: occurrence.source }),
+        `已取消：${shortDate(date)}`, onClose,
+      ),
+    }, '取消这一次') : React.createElement(Button, {
+      variant: 'ghost', size: 'sm', ref: deleteButton, icon: React.createElement(IconTrash),
+      'aria-label': '删除日程', title: '删除日程', onClick: () => setMode('delete'),
+    }, React.createElement('span', { className: 'cal-screen-reader' }, '删除日程')))
+
+  return React.createElement(OccurrenceSurface, {
     onClose,
     title: occurrence.title,
-    closeLabel: '关闭',
-    description: series ? seriesSummary(event) : undefined,
-    footer: React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' } },
-      ...actions,
-      React.createElement('span', { style: { flex: '1 1 auto' } }),
-      React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '关闭')),
-  },
-  React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
-    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
-      React.createElement('span', { style: { fontSize: 13, color: PRIMARY, fontVariantNumeric: 'tabular-nums' } },
-        `${monthOf(dateOf(occurrence.start))}${dayNumber(dateOf(occurrence.start))}日 ${weekdayOf(dateOf(occurrence.start))} ${clockRange(occurrence)}`),
-      occurrence.overridden ? React.createElement(Tag, { tone: 'info' }, '已改期') : undefined,
-      series ? React.createElement(Tag, { tone: 'outline' }, '重复日程中的一次') : React.createElement(Tag, { tone: 'quiet' }, '单次日程')),
-    occurrence.location
-      ? React.createElement('div', { style: { fontSize: 13, color: PRIMARY } }, `地点：${occurrence.location}`)
-      : undefined,
-    occurrence.description
-      ? React.createElement('div', null,
-        React.createElement(Muted, { style: { display: 'block', marginBottom: 2 } },
-          event?.source && event.source !== 'manual' ? `日历备注（${sourceName(event.source)}）` : '日程备注'),
-        React.createElement('div', { style: { fontSize: 12, color: SECONDARY, whiteSpace: 'pre-wrap' } }, occurrence.description))
-      : undefined,
-    // The reader's note about this class. It follows the class when the school
-    // moves it, which is why it is shown with the occurrence rather than the
-    // record, and why it lives outside the school's own fields.
-    note && !writingNote
-      ? React.createElement('div', {
-        style: { padding: '8px 10px', borderRadius: 8, background: LAYER, whiteSpace: 'pre-wrap', fontSize: 13 },
-      },
-      React.createElement(Muted, { style: { display: 'block', marginBottom: 3 } }, '我的笔记'),
-      note)
-      : undefined,
-    writingNote
-      ? React.createElement('div', {
-        style: { marginTop: 4, padding: 12, borderRadius: 10, background: LAYER, display: 'flex', flexDirection: 'column', gap: 10 },
-      },
-      React.createElement(Field, { label: '我的笔记', hint: '只属于这次日程。改期后保留，独立于日程备注，不随 ICS 导出。' },
-        React.createElement('textarea', {
-          value: noteDraft, rows: 4, spellCheck: false, autoFocus: true, disabled: savingNote,
-          placeholder: '例如：期末要背 P187',
-          onChange: (event: any) => setNoteDraft(event.target.value),
-          style: {
-            width: '100%', boxSizing: 'border-box', padding: '6px 8px', borderRadius: 8, resize: 'vertical',
-            border: CARD_BORDER, background: 'var(--dsw-alias-bg-layer-1, #fff)', color: PRIMARY, fontSize: 13,
-            fontFamily: 'inherit', lineHeight: 1.5,
-          },
-        })),
-      React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
-        React.createElement(Button, {
-          variant: 'primary', size: 'sm',
-          disabled: savingNote || noteDraft === (note ?? ''),
-          onClick: async () => {
-            if (savingNote) return
-            setSavingNote(true)
-            try {
-              const ok = await run(
-                () => (noteDraft.trim() === ''
-                  ? service.removeNote(noteRefOf(occurrence))
-                  : service.putNote({ ...noteRefOf(occurrence), text: noteDraft })),
-                noteDraft.trim() === '' ? '已清空笔记' : '笔记已保存',
-              )
-              if (ok) setWritingNote(false)
-            } finally { setSavingNote(false) }
-          },
-        }, '保存笔记'),
-        React.createElement(Button, { variant: 'ghost', size: 'sm', disabled: savingNote, onClick: () => { setNoteDraft(note ?? ''); setWritingNote(false) } }, '取消'),
-        noteDraft !== (note ?? '') ? React.createElement(Muted, null, '笔记只属于这次日程') : undefined))
-      : undefined,
-    showPersonal ? React.createElement(PersonalSettings, { identity: noteRefOf(occurrence), service, run, Field }) : undefined,
-    event?.source ? React.createElement('div', null, React.createElement(Muted, null, `日历：${sourceName(event.source)}`)) : undefined,
-    editing
-      ? React.createElement('div', {
-        style: { marginTop: 4, padding: 12, borderRadius: 10, background: LAYER, display: 'flex', flexDirection: 'column', gap: 10 },
-      },
-      React.createElement(Field, { label: '开始' },
-        React.createElement(Input, {
-          type: 'datetime-local', value: form.start,
-          onChange: (event: any) => setForm({ ...form, start: event.target.value }),
-        })),
-      React.createElement(Field, { label: '结束', hint: '留空表示沿用原本的时长' },
-        React.createElement(Input, {
-          type: 'datetime-local', value: form.end,
-          onChange: (event: any) => setForm({ ...form, end: event.target.value }),
-        })),
-      React.createElement(Field, { label: '地点' },
-        React.createElement(Input, {
-          value: form.location, placeholder: '留空表示沿用原来的地点',
-          onChange: (event: any) => setForm({ ...form, location: event.target.value }),
-        })),
-      React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
-        React.createElement(Button, {
-          variant: 'primary', size: 'sm', disabled: Object.keys(patch).length === 0 || (!series && !event),
-          onClick: () => run(save, series ? '已保存这次调整' : '已保存修改').then(ok => ok && onClose()),
-        }, '保存'),
-        React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setEditing(false) }, '取消'),
-        React.createElement(Muted, null, series ? '只改这一次，系列其他日期不受影响' : '只改这一条日程')))
-      : undefined,
-    confirming
-      ? React.createElement('div', {
-        style: { marginTop: 4, padding: 12, borderRadius: 10, background: LAYER, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-      },
-      React.createElement('span', { style: { fontSize: 13 } }, '确定删除这条日程？'),
+    context: event?.source ? `日历：${sourceName(event.source)}` : undefined,
+    tools,
+    footer: React.createElement('div', { className: 'cal-occurrence-commands' },
       React.createElement(Button, {
-        variant: 'primary', size: 'sm',
-        style: { background: 'var(--dsw-alias-state-error-primary, #d4553f)' },
-        onClick: () => run(() => service.deleteEvent({ uid: occurrence.uid, source: occurrence.source }), '已删除这条日程').then(ok => ok && onClose()),
-      }, '删除'),
-      React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setConfirming(false) }, '取消'))
-      : undefined))
+        variant: 'ghost', size: 'sm', ref: noteButton,
+        onClick: () => { setNoteDraft(note ?? ''); setMode('note') },
+      }, note ? '改笔记' : '写笔记'),
+      event && React.createElement(Button, {
+        variant: 'primary', size: 'sm', onClick: () => onEdit(event.uid, event.source),
+      }, '编辑日程信息')),
+  },
+  React.createElement('div', { className: 'cal-occurrence-summary' },
+    React.createElement('div', { className: 'cal-occurrence-time' },
+      React.createElement(IconClock, { 'aria-hidden': true }),
+      React.createElement('span', null, `${monthOf(startDate)}${dayNumber(startDate)}日 ${weekdayOf(startDate)} ${clockRange(occurrence)}`)),
+    React.createElement(Button, { variant: 'ghost', size: 'sm', ref: scheduleButton, onClick: changeSchedule },
+      wholeDay ? '改日期或地点' : series ? '改期或改地点' : '改时间或地点')),
+  (occurrence.location || series || occurrence.overridden) && React.createElement('div', { className: 'cal-occurrence-meta' },
+    occurrence.location && React.createElement('span', null, occurrence.location),
+    series && React.createElement('span', null, seriesSummary(event)),
+    occurrence.overridden && React.createElement(Tag, { tone: 'info' }, '已改期')),
+  [fromSource ? occurrence.description : '', remark, note].map((text, index) => text && React.createElement('div', {
+    key: index, className: 'cal-occurrence-annotation',
+  }, React.createElement('span', null, ['来源说明', '日程备注', '我的笔记'][index]), React.createElement('p', null, text))),
+  React.createElement(Button, {
+    variant: 'ghost', size: 'sm', className: 'cal-occurrence-settings', 'aria-expanded': showPersonal,
+    icon: React.createElement(IconChevronDown), onClick: () => setShowPersonal(!showPersonal),
+  }, showPersonal ? '收起个人设置' : '更多个人设置'),
+  showPersonal && React.createElement(PersonalSettings, { identity: noteRefOf(occurrence), service, run, Field, showHeading: false }))
 }
 
 /** Read a dropped or chosen file as text, with the few checks a calendar import needs. */
@@ -1069,16 +606,18 @@ function ImportDialog({ initialText, initialName, calendars = [], service, onClo
 
 /** The export dialog: the calendar text, ready to copy or to download. */
 function ExportDialog({ service, onClose, toast }: any) {
-  const [text, setText] = useState('')
+  const [includeRemarks, setIncludeRemarks] = useState(false)
+  const [preview, setPreview] = useState<{ text: string; includeRemarks: boolean } | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const text = preview?.includeRemarks === includeRemarks ? preview.text : ''
   useEffect(() => {
     let alive = true
-    service.exportIcs({})
-      .then((result: any) => { if (alive) setText(result.text) })
+    service.exportIcs({ includeRemarks })
+      .then((result: { text: string }) => { if (alive) setPreview({ text: result.text, includeRemarks }) })
       .catch((error: unknown) => { if (alive) setProblem(messageOf(error)) })
     return () => { alive = false }
-  }, [service])
+  }, [service, includeRemarks])
 
   const save = () => {
     const blob = new Blob([text], { type: 'text/calendar;charset=utf-8' })
@@ -1114,8 +653,19 @@ function ExportDialog({ service, onClose, toast }: any) {
       }, '下载 .ics'),
       React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '完成')),
   },
+  React.createElement('label', { className: 'cal-export-options' },
+    React.createElement(Switch, {
+      label: '包含我的备注', checked: includeRemarks,
+      onChange: (checked: boolean) => {
+        setPreview(null)
+        setProblem(null)
+        setCopied(false)
+        setIncludeRemarks(checked)
+      },
+    }),
+    React.createElement('span', null, '包含我的备注')),
   React.createElement('textarea', {
-    readOnly: true, value: text, spellCheck: false,
+    'aria-label': '日历导出预览', readOnly: true, value: text, spellCheck: false,
     onFocus: (event: any) => event.target.select(),
     style: {
       width: '100%', minHeight: 300, maxHeight: '46vh', resize: 'vertical', boxSizing: 'border-box', padding: 10,
@@ -1130,49 +680,28 @@ function ExportDialog({ service, onClose, toast }: any) {
   problem ? React.createElement('div', { style: { marginTop: 8, fontSize: 12, color: 'var(--dsw-alias-state-error-primary, #d4553f)' } }, problem) : undefined)
 }
 
-/** One entry row of the agenda: date, time, place, and the actions that fit a row. */
-function EventRow({ occurrence, tint, note, onOpen, onCancel, onDelete }: any) {
-  const [hovered, hover] = useHover()
+/** 日程页中的一条出现时间，可以打开这一次的详情。 */
+function EventRow({ occurrence, note, onOpen, onCancel }: any) {
   const date = dateOf(occurrence.start)
-  const series = Boolean(occurrence.recurrence)
-  return React.createElement('div', {
-    ...hover,
-    style: {
-      display: 'grid', gridTemplateColumns: `${GUTTER}px minmax(0, 1fr) auto`, alignItems: 'center', gap: 10,
-      padding: '8px 12px', borderTop: HAIRLINE, background: hovered ? HOVER : 'transparent',
+  const time = clockRange(occurrence)
+  const label = [occurrence.title, shortDate(date), time, occurrence.personal?.hidden && '已隐藏'].filter(Boolean).join(' ')
+  return React.createElement('div', { className: 'cal-record-occurrence' },
+    React.createElement('button', {
+      type: 'button', className: 'cal-record-occurrence-main', 'aria-label': label,
+      onClick: () => onOpen(occurrence),
     },
-  },
-  React.createElement('div', { style: { textAlign: 'center' } },
-    React.createElement('div', { style: { fontSize: 11, color: SECONDARY } }, weekdayOf(date)),
-    React.createElement('div', { style: { fontSize: 15, fontWeight: 650, color: PRIMARY } }, dayNumber(date))),
-  React.createElement('button', {
-    type: 'button',
-    onClick: () => onOpen(occurrence),
-    style: { display: 'block', minWidth: 0, padding: 0, border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', color: PRIMARY },
-  },
-  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 } },
-    React.createElement('span', { 'aria-hidden': true, style: { width: 8, height: 8, borderRadius: 999, background: tint.accent, flex: '0 0 auto' } }),
-    React.createElement('span', { style: { fontSize: 13, fontWeight: 550, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, occurrence.title),
-    occurrence.overridden ? React.createElement(Tag, { tone: 'info' }, '已改期') : undefined,
-    occurrence.personal?.hidden ? React.createElement(Tag, { tone: 'quiet' }, '已隐藏') : undefined),
-  React.createElement('div', { style: { marginTop: 2, fontSize: 12, color: SECONDARY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } },
-    [clockRange(occurrence), occurrence.location].filter(Boolean).join(' · ')),
-  // The reader's note, where the class is: a note nobody can see is a note nobody
-  // trusts to have been kept.
-  note
-    ? React.createElement('div', {
-      style: { marginTop: 2, fontSize: 12, color: SECONDARY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-    }, `笔记：${note}`)
-    : undefined),
-  React.createElement('div', { style: { display: 'flex', gap: 2, opacity: hovered ? 1 : 0, transition: 'opacity .12s ease' } },
-    series
-      ? React.createElement(IconButton, {
-        label: '取消这一次', icon: React.createElement(IconArchive),
-        onClick: () => onCancel(occurrence),
-      })
-      : React.createElement(IconButton, {
-        label: '删除日程', danger: true, icon: React.createElement(IconTrash),
-        onClick: () => onDelete(occurrence),
+    React.createElement('span', { className: 'cal-record-occurrence-date' },
+      React.createElement('strong', null, dayNumber(date)),
+      React.createElement('small', null, weekdayOf(date))),
+    React.createElement('span', { className: 'cal-record-occurrence-text' },
+      React.createElement('span', { className: 'cal-record-occurrence-time' }, time,
+        occurrence.overridden && React.createElement(Tag, { tone: 'info' }, '已改期'),
+        occurrence.personal?.hidden && React.createElement(Tag, { tone: 'quiet' }, '已隐藏')),
+      occurrence.location && React.createElement('small', null, occurrence.location),
+      note && React.createElement('small', null, `笔记：${note}`))),
+    occurrence.recurrence && React.createElement('div', { className: 'cal-record-occurrence-actions' },
+      React.createElement(IconButton, {
+        label: '取消这一次', icon: React.createElement(IconArchive), onClick: () => onCancel(occurrence),
       })))
 }
 
@@ -1271,33 +800,44 @@ function draftProblem(draft: any) {
  * The fields of one record, shared by the new-entry dialog and the entry page:
  * what the reader owns about an entry, as opposed to one date of a series.
  */
-function EventForm({ draft, onChange, autoFocus, sourceOwned = false }: any) {
+function EventForm({ draft, onChange, autoFocus, sourceDescription, recordMode = false, showDetails = true, showAllDay = false, advanced = false, showRepeat = true, showRemark = true, extraOptions, endHint, allowAllDayChange = true }: any) {
   const set = (patch: any) => onChange({ ...draft, ...patch })
+  const isAllDay = showAllDay && draft.start === '' && draft.end === ''
+  const dateField = React.createElement(Field, { label: '日期' },
+    React.createElement(Input, { type: 'date', value: draft.date, onChange: (event: any) => set({ date: event.target.value }) }))
+  const timeFields = React.createElement('div', { className: 'cal-time-fields' },
+    React.createElement(Field, { label: '开始' },
+      React.createElement(Input, { type: 'time', value: draft.start, onChange: (event: any) => set({ start: event.target.value }) })),
+    React.createElement(Field, { label: '结束', hint: draft.end ? undefined : endHint ?? '留空按 45 分钟显示' },
+      React.createElement(Input, { type: 'time', value: draft.end, onChange: (event: any) => set({ end: event.target.value }) })))
+
+  const allDayToggle = showAllDay && allowAllDayChange && React.createElement('label', { className: 'cal-all-day' },
+    React.createElement('input', {
+      type: 'checkbox', checked: isAllDay,
+      onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.checked) {
+          set({ start: '', end: '', endDayOffset: 0 })
+          return
+        }
+        const start = suggestedStart(draft.date)
+        set({ start: clockAt(start), end: clockAt(Math.min(start + 60, 23 * 60 + 59)) })
+      },
+    }),
+    React.createElement('span', { 'aria-hidden': true, className: 'cal-switch-track' }),
+    React.createElement('span', null, '全天'))
+
   return React.createElement(React.Fragment, null,
-    React.createElement(Field, { label: '标题' },
-      React.createElement(Input, {
+    React.createElement(Field, { label: '标题', className: recordMode ? 'cal-workspace-title' : undefined },
+      React.createElement(recordMode ? 'input' : Input, {
         value: draft.title, placeholder: '例如：组会、体检、回家', autoFocus,
         onChange: (event: any) => set({ title: event.target.value }),
       })),
-    React.createElement('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
-      React.createElement('div', { style: { flex: '1 1 150px' } },
-        React.createElement(Field, { label: '日期' },
-          React.createElement(Input, {
-            type: 'date', value: draft.date,
-            onChange: (event: any) => set({ date: event.target.value }),
-          }))),
-      React.createElement('div', { style: { flex: '1 1 90px' } },
-        React.createElement(Field, { label: '开始' },
-          React.createElement(Input, {
-            type: 'time', value: draft.start,
-            onChange: (event: any) => set({ start: event.target.value }),
-          }))),
-      React.createElement('div', { style: { flex: '1 1 90px' } },
-        React.createElement(Field, { label: '结束', hint: '留空按 45 分钟显示' },
-          React.createElement(Input, {
-            type: 'time', value: draft.end,
-            onChange: (event: any) => set({ end: event.target.value }),
-          })))),
+    showAllDay
+      ? React.createElement('div', { className: 'cal-schedule-fields' },
+        React.createElement('div', { className: 'cal-schedule-day' }, dateField, allDayToggle),
+        !isAllDay && timeFields)
+      : React.createElement('div', { className: 'cal-edit-dates' }, dateField, timeFields),
+    showDetails && React.createElement(React.Fragment, null,
     draft.start !== '' && draft.end !== '' && draft.endDayOffset !== 0
       ? React.createElement(Field, { label: '跨天结束日期', hint: '这条日程跨过午夜；修改日期会保留这个天数跨度' },
         React.createElement(Input, {
@@ -1310,9 +850,12 @@ function EventForm({ draft, onChange, autoFocus, sourceOwned = false }: any) {
         value: draft.location, placeholder: '可留空',
         onChange: (event: any) => set({ location: event.target.value }),
       })),
-    React.createElement(Field, { label: sourceOwned ? '来源备注（只读）' : '备注', hint: sourceOwned ? '自己的备注请写在下方个人设置中' : '随导出写进日历，不会同步到任何服务' },
+    sourceDescription && React.createElement('div', { className: 'cal-record-source-description' },
+      React.createElement('span', { className: 'cal-field-label' }, '来源说明'),
+      React.createElement('p', null, sourceDescription)),
+    showRemark && React.createElement(Field, { label: '备注', hint: '导出时可选择是否包含' },
       React.createElement('textarea', {
-        'aria-label': sourceOwned ? '来源备注（只读）' : '备注', readOnly: sourceOwned, value: draft.description, rows: 3, spellCheck: false,
+        'aria-label': '备注', value: draft.description, rows: 3, spellCheck: false,
         onChange: (event: any) => set({ description: event.target.value }),
         style: {
           width: '100%', boxSizing: 'border-box', padding: '6px 8px', borderRadius: 8, resize: 'vertical',
@@ -1320,6 +863,9 @@ function EventForm({ draft, onChange, autoFocus, sourceOwned = false }: any) {
           fontFamily: 'inherit', lineHeight: 1.5,
         },
       })),
+    React.createElement(advanced ? 'details' : React.Fragment, advanced ? { className: 'tt-editor-extra' } : null,
+      advanced && React.createElement('summary', null, '重复与提醒'),
+      showRepeat && React.createElement(React.Fragment, null,
     React.createElement(Field, { label: '重复' },
       React.createElement('select', {
         'aria-label': '重复', value: draft.repeatMode,
@@ -1346,22 +892,140 @@ function EventForm({ draft, onChange, autoFocus, sourceOwned = false }: any) {
           type: 'date', value: draft.until,
           onChange: (event: any) => set({ until: event.target.value }),
         }))
-      : undefined)
+      : undefined
+      ), extraOptions)))
+}
+
+type CreateSlot = { kind: 'create'; date: string; start?: string; end?: string; allDay?: boolean }
+type TimetableSelection = { kind: 'day' } | CreateSlot | { kind: 'detail' | 'edit' | 'remove'; occurrence: any }
+
+/** 侧栏共用新建与编辑表单，后台刷新时保留用户改过的字段。 */
+function TimetableEditor({ slot, occurrence, record, service, onCancel, onSaved }: any) {
+  const recurring = Boolean(record?.recurrence)
+  const [scope, setScope] = useState<'once' | 'series'>(recurring ? 'once' : 'series')
+  const baseFor = (selected: 'once' | 'series') => {
+    if (slot) return undefined
+    if (selected === 'once') return { ...occurrence, recurrence: undefined }
+    return record
+  }
+  const base = useMemo(() => baseFor(scope), [slot, scope, occurrence, record])
+  const [editor, setEditor] = useState(() => {
+    if (!slot) return { base, draft: draftOf(base) }
+    const start = slot.start ?? clockAt(suggestedStart(slot.date))
+    return { base, draft: { ...draftOf(null), date: slot.date, start: slot.allDay ? '' : start,
+      end: slot.allDay ? '' : slot.end ?? clockAt(Math.min(clockMinutes(start) + 60, 1439)) } }
+  })
+  const [reminder, setReminder] = useState('')
+  const [problem, setProblem] = useState('')
+  const [saving, setSaving] = useState(false)
+  const pending = useRef(false)
+  const newRecord = useRef<string | undefined>(undefined)
+  if (!slot && editor.base !== base) {
+    const previous = draftOf(editor.base)
+    const incoming = draftOf(base)
+    const dirty = Object.entries(editor.draft).filter(([field, value]) =>
+      JSON.stringify(value) !== JSON.stringify(previous[field as keyof typeof previous]))
+    setEditor({ base, draft: { ...incoming, ...Object.fromEntries(dirty) } })
+  }
+  const { draft } = editor
+  const complaint = draftProblem(draft)
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (pending.current) return
+    if (complaint) { setProblem(complaint); return }
+    pending.current = true
+    setSaving(true)
+    setProblem('')
+    try {
+      const reminderPatch = reminder === '' ? {} : { reminder: reminder === 'off' ? { off: true } : { kind: 'relative', minutes: Number(reminder) } }
+      if (slot) {
+        newRecord.current ??= newUid()
+        const created = await service.putEvent(recordOf(draft, { uid: newRecord.current }))
+        if (reminder !== '') await service.setPersonal({ source: created.source, uid: created.uid, patch: reminderPatch })
+      } else {
+        const patch = patchOf(draft, editor.base)
+        const ref = { source: record.source, uid: record.uid }
+        if (scope === 'once') {
+          const { title, start, end, location } = patch
+          const date = occurrence.occurrenceDate ?? dateOf(occurrence.start)
+          if ([title, start, end, location].some(value => value !== undefined)) {
+            const previous = record.overrides?.find((override: { date: string }) => override.date === date)
+            const { date: _date, ...stored } = previous ?? {}
+            const nextEnd = start && stored.end && end === undefined ? recordOf(draft, occurrence).end ?? null : end
+            const override = { ...stored, ...withoutEmpty({ title, start }) }
+            if (nextEnd !== undefined) {
+              if (nextEnd === null) delete override.end
+              else override.end = nextEnd
+            }
+            if (location !== undefined) override.location = location ?? ''
+            if (Object.keys(override).length) await service.applyOverride({ ...ref, date, patch: override })
+            else if (previous) await service.removeOverride({ ...ref, date })
+          }
+          if (reminder !== '') await service.setPersonal({
+            ...ref, originalStart: occurrence.originalStart ?? occurrence.start,
+            patch: reminderPatch,
+          })
+        } else {
+          if (Object.keys(patch).length) await service.updateEvent({ ...ref, patch })
+          if (reminder !== '') await service.setPersonal({ ...ref, patch: reminderPatch })
+        }
+      }
+      await onSaved(draft.date)
+    } catch (error) {
+      setProblem(messageOf(error))
+    } finally {
+      pending.current = false
+      setSaving(false)
+    }
+  }
+
+  return React.createElement('form', { className: 'tt-editor', onSubmit: submit, 'aria-label': slot ? '新建日程' : '编辑日程' },
+    React.createElement('header', { className: 'tt-panel-head' }, React.createElement('h2', null, slot ? '新建日程' : '编辑日程')),
+    recurring && React.createElement('div', { className: 'tt-editor-scope', role: 'group', 'aria-label': '编辑范围' },
+      ...(['once', 'series'] as const).map(value => React.createElement(Button, {
+        key: value, size: 'sm', variant: 'ghost', disabled: saving, 'aria-pressed': scope === value,
+        onClick: () => {
+          if (value === scope) return
+          setScope(value)
+          const selected = baseFor(value)
+          setEditor({ base: selected, draft: draftOf(selected) })
+          setReminder('')
+          setProblem('')
+        },
+      }, value === 'once' ? '仅本次' : '整条日程'))),
+    React.createElement('fieldset', { disabled: saving, className: 'tt-editor-fields' }, React.createElement(EventForm, {
+      draft, onChange: (next: typeof draft) => setEditor(current => ({ ...current, draft: next })), autoFocus: true, showAllDay: true, advanced: true, showRepeat: scope === 'series', allowAllDayChange: scope !== 'once', endHint: scope === 'once' ? '留空沿用系列时长' : undefined,
+      showRemark: Boolean(slot),
+      sourceDescription: record && record.source !== 'manual' ? record.description : undefined,
+      extraOptions: React.createElement(Field, { label: '提醒' },
+        React.createElement('select', {
+          value: reminder, 'aria-label': '提醒', disabled: saving,
+          onChange: (event: React.ChangeEvent<HTMLSelectElement>) => setReminder(event.target.value),
+        }, React.createElement('option', { value: '' }, slot ? '默认关闭' : '沿用当前设置'),
+        React.createElement('option', { value: 'off' }, '关闭'), React.createElement('option', { value: '10' }, '提前 10 分钟'),
+        React.createElement('option', { value: '30' }, '提前 30 分钟'))),
+    })),
+    problem && React.createElement('p', { role: 'alert', className: 'cal-destructive' }, problem),
+    React.createElement('footer', { className: 'tt-panel-actions' },
+      React.createElement(Button, { size: 'sm', variant: 'ghost', disabled: saving, onClick: onCancel }, '取消'),
+      React.createElement(Button, { size: 'sm', variant: 'primary', className: 'tt-primary', type: 'submit', disabled: saving || Boolean(complaint) }, saving ? '保存中…' : '保存')))
 }
 
 /** The dialog that creates one entry by hand. */
-function CreateDialog({ defaultDate, defaultStart, defaultEnd, service, onClose, run, onSaved }: any) {
+function CreateDialog({ defaultDate, defaultStart, defaultEnd, defaultAllDay, service, onClose, run, onSaved }: any) {
   const [draft, setDraft] = useState(() => {
     const date = defaultDate ?? localDate()
     const start = defaultStart ?? clockAt(suggestedStart(date))
     return {
       ...draftOf(null),
       date,
-      start,
-      end: defaultEnd ?? clockAt(Math.min(clockMinutes(start) + 60, 23 * 60 + 59)),
+      start: defaultAllDay ? '' : start,
+      end: defaultAllDay ? '' : defaultEnd ?? clockAt(Math.min(clockMinutes(start) + 60, 23 * 60 + 59)),
     }
   })
   const [problem, setProblem] = useState<string | null>(null)
+  const [showDetails, setShowDetails] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const saving = useRef(false)
   const complaint = draftProblem(draft)
@@ -1385,20 +1049,23 @@ function CreateDialog({ defaultDate, defaultStart, defaultEnd, service, onClose,
 
   return React.createElement(Modal, {
     open: true,
+    size: 'compact',
     onClose,
     title: '新建日程',
     closeLabel: '关闭',
-    description: '写进本机日历，随时可以再改。',
-    footer: React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
-      React.createElement(Muted, null, REPEAT_LABELS[draft.repeatMode] ?? '单次日程'),
-      React.createElement('span', { style: { flex: '1 1 auto' } }),
-      React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '取消'),
+    footer: React.createElement('div', { className: 'cal-dialog-actions' },
       React.createElement(Button, {
-        variant: 'primary', size: 'sm', disabled: Boolean(complaint) || submitting, onClick: submit,
-      }, submitting ? '正在保存…' : '新建')),
+        variant: 'ghost', size: 'sm', icon: React.createElement(IconChevronDown),
+        'aria-expanded': showDetails, onClick: () => setShowDetails(!showDetails),
+      }, showDetails ? '收起选项' : '更多选项'),
+      React.createElement('div', { className: 'cal-dialog-primary' },
+        React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '取消'),
+        React.createElement(Button, {
+          variant: 'primary', size: 'sm', disabled: Boolean(complaint) || submitting, onClick: submit,
+        }, submitting ? '正在保存…' : '新建'))),
   },
-  React.createElement('div', null,
-    React.createElement(EventForm, { draft, onChange: setDraft, autoFocus: true }),
+  React.createElement('div', { className: 'cal-quick-form' },
+    React.createElement(EventForm, { draft, onChange: setDraft, autoFocus: true, showDetails, showAllDay: true }),
     problem
       ? React.createElement('div', {
         style: { fontSize: 12, color: 'var(--dsw-alias-state-error-primary, #d4553f)' },
@@ -1413,18 +1080,21 @@ function CreateDialog({ defaultDate, defaultStart, defaultEnd, service, onClose,
  */
 type EventEditor = { event: any; draft: any; dirty: string[]; pending?: { draft: any; dirty: string[] } }
 
-function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, onRestore, onCancel, onDelete, busy, sourceName }: any) {
-  const [editor, setEditor] = useState<EventEditor>(() => ({ event, draft: draftOf(event), dirty: [] }))
+function EventWorkspace({ event, remark, agenda, noteIndex, service, run, onOpenOccurrence, onRestore, onCancel, onDelete, busy, sourceName, onBack, tools }: any) {
+  const sourceDescription = event?.source !== 'manual' ? event?.description : undefined
+  const editable = mergeRemarks(event?.source === 'manual' ? event.description : undefined, remark)
+  const formRecord = useMemo(() => event && { ...event, description: editable }, [event, editable])
+  const [editor, setEditor] = useState<EventEditor>(() => ({ event: formRecord, draft: draftOf(formRecord), dirty: [] }))
   const [problem, setProblem] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   // A snapshot replaces object identities even when another calendar changed.
   // Adopt fresh values before rendering children, retaining only local edits.
-  if (editor.event !== event) {
-    const incoming = draftOf(event)
+  if (editor.event !== formRecord) {
+    const incoming = draftOf(formRecord)
     const protectedFields = [...new Set([...editor.dirty, ...(editor.pending?.dirty ?? [])])]
     const dirty = protectedFields.filter(field => editor.pending?.dirty.includes(field)
       || JSON.stringify(editor.draft[field]) !== JSON.stringify(incoming[field]))
-    setEditor({ ...editor, event, draft: { ...incoming, ...Object.fromEntries(dirty.map(field => [field, editor.draft[field]])) }, dirty })
+    setEditor({ ...editor, event: formRecord, draft: { ...incoming, ...Object.fromEntries(dirty.map(field => [field, editor.draft[field]])) }, dirty })
   }
   const { draft } = editor
   const changeDraft = (draft: any) => {
@@ -1454,7 +1124,6 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
   }, [occurrences])
 
   if (!event) return null
-  const tint = tintOf(event.source ?? event.uid)
   const exceptions = (event.exceptions ?? []).map(dateOf)
   const complaint = draftProblem(draft)
   const dirty = editor.dirty.length > 0
@@ -1469,7 +1138,10 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
     void run(async () => {
       setEditor(current => ({ ...current, pending: { draft: submitted.draft, dirty: submitted.dirty } }))
       try {
-        await service.updateEvent({ uid: event.uid, source: event.source, patch: patchOf(submitted.draft, submitted.event) })
+        const { description, ...patch } = patchOf(submitted.draft, submitted.event)
+        await service.updateEvent({ uid: event.uid, source: event.source, patch,
+          ...(description !== undefined && { remark: description ?? '' }),
+        })
       } catch (error) {
         setEditor(current => {
           const baseline = draftOf(current.event)
@@ -1486,98 +1158,56 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
     }, '日程信息已保存')
   }
 
-  // The pieces are built apart and assembled at the end: one nested expression
-  // per row was unreadable, and a misread parenthesis there is a silent layout
-  // bug rather than a syntax error.
-  const infoCard = React.createElement('section', {
-    style: { padding: 16, borderRadius: 12, border: CARD_BORDER, background: 'var(--dsw-alias-bg-layer-1, #fff)' },
-  },
-  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' } },
-    React.createElement('span', { 'aria-hidden': true, style: { width: 10, height: 10, borderRadius: 999, background: tint.accent } }),
-    React.createElement('strong', { style: { fontSize: 13 } }, '日程信息'),
-    React.createElement('span', { style: { flex: '1 1 auto' } }),
-    event.recurrence ? React.createElement(Tag, { tone: 'outline' }, seriesSummary(event)) : undefined,
-    event.source ? React.createElement(Muted, null, sourceName(event.source)) : undefined),
-  React.createElement(EventForm, { draft, onChange: changeDraft, sourceOwned: event.source !== 'manual' }),
-  React.createElement(PersonalSettings, { identity: { source: event.source, uid: event.uid }, service, run, Field, allowOccurrence: false }),
-  React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
+  const actions = React.createElement('div', { className: 'cal-workspace-save' },
+    dirty && React.createElement(Muted, null, complaint ?? '有未保存的改动'),
     React.createElement(Button, {
-      variant: 'primary', size: 'sm', disabled: !dirty || busy || Boolean(complaint), onClick: save,
-    }, '保存更改'),
-    dirty ? React.createElement(Muted, null, complaint ?? '有未保存的改动') : undefined,
-    React.createElement('span', { style: { flex: '1 1 auto' } }),
-    // Deleting takes out every date of the record, so it is asked about here too: the
-    // dialog over one occurrence asks before the same act, and a page that did it on
-    // one click would make the safer path the more roundabout one.
+      variant: 'primary', disabled: !dirty || busy || Boolean(complaint), onClick: save,
+    }, '保存更改'))
+
+  const personal = React.createElement(PersonalSettings, {
+    identity: { source: event.source, uid: event.uid }, service, run, Field, allowOccurrence: false, showHeading: false,
+    copyLegacyRemark: (text: string) => changeDraft({ ...draft, description: mergeRemarks(draft.description, text) }),
+  })
+
+  const deletion = React.createElement('div', { className: 'cal-record-delete' },
     confirmingDelete
       ? React.createElement(React.Fragment, null,
-        React.createElement('span', { style: { fontSize: 13 } }, '确定删除这条日程？'),
+        React.createElement('span', { role: 'status' }, '确定删除这条日程？'),
         React.createElement(Button, {
-          variant: 'primary', size: 'sm',
-          style: { background: 'var(--dsw-alias-state-error-primary, #d4553f)' },
-          onClick: () => onDelete(event),
-        }, '删除'),
-        React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setConfirmingDelete(false) }, '取消'))
+          variant: 'ghost', size: 'sm', disabled: busy, onClick: () => setConfirmingDelete(false),
+        }, '取消'),
+        React.createElement(Button, {
+          variant: 'outline', size: 'sm', className: 'cal-destructive', disabled: busy, onClick: () => onDelete(event),
+        }, '删除'))
       : React.createElement(Button, {
-        variant: 'ghost', size: 'sm', icon: React.createElement(IconTrash),
-        style: { color: 'var(--dsw-alias-state-error-primary, #d4553f)' },
+        variant: 'ghost', size: 'sm', icon: React.createElement(IconTrash), className: 'cal-destructive',
         onClick: () => setConfirmingDelete(true),
-      }, '删除这条日程')))
+      }, '删除这条日程'))
 
-  const cancelledCard = exceptions.length === 0 ? undefined : React.createElement('section', {
-    style: { padding: 16, borderRadius: 12, border: CARD_BORDER, background: 'var(--dsw-alias-bg-layer-1, #fff)' },
-  },
-  React.createElement('strong', { style: { display: 'block', marginBottom: 10, fontSize: 13 } }, '已取消的日期'),
-  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' } },
-    ...exceptions.map((date: string) => React.createElement('span', {
-      key: date,
-      style: { display: 'inline-flex', alignItems: 'center', gap: 2, padding: '1px 4px 1px 7px', borderRadius: 999, background: LAYER, fontSize: 11 },
-    },
-    shortDate(date),
-    React.createElement(IconButton, {
-      label: `恢复 ${shortDate(date)}`, icon: React.createElement(IconRefreshSmall),
-      onClick: () => onRestore(event, date),
-    })))))
+  const cancelledDates = exceptions.length > 0 && React.createElement('section', { className: 'cal-record-cancelled' },
+    React.createElement('h2', null, '已取消的日期'),
+    React.createElement('div', null, ...exceptions.map((date: string) => React.createElement('span', { key: date },
+      shortDate(date),
+      React.createElement(IconButton, {
+        label: `恢复 ${shortDate(date)}`, icon: React.createElement(IconRefreshSmall), onClick: () => onRestore(event, date),
+      })))))
 
-  const monthBlocks = groups.flatMap(([month, items]) => [
-    React.createElement('div', {
-      key: month,
-      style: { padding: '6px 12px', background: LAYER, fontSize: 12, color: SECONDARY, position: 'sticky', top: 0 },
-    }, monthOf(`${month}-01`)),
-    ...items.map((occurrence: any) => React.createElement(EventRow, {
-      key: reactKeyOf(occurrence),
-      occurrence,
-      tint,
-      note: occurrenceNote(noteIndex, occurrence),
-      onOpen: onOpenOccurrence,
-      onCancel: (item: any) => onCancel(item),
-      onDelete: (item: any) => onDelete(item),
-    })),
-  ])
+  const times = React.createElement(React.Fragment, null,
+    occurrences.length === 0
+      ? React.createElement('p', { className: 'cal-record-empty' }, '近一年没有日程')
+      : groups.map(([month, items]) => React.createElement('div', { className: 'cal-record-month', key: month },
+        React.createElement('h3', null, monthOf(`${month}-01`)),
+        ...items.map((occurrence: any) => React.createElement(EventRow, {
+          key: reactKeyOf(occurrence), occurrence, note: occurrenceNote(noteIndex, occurrence),
+          onOpen: onOpenOccurrence, onCancel,
+        })))),
+    cancelledDates)
 
-  const listCard = React.createElement('div', {
-    style: { flex: '2 1 420px', minWidth: 280, borderRadius: 12, border: CARD_BORDER, background: 'var(--dsw-alias-bg-layer-1, #fff)', overflow: 'hidden' },
-  },
-  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', flexWrap: 'wrap' } },
-    React.createElement('strong', { style: { fontSize: 13 } }, '出现的时间'),
-    React.createElement(Muted, null, `近一年内 ${occurrences.length} 次`),
-    React.createElement('span', { style: { flex: '1 1 auto' } }),
-    React.createElement(Muted, null, '点一条查看或调整')),
-  occurrences.length === 0
-    ? React.createElement('div', { style: { padding: '24px 12px', textAlign: 'center' } },
-      React.createElement(Muted, null, '近一年内没有它出现的时间'))
-    : React.createElement('div', null, ...monthBlocks))
-
-  return React.createElement('div', { style: { flex: '1 1 auto', minHeight: 0, overflowY: 'auto' } },
-    React.createElement('div', {
-      style: { display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', padding: '16px 20px 24px' },
-    },
-    // Left: the entry itself, and the dates that were cancelled in it.
-    React.createElement('div', {
-      style: { flex: '1 1 300px', maxWidth: 420, minWidth: 260, display: 'flex', flexDirection: 'column', gap: 12 },
-    }, infoCard, cancelledCard),
-    // Right: the dates this entry covers, grouped by month.
-    listCard))
+  return React.createElement(EventEditorSurface, {
+    fields: React.createElement(EventForm, { draft, onChange: changeDraft, sourceDescription, recordMode: true }),
+    occurrences: times, settings: personal, onBack, title: event.title, source: sourceName(event.source),
+    backIcon: React.createElement(IconChevronLeft), tools, actions, deletion,
+  })
 }
 
 /**
@@ -1593,9 +1223,12 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
 export function createCalendarPage(service: any) {
   return function CalendarPanel() {
     const [view, setView] = useState<{ kind: string; id?: string; source?: string }>({ kind: 'week' })
-    const [anchor, setAnchor] = useState(() => startOfWeek())
-    const [displayMode, setDisplayMode] = useState<'week' | 'month'>('week')
-    const [monthAnchor, setMonthAnchor] = useState(() => monthStart(localDate()))
+    const [focusedDate, setFocusedDate] = useState(() => localDate())
+    const [displayMode, setDisplayMode] = useState<'week' | 'month' | 'year'>('month')
+    const [timetable, setTimetable] = useState<TimetableSelection>({ kind: 'day' })
+    const [sheetOpen, setSheetOpen] = useState(false)
+    const anchor = startOfWeek(focusedDate)
+    const monthAnchor = monthStart(focusedDate)
     const [calendarSource, setCalendarSource] = useState('*')
     const [snapshot, setSnapshot] = useState<any>(null)
     const [sourceStatuses, setSourceStatuses] = useState<any[]>([])
@@ -1603,10 +1236,12 @@ export function createCalendarPage(service: any) {
     const [week, setWeek] = useState<any>(null)
     const [agenda, setAgenda] = useState<any>(null)
     const [annotations, setAnnotations] = useState<any>({ weeks: [], spans: [] })
+    const [academicSpans, setAcademicSpans] = useState<React.ComponentProps<typeof AcademicYear>['spans']>([])
     const [annotationChoices, setAnnotationChoices] = useState<any[]>([])
     // The reader's own content, read from the host and kept apart from the
     // entries: it belongs to the person, not to any data source.
     const [noteIndex, setNoteIndex] = useState<Map<string, string>>(() => new Map())
+    const [remarkIndex, setRemarkIndex] = useState<Map<string, string>>(() => new Map())
     const [loading, setLoading] = useState(true)
     const [problem, setProblem] = useState<string | null>(null)
     const [toast, setToast] = useState<string | null>(null)
@@ -1662,12 +1297,16 @@ export function createCalendarPage(service: any) {
       if (!service.annotationsFor) return
       const read = ++latestAnnotationRead.current
       try {
-        const result = await service.annotationsFor(weekRange)
-        if (read === latestAnnotationRead.current && currentRange.current === weekRange) setAnnotations(result)
+        const result = await service.annotationsFor(displayMode === 'year'
+          ? { group: 'academic-calendar', includeOriginalSpan: true }
+          : { ...weekRange, includeOriginalSpan: true })
+        if (read !== latestAnnotationRead.current || currentRange.current !== weekRange) return
+        if (displayMode === 'year') setAcademicSpans(result.spans)
+        else setAnnotations(result)
       } catch {
         /* Decorations never gate the events. */
       }
-    }, [service, weekRange])
+    }, [service, weekRange, displayMode])
     const loadAgenda = useCallback(async () => { setAgenda((await service.occurrences(agendaRange)).occurrences) }, [service, view.id])
     /**
      * Read every note once and index it by the identity of the class it is about.
@@ -1677,12 +1316,15 @@ export function createCalendarPage(service: any) {
     const loadNotes = useCallback(async () => {
       const records = await service.notes({ scope: 'source' })
       const index = new Map<string, string>()
+      const remarks = new Map<string, string>()
       for (const record of records ?? []) {
         const text = record?.note?.text ?? (record?.note?.off ? '' : undefined)
-        if (typeof text !== 'string') continue
-        index.set(`${record.source}\u0000${record.uid}\u0000${record.originalStart ?? ''}`, text)
+        const key = `${record.source}\u0000${record.uid}\u0000${record.originalStart ?? ''}`
+        if (typeof text === 'string') index.set(key, text)
+        if (!record.originalStart && typeof record.remark?.text === 'string') remarks.set(key, record.remark.text)
       }
       setNoteIndex(index)
+      setRemarkIndex(remarks)
     }, [service])
 
     const refresh = useCallback(async () => {
@@ -1694,7 +1336,7 @@ export function createCalendarPage(service: any) {
         if (service.reminders) setReminderInbox(await service.reminders())
         await loadNotes()
         await loadAnnotations()
-        if (view.kind === 'week') await loadWeek()
+        if (view.kind === 'week' && displayMode !== 'year') await loadWeek()
         if (view.kind === 'event') await loadAgenda()
         setProblem(null)
       } catch (error) {
@@ -1702,7 +1344,7 @@ export function createCalendarPage(service: any) {
       } finally {
         setLoading(false)
       }
-    }, [loadSnapshot, loadNotes, loadAnnotations, loadWeek, loadAgenda, view.kind])
+    }, [loadSnapshot, loadNotes, loadAnnotations, loadWeek, loadAgenda, view.kind, displayMode])
 
     useEffect(() => { void refresh() }, [refresh])
     const latestRefresh = useRef(refresh)
@@ -1745,8 +1387,26 @@ export function createCalendarPage(service: any) {
 
     /** A drag or a double click in the week asks for a new entry over that span. */
     const createAt = useCallback((date: string, from: number, to: number) => {
-      setDialog({ kind: 'create', date, start: clockAt(from), end: clockAt(Math.max(to, from + 15)) })
+      setFocusedDate(date)
+      setSheetOpen(true)
+      setTimetable({ kind: 'create', date, start: clockAt(from), end: clockAt(Math.min(Math.max(to, from + 15), 24 * 60 - 1)) })
     }, [])
+
+    const selectDate = (date: string, showSheet = true) => {
+      setFocusedDate(date)
+      setTimetable({ kind: 'day' })
+      setSheetOpen(showSheet)
+    }
+    const selectEntry = (occurrence: any) => {
+      if (agendaFor(focusedDate, [occurrence]).length === 0) setFocusedDate(dateOf(occurrence.start))
+      setTimetable({ kind: 'detail', occurrence })
+      setSheetOpen(true)
+    }
+    const createInSidebar = () => {
+      if (displayMode === 'year') setDisplayMode('month')
+      setTimetable({ kind: 'create', date: focusedDate, allDay: displayMode !== 'week' })
+      setSheetOpen(true)
+    }
 
     const current = view.kind === 'event'
       ? events.find((event: any) => event.uid === view.id && event.source === view.source)
@@ -1758,38 +1418,137 @@ export function createCalendarPage(service: any) {
     // picked in the filter row. The subtitle's count comes from this same
     // list, so "2 条" is what is on screen, not what is on file.
     const visibleOccurrences = (week?.occurrences ?? []).filter((item: any) => calendarSource === '*' || item.source === calendarSource)
-    const weekCount = visibleOccurrences.length
     /** The week on screen is today's, so an entry started from here means today. */
-    const createDate = displayMode === 'month' ? (monthAnchor === monthStart(localDate()) ? localDate() : monthAnchor) : anchor === startOfWeek() ? localDate() : anchor
-    const title = view.kind === 'week' ? '我的日历' : (current?.title ?? '日程')
-    /**
-     * A data plugin's name for the week on screen: its week label — prefixed by
-     * the neutral band covering the week, which names the background the label
-     * sits in (a term) — or, when it gave no label (a vacation, an unnumbered
-     * short term), the covering band alone. Toned bands keep their own words
-     * out of the prefix: a highlighted week already says what it is.
-     */
-    const coveringBand = displayMode === 'week'
-      ? (annotations?.spans ?? []).find((span: any) => span.firstDay <= anchor && anchor <= span.lastDay)
-      : undefined
-    const weekNoteParts = [
-      ...(coveringBand && (coveringBand.tone ?? 'neutral') === 'neutral' ? [coveringBand.text] : []),
-      annotations?.weeks?.find((week: any) => week.firstDay === anchor)?.text ?? coveringBand?.text,
-    ].filter(Boolean)
-    const weekNote = displayMode === 'week' && weekNoteParts.length > 0 ? weekNoteParts.join(' · ') : undefined
-    const subtitle = view.kind === 'week'
-      ? displayMode === 'month' ? `${monthOf(monthAnchor)} · 月视图` : `${monthOf(anchor)}${dayNumber(anchor)}日 – ${shortDate(addDays(anchor, 6))} · ${weekCount} 条${weekNote ? ` · ${weekNote}` : ''}`
-      : [current?.location, sourceName(current?.source), current && noteOf(current) !== '' ? '有备注' : ''].filter(Boolean).join(' · ')
+    const selectedAcademicCalendar = annotationChoices.find(choice => choice.group === 'academic-calendar' && choice.selected)
+    const academicYear = academicSpans[0]?.text.match(/^\d{4}[-–]\d{4}/)?.[0]?.replace('-', '–')
+    const weekNote = annotations?.weeks?.find((week: any) => week.firstDay === anchor)?.text
+    const title = displayMode === 'year' ? (academicYear ? `${academicYear} 学年` : '学年总览')
+      : displayMode === 'week' && weekNote ? weekNote.split(' · ')[0] : monthOf(focusedDate)
+    const subtitle = displayMode === 'week' ? `${shortDate(anchor)} – ${shortDate(addDays(anchor, 6))}` : ''
 
-    const menuItems = events.length === 0
-      ? [{ type: 'label' as const, id: 'none', text: '还没有日程' }]
-      : events.map((event: any) => ({
+    const recordItems = events.map((event: any) => ({
         id: `${event.source}\u0000${event.uid}`,
         label: `${event.source === 'manual' ? event.title : `${event.title}（${sourceName(event.source)}）`}${event.exceptions?.length ? ` · 已取消 ${event.exceptions.length} 次` : ''}`,
-        icon: React.createElement(IconClock),
       }))
+    const moreItems = [
+      ...(view.kind === 'event' ? [{ id: 'create', label: '新建日程', icon: React.createElement(IconPlus) }] : []),
+      { id: 'sources', label: '日历来源', icon: React.createElement(IconFolderOpen) },
+      { id: 'records', label: '日程记录', icon: React.createElement(IconClock) },
+      { id: 'import', label: '导入日历', icon: React.createElement(IconFolderOpen) },
+      { id: 'export', label: '导出日历', icon: React.createElement(IconDownload) },
+      { id: 'reminders', label: reminderInbox.unread ? `提醒记录 · ${reminderInbox.unread}` : '提醒记录', icon: React.createElement(IconAlarmClock) },
+      { id: 'refresh', label: '刷新', icon: React.createElement(IconRefresh), disabled: loading },
+    ]
+    const calendarTools = React.createElement(Menu, {
+      open: menuOpen,
+      onClose: () => setMenuOpen(false),
+      items: moreItems,
+      onSelect: (kind: string) => {
+        if (kind === 'refresh') void refresh()
+        else if (kind === 'create') setDialog({ kind, date: current ? dateOf(current.start) : focusedDate })
+        else setDialog({ kind })
+      },
+      align: 'end',
+      anchor: React.createElement(Button, {
+        variant: 'ghost', size: 'sm', className: 'cal-tool-button cal-more-button',
+        'aria-label': '日历管理', 'aria-haspopup': 'menu', 'aria-expanded': menuOpen,
+        onClick: () => setMenuOpen(!menuOpen),
+      }, '日历管理', React.createElement(IconChevronDown), reminderInbox.unread ? React.createElement('span', { className: 'cal-action-count' }, reminderInbox.unread) : undefined),
+    })
+    const pendingSources = sourceStatuses.filter(item => item.state !== 'ready')
+    const chosen = 'occurrence' in timetable
+      ? visibleOccurrences.find((item: any) => occurrenceKeyOf(item) === occurrenceKeyOf(timetable.occurrence)) ?? timetable.occurrence
+      : undefined
+    const chosenRecord = chosen && events.find((event: any) => event.uid === chosen.uid && event.source === chosen.source)
+    const showDay = () => setTimetable({ kind: 'day' })
+    const saveInSidebar = async (date: string) => {
+      selectDate(date)
+      await refresh()
+      setToast('日程已保存')
+    }
+    const sidebar = () => {
+      if (timetable.kind === 'create' || (timetable.kind === 'edit' && chosenRecord)) {
+        return React.createElement(TimetableEditor, {
+          key: timetable.kind === 'create' ? `new:${timetable.date}:${timetable.start ?? ''}` : occurrenceKeyOf(chosen),
+          slot: timetable.kind === 'create' ? timetable : undefined,
+          occurrence: chosen, record: chosenRecord,
+          service, onSaved: saveInSidebar, onCancel: () => { if (chosen) selectEntry(chosen); else showDay() },
+        })
+      }
+      if (chosen) {
+        const series = Boolean(chosenRecord?.recurrence)
+        const external = chosen.source !== 'manual'
+        const ref = { source: chosen.source, uid: chosen.uid }
+        const date = chosen.occurrenceDate ?? dateOf(chosen.start)
+        const confirming = timetable.kind === 'remove'
+        const remove = async () => {
+          if (busy) return
+          const removed = await run(() => series ? service.cancelOccurrence({ ...ref, date }) : service.deleteEvent(ref), series ? '已取消这一次' : '已删除日程')
+          if (removed) showDay()
+        }
+        return React.createElement(TimetableDetails, {
+          key: occurrenceKeyOf(chosen), entry: chosen, source: sourceName(chosen.source),
+          tint: entryAccent(chosen),
+          sourceDescription: external ? chosen.description : undefined,
+          personalText: !confirming && chosenRecord ? {
+            remark: mergeRemarks(external ? undefined : chosen.description, chosen.personal?.remark?.text),
+            note: occurrenceNote(noteIndex, chosen),
+            recurring: series,
+            read: async (field: TimetableTextField, scope: TimetableTextScope) => {
+              const target = scope === 'once' || !series ? noteRefOf(chosen) : ref
+              const [resolved, own] = await Promise.all([
+                service.personalFor(target),
+                scope === 'once' ? service.notes(target) : [],
+              ])
+              const stored = resolved[field]?.text ?? ''
+              const text = field === 'remark' && !external && scope === 'series'
+                ? mergeRemarks(chosenRecord.description, stored) : stored
+              return { text, canInherit: scope === 'once' && Boolean(own[0]?.[field]) }
+            },
+            save: async (field: TimetableTextField, scope: TimetableTextScope, text: string | null) => {
+              if (field === 'remark' && !external && scope === 'series') {
+                const target = noteRefOf(chosen)
+                const previous = !series && (await service.notes(target))[0]?.remark
+                await service.updateEvent({ ...ref, patch: {}, remark: text ?? '' })
+                if (previous && target.originalStart) await service.setPersonal({ ...target, clear: ['remark'] })
+              } else {
+                const target = scope === 'once' || !series ? noteRefOf(chosen) : ref
+                const inherited = text === '' && 'originalStart' in target && (await service.personalFor(ref))[field]?.text
+                if (text || inherited) await service.setPersonal({ ...target, patch: { [field]: text ? { text } : { off: true } } })
+                else await service.setPersonal({ ...target, clear: [field] })
+              }
+              await refresh()
+              setToast(field === 'remark' ? '备注已保存' : '笔记已保存')
+            },
+          } : undefined,
+          recurrence: series ? seriesSummary(chosenRecord) : undefined, onBack: showDay,
+          tools: confirming || !chosenRecord ? null : React.createElement(Button, {
+            variant: 'ghost', size: 'sm', onClick: () => setTimetable({ kind: 'remove', occurrence: chosen }),
+          }, series ? '取消本次' : '删除'),
+          actions: confirming ? React.createElement(React.Fragment, null,
+            React.createElement(Button, { variant: 'ghost', size: 'sm', disabled: busy, onClick: () => selectEntry(chosen) }, '返回详情'),
+            React.createElement(Button, { variant: 'outline', size: 'sm', className: 'cal-destructive', disabled: busy, onClick: remove }, series ? '确认取消' : '确认删除'))
+            : chosenRecord && React.createElement(Button, {
+              variant: 'primary', size: 'sm', className: 'tt-primary', onClick: () => setTimetable({ kind: 'edit', occurrence: chosen }),
+            }, '编辑日程'),
+        }, confirming ? React.createElement('p', { role: 'status', className: 'cal-destructive' }, series ? '取消这一次安排？' : '删除这条日程？')
+          : React.createElement('details', { className: 'tt-editor-extra' },
+            React.createElement('summary', null, '个人设置'),
+            chosen.overridden && React.createElement(Button, {
+              variant: 'outline', size: 'sm', disabled: busy,
+              onClick: async () => { if (await run(() => service.removeOverride({ ...ref, date }), '已撤销改期')) showDay() },
+            }, '撤销改期'),
+            React.createElement(PersonalSettings, { identity: noteRefOf(chosen), service, run, Field, showHeading: false, showTextSettings: false })))
+      }
+      return React.createElement(DailyAgenda, {
+        date: focusedDate, entries: visibleOccurrences, accentOf: entryAccent, onDate: selectDate,
+        onSelect: selectEntry, onCreate: createInSidebar,
+      })
+    }
 
     return React.createElement('div', {
+      className: 'cal-workbench tt-workbench',
+      'aria-busy': loading,
       onDragEnter: (event: any) => { if (event.dataTransfer?.types?.includes('Files')) { event.preventDefault(); setDropping(true) } },
       onDragOver: (event: any) => { if (event.dataTransfer?.types?.includes('Files')) event.preventDefault() },
       onDragLeave: (event: any) => { if (event.currentTarget === event.target) setDropping(false) },
@@ -1811,113 +1570,35 @@ export function createCalendarPage(service: any) {
         minHeight: 0, background: PAGE_BACKGROUND, color: PRIMARY,
       },
     },
-    // Header: what is on screen, then the ways to move and to read or write a calendar file.
-    React.createElement('div', {
-      style: {
-        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-        padding: '12px 16px', borderBottom: CARD_BORDER, flex: '0 0 auto',
-      },
-    },
-    view.kind === 'event'
-      ? React.createElement(Button, {
-        variant: 'ghost', size: 'sm', icon: React.createElement(IconChevronLeft),
-        onClick: () => setView({ kind: 'week' }),
-      }, '返回')
-      : undefined,
-    React.createElement('div', { style: { minWidth: 0 } },
-      React.createElement('div', { style: { fontSize: 16, fontWeight: 650, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, title),
-      React.createElement('div', { style: { fontSize: 12, color: SECONDARY } }, loading ? '正在读取…' : subtitle)),
-    view.kind === 'week'
-      ? SpanLegend({
-        spans: annotations?.spans,
-        from: weekRange.from,
-        to: weekRange.to,
-        tones: displayMode === 'month' ? undefined : ['highlight'],
-      })
-      : undefined,
-    React.createElement('span', { style: { flex: '1 1 auto' } }),
-    view.kind === 'week'
-      ? React.createElement(React.Fragment, null,
-        React.createElement('div', { role: 'group', 'aria-label': '日历视图', style: { display: 'flex', gap: 2, padding: 3, borderRadius: 10, background: LAYER, marginRight: 6 } },
-          ...(['week', 'month'] as const).map(mode => React.createElement(Button, {
-            key: mode, size: 'sm', variant: displayMode === mode ? 'outline' : 'ghost', 'aria-pressed': displayMode === mode,
-            onClick: () => {
-              if (mode === displayMode) return
-              if (mode === 'month') setMonthAnchor(monthStart(anchor === startOfWeek() ? localDate() : anchor))
-              else setAnchor(startOfWeek(monthAnchor === monthStart(localDate()) ? localDate() : monthAnchor))
-              setDisplayMode(mode)
-            },
-          }, mode === 'week' ? '周' : '月'))),
+    React.createElement(CalendarStyles),
+    view.kind === 'week' && React.createElement('header', { className: 'cal-head' },
+      React.createElement('div', { className: 'cal-period' },
+      React.createElement('div', null,
+        React.createElement('h1', null, title),
+        subtitle && React.createElement('div', { className: 'cal-period-subtitle' }, subtitle)),
+      displayMode !== 'year' && React.createElement('nav', { className: 'cal-nav', 'aria-label': '日期导航' },
+        React.createElement('div', { className: 'cal-arrows' },
+        ...[-1, 1].map(direction => React.createElement('button', {
+          key: direction, type: 'button',
+          'aria-label': `${direction < 0 ? '上一' : '下一'}${displayMode === 'month' ? '月' : '周'}`,
+          onClick: () => selectDate(displayMode === 'month' ? shiftMonth(focusedDate, direction) : addDays(focusedDate, direction * 7), false),
+        }, React.createElement(direction < 0 ? IconChevronLeft : IconChevronRight)))),
+        React.createElement('button', { type: 'button', className: 'cal-today-button',
+          onClick: () => selectDate(localDate()),
+        }, '今天'))),
+      React.createElement('div', { className: 'cal-actions' },
+        React.createElement('div', { className: 'cal-segmented', role: 'group', 'aria-label': '日历视图' },
+          ...(['month', 'week'] as const).map(mode => React.createElement('button', {
+            key: mode, type: 'button', 'aria-pressed': mode === displayMode, onClick: () => { setDisplayMode(mode); setSheetOpen(false) },
+          }, mode === 'month' ? '月' : '周'))),
+        calendarTools,
         React.createElement(Button, {
-          variant: 'outline', size: 'sm',
-          onClick: () => { setAnchor(startOfWeek()); setMonthAnchor(monthStart(localDate())) },
-        }, '今天'),
-        ...[-1, 1].map(direction => {
-          const label = `${direction < 0 ? '上一' : '下一'}${displayMode === 'month' ? '月' : '周'}`
-          return React.createElement(Tooltip, { key: direction, label, side: 'bottom' },
-            React.createElement(Button, {
-              variant: 'ghost', size: 'sm', 'aria-label': label,
-              icon: React.createElement(direction < 0 ? IconChevronLeft : IconChevronRight),
-              onClick: () => displayMode === 'month' ? setMonthAnchor(shiftMonth(monthAnchor, direction)) : setAnchor(addDays(anchor, direction * 7)),
-            }))
-        }))
-      : undefined,
-    React.createElement(Button, {
-      variant: 'primary', size: 'sm', icon: React.createElement(IconPlus),
-      onClick: () => setDialog({ kind: 'create', date: view.kind === 'event' && current ? dateOf(current.start) : createDate }),
-    }, '新建日程'),
-    React.createElement(Menu, {
-      open: menuOpen,
-      onClose: () => setMenuOpen(false),
-      items: menuItems,
-      selectedId: view.kind === 'event' ? `${view.source}\u0000${view.id}` : undefined,
-      onSelect: (id: string) => {
-        const [source, uid] = String(id).split('\u0000')
-        if (events.some((event: any) => event.uid === uid && event.source === source)) openEvent(uid, source)
-      },
-      align: 'end',
-      anchor: React.createElement(Button, {
-        variant: 'ghost', size: 'sm',
-        icon: React.createElement(IconClock),
-        onClick: () => setMenuOpen(!menuOpen),
-      }, '日程', React.createElement(IconChevronDown)),
-    }),
-    React.createElement(Button, {
-      variant: 'ghost', size: 'sm', icon: React.createElement(IconFolderOpen),
-      onClick: () => setDialog({ kind: 'import' }),
-    }, '导入'),
-    React.createElement(Button, {
-      variant: 'ghost', size: 'sm', icon: React.createElement(IconDownload),
-      onClick: () => setDialog({ kind: 'export' }),
-    }, '导出'),
-    React.createElement(Button, { variant: 'ghost', size: 'sm', 'aria-label': '提醒记录', onClick: () => setDialog({ kind: 'reminders' }) },
-      reminderInbox.unread ? `提醒 · ${reminderInbox.unread}` : '提醒'),
-    React.createElement(Tooltip, { label: '刷新', side: 'bottom' },
-      React.createElement(Button, {
-        variant: 'ghost', size: 'sm', 'aria-label': '刷新', disabled: loading,
-        icon: React.createElement(IconRefresh),
-        onClick: () => void refresh(),
-      }))),
-    annotationChoices.length > 0 ? React.createElement('div', { style: { padding: '6px 16px', display: 'flex', gap: 12 } },
-      ...[...new Set(annotationChoices.map((choice: any) => choice.group))].map((group: string) => React.createElement('label', { key: group },
-        group === 'academic-calendar' ? '校历 ' : '背景 ',
-        React.createElement('select', { 'aria-label': group === 'academic-calendar' ? '选择校历' : `选择${group}`,
-          value: annotationChoices.find((choice: any) => choice.group === group && choice.selected)?.id ?? '',
-          disabled: busy,
-          onChange: (event: any) => void run(() => service.selectAnnotations({ group, id: event.target.value || null })),
-        }, React.createElement('option', { value: '' }, '不显示'),
-        ...annotationChoices.filter((choice: any) => choice.group === group).map((choice: any) => React.createElement('option', { key: choice.id, value: choice.id }, choice.label)))))) : undefined,
-    view.kind === 'week' && events.length > 0
-      ? React.createElement('div', { role: 'group', 'aria-label': '筛选日历', style: { display: 'flex', gap: 6, padding: '9px 16px', overflowX: 'auto', flex: '0 0 auto', borderBottom: HAIRLINE } },
-        ...['*', ...new Set(events.map((event: any) => event.source))].map((source: any) => React.createElement(Button, {
-          key: source, size: 'sm', variant: calendarSource === source ? 'outline' : 'ghost', 'aria-pressed': calendarSource === source,
-          onClick: () => setCalendarSource(source), style: { whiteSpace: 'nowrap', borderRadius: 20 },
-        }, source !== '*' ? React.createElement('span', { 'aria-hidden': true, style: { display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: tintOf(source).accent, marginRight: 6 } }) : undefined,
-        source === '*' ? '全部日历' : sourceName(source))),
-        calendarSource !== '*' && calendarSource !== 'manual' && !calendarSource.startsWith('sync:')
-          ? React.createElement(Button, { size: 'sm', variant: 'ghost', disabled: busy, onClick: () => setDialog({ kind: 'delete-calendar', source: calendarSource }), style: { marginLeft: 'auto', whiteSpace: 'nowrap' } }, '删除所选日历')
-          : undefined)
-      : undefined,
+          variant: 'primary', size: 'sm', className: 'cal-primary tt-primary', icon: React.createElement(IconPlus),
+          onClick: createInSidebar,
+        }, '新建日程'))),
+    view.kind === 'week' && displayMode !== 'year' && selectedAcademicCalendar && React.createElement(Button, {
+      variant: 'ghost', size: 'sm', className: 'tt-academic-link', onClick: () => setDisplayMode('year'),
+    }, '学年总览', React.createElement(IconChevronRight)),
     problem
       ? React.createElement('div', {
         style: {
@@ -1927,22 +1608,35 @@ export function createCalendarPage(service: any) {
       },
       React.createElement(IconWarning), problem)
       : undefined,
-    sourceStatuses.length > 0 ? React.createElement('div', { role: 'status', style: { display: 'flex', gap: 12, flexWrap: 'wrap', padding: '6px 16px', fontSize: 12, color: SECONDARY } },
-      ...sourceStatuses.map(item => React.createElement('span', { key: item.source }, `${item.label}：${item.state === 'error' ? '同步失败，保留上次数据' : item.state === 'loading' ? '同步中' : item.state === 'ready' ? '已更新' : '等待同步'}`))) : undefined,
+    pendingSources.length > 0 ? React.createElement('div', { role: 'status', style: { display: 'flex', gap: 12, flexWrap: 'wrap', padding: '6px 16px', fontSize: 12, color: SECONDARY } },
+      ...pendingSources.map(item => React.createElement('span', { key: item.source }, `${item.label}：${item.state === 'error' ? '同步失败，保留上次数据' : item.state === 'loading' ? '同步中' : '等待同步'}`))) : undefined,
+    view.kind === 'week' && displayMode === 'year' && React.createElement(AcademicYear, {
+      focusedDate,
+      spans: selectedAcademicCalendar ? academicSpans : [],
+      onOpenMonth: (date: string) => {
+        selectDate(date, false)
+        setDisplayMode('month')
+      },
+    }),
     view.kind === 'week'
-      ? React.createElement(displayMode === 'month' ? MonthGrid : WeekGrid, {
-          anchor: displayMode === 'month' ? monthAnchor : anchor,
-          tintOf, occurrenceKeyOf,
+      ? displayMode !== 'year' && React.createElement('div', { className: 'tt-calendar-body' }, React.createElement(CalendarCanvas, {
+          mode: displayMode,
+          focusedDate,
+          accentOf: entryAccent, draftAccent: tintOf('manual').accent, occurrenceKeyOf,
           occurrences: visibleOccurrences,
           noteIndex,
           annotations,
-          onSelect: (occurrence: any) => setDialog({ kind: 'event', occurrence }),
+          onSelect: selectEntry,
           onCreate: createAt,
-        })
-      : React.createElement(EventPage, {
+          onCreateDay: selectDate,
+        }), React.createElement(TimetableSidebar, { open: sheetOpen, onClose: () => setSheetOpen(false) }, sidebar()))
+      : React.createElement(EventWorkspace, {
         key: JSON.stringify([view.source, view.id]),
         event: current,
         sourceName,
+        tools: calendarTools,
+        onBack: () => setView({ kind: 'week' }),
+        remark: current && remarkIndex.get(`${current.source}\u0000${current.uid}\u0000`),
         service, run,
         agenda,
         noteIndex,
@@ -1956,8 +1650,60 @@ export function createCalendarPage(service: any) {
           `已取消 ${shortDate(occurrence.occurrenceDate ?? dateOf(occurrence.start))} 的日程`,
         ),
       }),
+    dialog?.kind === 'sources' && React.createElement(Modal, {
+      open: true, size: 'compact', title: '日历来源', closeLabel: '关闭',
+      onClose: () => { if (!busy) setDialog(null) },
+      footer: React.createElement('div', { className: 'cal-dialog-primary' },
+        React.createElement(Button, { variant: 'ghost', size: 'sm', disabled: busy, onClick: () => setDialog(null) }, '完成')),
+    }, React.createElement('div', { className: 'cal-source-list' },
+      ...[...new Set(annotationChoices.map(choice => choice.group as string))].map(group => React.createElement('label', { key: group },
+        group === 'academic-calendar' ? '校历' : '背景',
+        React.createElement('select', {
+          'aria-label': group === 'academic-calendar' ? '选择校历' : `选择${group}`,
+          value: annotationChoices.find(choice => choice.group === group && choice.selected)?.id ?? '',
+          disabled: busy,
+          onChange: (event: React.ChangeEvent<HTMLSelectElement>) => void run(() => service.selectAnnotations({ group, id: event.target.value || null })),
+        }, React.createElement('option', { value: '' }, '不显示'),
+        ...annotationChoices.filter(choice => choice.group === group).map(choice => React.createElement('option', { key: choice.id, value: choice.id }, choice.label))))),
+      React.createElement('label', null, '显示日程',
+        React.createElement('select', {
+          value: calendarSource, disabled: busy,
+          onChange: (event: React.ChangeEvent<HTMLSelectElement>) => {
+            setCalendarSource(event.target.value)
+            if (dialog.deleteSource) setDialog({ kind: 'sources' })
+          },
+        },
+          React.createElement('option', { value: '*' }, '全部日历'),
+          ...[...new Set<string>(events.map((event: any) => event.source))].map(source =>
+            React.createElement('option', { key: source, value: source }, sourceName(source))))),
+      dialog.deleteSource === calendarSource
+        ? React.createElement('div', { className: 'cal-inline-confirm' },
+          React.createElement('p', null, `删除“${sourceName(calendarSource)}”及其中的全部日程？`),
+          React.createElement('p', null, '私人笔记、备注和提醒设置会保留。'),
+          React.createElement('div', { className: 'cal-dialog-primary' },
+            React.createElement(Button, { variant: 'ghost', size: 'sm', disabled: busy, onClick: () => setDialog({ kind: 'sources' }) }, '取消'),
+            React.createElement(Button, {
+              variant: 'outline', size: 'sm', className: 'cal-destructive', disabled: busy,
+              onClick: () => run(() => service.deleteCalendar({ source: calendarSource }), '已删除导入日历，私人笔记与备注已保留')
+                .then(ok => { if (ok) { setCalendarSource('*'); setDialog({ kind: 'sources' }) } }),
+            }, busy ? '正在删除…' : '删除日历')))
+        : calendarSource !== '*' && calendarSource !== 'manual' && !calendarSource.startsWith('sync:') &&
+          React.createElement('div', null,
+            React.createElement(Button, { variant: 'ghost', size: 'sm', className: 'cal-destructive', disabled: busy,
+              onClick: () => setDialog({ kind: 'sources', deleteSource: calendarSource }),
+            }, '删除所选日历')))),
+    dialog?.kind === 'records' && React.createElement(Modal, {
+      open: true, title: '日程记录', closeLabel: '关闭', onClose: () => setDialog(null),
+      footer: React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setDialog(null) }, '完成'),
+    }, recordItems.length === 0 ? React.createElement('p', null, '还没有日程') :
+      React.createElement('div', { style: { display: 'grid', gap: 4 } }, ...recordItems.map(item =>
+        React.createElement(Button, { key: item.id, variant: 'ghost', onClick: () => {
+          const [source, uid] = item.id.split('\u0000')
+          setDialog(null)
+          openEvent(uid, source)
+        } }, item.label)))),
     dialog?.kind === 'event'
-      ? React.createElement(EventDialog, {
+      ? React.createElement(OccurrenceWindow, {
         occurrence: selectedOccurrence,
         sourceName,
         event: events.find((item: any) =>
@@ -1974,6 +1720,7 @@ export function createCalendarPage(service: any) {
         defaultDate: dialog.date,
         defaultStart: dialog.start,
         defaultEnd: dialog.end,
+        defaultAllDay: dialog.allDay,
         service,
         run,
         onSaved: () => setDialog(null),
@@ -2005,17 +1752,6 @@ export function createCalendarPage(service: any) {
           item.read ? React.createElement(Muted, null, '已读') : React.createElement(Button, { variant: 'outline', size: 'sm', disabled: busy,
             onClick: () => run(() => service.ackReminder({ id: item.id }), '已标为已读'),
           }, '标为已读')))))
-      : undefined,
-    dialog?.kind === 'delete-calendar'
-      ? React.createElement(Modal, {
-        open: true, title: '删除导入日历', closeLabel: '关闭', onClose: () => { if (!busy) setDialog(null) },
-        footer: React.createElement('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: 8 } },
-          React.createElement(Button, { variant: 'ghost', size: 'sm', disabled: busy, onClick: () => setDialog(null) }, '取消'),
-          React.createElement(Button, { variant: 'primary', size: 'sm', disabled: busy, style: { background: 'var(--dsw-alias-state-error-primary, #d4553f)' },
-            onClick: () => run(() => service.deleteCalendar({ source: dialog.source }), '已删除导入日历，私人笔记与备注已保留').then(ok => { if (ok) { setDialog(null); setCalendarSource('*') } }),
-          }, busy ? '正在删除…' : '删除日历')),
-      }, React.createElement('p', null, `确定删除“${sourceName(dialog.source)}”及其中的全部日程？`),
-      React.createElement('p', null, '私人笔记、备注和提醒设置会保留，可通过智能体查看失联笔记。重新导入同一日历后，仍可关联到同编号的日程。'))
       : undefined,
     dialog?.kind === 'export'
       ? React.createElement(ExportDialog, { service, toast: setToast, onClose: () => setDialog(null) })

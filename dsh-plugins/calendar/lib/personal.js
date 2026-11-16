@@ -152,6 +152,16 @@ export class PersonalStore {
     })
   }
 
+  /** 清理合并进日程的旧备注之前，先让调用方持久化合并结果。 */
+  async consolidateRemark(ref, preserve) {
+    await this.enqueue(annotationKey(ref), async () => {
+      const remark = this.get(ref)?.remark
+      if (remark === undefined) return
+      await preserve(remark.text)
+      await this.writeFields(ref, {}, ['remark'])
+    })
+  }
+
   /** Record source ownership once; only pre-upgrade descriptions need a review copy. */
   async rememberSource(event, legacy = false) {
     if (event.source === 'manual') return

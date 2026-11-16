@@ -24,6 +24,7 @@
   "scripts": {
     "build:client": "node ./build-client.mjs",
     "test": "node --check lib/client.js && node test/support/bundle-panel.mjs && node --test test/*.test.mjs",
+    "pretest:browser": "npm ci --prefix build-deps --ignore-scripts --no-audit --no-fund",
     "test:browser": "node test/browser-acceptance.mjs",
     "test:desktop": "node test/desktop-acceptance.mjs"
   },
