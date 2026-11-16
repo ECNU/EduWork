@@ -8,6 +8,13 @@ import { TaskNotifications } from '../../../dsh-electron/src/task-notifications.
 import { notificationDefaults } from '../lib/attention.js'
 
 const runtime = process.env.EDUWORK_TEST_RUNTIME
+// A fake offers only methods the Runtime's AgentRegistry has, so an API that DSH removes fails here.
+async function fakeAgents(ctx, Service, load, methods) {
+  const { AgentRegistry } = await load('@deepseek-ai/dsh-agent')
+  for (const name of Object.keys(methods)) assert.equal(typeof AgentRegistry.prototype[name], 'function', `AgentRegistry has no ${name}()`)
+  Object.assign(new Service(ctx, 'agents'), methods)
+}
+
 test('real Cordis session events and authenticated desktop bridge preserve pending decisions under both configuration APIs', { skip: !runtime }, async t => {
   const req = createRequire(join(runtime, 'package.json')), load = name => import(pathToFileURL(req.resolve(name)))
   const [{ Context, Service }, { default: Settings }, { default: Sessions }] = await Promise.all([load('@deepseek-ai/cordis'), load('@deepseek-ai/dsh-settings'), load('@deepseek-ai/dsh-session')])
@@ -31,8 +38,7 @@ test('real Cordis session events and authenticated desktop bridge preserve pendi
   t.after(() => ctx.fiber.dispose())
   const boundary = new Service(ctx, 'desktopBoundary'); boundary.ready = Promise.resolve(bridge.bootstrap)
   new Sessions(ctx)
-  const agents = new Service(ctx, 'agents'); agents.roots = () => [{ id: 'fixture' }]
-  agents.get = () => undefined
+  await fakeAgents(ctx, Service, load, { get: id => id === 'fixture' ? { id } : undefined })
   const nativeSettings = typeof Settings.prototype.register !== 'function'
   if (nativeSettings) {
     // Native forms belong to Loader; this test supplies its presentation seam.
@@ -104,8 +110,8 @@ test('real session headers attribute subagent turns to the conversation that del
   const ctx = new Context()
   t.after(() => ctx.fiber.dispose())
   new Sessions(ctx)
-  const live = new Map(), agents = new Service(ctx, 'agents')
-  agents.roots = () => [live.get('root')]; agents.get = id => live.get(id)
+  const live = new Map()
+  await fakeAgents(ctx, Service, load, { get: id => live.get(id) })
   const attention = new DesktopAttention({ bridge: async () => ({ seen: [] }), preferences: () => notificationDefaults })
   observeDesktopAttention(ctx, attention)
   const open = (id, meta) => { const session = ctx.sessions.create(id, meta && { meta }); live.set(id, { id, session }); return session }
@@ -120,6 +126,12 @@ test('real session headers attribute subagent turns to the conversation that del
   grandchild.append('turn/end', { turn: 0, reason: { kind: 'completed' } })
   root.append('turn/start', { turn: 1 }); root.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
   assert.equal([...attention.items.values()][0].kind, 'completed')
+  // Neither a subagent nor a session without a live agent becomes a task; a fork is a conversation of its own.
+  child.append('turn/start', { turn: 0 }); child.append('turn/end', { turn: 0, reason: { kind: 'failed' } })
+  const detached = ctx.sessions.create('detached')
+  detached.append('turn/start', { turn: 0 }); detached.append('turn/end', { turn: 0, reason: { kind: 'completed' } })
+  fork.append('turn/end', { turn: 0, reason: { kind: 'completed' } })
+  assert.deepEqual([...attention.items.values()].map(item => item.sessionId), ['root', 'fork'])
 })
 
 test('temporary side chats never become tray tasks', { skip: !runtime }, async t => {
@@ -129,9 +141,8 @@ test('temporary side chats never become tray tasks', { skip: !runtime }, async t
   const ctx = new Context()
   t.after(() => ctx.fiber.dispose())
   new Sessions(ctx)
-  const agents = new Service(ctx, 'agents')
   // The side chat is a top-level agent, so only the id prefix keeps it out.
-  agents.roots = () => [{ id: 'side-fixture' }]; agents.get = () => undefined
+  await fakeAgents(ctx, Service, load, { get: id => id === 'side-fixture' ? { id } : undefined })
   const attention = new DesktopAttention({ bridge: async () => ({ seen: [] }), preferences: () => notificationDefaults })
   observeDesktopAttention(ctx, attention)
   const session = ctx.sessions.create('side-fixture')
@@ -152,8 +163,8 @@ test('real goal driver: a round-limit or queue-failure block after the held turn
   const ctx = new Context()
   t.after(() => ctx.fiber.dispose())
   new Sessions(ctx); new Projections(ctx)
-  const live = new Map(), agents = new Service(ctx, 'agents')
-  Object.assign(agents, { roots: () => [...live.values()], get: id => live.get(id), list: () => [...live.values()], withoutInitiator: run => run(), currentInitiator: () => undefined })
+  const live = new Map()
+  await fakeAgents(ctx, Service, load, { get: id => live.get(id), list: () => [...live.values()], withoutInitiator: run => run(), currentInitiator: () => undefined })
   await ctx.plugin(Goals); await ctx.plugin(driver)
   const attention = new DesktopAttention({ bridge: async () => ({ seen: [] }), preferences: () => notificationDefaults, goal: id => ctx.goals.get(live.get(id)) })
   observeDesktopAttention(ctx, attention)

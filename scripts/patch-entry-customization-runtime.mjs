@@ -8,8 +8,8 @@ import { Script } from 'node:vm'
 // Only the Creator item is adapted; navigation, prompts and draft policy stay native.
 export const entryCustomizationPatch = Object.freeze({
   id: 'entry-customization-optional-creator-v1',
-  package: '@deepseek-ai/dsh-client-ui-entry-customization', version: '0.2.2-rc.1',
-  file: 'lib/client.js', beforeSHA256: '607476157d5ba93a0c2b74048591509116764348a275b7d27add6460b467d9a8',
+  package: '@deepseek-ai/dsh-client-ui-entry-customization', version: '0.2.2-rc.3',
+  file: 'lib/client.js', beforeSHA256: 'd7f65b5f629c3e3e2c16a1ee609fbb328a7d2613a6e1f03714e38eda41b53260',
 })
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 
@@ -60,16 +60,17 @@ export function patchEntryCustomizationSource(input) {
     if (source.split(before).length !== 2) throw new Error('Entry customization anchor changed: ' + before)
     source = source.replace(before, after)
   }
-  replace('function EntryMenuContent({ entries, onOpen, region, onDismiss, usePluginNavigation, browsePlugins, createPlugin, t }) {',
-    `${creatorEntryComponent.toString()}\n${creatorAvailability.toString()}\nconst EduWorkCreatorEntry = creatorEntryComponent(require("react"), _deepseek_ai_dsh_client_ui_primitives.MenuItemButton, _deepseek_ai_dsh_client_ui_primitives.IconPlusOutlineRegular);\nfunction EntryMenuContent({ entries, onOpen, region, onDismiss, usePluginNavigation, browsePlugins, createPlugin, checkCreator, t }) {`)
-  const start = source.indexOf('(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MenuItemButton, {\n\t\t\t\t\ticon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutlineRegular')
-  const end = source.indexOf('\n\t\t\t] });', start)
-  if (start < 0 || end < 0) throw new Error('Creator item boundary changed')
-  source = source.slice(0, start) + '(0, react_jsx_runtime.jsx)(EduWorkCreatorEntry, { checkCreator, createPlugin, onDismiss, separatorBefore: !browsable && moreEntries.length > 0, t })' + source.slice(end)
-  replace('const en = {', 'const en = { "creator.checking": "Checking Creator…", "creator.unavailable": "Could not check Creator. Reopen this menu to retry.", "creator.disabled": "Enable Creator in Settings → Agent presets", "creator.toolsDisabled": "Enable Show coding view in Settings → General",')
-  replace('const zh = {', 'const zh = { "creator.checking": "正在检查 Creator…", "creator.unavailable": "无法检查 Creator，请重新打开菜单重试", "creator.disabled": "请在设置 → Agent 预设中开启 Creator", "creator.toolsDisabled": "请在设置 → 通用设置中开启“显示代码工作视图”",')
-  replace('"uiWorkspace"\n', '"uiWorkspace", "remote", "remote.agentPresets", "configForms"\n')
-  replace('const injected = (region) => ({', 'const checkCreator = () => creatorAvailability(ctx);\nconst injected = (region) => ({ checkCreator,')
+  const signature = 'function EntryMenuContent({entries,onOpen,onPinnedChange,region,onDismiss,usePluginNavigation,browsePlugins,createPlugin,t,renderFactorySlot}){'
+  replace(signature,
+    `${creatorEntryComponent.toString()}\n${creatorAvailability.toString()}\nconst EduWorkCreatorEntry = creatorEntryComponent(require("react"), _deepseek_ai_dsh_client_ui_primitives.MenuItemButton, _deepseek_ai_dsh_client_ui_primitives.IconPlusOutlineRegular);\n${signature.replace('createPlugin,t,', 'createPlugin,checkCreator,t,')}`)
+  // rc.2 ships a compact bundle. Match the complete reviewed menu item, keeping
+  // the native pinning handlers and its factory slot untouched.
+  replace('(0,react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MenuItemButton,{icon:(0,react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutlineRegular,{size:16}),separatorBefore:!browsable&&moreEntries.length>0,onSelect:()=>{onDismiss();createPlugin()},children:t(`create`)})',
+    '(0,react_jsx_runtime.jsx)(EduWorkCreatorEntry,{checkCreator,createPlugin,onDismiss,separatorBefore:!browsable&&moreEntries.length>0,t})')
+  replace('const en={', 'const en={ "creator.checking": "Checking Creator…", "creator.unavailable": "Could not check Creator. Reopen this menu to retry.", "creator.disabled": "Enable Creator in Settings → Agent presets", "creator.toolsDisabled": "Enable Show coding view in Settings → General",')
+  replace('const zh={', 'const zh={ "creator.checking": "正在检查 Creator…", "creator.unavailable": "无法检查 Creator，请重新打开菜单重试", "creator.disabled": "请在设置 → Agent 预设中开启 Creator", "creator.toolsDisabled": "请在设置 → 通用设置中开启“显示代码工作视图”",')
+  replace('const inject=[`slots`,`locale`,`uiWorkspace`]', 'const inject=[`slots`,`locale`,`uiWorkspace`,`remote`,`remote.agentPresets`,`configForms`]')
+  replace('const injected=region=>({', 'const checkCreator=()=>creatorAvailability(ctx);const injected=region=>({checkCreator,')
   new Script(source, { filename: 'entry-customization.js' })
   return source
 }
@@ -77,8 +78,8 @@ export function patchEntryCustomizationSource(input) {
 export async function patchEntryCustomizationRuntime(modules) {
   const root = join(modules, entryCustomizationPatch.package)
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
-  if (manifest.name !== entryCustomizationPatch.package || manifest.version !== entryCustomizationPatch.version) throw new Error('Entry customization requires a newly qualified Runtime')
+  if (manifest.name !== entryCustomizationPatch.package || !['0.2.2-rc.2', entryCustomizationPatch.version].includes(manifest.version)) throw new Error('Entry customization requires a newly qualified Runtime')
   const path = join(root, entryCustomizationPatch.file), output = patchEntryCustomizationSource(await readFile(path))
   await writeFile(path, output)
-  return { ...entryCustomizationPatch, afterSHA256: sha256(output) }
+  return { ...entryCustomizationPatch, version: manifest.version, afterSHA256: sha256(output) }
 }

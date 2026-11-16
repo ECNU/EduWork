@@ -313,6 +313,7 @@ function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOthe
     productUpdateObserver: { dispose() { events.push('observer-dispose') } },
     desktopPet: { close() { if (resourceCloseError) throw resourceCloseError } },
     taskNotifications: { close() {} },
+    taskbar: { update({ count }) { assert.equal(count, 0) } },
     tray: staleBootPage ? { isDestroyed: () => false, destroy: () => events.push('tray-destroy') } : undefined,
     mainWindow: staleBootPage ? {
       isDestroyed: () => false,

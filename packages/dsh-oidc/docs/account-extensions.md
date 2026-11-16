@@ -26,6 +26,18 @@ const response = await ctx.oidcAccounts.modelResourceFetch(profileID, '/quota', 
 
 成功重新登录或注销会发出带 `authorizationChanged: true` 的 `oidc/accounts-changed` 事件，即使前后 `state` 都是 `connected`。扩展必须清理旧授权的失败状态及在途结果，不能仅按状态名称去重；普通状态轮询仍只在状态变化时发通知。
 
+Host 还可用 `accountIdentity(profileID)` 获取 `{ profileID, accountID }`，未登录时为 null。accountID 按 profile、issuer 和已验证 subject 求摘要，续期不改变，换账号改变；不返回原始 subject 或 Token，不能作为发送给服务端的登录证明。该方法没有 Remote 标记。
+
+对于模型资源前缀外的只读机构数据，由机构 Host 先核对精确 profile/URL 白名单，再调用：
+
+```js
+const identity = await ctx.oidcAccounts.accountIdentity(profileID)
+const response = await ctx.oidcAccounts.authorizedFetch(profileID, approvedURL,
+  { method: 'GET', signal }, { serviceURL: approvedURL })
+```
+
+`serviceURL` 只由受信 Host 根据机构配置生成，不能直接转发浏览器、模型或来源响应中的授权目标。它只允许精确 HTTPS URL、无正文 GET，拒绝凭据、片段和重定向；不会持久化扩大白名单，也不新增 RPC。请求前后及响应读取后仍须核对账号身份和世代。测试仅在 Profile 和业务 Host 都明确开启 `allowInsecureDevelopment` 时使用字面回环 IP 的 HTTP 服务；生产默认关闭。具体边界见 [ADR 0002](decisions/0002-host-service-reads.md)。业务插件自行限制响应大小并保护日志，日历订阅的上限为5 MiB。
+
 ## 客户端账户菜单
 
 公共 `ui.sidebar.footer.account` 注册一个官方 DSH 子插槽 `oidc.account.menu.details`，类型 `single`、作用域 `root`。可选扩展通过 `slots.inject()` 等待插槽，然后 `slots.register()` 注册组件。公共部分始终拥有身份信息、登录、模型凭据创建及注销；扩展只提供中间附加内容。

@@ -29,7 +29,7 @@ assert.equal(explicitMemoryRequest(session), false)
 assert.equal(executionSources({ agent: { session } }, [])[0].eventSeq, 1)
 // rc.2 can deliver several events in one append. The same readers must observe
 // the final direct-user intent and may not promote a plugin message into it.
-if (require('@deepseek-ai/dsh-session/package.json').version === '0.2.2-rc.2') {
+if (['0.2.2-rc.2', '0.2.2-rc.3'].includes(require('@deepseek-ai/dsh-session/package.json').version)) {
   const events = session.append([
     ['user/message', createUserMessage({ content: [{ type: 'text', text: 'Summarize the batch' }], source: { kind: 'user' } }), { surfaceOp: 'append' }],
     ['user/message', createUserMessage({ content: [{ type: 'text', text: 'Please remember the plugin context' }], source }), { surfaceOp: 'append' }],

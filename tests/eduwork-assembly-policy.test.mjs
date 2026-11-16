@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFile, writeFile, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises'
+import { copyFile, readFile, writeFile, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -45,6 +45,22 @@ test('npm assembly checks the actual distribution lock, not only its receipt', a
   assert.match(result.stdout + result.stderr, /Distribution Runtime lock proof differs/)
 })
 
+test('calendar PowerShell entry forwards paths to the Node builder and propagates failure', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'calendar build '))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const entry = join(dir, 'build-client.ps1')
+  await copyFile(join(root, 'dsh-plugins/calendar/build-client.ps1'), entry)
+  const builder = join(dir, 'build-client.mjs')
+  const upstream = join(dir, 'compiler tree'), output = join(dir, 'client lib'), runtime = join(dir, 'runtime packages')
+  const run = () => spawnSync('pwsh', ['-NoProfile', '-File', entry, '-Upstream', upstream, '-Output', output, '-RuntimePackages', runtime], { encoding: 'utf8', windowsHide: true })
+  await writeFile(builder, 'console.log(JSON.stringify(process.argv.slice(2)))')
+  const result = run()
+  assert.equal(result.status, 0, result.error?.message ?? result.stderr)
+  assert.deepEqual(JSON.parse(result.stdout), ['--upstream', upstream, '--output', output, '--runtime-packages', runtime])
+  await writeFile(builder, 'process.exitCode = 1')
+  assert.notEqual(run().status, 0)
+})
+
 test('web package and skill staging use portable paths and commands', async () => {
   for (const name of ['install-locked-dsh-package.ps1', 'copy-dsh-package-payload.ps1', 'install-bundled-dsh-skills.ps1']) {
     const script = await readFile(join(root, 'scripts', name), 'utf8')
@@ -53,16 +69,16 @@ test('web package and skill staging use portable paths and commands', async () =
     assert.doesNotMatch(script, /\+ '\\\\'/, name)
     assert.doesNotMatch(script, /npm\.cmd|tar\.exe/, name)
   }
-  for (const name of ['client-ui-branding', 'client-ui-conversation-brand', 'client-ui-skill-live', 'client-ui-component-inventory', 'client-ui-agent-preset-product', 'client-ui-media-artifacts', 'calendar']) {
+  for (const name of ['client-ui-branding', 'client-ui-conversation-brand', 'client-ui-skill-live', 'client-ui-component-inventory', 'client-ui-agent-preset-product', 'client-ui-media-artifacts']) {
     const script = await readFile(join(root, 'dsh-plugins', name, 'build-client.ps1'), 'utf8')
     assert.match(script, /\[IO\.Path\]::DirectorySeparatorChar/, name)
     assert.doesNotMatch(script, /\+ '\\\\'/, name)
   }
-  for (const name of ['client-ui-branding', 'client-ui-component-inventory', 'client-ui-media-artifacts', 'workbench-native', 'activity-insights-native', 'calendar']) {
+  for (const name of ['client-ui-branding', 'client-ui-component-inventory', 'client-ui-media-artifacts', 'workbench-native', 'activity-insights-native']) {
     const script = await readFile(join(root, 'dsh-plugins', name, 'build-client.ps1'), 'utf8')
     assert.match(script, /\$IsWindows[\s\S]*tsdown\.cmd[\s\S]*tsdown/, name)
   }
-  for (const name of ['workbench-native', 'activity-insights-native', 'calendar']) {
+  for (const name of ['workbench-native', 'activity-insights-native']) {
     const script = await readFile(join(root, 'dsh-plugins', name, 'build-client.ps1'), 'utf8')
     assert.match(script, /\$IsWindows[\s\S]*Junction[\s\S]*SymbolicLink/, name)
     assert.doesNotMatch(script, /-ItemType Junction/, name)

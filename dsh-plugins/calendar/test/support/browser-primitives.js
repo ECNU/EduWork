@@ -18,9 +18,9 @@ const h = window.React.createElement
 const cx = (...values) => values.filter(Boolean).join(' ')
 
 /** A real `<button>`, so a click is a click and the role comes from the element. */
-const Button = ({ children, onClick, disabled, variant, size, icon, className, ...rest }) =>
-  h('button', { type: 'button', onClick, disabled: Boolean(disabled), className: cx('ui-button', className), ...rest },
-    icon ?? null, children)
+const Button = window.React.forwardRef(({ children, onClick, disabled, variant, size, icon, className, ...rest }, ref) =>
+  h('button', { ref, type: 'button', onClick, disabled: Boolean(disabled), className: cx('ui-button', className), ...rest },
+    icon ?? null, children))
 
 const Input = ({ className, ...rest }) => h('input', { className: cx('ui-input', className), ...rest })
 
@@ -61,19 +61,17 @@ const Menu = ({ children, selectedId, className, open, anchor, items = [], onSel
 
 /**
  * A modal, as the panel expects it: a dialog with a title, an optional description
- * and a footer of actions. It draws only when `open`, and a click on the backdrop
- * closes it — the two behaviours the panel relies on.
- *
- * The panel supplies its own close control in the footer, so one is not added here:
- * a second button of the same name would be two ways to do one thing, and a person
- * reading the page would see both.
+ * and a footer of actions. When open, the header close button and the backdrop
+ * both use the same close callback as the host primitive.
  */
-const Modal = ({ open, title, description, children, footer, onClose, className }) => {
+const Modal = ({ open, title, description, children, footer, onClose, className, closeLabel, headless }) => {
   if (!open) return null
   return h('div', { className: cx('ui-modal', className), style: { position: 'fixed', inset: 0, zIndex: 1000, overflowY: 'auto' } },
     h('div', { 'data-backdrop': '', onClick: onClose, style: { position: 'absolute', inset: 0 } }),
     h('div', { role: 'dialog', 'aria-label': title, style: { position: 'relative', background: 'white' } },
-      title ? h('h2', null, title) : null,
+      !headless && h('header', null,
+        title ? h('h2', null, title) : null,
+        closeLabel ? h('button', { type: 'button', 'aria-label': closeLabel, onClick: onClose }, '×') : null),
       description ? h('p', null, description) : null,
       children,
       footer ? h('div', { className: 'ui-modal-footer' }, footer) : null))

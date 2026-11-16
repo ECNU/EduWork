@@ -94,3 +94,19 @@ test('a device may acknowledge the preview notice and change no other setting', 
   assert.ok(!allowsApiCall('POST', '/api/settings/update', acknowledge))
   assert.ok(!allowsApiCall('POST', '/api/settings/mutate/', acknowledge))
 })
+
+test('reasoning translation admits only the two official RPCs and cannot change provider preferences', () => {
+  for (const endpoint of ['cotTranslation/limits', 'cotTranslation/translate']) {
+    assert.ok(allowsEndpoint(endpoint), endpoint)
+    assert.ok(allowsApiRequest('POST', `/api/${endpoint}`), endpoint)
+    assert.ok(!allowsApiRequest('GET', `/api/${endpoint}`))
+    assert.ok(!allowsApiRequest('POST', `/api/${endpoint}/`))
+  }
+  for (const endpoint of ['cotTranslation/configure', 'cotTranslation/setProvider', 'cotTranslation/unknown', 'translator/translate']) {
+    assert.ok(!allowsEndpoint(endpoint), endpoint)
+    assert.ok(!allowsApiRequest('POST', `/api/${endpoint}`), endpoint)
+  }
+  assert.ok(!allowsApiCall('POST', '/api/settings/mutate', {
+    ns: 'cotTranslation', ops: [{ op: 'set', path: ['provider'], value: 'deepseek' }],
+  }))
+})

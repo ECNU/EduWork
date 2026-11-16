@@ -22,7 +22,7 @@ import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, activateEduworkPaths, resolveInstalledFirstRun, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
-  showDesktopFailure, prepareDesktopRecovery, cancelDesktopStartup, isShutdownFailed, recordStartupStopFailureHealth, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand,
+  showDesktopFailure, prepareDesktopRecovery, cancelDesktopStartup, isShutdownFailed, recordStartupStopFailureHealth, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand, desktopStartupHint,
   showHostStartupProgress, readInitialCloseAction, productUpdateObserver } from './product.mjs'
 
 configureEduworkPaths()
@@ -223,6 +223,7 @@ async function main() {
     updates: productUpdateObserver,
     pickDirectory: pickDesktopDirectory,
     bootBrand: desktopBootBrand,
+    bootHint: desktopStartupHint,
     sidebarBrowser,
   })
   const webRoot = desktopWebRoot()

@@ -51,14 +51,14 @@ jobs:
       - run: node scripts/packages/manage.mjs install ${{ inputs.package }}
       - name: Install locked DSH Runtime for native plugin checks
         if: inputs.package == 'dsh-side-chat' || inputs.package == 'dsh-decision'
-        working-directory: third_party/dsh/candidate-v0.2.2-rc.1/npm-runtime
+        working-directory: third_party/dsh/candidate-v0.2.2-rc.3/npm-runtime
         run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node scripts/packages/manage.mjs check ${{ inputs.package }}
         env:
           DSH_OFFICE_PYTHON: ${{ steps.python.outputs.python-path }}
           PYTHONUTF8: '1'
-          EDUWORK_SIDE_CHAT_RUNTIME: ${{ inputs.package == 'dsh-side-chat' && format('{0}/third_party/dsh/candidate-v0.2.2-rc.1/npm-runtime', github.workspace) || '' }}
-          EDUWORK_DECISION_RUNTIME: ${{ inputs.package == 'dsh-decision' && format('{0}/third_party/dsh/candidate-v0.2.2-rc.1/npm-runtime', github.workspace) || '' }}
+          EDUWORK_SIDE_CHAT_RUNTIME: ${{ inputs.package == 'dsh-side-chat' && format('{0}/third_party/dsh/candidate-v0.2.2-rc.3/npm-runtime', github.workspace) || '' }}
+          EDUWORK_DECISION_RUNTIME: ${{ inputs.package == 'dsh-decision' && format('{0}/third_party/dsh/candidate-v0.2.2-rc.3/npm-runtime', github.workspace) || '' }}
       - run: node scripts/packages/manage.mjs pack ${{ inputs.package }} dist/npm-release
       - uses: actions/upload-artifact@v4
         with:

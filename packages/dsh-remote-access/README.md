@@ -17,7 +17,7 @@
 
 ```sh
 RELAY_URL=https://remote.example.edu/ RELAY_ACCESS_KEYS=替换成随机Key \
-  npx --yes --package=@eduwork/dsh-remote-access@0.1.2 eduwork-remote-relay
+  npx --yes --package=@eduwork/dsh-remote-access@0.1.7 eduwork-remote-relay
 ```
 
 `RELAY_URL` 是用户访问中继的公开地址；`RELAY_ACCESS_KEYS` 是发给电脑主人的接入密钥，多个用逗号分隔。中继默认监听 `127.0.0.1:8787`，可用 `HOST`、`PORT` 修改；`<RELAY_URL>healthz` 返回 `ok`，可用于监控。
@@ -52,7 +52,7 @@ dsh plugin --profile web add @eduwork/dsh-remote-access
 2. 在手机上扫码或打开链接，填写设备名称，点“开始配对”。
 3. 确认手机和电脑上显示的 6 位配对码一致后，在电脑上点“允许”。
 
-之后在这台设备上打开中继地址就会连接到电脑；断线后自动重连。iPhone 和 iPad 上请先把页面添加到主屏幕，从主屏幕打开后再粘贴配对链接：只在 Safari 里配对的设备，7 天不用会丢失配对。
+之后在这台设备上打开中继地址就会连接到电脑；断线后自动重连。iPhone 和 iPad 需要 iOS / iPadOS 16.4 或更高版本；请先把页面添加到主屏幕，从主屏幕打开后再粘贴配对链接：只在 Safari 里配对的设备，7 天不用会丢失配对。
 
 在电脑的“已配对设备”里点“移除”，该设备立即断开，之后不能再连接。
 
