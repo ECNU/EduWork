@@ -89,8 +89,11 @@ await prepareCandidateManifests(join(repository, 'dsh-plugins'))
 const clients = []
 clients.push(['dsh-plugins/client-ui-extensions', 'src/client.js'])
 clients.push(['dsh-plugins/user-guide', 'src/client.ts'])
-for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts', 'calendar', 'notifications', 'browser-upstream']) {
-  clients.push([`dsh-plugins/${folder}`, ['workbench-native', 'calendar', 'notifications', 'browser-upstream'].includes(folder) ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
+if (distribution.plugins.some(plugin => plugin.root === 'core' && plugin.source === 'dsh-plugins/calendar')) {
+  clients.push(['dsh-plugins/calendar', 'src/client.ts'])
+}
+for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts', 'notifications', 'browser-upstream']) {
+  clients.push([`dsh-plugins/${folder}`, ['workbench-native', 'notifications', 'browser-upstream'].includes(folder) ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
 }
 const localAliases = { ...sharedAliases }
 for (const folder of ['skill-manager-native', 'skill-settings-native', 'component-inventory-native', 'plugin-manager-native', 'artifact-preview-native']) {
