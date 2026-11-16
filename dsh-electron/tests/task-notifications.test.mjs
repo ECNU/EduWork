@@ -4,13 +4,40 @@ import { TaskNotifications, nativeNotificationAdapter, validateAttentionRequest 
 import { DesktopAttention, notificationDefaults } from '../../dsh-plugins/desktop-services/lib/attention.js'
 
 const item = (key, kind = 'question', extras = {}) => ({ key, kind, sessionId: 'session-a', title: 'Private title', createdAt: 1, ...extras })
-function setup() {
+function setup(changed = () => {}) {
   let focused = false, time = 10000
   const popups = [], shown = [], dismissed = []
-  const shell = new TaskNotifications({ foreground: () => focused, now: () => time, show: () => shown.push(true), publish: value => popups.push(value), dismiss: () => dismissed.push(true), changed() {} })
+  const shell = new TaskNotifications({ foreground: () => focused, now: () => time, show: () => shown.push(true), publish: value => popups.push(value), dismiss: () => dismissed.push(true), changed })
   const sync = (items, preferences = {}, running = []) => shell.handle({ action: 'sync', instance: 'host-a', items, running, preferences: { ...notificationDefaults, ...preferences } })
   return { shell, sync, popups, shown, dismissed, focus: value => { focused = value }, advance: () => { time += 5000 } }
 }
+test('badge counts sessions and plugin notices, and flashes only for new background attention', () => {
+  let status
+  const f = setup(value => { status = value })
+  const plugin = { kind: 'plugin', key: 'plugin:' + 'a'.repeat(64), source: 'fixture', event: 'notice', label: 'Notice',
+    level: 'info', requiresAction: false, title: '', preview: '', createdAt: 1, revision: 1, alert: 1 }
+  const items = [item('done', 'completed'), item('ask'), item('fail', 'failed', { sessionId: 'b' }), plugin]
+  f.sync(items, {}, ['running-only'])
+  assert.deepEqual(status, { count: 3, notify: true })
+  f.sync(items, { failed: false })
+  assert.deepEqual(status, { count: 2, notify: false })
+  f.sync(items, { enabled: false })
+  assert.deepEqual(status, { count: 0, notify: false })
+  f.sync(items)
+  assert.deepEqual(status, { count: 3, notify: false })
+  f.focus(true)
+  f.shell.handle({ action: 'view', sessionId: 'session-a' })
+  assert.deepEqual(f.sync(items).seen, ['done'])
+  assert.deepEqual(status, { count: 3, notify: false })
+  f.focus(false)
+  f.sync([{ ...plugin, revision: 2 }])
+  assert.deepEqual(status, { count: 1, notify: false })
+  f.sync([{ ...plugin, revision: 3, alert: 2 }])
+  assert.deepEqual(status, { count: 1, notify: true })
+  f.sync([])
+  assert.deepEqual(status, { count: 0, notify: false })
+})
+
 function host(bridge = async () => ({ seen: [] }), goal) {
   return new DesktopAttention({ bridge, preferences: () => notificationDefaults, goal, now: () => 10000, schedule: () => 1, cancel() {} })
 }

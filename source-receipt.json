@@ -5,7 +5,7 @@
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-15T13:46:58.636Z",
-  "fileSetSHA256": "9e3ccd105b9ca89e16d61683a57b05868b34884831eb43c8981d7c5f3b9bd34b",
+  "fileSetSHA256": "abfd0166974972041f32ce9abbd516ccd655d3c6dad3457ace9643cfc43ea50e",
   "files": [
     {
       "path": ".gitattributes",
@@ -57,7 +57,7 @@
     },
     {
       "path": ".github/workflows/validate-macos-updates.yml",
-      "sha256": "adbc89984033d4c1b863d01e06a8e5abf891831590c869d5ff01a023e8381e81"
+      "sha256": "981bb663ad4faed8ba016fcc4169624477b8b114134747ff9988c2385744551a"
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
@@ -1185,7 +1185,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "55cff740b2704c8ed0dcad03a6f947b3d5d801acee9f48cef48ca2675026fc11"
+      "sha256": "4178503cc7a1cc0964b373a2f8f6280f2f64d4e4a8ad58f2710d8cd1489ee733"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1377,7 +1377,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "2c35550170169d81c7d58ec9e66198f98c1c8fbee20034bd654edd6a7647a343"
+      "sha256": "2168d6d974cb548304e4626485392d7108c5535b3393de270af2a2d4206b235a"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1417,7 +1417,15 @@
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",
-      "sha256": "0fe465c0c137c16127b884f9c5f4454383b547eec471c7b393ce29472341c721"
+      "sha256": "7c45b381cbdb10c68f8558118fe0e0b57a25bc9ee0eadbd85613fee359a0b5c0"
+    },
+    {
+      "path": "dsh-electron/src/taskbar-badges.png",
+      "sha256": "655e70deeb8dc00660bd238f55b4123d19a3e05194ce7c80dbc1a8dfef713c03"
+    },
+    {
+      "path": "dsh-electron/src/taskbar-indicator.mjs",
+      "sha256": "085268f98f482769caa7e89e6b1ad719e9c38f9455b0be62fdff20fbe8c98fd0"
     },
     {
       "path": "dsh-electron/src/update-channel-migration.mjs",
@@ -1637,7 +1645,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
-      "sha256": "a5cecdc7201442900db7d6583c3a93a343f63479deebe3b1cc2e3bf3729952b2"
+      "sha256": "68d4655988863a66a66d5e12d1fa6a042ad7747808fec11162ccd434bc10fbc6"
     },
     {
       "path": "dsh-electron/tests/startup-hint.test.mjs",
@@ -1649,11 +1657,15 @@
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",
-      "sha256": "63698ac20444e8616481a9f29af50e0873172a6629e90b6fb6aae8d5acabf758"
+      "sha256": "b7b091004f18d474278b9c41f862bf47beb1098cb6832ea15c150545c58ce842"
     },
     {
       "path": "dsh-electron/tests/task-notifications.test.mjs",
-      "sha256": "fca7ebeffa61e6d8b7ff5b5c75c93511db14e1fb89a700513958718bfb499574"
+      "sha256": "bb7306656eadbefadbe89f114bfd1b9635560ea7765b0701001b9a74eb271787"
+    },
+    {
+      "path": "dsh-electron/tests/taskbar-indicator.test.mjs",
+      "sha256": "dfa41049204a5220ed3bb6ac808170369df5856cce70dc49275e927078e23853"
     },
     {
       "path": "dsh-electron/tests/tray-icon.electron.mjs",
