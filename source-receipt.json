@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-16T11:24:22.868Z",
-  "fileSetSHA256": "c49a2812823259e57ae81e25dce6746be333cec5196e14c8aa593e6632f441e4",
+  "createdAt": "2026-11-16T15:24:00.724Z",
+  "fileSetSHA256": "3e907e3892522832cf37620b20bdc0677611fae652b057e59db55d8fd46287f5",
   "files": [
     {
       "path": ".gitattributes",
@@ -33,11 +33,11 @@
     },
     {
       "path": ".github/workflows/packages-release.yml",
-      "sha256": "dd6b9187d097284b9a3641c5089cec7fdec8a84e7de19abfd01523df0c27a6ed"
+      "sha256": "7d2eb8707f1ef487c4070cc2ef522a5a947646a49a782d1a68bf70ad4246462c"
     },
     {
       "path": ".github/workflows/packages.yml",
-      "sha256": "7bf01184af48aa83b522054ccec0e908026ff3b6942a636ae591c0ea66e72e50"
+      "sha256": "fdb5b6e7da23211ccfad87131f74b50cbf0c4e9d4a3d63aaa9bebd2441c251d0"
     },
     {
       "path": ".github/workflows/publish-desktop-candidate.yml",
@@ -413,11 +413,11 @@
     },
     {
       "path": "docs/PACKAGES_EN.md",
-      "sha256": "7ed47c18f692b4f3177c78bd55a01af49ddde1c73eed12e9eeec16c4d8e85aed"
+      "sha256": "966f0095c1b7574949b23cd1c3ccf44a8e7550b8cf05f5d09badd023340ae8e3"
     },
     {
       "path": "docs/PACKAGES.md",
-      "sha256": "232ce4a569d308855c5f3464d9fde5ed5e3ed83fb1bcb6f6e61a56fcaa9dae67"
+      "sha256": "08a4de9b7b9b43d308bb5201a46be7286b5519c825af87092b53a957333a9528"
     },
     {
       "path": "docs/PLUGIN_NOTIFICATIONS.md",
@@ -3838,6 +3838,78 @@
     {
       "path": "packages/dsh-annotation/test/sent.test.mjs",
       "sha256": "69c6a85664ad261281557b919c16f2e1c898926047ab93c12c140fa805b878c9"
+    },
+    {
+      "path": "packages/dsh-auto-approval/.gitignore",
+      "sha256": "676b91f455a7988044510489387fab13294b310b164fae41301ac730692497b8"
+    },
+    {
+      "path": "packages/dsh-auto-approval/CHANGELOG.md",
+      "sha256": "2b40fc7bc339fbddebfe37c6e0a084311be368da0524fbef8f22f63a38fd5bed"
+    },
+    {
+      "path": "packages/dsh-auto-approval/cordis.patch.yml",
+      "sha256": "35456b64e823b9c10009b1b024235be4721b86f1c8587ae190e334b22b9520c2"
+    },
+    {
+      "path": "packages/dsh-auto-approval/LICENSE",
+      "sha256": "eb7a1d713eb919b146787629e22e4c975cb701f529a65d4d7e0fcd417558bf1c"
+    },
+    {
+      "path": "packages/dsh-auto-approval/package-lock.json",
+      "sha256": "4a90a81dd02b0f2ed161c7725dc56e44cf76ef337df8c703be20859e5dcb94c2"
+    },
+    {
+      "path": "packages/dsh-auto-approval/package.json",
+      "sha256": "10a6013f556e713fe1ca5e98340041f59ed76323399a694179c0d2fba296ec09"
+    },
+    {
+      "path": "packages/dsh-auto-approval/README_EN.md",
+      "sha256": "a94e10aec26b8165150c03d609b7b263449119b3ee764f52b279947b353b37f4"
+    },
+    {
+      "path": "packages/dsh-auto-approval/README.md",
+      "sha256": "038c5f5a75bb13e6bb1391cf93d066752c5ece8d18b5e56041cdde51a5f43dff"
+    },
+    {
+      "path": "packages/dsh-auto-approval/scripts/build.mjs",
+      "sha256": "b0a98b2088dfa3053f9661e6fe2c0c34f8cd86ec39a055660a52aad10b8c0108"
+    },
+    {
+      "path": "packages/dsh-auto-approval/src/index.js",
+      "sha256": "ada06ae801b54f5e95dfe2d604b3e78bfaac0f8f22118cf30ed00d1345f24601"
+    },
+    {
+      "path": "packages/dsh-auto-approval/src/questions.js",
+      "sha256": "a8b817d5a8e5ef45b06b05c65ce0b1927dfc1b858272e03ba143608f8b64e900"
+    },
+    {
+      "path": "packages/dsh-auto-approval/src/review.js",
+      "sha256": "107c924443d29a8f31701c36e0f4d1c84e71901327ce7fd564154508244821cd"
+    },
+    {
+      "path": "packages/dsh-auto-approval/src/rules.js",
+      "sha256": "7855745b8f042bd263b9cd6b24b9f3fe5c5fbd8cc2585059118da15535094625"
+    },
+    {
+      "path": "packages/dsh-auto-approval/test/mounted.test.mjs",
+      "sha256": "b9d3974d00bf3990e4fcb56f9a4790c7ab1be085fad58b3ee2e52e886891fed0"
+    },
+    {
+      "path": "packages/dsh-auto-approval/test/review.test.mjs",
+      "sha256": "6f4814c18e8cd4fff288a07775335ed29902f841eba255c5f7bf3c0db6228bc0"
+    },
+    {
+      "path": "packages/dsh-auto-approval/test/rules.test.mjs",
+      "sha256": "f2a82fdabc40f27c2f322f097b7b51c954ae6326b49a08e05b2238ddefed886f"
+    },
+    {
+      "path": "packages/dsh-auto-approval/test/runtime-resolver.mjs",
+      "sha256": "f127f11b474a1d06c98117f5123a7c86fc25c929c834ad0cc317c18518b322e5"
+    },
+    {
+      "path": "packages/dsh-auto-approval/test/runtime.test.mjs",
+      "sha256": "1cd6cac846025dd15d821227d6bd3c542647c58676dd313edea8e992091d5d3d"
     },
     {
       "path": "packages/dsh-decision/.gitignore",
@@ -7593,7 +7665,7 @@
     },
     {
       "path": "scripts/ci-changes.mjs",
-      "sha256": "f9a4524e62bf01917cd7810b2f3e7a2f11c3d2f4dccf2cff411c3d441ed58dd7"
+      "sha256": "992a30cae9279ecb31bfe173ccdc9f0e3a8108c3e616a98be0920258e272ed2d"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.mjs",
@@ -7881,15 +7953,15 @@
     },
     {
       "path": "scripts/packages/archive.mjs",
-      "sha256": "57aa71ac43a41cfcf69dba44540175f9180e9ac9ea0669148f175d8473c8a494"
+      "sha256": "80cf234e76e33423d931312d29bcbfab669f28cf40b0f942bff45a4f5af97100"
     },
     {
       "path": "scripts/packages/catalog.mjs",
-      "sha256": "ff5c3e3712233971a1791e8a85443252a2dc076aa1b2480754070a11b7fa3745"
+      "sha256": "ac0abe36648ae5db1302dd4dd317f24ba354876d0412055a490ba2b5544332ca"
     },
     {
       "path": "scripts/packages/manage.mjs",
-      "sha256": "04b216488aaea4f54d5b57d64840c44ce3a0705642d2e81ce4b8a1027aac55f8"
+      "sha256": "88d5dbeeada1a67f8f5c0971f43661d73f6fead909d653ef61cf05ea7053dd07"
     },
     {
       "path": "scripts/packages/npm.mjs",
@@ -8265,7 +8337,7 @@
     },
     {
       "path": "tests/ci-changes.test.mjs",
-      "sha256": "7c01208509341852ca15f5c970d3a74bd4b86bc4872a1d2ca4b9b20f6370ad96"
+      "sha256": "118a95a2417fd443b579e15e4a3270bffcdf65e352c42e276c42f8a67794b677"
     },
     {
       "path": "tests/desktop-build-plan.test.mjs",
@@ -8405,7 +8477,7 @@
     },
     {
       "path": "tests/package-maintenance.test.mjs",
-      "sha256": "d599519ab33df25b2841bdf369ebf92fc6aa99f530675563723c43bb70274550"
+      "sha256": "778a0f7c7bfec1c7dc99e4cbbd6a42f240312207ad005bb875f3c27b2cd07d90"
     },
     {
       "path": "tests/parallel-sets.test.mjs",
