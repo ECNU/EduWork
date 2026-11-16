@@ -6273,7 +6273,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			};
 		}
 		/** One editor for both series defaults and occurrence overrides. */
-		function PersonalSettings({ identity, service, run, Field, allowOccurrence = true, showHeading = true, copyLegacyRemark }) {
+		function PersonalSettings({ identity, service, run, Field, allowOccurrence = true, showHeading = true, showTextSettings = true, copyLegacyRemark }) {
 			const [target, setTarget] = (0, react.useState)(allowOccurrence && identity.originalStart ? "once" : "series");
 			const [form, setForm] = (0, react.useState)(null);
 			const [baseline, setBaseline] = (0, react.useState)(null);
@@ -6392,7 +6392,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			return react.default.createElement("section", {
 				"aria-label": "个人设置",
 				className: "cal-personal-settings"
-			}, showHeading && react.default.createElement("strong", null, "个人设置"), react.default.createElement("p", { className: "cal-personal-help" }, "笔记、备注和隐藏设置仅保存在本机。提前提醒跟随日程，固定提醒按设定时间触发。提醒需保持 EduWork 运行。"), allowOccurrence && identity.originalStart ? select("设置范围", target, [["once", "仅这一次"], ["series", "整条日程"]], setTarget) : void 0, !form ? react.default.createElement("p", null, problem || "正在读取个人设置…") : react.default.createElement(react.default.Fragment, null, textField("note", "笔记"), once && textField("remark", "备注"), select("显示设置", form.hidden, [
+			}, showHeading && react.default.createElement("strong", null, "个人设置"), react.default.createElement("p", { className: "cal-personal-help" }, showTextSettings ? "笔记、备注和隐藏设置仅保存在本机。提前提醒跟随日程，固定提醒按设定时间触发。提醒需保持 EduWork 运行。" : "隐藏设置保存在本机。提醒需保持 EduWork 运行。"), allowOccurrence && identity.originalStart ? select("设置范围", target, [["once", "仅这一次"], ["series", "整条日程"]], setTarget) : void 0, !form ? react.default.createElement("p", null, problem || "正在读取个人设置…") : react.default.createElement(react.default.Fragment, null, showTextSettings && textField("note", "笔记"), showTextSettings && once && textField("remark", "备注"), select("显示设置", form.hidden, [
 				...once ? [["inherit", "沿用整条日程"]] : [],
 				["show", "显示"],
 				["hide", "隐藏"]
@@ -6425,7 +6425,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			})) : void 0, effective.legacyDescription !== void 0 ? react.default.createElement("div", { style: {
 				margin: "12px 0",
 				whiteSpace: "pre-wrap"
-			} }, react.default.createElement("strong", null, "旧备注备份（归属待确认）"), react.default.createElement("p", null, effective.legacyDescription), (once || copyLegacyRemark) && react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+			} }, react.default.createElement("strong", null, "旧备注备份（归属待确认）"), react.default.createElement("p", null, effective.legacyDescription), (copyLegacyRemark || showTextSettings && once) && react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant: "outline",
 				size: "sm",
 				onClick: () => {
@@ -24104,11 +24104,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		//#region node_modules/fullcalendar/themes/monarch/theme.css.js
 		var theme_css_default = ".fc-monarch-n5m {\n  font-size: 16px;\n  line-height: 1.5;\n  --fc-monarch-border-style: solid;\n}\n\n.fc-monarch-Z9U {\n  appearance: button;\n  font: inherit;\n  font-feature-settings: inherit;\n  font-variation-settings: inherit;\n  letter-spacing: inherit;\n  color: inherit;\n  opacity: 1;\n  background-color: #0000;\n  border-radius: 0;\n  margin: 0;\n  border: 0;\n  padding: 0\n}\n\n.fc-monarch-JiE {\n  color: inherit;\n  text-decoration: inherit;\n}\n\n.fc-monarch-1EY {\n  position: absolute\n}\n\n.fc-monarch-eYX {\n  position: relative\n}\n\n.fc-monarch-MaV {\n  inset-inline: 0\n}\n\n.fc-monarch-AWB {\n  inset-block: 0\n}\n\n.fc-monarch-11a {\n  inset-inline-start: -4px\n}\n\n.fc-monarch-0fm {\n  inset-inline-start: -8px\n}\n\n.fc-monarch-4oC {\n  inset-inline-start: -12px\n}\n\n.fc-monarch-rbS {\n  inset-inline-start: 0\n}\n\n.fc-monarch-tHH {\n  inset-inline-start: 4px\n}\n\n.fc-monarch-Tuc {\n  inset-inline-end: -4px\n}\n\n.fc-monarch-eDA {\n  inset-inline-end: -8px\n}\n\n.fc-monarch-aYN {\n  inset-inline-end: 8px\n}\n\n.fc-monarch-dnf {\n  inset-inline-end: -3px\n}\n\n.fc-monarch-YDC {\n  top: -4px\n}\n\n.fc-monarch-uqG {\n  top: -16px\n}\n\n.fc-monarch-Fn5 {\n  top: -20px\n}\n\n.fc-monarch-DGM {\n  top: -1px\n}\n\n.fc-monarch-2ik {\n  top: 2px\n}\n\n.fc-monarch-1b8 {\n  top: 6px\n}\n\n.fc-monarch-ERR {\n  top: 50%\n}\n\n.fc-monarch-SKv {\n  top: 8px\n}\n\n.fc-monarch-fJL {\n  bottom: -4px\n}\n\n.fc-monarch-Uvq {\n  bottom: -1px\n}\n\n.fc-monarch-1V6 {\n  left: 50%\n}\n\n.fc-monarch-NPw {\n  order: 1\n}\n\n.fc-monarch-aAW {\n  margin: -6px\n}\n\n.fc-monarch-CH7 {\n  margin: -1px\n}\n\n.fc-monarch-XE0 {\n  margin: 2px\n}\n\n.fc-monarch-gMS {\n  margin: 4px\n}\n\n.fc-monarch-cGD {\n  margin: 6px\n}\n\n.fc-monarch-bvX {\n  margin: 8px\n}\n\n.fc-monarch-jD5 {\n  margin: 16px\n}\n\n.fc-monarch-TT0 {\n  margin: 1px\n}\n\n.fc-monarch-cKZ {\n  margin-inline: 2px\n}\n\n.fc-monarch-fn8 {\n  margin-inline: 8px\n}\n\n.fc-monarch-148 {\n  margin-inline: 1px\n}\n\n.fc-monarch-cJ3 {\n  margin-block: 2px\n}\n\n.fc-monarch-2tF {\n  margin-block: 8px\n}\n\n.fc-monarch-SEP {\n  margin-block: 1px\n}\n\n.fc-monarch-Jzj {\n  margin-inline-start: 2px\n}\n\n.fc-monarch-Wga {\n  margin-inline-start: 4px\n}\n\n.fc-monarch-Mde {\n  margin-inline-start: 8px\n}\n\n.fc-monarch-qvL {\n  margin-inline-start: 1px\n}\n\n.fc-monarch-p9t {\n  margin-inline-end: -6px\n}\n\n.fc-monarch-KYn {\n  margin-inline-end: 4px\n}\n\n.fc-monarch-OQ9 {\n  margin-inline-end: 12px\n}\n\n.fc-monarch-FvP {\n  margin-inline-end: 8px\n}\n\n.fc-monarch-B3G {\n  margin-inline-end: 2.5%\n}\n\n.fc-monarch-9hC {\n  margin-inline-end: 1px\n}\n\n.fc-monarch-Dq8 {\n  margin-top: -4px\n}\n\n.fc-monarch-9Rk {\n  margin-top: 8px\n}\n\n.fc-monarch-vUo {\n  margin-bottom: 4px\n}\n\n.fc-monarch-ohi {\n  margin-bottom: 8px\n}\n\n.fc-monarch-Ika {\n  margin-bottom: 1px\n}\n\n.fc-monarch-F99 {\n  margin-left: -4px\n}\n\n.fc-monarch-I48 {\n  display: block\n}\n\n.fc-monarch-dl1 {\n  display: flex\n}\n\n.fc-monarch-pps {\n  display: none\n}\n\n.fc-monarch-63n {\n  width: 0;\n  height: 0\n}\n\n.fc-monarch-3wQ {\n  width: 8px;\n  height: 8px\n}\n\n.fc-monarch-vnf {\n  width: 16px;\n  height: 16px\n}\n\n.fc-monarch-XUJ {\n  width: 20px;\n  height: 20px\n}\n\n.fc-monarch-IY5 {\n  width: 28px;\n  height: 28px\n}\n\n.fc-monarch-n6w {\n  width: 32px;\n  height: 32px\n}\n\n.fc-monarch-Pwv {\n  width: 100%;\n  height: 100%\n}\n\n.fc-monarch-uuA {\n  height: 8px\n}\n\n.fc-monarch-9ml {\n  height: 16px\n}\n\n.fc-monarch-oM6 {\n  height: 20px\n}\n\n.fc-monarch-TFV {\n  height: 24px\n}\n\n.fc-monarch-46Q {\n  height: 36px\n}\n\n.fc-monarch-84e {\n  min-height: 2px\n}\n\n.fc-monarch-jgW {\n  min-height: 16px\n}\n\n.fc-monarch-l5b {\n  min-height: 36px\n}\n\n.fc-monarch-toR {\n  min-height: 1px\n}\n\n.fc-monarch-roZ {\n  width: 50%\n}\n\n.fc-monarch-CjM {\n  width: 33.3333%\n}\n\n.fc-monarch-hza {\n  width: 8px\n}\n\n.fc-monarch-79F {\n  width: 20px\n}\n\n.fc-monarch-ilz {\n  width: 24px\n}\n\n.fc-monarch-Dhe {\n  width: 36px\n}\n\n.fc-monarch-4Tv {\n  width: 5px\n}\n\n.fc-monarch-aHX {\n  max-width: 160px\n}\n\n.fc-monarch-0i7 {\n  max-width: 176px\n}\n\n.fc-monarch-2KU {\n  min-width: 0\n}\n\n.fc-monarch-xcS {\n  min-width: 240px\n}\n\n.fc-monarch-yi0 {\n  flex-shrink: 0\n}\n\n.fc-monarch-1Zl {\n  flex-shrink: 1\n}\n\n.fc-monarch-OLq {\n  flex-shrink: 100\n}\n\n.fc-monarch-1El {\n  flex-grow: 1\n}\n\n.fc-monarch-KxI {\n  rotate: -90deg\n}\n\n.fc-monarch-z44 {\n  rotate: 90deg\n}\n\n.fc-monarch-jmT {\n  rotate: 180deg\n}\n\n.fc-monarch-sgX {\n  flex-direction: column\n}\n\n.fc-monarch-1sP {\n  flex-direction: row\n}\n\n.fc-monarch-dNl {\n  flex-wrap: wrap\n}\n\n.fc-monarch-XpK {\n  align-items: center\n}\n\n.fc-monarch-EF4 {\n  align-items: flex-start\n}\n\n.fc-monarch-N2M {\n  justify-content: space-between\n}\n\n.fc-monarch-E9P {\n  justify-content: center\n}\n\n.fc-monarch-LMv {\n  justify-content: flex-end\n}\n\n.fc-monarch-Bsl {\n  justify-content: flex-start\n}\n\n.fc-monarch-NWN {\n  gap: 4px\n}\n\n.fc-monarch-tgZ {\n  gap: 8px\n}\n\n.fc-monarch-wwb {\n  gap: 12px\n}\n\n.fc-monarch-OBr {\n  align-self: flex-end\n}\n\n.fc-monarch-pKG {\n  overflow: hidden\n}\n\n.fc-monarch-AAA {\n  border-radius: 3.40282e38px\n}\n\n.fc-monarch-hny {\n  border-radius: 8px\n}\n\n.fc-monarch-Fvv {\n  border-radius: 4px\n}\n\n.fc-monarch-NYF {\n  border-start-start-radius: 3.40282e38px;\n  border-end-start-radius: 3.40282e38px\n}\n\n.fc-monarch-kmj {\n  border-start-start-radius: 4px;\n  border-end-start-radius: 4px\n}\n\n.fc-monarch-dOc {\n  border-start-end-radius: 3.40282e38px;\n  border-end-end-radius: 3.40282e38px\n}\n\n.fc-monarch-Skl {\n  border-start-end-radius: 4px;\n  border-end-end-radius: 4px\n}\n\n.fc-monarch-Z7Q {\n  border-top-left-radius: 4px;\n  border-top-right-radius: 4px\n}\n\n.fc-monarch-2qh {\n  border-bottom-right-radius: 4px;\n  border-bottom-left-radius: 4px\n}\n\n.fc-monarch-9hN {\n  border-top-left-radius: 12px;\n  border-top-right-radius: 12px\n}\n\n.fc-monarch-KxZ {\n  border-bottom-right-radius: 12px;\n  border-bottom-left-radius: 12px\n}\n\n.fc-monarch-wsy,\n.fc-monarch-qQW {\n  border-style: var(--fc-monarch-border-style);\n  border-width: 1px\n}\n\n.fc-monarch-5JF {\n  border-style: var(--fc-monarch-border-style);\n  border-width: 4px\n}\n\n.fc-monarch-yDA {\n  border-style: var(--fc-monarch-border-style);\n  border-width: 5px\n}\n\n.fc-monarch-Vpk {\n  border-style: var(--fc-monarch-border-style);\n  border-width: 6px\n}\n\n.fc-monarch-1Wx {\n  border-inline-style: var(--fc-monarch-border-style);\n  border-inline-width: 1px\n}\n\n.fc-monarch-JIC {\n  border-block-style: var(--fc-monarch-border-style);\n  border-block-width: 1px\n}\n\n.fc-monarch-3J4 {\n  border-inline-start-style: var(--fc-monarch-border-style);\n  border-inline-start-width: 1px\n}\n\n.fc-monarch-USt {\n  border-inline-end-style: var(--fc-monarch-border-style);\n  border-inline-end-width: 1px\n}\n\n.fc-monarch-ku3 {\n  border-top-style: var(--fc-monarch-border-style);\n  border-top-width: 1px\n}\n\n.fc-monarch-zi1 {\n  border-bottom-style: var(--fc-monarch-border-style);\n  border-bottom-width: 1px\n}\n\n.fc-monarch-TN2 {\n  --fc-monarch-border-style: dotted;\n  border-style: dotted\n}\n\n.fc-monarch-lNM {\n  border-color: var(--fc-event-color)\n}\n\n.fc-monarch-jdl {\n  border-color: var(--fc-monarch-border)\n}\n\n.fc-monarch-nKh {\n  border-color: var(--fc-monarch-now)\n}\n\n.fc-monarch-yF0 {\n  border-color: var(--fc-monarch-primary)\n}\n\n.fc-monarch-zOd {\n  border-color: var(--fc-monarch-strong-border)\n}\n\n.fc-monarch-d0j {\n  border-color: #0000\n}\n\n.fc-monarch-YjJ {\n  background-color: var(--fc-event-color)\n}\n\n.fc-monarch-MAH {\n  background-color: var(--fc-monarch-background)\n}\n\n.fc-monarch-VTw {\n  background-color: var(--fc-monarch-faint)\n}\n\n.fc-monarch-PHz {\n  background-color: var(--fc-monarch-highlight)\n}\n\n.fc-monarch-4Xm {\n  background-color: var(--fc-monarch-muted)\n}\n\n.fc-monarch-9Mx {\n  background-color: var(--fc-monarch-popover)\n}\n\n.fc-monarch-zue {\n  background-color: var(--fc-monarch-primary)\n}\n\n.fc-monarch-XMK {\n  background-color: var(--fc-monarch-secondary)\n}\n\n.fc-monarch-y37 {\n  background-color: var(--fc-monarch-selected)\n}\n\n.fc-monarch-4os {\n  background-color: var(--fc-monarch-tertiary)\n}\n\n@media not print {\n  @supports (color:color-mix(in lab, red, red)) {\n    .fc-monarch-gTC {\n      background-color: color-mix(in oklab, var(--fc-event-color)15%, transparent)\n    }\n  }\n  @supports not (color:color-mix(in lab, red, red)) {\n    .fc-monarch-gTC {\n      position: relative;\n      isolation: isolate\n    }\n    .fc-monarch-gTC:before {\n      content: '';\n      position: absolute;\n      inset: 0;\n      background-color: var(--fc-event-color);\n      opacity: 0.15;\n      z-index: -1\n    }\n  }\n}\n\n.fc-monarch-KUX {\n  padding: 2px\n}\n\n.fc-monarch-iS4 {\n  padding: 4px\n}\n\n.fc-monarch-3N5 {\n  padding: 8px\n}\n\n.fc-monarch-lqx {\n  padding: 16px\n}\n\n.fc-monarch-7A6 {\n  padding: 1px\n}\n\n.fc-monarch-oQ2 {\n  padding-inline: 2px\n}\n\n.fc-monarch-aCI {\n  padding-inline: 4px\n}\n\n.fc-monarch-ZrE {\n  padding-inline: 6px\n}\n\n.fc-monarch-Nca {\n  padding-inline: 8px\n}\n\n.fc-monarch-Eaq {\n  padding-inline: 10px\n}\n\n.fc-monarch-Apf {\n  padding-inline: 12px\n}\n\n.fc-monarch-5su {\n  padding-inline: 20px\n}\n\n.fc-monarch-2rx {\n  padding-block: 2px\n}\n\n.fc-monarch-Jhn {\n  padding-block: 4px\n}\n\n.fc-monarch-End {\n  padding-block: 6px\n}\n\n.fc-monarch-dl6 {\n  padding-block: 8px\n}\n\n.fc-monarch-8cT {\n  padding-block: 10px\n}\n\n.fc-monarch-P9h {\n  padding-block: 60px\n}\n\n.fc-monarch-z5u {\n  padding-block: 1px\n}\n\n.fc-monarch-a7i {\n  padding-inline-start: 2px\n}\n\n.fc-monarch-C2j {\n  padding-inline-start: 4px\n}\n\n.fc-monarch-Utm {\n  padding-inline-end: 4px\n}\n\n.fc-monarch-8ub {\n  padding-bottom: 2px\n}\n\n.fc-monarch-x96 {\n  padding-bottom: 4px\n}\n\n.fc-monarch-lTO {\n  padding-bottom: 8px\n}\n\n.fc-monarch-b0n {\n  padding-bottom: 12px\n}\n\n.fc-monarch-2HE {\n  text-align: end\n}\n\n.fc-monarch-AVD {\n  font-size: 24px;\n  line-height: calc(2/1.5)\n}\n\n.fc-monarch-vQz {\n  font-size: 11px;\n  line-height: 1.09091\n}\n\n.fc-monarch-9ZS {\n  font-size: 18px;\n  line-height: calc(1.75/1.125)\n}\n\n.fc-monarch-1Po {\n  font-size: 16px;\n  line-height: calc(1.5/1)\n}\n\n.fc-monarch-9yp {\n  font-size: 14px;\n  line-height: calc(1.25/.875)\n}\n\n.fc-monarch-a3B {\n  font-size: 12px;\n  line-height: calc(1/.75)\n}\n\n.fc-monarch-DIS {\n  font-weight: 700\n}\n\n.fc-monarch-IPx {\n  text-overflow: ellipsis\n}\n\n.fc-monarch-TZ4 {\n  white-space: nowrap\n}\n\n.fc-monarch-jm6 {\n  white-space: pre\n}\n\n.fc-monarch-Mra {\n  color: var(--fc-event-color)\n}\n\n.fc-monarch-i9F {\n  color: var(--fc-event-contrast-color)\n}\n\n.fc-monarch-bZ0 {\n  color: var(--fc-monarch-faint-foreground)\n}\n\n.fc-monarch-PVh {\n  color: var(--fc-monarch-foreground)\n}\n\n.fc-monarch-JMv {\n  color: var(--fc-monarch-muted-foreground)\n}\n\n.fc-monarch-sT2 {\n  color: var(--fc-monarch-popover-foreground)\n}\n\n.fc-monarch-8ys {\n  color: var(--fc-monarch-primary-foreground)\n}\n\n.fc-monarch-c3e {\n  color: var(--fc-monarch-secondary-foreground)\n}\n\n.fc-monarch-bIt {\n  color: var(--fc-monarch-selected-foreground)\n}\n\n.fc-monarch-CCH {\n  color: var(--fc-monarch-tertiary-foreground)\n}\n\n.fc-monarch-XHd {\n  text-transform: uppercase\n}\n\n.fc-monarch-L1Y {\n  font-style: italic\n}\n\n.fc-monarch-lMo {\n  opacity: .5\n}\n\n.fc-monarch-iTG {\n  opacity: .75\n}\n\n.fc-monarch-1kP {\n  box-shadow: 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a\n}\n\n.fc-monarch-tkw {\n  box-shadow: 0 4px 6px -1px #0000001a, 0 2px 4px -2px #0000001a\n}\n\n.fc-monarch-A3h {\n  box-shadow: 0 0 0 1px var(--fc-monarch-ring-color, currentcolor)\n}\n\n.fc-monarch-GBJ {\n  box-shadow: 0 0 0 2px var(--fc-monarch-ring-color, currentcolor)\n}\n\n.fc-monarch-SC5 {\n  --fc-monarch-ring-color: var(--fc-monarch-background)\n}\n\n.fc-monarch-2R2 {\n  outline-style: solid;\n  outline-width: 1px\n}\n\n.fc-monarch-x7S {\n  outline-style: solid;\n  outline-width: 3px\n}\n\n.fc-monarch-07j {\n  outline-offset: -1px\n}\n\n.fc-monarch-MJY {\n  outline-color: var(--fc-monarch-outline)\n}\n\n.fc-monarch-hS8 {\n  outline-style: none !important /* HACK */\n}\n\n.fc-monarch-9LE {\n  background: linear-gradient(var(--fc-monarch-strong), var(--fc-monarch-strong))var(--fc-monarch-background)\n}\n\n.fc-monarch-iCr:not(:last-child) {\n  border-bottom-style: var(--fc-monarch-border-style);\n  border-bottom-width: 1px\n}\n\n@media (hover:hover) {\n  .fc-monarch-vs6:is(:where(.fc-monarch-bCs):hover *) {\n    display: block\n  }\n\n  .fc-monarch-JQh:is(:where(.fc-monarch-bCs):hover *) {\n    background-color: var(--fc-monarch-muted)\n  }\n\n  .fc-monarch-Yws:is(:where(.fc-monarch-bCs):hover *) {\n    background-color: var(--fc-monarch-tertiary-over)\n  }\n\n  .fc-monarch-rih:is(:where(.fc-monarch-bCs):hover *) {\n    color: var(--fc-monarch-foreground)\n  }\n\n  .fc-monarch-zn9:is(:where(.fc-monarch-bCs):hover *) {\n    color: var(--fc-monarch-strong-foreground)\n  }\n\n  .fc-monarch-Ogp:is(:where(.fc-monarch-bCs):hover *) {\n    text-decoration-line: underline\n  }\n}\n\n.fc-monarch-4Pp:is(:where(.fc-monarch-bCs):focus-visible *) {\n  background-color: var(--fc-monarch-muted)\n}\n\n.fc-monarch-8El:is(:where(.fc-monarch-bCs):focus-visible *) {\n  color: var(--fc-monarch-foreground)\n}\n\n.fc-monarch-Bpp:is(:where(.fc-monarch-bCs):focus-visible *) {\n  color: var(--fc-monarch-strong-foreground)\n}\n\n.fc-monarch-a9l:is(:where(.fc-monarch-bCs):focus-visible *) {\n  outline-style: solid;\n  outline-width: 3px\n}\n\n.fc-monarch-Hsn:is(:where(.fc-monarch-bCs):active *) {\n  background-color: var(--fc-monarch-strong)\n}\n\n.fc-monarch-jc4:is(:where(.fc-monarch-bCs):active *) {\n  background-color: var(--fc-monarch-tertiary-down)\n}\n\n@media (hover:hover) {\n  .fc-monarch-v08:hover {\n    background-color: var(--fc-monarch-muted)\n  }\n\n  .fc-monarch-4bi:hover {\n    background-color: var(--fc-monarch-primary-over)\n  }\n\n  .fc-monarch-ISM:hover {\n    background-color: var(--fc-monarch-secondary-over)\n  }\n\n  .fc-monarch-SJz:hover {\n    background-color: var(--fc-monarch-selected-over)\n  }\n\n  .fc-monarch-hbI:hover {\n    background-color: var(--fc-monarch-tertiary-over)\n  }\n\n  .fc-monarch-Frw:hover {\n    background-color: var(--fc-event-color)\n  }\n\n  @supports (color:color-mix(in lab, red, red)) {\n    .fc-monarch-Frw:hover {\n      background-color: color-mix(in oklab, var(--fc-event-color)92%, var(--fc-event-contrast-color))\n    }\n  }\n\n  .fc-monarch-Eu0:hover {\n    text-decoration-line: underline\n  }\n\n  .fc-monarch-r63:hover {\n    background: linear-gradient(var(--fc-monarch-stronger), var(--fc-monarch-stronger))var(--fc-monarch-background)\n  }\n}\n\n.fc-monarch-Yib:focus-visible {\n  background-color: var(--fc-monarch-muted)\n}\n\n.fc-monarch-sOR:focus-visible {\n  outline-style: solid;\n  outline-width: 3px\n}\n\n.fc-monarch-yEk:active {\n  background-color: var(--fc-monarch-primary-down)\n}\n\n.fc-monarch-KwH:active {\n  background-color: var(--fc-monarch-secondary-down)\n}\n\n.fc-monarch-MQC:active {\n  background-color: var(--fc-monarch-selected-down)\n}\n\n.fc-monarch-6MP:active {\n  background-color: var(--fc-monarch-strong)\n}\n\n.fc-monarch-yo2:active {\n  background-color: var(--fc-monarch-tertiary-down)\n}\n\n.fc-monarch-st8:active {\n  background-color: var(--fc-event-color)\n}\n\n@supports (color:color-mix(in lab, red, red)) {\n  .fc-monarch-st8:active {\n    background-color: color-mix(in oklab, var(--fc-event-color)85%, var(--fc-event-contrast-color))\n  }\n}\n\n.fc-monarch-ljX:active {\n  background: linear-gradient(var(--fc-monarch-strongest), var(--fc-monarch-strongest))var(--fc-monarch-background)\n}\n\n@media print {\n  .fc-monarch-jsy {\n    border-width: 1px\n  }\n\n  .fc-monarch-DO7 {\n    border-color: var(--fc-event-color)\n  }\n\n  .fc-monarch-4MR {\n    border-color: #000\n  }\n\n  .fc-monarch-vwH {\n    background-color: #fff\n  }\n\n  .fc-monarch-cfp {\n    color: #000\n  }\n}\n\n[dir=rtl] .fc-monarch-keW {\n  rotate: -90deg\n}\n\n[dir=rtl] .fc-monarch-jY6 {\n  rotate: none\n}\n\n[dir=rtl] .fc-monarch-ZW3 {\n  rotate: 90deg\n}\n\n[dir=rtl] .fc-monarch-asP {\n  rotate: 180deg\n}\n";
 		//#endregion
-		//#region \0calendar-css:D:\Zewang\JustForFun\EduWork-calendar-325\dsh-plugins\calendar\test\.render\compiler\packages\extensions\eduwork-calendar-build-901a49093f6e4e1db431bed443c4fa42\src\calendar-views.css.js
+		//#region \0calendar-css:D:\Zewang\JustForFun\EduWork-calendar-325\dsh-plugins\calendar\test\.render\compiler\packages\extensions\eduwork-calendar-build-6f1a65f9eb184afc9ff92e6b6b10ccb6\src\calendar-views.css.js
 		var calendar_views_css_default = ".cal-workbench {\n  --cal-ink: var(--dsw-alias-label-primary, CanvasText);\n  --cal-muted: var(--dsw-alias-label-secondary, GrayText);\n  --cal-surface: var(--dsw-alias-bg-base, Canvas);\n  --cal-layer: var(--dsw-alias-bg-layer-1, Canvas);\n  --cal-line: var(--dsw-alias-border-l1, ButtonBorder);\n  --cal-accent: var(--dsw-alias-state-business-primary, Highlight);\n  --cal-accent-soft: var(--dsw-alias-state-business-tertiary, color-mix(in srgb, var(--cal-accent) 12%, Canvas));\n  --cal-rest: #487a61;\n  --cal-rest-soft: color-mix(in srgb, var(--cal-rest) 15%, var(--cal-surface));\n  isolation: isolate;\n  container-type: inline-size;\n  padding: 0 20px 18px;\n  box-sizing: border-box;\n}\n.cal-workbench *, .cal-workbench *::before, .cal-workbench *::after { box-sizing: border-box; }\n.cal-workbench button:focus-visible, .cal-workbench select:focus-visible {\n  outline: 2px solid var(--cal-accent);\n  outline-offset: 2px;\n}\n.cal-head {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  justify-content: space-between;\n  column-gap: 20px;\n  row-gap: 12px;\n  padding: 18px 0 12px;\n  flex: 0 0 auto;\n}\n.cal-period, .cal-actions, .cal-nav { display: flex; align-items: center; gap: 8px; }\n.cal-period { gap: 14px; min-width: 0; max-width: 100%; }\n.cal-period > div { min-width: 0; }\n.cal-period h1 { margin: 0; font-size: 24px; line-height: 1.25; letter-spacing: -.025em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.cal-period-subtitle { color: var(--cal-muted); margin-top: 4px; font-size: 12px; font-variant-numeric: tabular-nums; }\n.cal-actions { margin-left: auto; gap: 8px; }\n.cal-nav { gap: 7px; }\n.cal-arrows { display: flex; border-radius: 8px; border: 1px solid var(--cal-line); }\n.cal-arrows button + button { border-left: 1px solid var(--cal-line); border-top-left-radius: 0; border-bottom-left-radius: 0; }\n.cal-segmented {\n  display: flex;\n  gap: 2px;\n  padding: 2px;\n  background: var(--cal-layer);\n  border: 1px solid var(--cal-line);\n  border-radius: 9px;\n}\n.cal-segmented button, .cal-nav button {\n  font: inherit;\n  font-size: 13px;\n  color: var(--cal-muted);\n  background: transparent;\n  border: 0;\n  border-radius: 6px;\n  cursor: pointer;\n  min-height: 30px;\n  padding: 0 11px;\n  white-space: nowrap;\n}\n.cal-nav button { min-width: 31px; display: grid; place-items: center; padding: 0 8px; }\n.cal-segmented button:hover, .cal-nav button:hover { background: var(--cal-layer); color: var(--cal-ink); }\n.cal-nav .cal-today-button { min-height: 32px; }\n.cal-segmented button[aria-pressed=\"true\"] {\n  color: var(--cal-accent);\n  background: var(--cal-accent-soft);\n  font-weight: 650;\n}\n.cal-actions .cal-primary, .cal-actions .cal-tool-button { min-height: 34px; border-radius: 8px; }\n.cal-actions .cal-primary { padding-inline: 12px; }\n.cal-source-trigger-label { display: inline-block; max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.cal-actions .cal-more-button { min-width: 34px; padding-inline: 7px; }\n.cal-action-count { color: var(--cal-accent); font-size: 11px; font-variant-numeric: tabular-nums; }\n.cal-phase-summary {\n  display: flex;\n  gap: 9px 18px;\n  flex-wrap: wrap;\n  align-items: center;\n  color: var(--cal-muted);\n  padding: 0 0 13px;\n  font-size: 12px;\n}\n.cal-phase-key { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }\n.cal-phase-key strong, .cal-week-label { font-weight: 600; color: var(--cal-ink); }\n.cal-phase-key i { width: 7px; height: 7px; border-radius: 50%; background: var(--cal-accent); }\n.cal-phase-key[data-tone=\"quiet\"] i { background: var(--cal-rest); }\n.cal-week-label:not(:last-child) { padding-right: 16px; border-right: 1px solid var(--cal-line); }\n.cal-canvas {\n  border: 1px solid var(--cal-line);\n  border-radius: 11px;\n  background: var(--cal-surface);\n  flex: 1 1 0;\n  min-height: 0;\n  overflow: hidden;\n}\n.cal-engine {\n  height: 100%;\n  --fc-monarch-primary: var(--cal-accent);\n  --fc-monarch-primary-foreground: var(--dsw-alias-brand-primary-invert, #fff);\n  --fc-monarch-primary-over: var(--cal-accent);\n  --fc-monarch-primary-down: var(--cal-accent);\n  --fc-monarch-secondary: var(--cal-accent-soft);\n  --fc-monarch-secondary-foreground: var(--cal-accent);\n  --fc-monarch-secondary-over: var(--cal-accent-soft);\n  --fc-monarch-secondary-down: var(--cal-accent-soft);\n  --fc-monarch-event: var(--cal-accent);\n  --fc-monarch-event-contrast: var(--cal-ink);\n  --fc-monarch-highlight: var(--cal-accent-soft);\n  --fc-monarch-now: var(--cal-accent);\n  --fc-monarch-outline: var(--cal-accent);\n  --fc-monarch-background: var(--cal-surface);\n  --fc-monarch-popover: var(--cal-surface);\n  --fc-monarch-popover-foreground: var(--cal-ink);\n  --fc-monarch-foreground: var(--cal-ink);\n  --fc-monarch-faint-foreground: var(--dsw-alias-label-tertiary, GrayText);\n  --fc-monarch-muted-foreground: var(--cal-muted);\n  --fc-monarch-muted: var(--cal-layer);\n  --fc-monarch-faint: var(--cal-layer);\n  --fc-monarch-border: var(--cal-line);\n  --fc-monarch-strong-border: var(--cal-line);\n  --fc-monarch-strong: var(--cal-layer);\n  --fc-monarch-stronger: var(--cal-layer);\n  --fc-monarch-strongest: var(--cal-layer);\n  --fc-monarch-strong-foreground: var(--cal-ink);\n}\n.cal-engine .fc, .cal-engine .fc-monarch-n5m { font-family: inherit; font-size: 13px; color: var(--cal-ink); }\n.cal-column-heading {\n  background: var(--cal-layer);\n  color: var(--cal-muted);\n  font-size: 12px;\n  font-weight: 600;\n}\n.cal-cell-content { min-width: 0; }\n.cal-cell-top { padding: 4px 6px 1px; justify-content: flex-start; }\n.cal-day-top { display: flex; align-items: center; justify-content: space-between; gap: 2px; width: 100%; }\n.cal-day-number {\n  display: grid;\n  place-items: center;\n  min-width: 26px;\n  min-height: 26px;\n  padding: 0 3px;\n  border: 0;\n  border-radius: 50%;\n  background: transparent;\n  font: inherit;\n  font-size: 14px;\n  color: var(--cal-ink);\n  font-weight: 600;\n  font-variant-numeric: tabular-nums;\n  cursor: pointer;\n}\n.cal-cell-top [tabindex]:is(:hover, :focus-visible) .cal-day-number { background: var(--cal-accent-soft); color: var(--cal-accent); }\n.cal-day-number.cal-outside-day { color: var(--fc-monarch-faint-foreground); }\n.cal-day-number.cal-today { background: var(--cal-accent); color: var(--fc-monarch-primary-foreground); }\n.cal-focused-day { background: color-mix(in srgb, var(--cal-accent) 5%, var(--cal-surface)); }\n.cal-week-number { color: var(--cal-muted); font-size: 11px; white-space: nowrap; }\n.cal-event, .cal-selection-preview { font-size: 12px; }\n.cal-event { cursor: pointer; }\n.cal-event-details { display: grid; min-width: 0; }\n.cal-event-details > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.cal-event-note { color: var(--cal-muted); font-size: 11px; }\n.cal-event-block { border-inline-start: 2px solid var(--cal-event-ink) !important; }\n/* 拖选期间 Monarch 会为按下的事件加深颜色，预览应保持保存后的底色。 */\n.cal-engine .cal-selection-preview { background-color: var(--fc-event-color); }\n.cal-event:hover { filter: brightness(.97); }\n.cal-phase-band {\n  background: var(--cal-accent-soft) !important;\n  color: var(--cal-accent) !important;\n  border: 0 !important;\n  border-radius: 4px !important;\n  font-size: 11px;\n  font-weight: 600;\n  pointer-events: none;\n}\n.cal-phase-band[data-tone=\"quiet\"] {\n  background: var(--cal-rest-soft) !important;\n  color: var(--cal-rest) !important;\n}\n.cal-phase-continuation > * { visibility: hidden; }\n.cal-year { overflow: auto; border: 1px solid var(--cal-line); border-radius: 11px; flex: 0 1 auto; }\n.cal-year-inner { min-width: 620px; }\n.cal-year-axis, .cal-year-phase {\n  display: grid;\n  grid-template-columns: 168px minmax(0, 1fr);\n  align-items: stretch;\n}\n.cal-year-axis {\n  background: var(--cal-layer);\n  color: var(--cal-muted);\n  font-size: 12px;\n  border-bottom: 1px solid var(--cal-line);\n}\n.cal-year-axis > span { padding: 14px; font-weight: 600; }\n.cal-year-months, .cal-year-track { position: relative; margin-right: 12px; }\n.cal-year-months span {\n  position: absolute;\n  top: 50%;\n  transform: translateY(-50%);\n  padding-left: 5px;\n  white-space: nowrap;\n}\n.cal-year-stages { list-style: none; padding: 0; margin: 0; }\n.cal-year-phase {\n  width: 100%;\n  background: transparent;\n  color: var(--cal-ink);\n  border: 0;\n  border-bottom: 1px solid var(--cal-line);\n  text-align: left;\n  font: inherit;\n  padding: 0;\n  cursor: pointer;\n}\n.cal-year-stages li:last-child .cal-year-phase { border-bottom: 0; }\n.cal-year-phase:hover, .cal-year-phase[aria-current=\"date\"] { background: var(--cal-layer); }\n.cal-year-name { display: grid; gap: 3px; align-content: center; min-height: 58px; padding: 8px 14px; min-width: 0; }\n.cal-year-name strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }\n.cal-year-name small { color: var(--cal-muted); font-size: 12px; font-variant-numeric: tabular-nums; }\n.cal-year-track i { position: absolute; inset-block: 0; width: 1px; background: var(--cal-line); }\n.cal-year-bar {\n  position: absolute;\n  top: 50%;\n  transform: translateY(-50%);\n  height: 10px;\n  min-width: 4px;\n  border-radius: 6px;\n  background: color-mix(in srgb, var(--cal-muted) 30%, var(--cal-surface));\n}\n.cal-year-phase[data-tone=\"highlight\"] .cal-year-bar { background: var(--cal-accent); }\n.cal-year-phase[data-tone=\"quiet\"] .cal-year-bar { background: var(--cal-rest); }\n.cal-year-empty { padding: 20px; color: var(--cal-muted); }\n.cal-event-workspace { display: flex; flex-direction: column; flex: 1; min-height: 0; width: 100%; max-width: 640px; margin-inline: auto; }\n.cal-workspace-toolbar { display: flex; align-items: center; gap: 12px; min-height: 62px; flex: 0 0 auto; }\n.cal-workspace-source { color: var(--cal-muted); font-size: 12px; overflow-wrap: anywhere; }\n.cal-workspace-tools { margin-inline-start: auto; }\n.cal-workspace-nav { display: flex; gap: 18px; border-bottom: 1px solid var(--cal-line); flex: 0 0 auto; }\n.cal-workspace-nav button { padding: 0 2px 9px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--cal-muted); font: inherit; font-size: 13px; cursor: pointer; }\n.cal-workspace-nav button[aria-pressed=\"true\"] { border-bottom-color: var(--cal-accent); color: var(--cal-ink); font-weight: 600; }\n.cal-workspace-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 2px 26px; }\n.cal-workspace-scroll .cal-field { margin-bottom: 14px; }\n.cal-workspace-scroll .cal-field :is(input, select, textarea) { min-width: 0; width: 100%; font-size: 14px; }\n.cal-workspace-scroll .cal-field :is(input, select) { min-height: 36px; }\n.cal-workspace-title .cal-field-label, .cal-screen-reader { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }\n.cal-workspace-title.cal-field input { min-height: 46px; padding: 4px 0; border: 0; border-radius: 6px; background: transparent; color: var(--cal-ink); font: inherit; font-size: 25px; font-weight: 600; line-height: 1.3; }\n.cal-workspace-title.cal-field input:focus-visible { outline: 2px solid var(--cal-accent); outline-offset: -2px; }\n.cal-workspace-context { margin: 0 0 18px; font-size: 20px; font-weight: 600; overflow-wrap: anywhere; }\n.cal-record-source-description { margin-bottom: 14px; }\n.cal-record-source-description p { margin: 5px 0 0; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }\n.cal-export-options { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; cursor: pointer; }\n.cal-workspace-actions { margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--cal-line); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }\n.cal-workspace-save, .cal-personal-actions { margin-inline-start: auto; display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 8px 12px; }\n.cal-personal-settings { font-size: 13px; }\n.cal-personal-help { margin: 0 0 12px; font-size: 12px; line-height: 1.55; color: var(--dsw-alias-label-secondary, GrayText); }\n.cal-personal-settings > strong { display: block; margin-bottom: 6px; }\n.cal-record-delete { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; }\n.cal-record-month h3 { margin: 12px 0 4px; color: var(--cal-muted); font-size: 12px; font-weight: 500; }\n.cal-record-occurrence { display: flex; align-items: center; border-bottom: 1px solid var(--cal-line); border-radius: 6px; }\n.cal-record-occurrence:hover, .cal-record-occurrence:focus-within { background: var(--dsw-alias-interactive-bg-hover, var(--cal-layer)); }\n.cal-record-occurrence-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 4px; border: 0; background: none; border-radius: 6px; color: inherit; font: inherit; text-align: start; cursor: pointer; }\n.cal-record-occurrence-date { flex: 0 0 32px; display: grid; justify-items: center; font-variant-numeric: tabular-nums; }\n.cal-record-occurrence-date strong { font-size: 18px; line-height: 1.2; font-weight: 600; }\n.cal-record-occurrence small { color: var(--cal-muted); font-size: 12px; }\n.cal-record-occurrence-text { display: grid; gap: 3px; min-width: 0; overflow-wrap: anywhere; }\n.cal-record-occurrence-time { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 14px; font-weight: 550; font-variant-numeric: tabular-nums; }\n.cal-record-occurrence-actions { opacity: 0; }\n.cal-record-occurrence:hover .cal-record-occurrence-actions, .cal-record-occurrence:focus-within .cal-record-occurrence-actions { opacity: 1; }\n@media (hover: none) { .cal-record-occurrence-actions { opacity: 1; } }\n.cal-record-empty { margin: 0; color: var(--cal-muted); font-size: 13px; }\n.cal-record-cancelled { margin-top: 24px; }\n.cal-record-cancelled h2 { margin: 0; font-size: 14px; font-weight: 600; }\n.cal-record-cancelled > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }\n.cal-record-cancelled span { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; }\n@container (max-width: 500px) {\n  .cal-workspace-scroll .cal-edit-dates { grid-template-columns: 1fr; gap: 0; }\n}\n.eduwork-calendar-dialog {\n  --cal-dialog-width: 600px;\n  width: min(var(--cal-dialog-width), calc(100vw - 32px));\n  max-height: calc(100dvh - 32px);\n  border-radius: 16px;\n  background: var(--dsw-alias-bg-overlay, Canvas);\n  border: 1px solid var(--dsw-alias-border-l1, ButtonBorder);\n}\n.eduwork-calendar-dialog.cal-dialog-compact { --cal-dialog-width: 440px; }\n.eduwork-calendar-dialog-content { min-height: 0; overflow-y: auto; }\n.eduwork-calendar-dialog > :not(.eduwork-calendar-dialog-content) { flex-shrink: 0; }\n.cal-dialog-actions, .cal-dialog-primary {\n  display: flex;\n  align-items: center;\n  flex-wrap: wrap;\n  gap: 6px;\n}\n.cal-dialog-actions { justify-content: space-between; width: 100%; }\n.cal-dialog-primary { justify-content: flex-end; margin-left: auto; }\n.cal-dialog-primary button { min-height: 32px; border-radius: 7px; }\n.cal-field { display: grid; gap: 6px; min-width: 0; margin-bottom: 12px; }\n.cal-field-label { font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary, GrayText); }\n.cal-field-hint { font-size: 11px; color: var(--dsw-alias-label-tertiary, GrayText); }\n.cal-quick-form .cal-field :is(input, select) { width: 100%; min-width: 0; box-sizing: border-box; }\n.cal-quick-form > .cal-field:first-child { margin-bottom: 16px; }\n.cal-quick-form > .cal-field:first-child input { min-height: 36px; font-size: 14px; }\n.cal-schedule-fields { display: grid; gap: 12px; margin-bottom: 14px; }\n.cal-schedule-day { display: flex; align-items: end; gap: 16px; }\n.cal-schedule-day .cal-field { flex: 1 1 auto; }\n.cal-schedule-fields .cal-field { margin-bottom: 0; }\n.cal-time-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }\n.cal-edit-dates { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr); gap: 10px; }\n.cal-all-day {\n  position: relative;\n  display: inline-flex;\n  align-items: center;\n  justify-content: flex-end;\n  gap: 6px;\n  flex: 0 0 auto;\n  min-height: 34px;\n  font-size: 13px;\n  cursor: pointer;\n}\n.cal-all-day input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; margin: 0; cursor: inherit; }\n.cal-switch-track {\n  width: 29px;\n  height: 17px;\n  padding: 2px;\n  border-radius: 12px;\n  box-sizing: border-box;\n  background: var(--dsw-alias-border-l3, GrayText);\n}\n.cal-switch-track::before {\n  content: '';\n  display: block;\n  width: 13px;\n  height: 13px;\n  border-radius: 50%;\n  background: var(--dsw-alias-brand-primary-invert, Canvas);\n}\n.cal-all-day input:checked + .cal-switch-track { background: var(--dsw-alias-state-business-primary, Highlight); }\n.cal-all-day input:checked + .cal-switch-track::before { transform: translateX(12px); }\n.cal-all-day input:focus-visible + .cal-switch-track { outline: 2px solid var(--dsw-alias-state-business-primary, Highlight); outline-offset: 2px; }\n.cal-occurrence-window {\n  width: min(492px, calc(100vw - 32px));\n  max-height: calc(100dvh - 32px);\n  padding: 0;\n  display: flex;\n  flex-direction: column;\n  overflow: hidden;\n  border: 1px solid var(--dsw-alias-border-l1, ButtonBorder);\n  border-radius: 16px;\n  background: var(--dsw-alias-bg-overlay, Canvas);\n}\n.cal-occurrence-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px 0 22px; flex: 0 0 auto; }\n.cal-occurrence-toolbar > span, .cal-occurrence-subtitle { color: var(--dsw-alias-label-secondary, GrayText); font-size: 12px; }\n.cal-occurrence-toolbar > div { display: flex; align-items: center; gap: 3px; }\n.cal-occurrence-toolbar button[aria-label=\"关闭\"] { font-size: 18px; }\n.cal-occurrence-content { min-height: 0; overflow-y: auto; padding: 4px 22px 16px; }\n.cal-occurrence-content h2 { margin: 0 0 13px; font-size: 23px; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }\n.cal-occurrence-subtitle { margin: -5px 0 12px; overflow-wrap: anywhere; }\n.cal-occurrence-summary { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; column-gap: 12px; }\n.cal-occurrence-time { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-size: 14px; font-weight: 550; font-variant-numeric: tabular-nums; }\n.cal-occurrence-time svg { flex: 0 0 auto; color: var(--dsw-alias-state-business-primary, Highlight); }\n.cal-occurrence-summary button { color: var(--dsw-alias-label-secondary, GrayText); }\n.cal-occurrence-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin-top: 5px; font-size: 12px; color: var(--dsw-alias-label-secondary, GrayText); overflow-wrap: anywhere; }\n.cal-occurrence-annotation { margin-top: 14px; }\n.cal-occurrence-annotation span { font-size: 12px; color: var(--dsw-alias-label-secondary, GrayText); }\n.cal-occurrence-annotation p { margin: 4px 0 0; font-size: 14px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }\n.cal-occurrence-settings { margin-top: 7px; margin-inline-start: -8px; }\n.cal-occurrence-settings + section { margin-top: 8px; }\n.cal-occurrence-footer { padding: 0 22px 18px; flex: 0 0 auto; }\n.cal-occurrence-footer button { min-height: 34px; border-radius: 8px; }\n.cal-occurrence-commands { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }\n.cal-event-form { display: grid; gap: 14px; padding-block: 2px 6px; }\n.cal-event-datetime { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }\n.cal-event-form .cal-field { margin: 0; }\n.cal-event-form input { width: 100%; min-width: 0; min-height: 38px; font-size: 14px; box-sizing: border-box; }\n.cal-event-context { margin: 0; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-secondary, GrayText); }\n.cal-event-delete-copy { margin: 0; padding-block: 2px 8px; font-size: 14px; line-height: 1.55; overflow-wrap: anywhere; }\n.cal-event-note-input {\n  width: 100%; min-height: 108px; box-sizing: border-box; padding: 9px 11px; resize: vertical;\n  border: 1px solid var(--dsw-alias-border-l2, ButtonBorder); border-radius: 8px;\n  background: var(--dsw-alias-bg-layer-1, Canvas); color: var(--dsw-alias-label-primary, CanvasText);\n  font: inherit; font-size: 14px; line-height: 1.55;\n}\n.cal-inline-confirm {\n  display: grid;\n  gap: 8px;\n  padding-top: 12px;\n  border-top: 1px solid var(--dsw-alias-border-l1, ButtonBorder);\n}\n.cal-inline-confirm p { margin: 0; font-size: 13px; }\n.cal-inline-confirm p + p { color: var(--dsw-alias-label-secondary, GrayText); font-size: 12px; }\n.cal-destructive { color: var(--dsw-alias-state-error-primary, #d4553f); }\n.cal-source-list { display: grid; gap: 14px; }\n.cal-source-list label { display: grid; gap: 6px; font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary, GrayText); }\n.cal-source-list select {\n  width: 100%;\n  border: 1px solid var(--dsw-alias-border-l2);\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 13px;\n  font-weight: 400;\n  border-radius: 8px;\n  min-height: 38px;\n  padding: 6px 10px;\n}\n@container (max-width: 750px) {\n  .cal-head { padding-top: 16px; gap: 10px; }\n  .cal-period h1 { font-size: 22px; }\n  .cal-actions { margin-left: 0; }\n}\n@media (max-width: 480px) {\n  .cal-event-datetime { grid-template-columns: 1fr; }\n  .cal-edit-dates { grid-template-columns: 1fr; gap: 0; }\n  .cal-schedule-day { gap: 8px; }\n}\n";
 		//#endregion
-		//#region \0calendar-css:D:\Zewang\JustForFun\EduWork-calendar-325\dsh-plugins\calendar\test\.render\compiler\packages\extensions\eduwork-calendar-build-901a49093f6e4e1db431bed443c4fa42\src\timetable-prototype.css.js
-		var timetable_prototype_css_default = ".tt-workbench {\n  padding-inline: 22px;\n  --tt-muted: var(--dsw-alias-label-secondary, GrayText);\n  --tt-line: color-mix(in srgb, var(--cal-line) 76%, transparent);\n  --tt-paper: var(--dsw-alias-bg-base, Canvas);\n  --tt-card: var(--dsw-alias-bg-layer-1, Canvas);\n  --tt-accent: var(--cal-accent);\n}\n.tt-workbench .cal-head { padding-block: 20px 14px; }\n.tt-workbench .cal-period h1 { font-size: clamp(22px, 3.3cqw, 32px); font-weight: 720; letter-spacing: -.045em; }\n.tt-workbench .cal-period-subtitle { font-size: 13px; }\n.tt-workbench .cal-segmented { background: none; border-color: var(--tt-line); }\n.tt-workbench .cal-arrows { border: 0; }\n.tt-workbench .cal-arrows button + button { border: 0; border-radius: 6px; }\n.tt-workbench .cal-actions .cal-primary { border-radius: 8px; min-height: 36px; }\n.tt-workbench .cal-column-heading { background: var(--tt-card); font-size: 13px; padding-block: 4px; }\n.tt-workbench .cal-canvas { border-color: var(--tt-line); border-radius: 10px; }\n.tt-workbench .cal-engine { --fc-monarch-border: var(--tt-line); --fc-monarch-strong-border: var(--tt-line); }\n.tt-workbench .cal-event-block { border-radius: 5px; }\n.tt-workbench .cal-day-number { font-size: 15px; }\n.tt-workbench .cal-focused-day .cal-day-number:not(.cal-today) { background: var(--cal-accent-soft); color: var(--tt-accent); }\n.tt-workbench .cal-phase-band { font-size: 11px; }\n.tt-academic-link { align-self: flex-start; margin-bottom: 12px; }\n.tt-calendar-body { display: grid; flex: 1 1 0; min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(260px, 30%); gap: 18px; }\n.tt-calendar-body .cal-canvas { min-width: 0; height: 100%; }\n.tt-sidebar { min-width: 0; height: 100%; overflow-y: auto; overflow-x: hidden; padding: 14px 0 6px 17px; border-inline-start: 1px solid var(--tt-line); position: relative; }\n.tt-panel-head { margin: 0 0 18px; }\n.tt-panel-kicker { display: block; color: var(--tt-muted); font-size: 12px; margin-bottom: 5px; }\n.tt-panel-head h2 { margin: 0; font-size: 23px; line-height: 1.3; font-weight: 680; letter-spacing: -.025em; overflow-wrap: anywhere; }\n.tt-agenda { list-style: none; margin: 0; padding: 0; }\n.tt-agenda li { display: grid; grid-template-columns: 49px minmax(0, 1fr); align-items: start; gap: 11px; padding-bottom: 8px; }\n.tt-agenda-time { padding-top: 9px; color: var(--tt-muted); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.3; }\n.tt-agenda-time small { display: block; margin-top: 4px; font-size: 11px; }\n.tt-agenda-entry { position: relative; display: grid; gap: 4px; justify-items: start; width: 100%; min-width: 0; padding: 8px 10px; border: 0; border-inline-start: 2px solid color-mix(in srgb, var(--tt-entry-accent) 60%, transparent); border-radius: 6px; background: var(--tt-card); color: var(--cal-ink); font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }\n.tt-agenda-entry:hover { background: var(--dsw-alias-interactive-bg-hover, var(--tt-card)); }\n.tt-agenda-entry strong { font-size: 14px; font-weight: 620; }\n.tt-agenda-entry span { font-size: 12px; color: var(--tt-muted); }\n.tt-agenda-entry small { color: var(--tt-accent); font-size: 11px; }\n.tt-agenda li[data-state='active'] .tt-agenda-entry { background: var(--cal-accent-soft); }\n.tt-empty { margin: 12px 0 20px; color: var(--tt-muted); font-size: 13px; }\n.tt-tomorrow { display: grid; gap: 5px; margin: 16px 0 0; padding: 9px 0; text-align: left; width: 100%; border: 0; border-top: 1px solid var(--tt-line); background: none; color: var(--cal-ink); font: inherit; cursor: pointer; }\n.tt-tomorrow span { color: var(--tt-muted); font-size: 12px; }\n.tt-tomorrow strong { font-size: 13px; font-weight: 580; }\n.tt-panel-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 15px; padding-top: 11px; border-top: 1px solid var(--tt-line); }\n.tt-panel-actions > button { min-height: 32px; }\n.tt-detail-nav { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin: -6px 0 12px -7px; }\n.tt-detail-head { border-inline-start: 3px solid var(--tt-entry-accent); padding-inline-start: 10px; }\n.tt-detail-facts { display: grid; gap: 11px; margin: 0 0 16px; }\n.tt-detail-facts div { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 9px; }\n.tt-detail-facts dt, .tt-detail-text > span { color: var(--tt-muted); font-size: 12px; }\n.tt-detail-facts dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }\n.tt-detail-facts dd span { display: block; margin-top: 3px; font-variant-numeric: tabular-nums; }\n.tt-detail-text { margin: 12px 0; }\n.tt-detail-text p { margin: 4px 0 0; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }\n.tt-editor .cal-field { margin-bottom: 11px; }\n.tt-editor .cal-schedule-fields .cal-field { margin-bottom: 0; }\n.tt-editor .cal-field :is(input, select, textarea) { min-width: 0; width: 100%; box-sizing: border-box; }\n.tt-editor .cal-field:first-child > input { font-size: 15px; }\n.tt-editor .cal-field-hint { font-size: 11px; }\n.tt-editor .tt-panel-head { margin-bottom: 14px; }\n.tt-editor-extra { margin-top: 12px; border-top: 1px solid var(--tt-line); }\n.tt-editor-extra > summary { padding: 10px 0; font-size: 12px; color: var(--tt-muted); cursor: pointer; }\n.tt-editor-scope { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }\n.tt-editor-scope button[aria-pressed='true'] { color: var(--tt-accent); background: var(--cal-accent-soft); }\n.tt-sheet-close, .tt-sheet-mask { display: none; }\n@container (max-width: 790px) {\n  .tt-calendar-body { grid-template-columns: minmax(0, 1fr); }\n  .tt-sidebar { display: none; }\n  .tt-sidebar[data-open='true'] { display: block; position: absolute; z-index: 4; inset: auto 8px 8px; height: auto; max-height: min(72%, 590px); padding: 18px 18px 15px; border: 1px solid var(--tt-line); border-radius: 12px; background: var(--tt-paper); box-shadow: 0 8px 36px #0004; }\n  .tt-sheet-close { display: block; position: absolute; z-index: 1; top: 7px; right: 9px; border: 0; border-radius: 6px; background: var(--tt-card); color: var(--tt-muted); font-size: 18px; width: 28px; height: 28px; cursor: pointer; }\n  .tt-sidebar .tt-panel-head, .tt-detail-nav { padding-inline-end: 24px; }\n  .tt-sheet-mask { display: block; position: absolute; z-index: 3; inset: 0; background: #0003; border: 0; }\n}\n";
+		//#region \0calendar-css:D:\Zewang\JustForFun\EduWork-calendar-325\dsh-plugins\calendar\test\.render\compiler\packages\extensions\eduwork-calendar-build-6f1a65f9eb184afc9ff92e6b6b10ccb6\src\timetable-prototype.css.js
+		var timetable_prototype_css_default = ".tt-workbench {\n  padding-inline: 22px;\n  --tt-muted: var(--dsw-alias-label-secondary, GrayText);\n  --tt-line: color-mix(in srgb, var(--cal-line) 76%, transparent);\n  --tt-paper: var(--dsw-alias-bg-base, Canvas);\n  --tt-card: var(--dsw-alias-bg-layer-1, Canvas);\n  --tt-accent: var(--cal-accent);\n}\n.tt-workbench .cal-head { padding-block: 20px 14px; }\n.tt-workbench .cal-period h1 { font-size: clamp(22px, 3.3cqw, 32px); font-weight: 720; letter-spacing: -.045em; }\n.tt-workbench .cal-period-subtitle { font-size: 13px; }\n.tt-workbench .cal-segmented { background: none; border-color: var(--tt-line); }\n.tt-workbench .cal-arrows { border: 0; }\n.tt-workbench .cal-arrows button + button { border: 0; border-radius: 6px; }\n.tt-workbench .cal-actions .cal-primary { border-radius: 8px; min-height: 36px; }\n.tt-workbench .cal-column-heading { background: var(--tt-card); font-size: 13px; padding-block: 4px; }\n.tt-workbench .cal-canvas { border-color: var(--tt-line); border-radius: 10px; }\n.tt-workbench .cal-engine { --fc-monarch-border: var(--tt-line); --fc-monarch-strong-border: var(--tt-line); }\n.tt-workbench .cal-event-block { border-radius: 5px; }\n.tt-workbench .cal-day-number { font-size: 15px; }\n.tt-workbench .cal-focused-day .cal-day-number:not(.cal-today) { background: var(--cal-accent-soft); color: var(--tt-accent); }\n.tt-workbench .cal-phase-band { font-size: 11px; }\n.tt-academic-link { align-self: flex-start; margin-bottom: 12px; }\n.tt-calendar-body { display: grid; flex: 1 1 0; min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(260px, 30%); gap: 18px; }\n.tt-calendar-body .cal-canvas { min-width: 0; height: 100%; }\n.tt-sidebar { min-width: 0; height: 100%; overflow-y: auto; overflow-x: hidden; padding: 14px 0 6px 17px; border-inline-start: 1px solid var(--tt-line); position: relative; }\n.tt-panel-head { margin: 0 0 18px; }\n.tt-panel-kicker { display: block; color: var(--tt-muted); font-size: 12px; margin-bottom: 5px; }\n.tt-panel-head h2 { margin: 0; font-size: 23px; line-height: 1.3; font-weight: 680; letter-spacing: -.025em; overflow-wrap: anywhere; }\n.tt-agenda { list-style: none; margin: 0; padding: 0; }\n.tt-agenda li { display: grid; grid-template-columns: 49px minmax(0, 1fr); align-items: start; gap: 11px; padding-bottom: 8px; }\n.tt-agenda-time { padding-top: 9px; color: var(--tt-muted); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.3; }\n.tt-agenda-time small { display: block; margin-top: 4px; font-size: 11px; }\n.tt-agenda-entry { position: relative; display: grid; gap: 4px; justify-items: start; width: 100%; min-width: 0; padding: 8px 10px; border: 0; border-inline-start: 2px solid color-mix(in srgb, var(--tt-entry-accent) 60%, transparent); border-radius: 6px; background: var(--tt-card); color: var(--cal-ink); font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }\n.tt-agenda-entry:hover { background: var(--dsw-alias-interactive-bg-hover, var(--tt-card)); }\n.tt-agenda-entry strong { font-size: 14px; font-weight: 620; }\n.tt-agenda-entry span { font-size: 12px; color: var(--tt-muted); }\n.tt-agenda-entry small { color: var(--tt-accent); font-size: 11px; }\n.tt-agenda li[data-state='active'] .tt-agenda-entry { background: var(--cal-accent-soft); }\n.tt-empty { margin: 12px 0 20px; color: var(--tt-muted); font-size: 13px; }\n.tt-tomorrow { display: grid; gap: 5px; margin: 16px 0 0; padding: 9px 0; text-align: left; width: 100%; border: 0; border-top: 1px solid var(--tt-line); background: none; color: var(--cal-ink); font: inherit; cursor: pointer; }\n.tt-tomorrow span { color: var(--tt-muted); font-size: 12px; }\n.tt-tomorrow strong { font-size: 13px; font-weight: 580; }\n.tt-panel-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 15px; padding-top: 11px; border-top: 1px solid var(--tt-line); }\n.tt-panel-actions > button { min-height: 32px; }\n.tt-detail-nav { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin: -6px 0 12px -7px; }\n.tt-detail-head { border-inline-start: 3px solid var(--tt-entry-accent); padding-inline-start: 10px; }\n.tt-detail-facts { display: grid; gap: 11px; margin: 0 0 16px; }\n.tt-detail-facts div { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 9px; }\n.tt-detail-facts dt, .tt-detail-text > span { color: var(--tt-muted); font-size: 12px; }\n.tt-detail-facts dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }\n.tt-detail-facts dd span { display: block; margin-top: 3px; font-variant-numeric: tabular-nums; }\n.tt-detail-text { margin: 12px 0; }\n.tt-detail-text p { margin: 4px 0 0; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }\n.tt-text-fields { border-block: 1px solid var(--tt-line); }\n.tt-text-fields .tt-detail-text { margin: 0; padding: 7px 0; }\n.tt-text-fields .tt-detail-text + .tt-detail-text { border-top: 1px solid var(--tt-line); }\n.tt-text-fields .tt-detail-text p { margin: 2px 0 7px; }\n.tt-text-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 29px; }\n.tt-text-heading strong { font-size: 13px; font-weight: 600; }\n.tt-text-heading button { color: var(--tt-accent); }\n.tt-text-editor { display: grid; gap: 9px; margin-block: 3px 6px; }\n.tt-text-editor textarea, .tt-text-scope select {\n  font: inherit; font-size: 13px; color: var(--cal-ink); background: var(--tt-card);\n  border: 1px solid var(--tt-line); border-radius: 7px; padding: 7px 9px;\n}\n.tt-text-editor textarea { width: 100%; min-height: 74px; resize: vertical; line-height: 1.5; }\n.tt-text-editor textarea:focus-visible { outline: 1px solid var(--tt-accent); outline-offset: -1px; }\n.tt-text-scope, .tt-text-editor-footer {\n  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 7px;\n  color: var(--tt-muted); font-size: 12px;\n}\n.tt-text-editor-footer > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin-inline-start: auto; }\n.tt-text-editor-footer small { font-size: 11px; }\n.tt-text-fields + .tt-editor-extra { border-top: 0; }\n.tt-sidebar:has(.tt-text-editor) > .tt-panel-actions { display: none; }\n.tt-editor .cal-field { margin-bottom: 11px; }\n.tt-editor .cal-schedule-fields .cal-field { margin-bottom: 0; }\n.tt-editor .cal-field :is(input, select, textarea) { min-width: 0; width: 100%; box-sizing: border-box; }\n.tt-editor .cal-field:first-child > input { font-size: 15px; }\n.tt-editor .cal-field-hint { font-size: 11px; }\n.tt-editor .tt-panel-head { margin-bottom: 14px; }\n.tt-editor-extra { margin-top: 12px; border-top: 1px solid var(--tt-line); }\n.tt-editor-extra > summary { padding: 10px 0; font-size: 12px; color: var(--tt-muted); cursor: pointer; }\n.tt-editor-scope { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }\n.tt-editor-scope button[aria-pressed='true'] { color: var(--tt-accent); background: var(--cal-accent-soft); }\n.tt-sheet-close, .tt-sheet-mask { display: none; }\n@container (max-width: 790px) {\n  .tt-calendar-body { grid-template-columns: minmax(0, 1fr); }\n  .tt-sidebar { display: none; }\n  .tt-sidebar[data-open='true'] { display: block; position: absolute; z-index: 4; inset: auto 8px 8px; height: auto; max-height: min(72%, 590px); padding: 18px 18px 15px; border: 1px solid var(--tt-line); border-radius: 12px; background: var(--tt-paper); box-shadow: 0 8px 36px #0004; }\n  .tt-sheet-close { display: block; position: absolute; z-index: 1; top: 7px; right: 9px; border: 0; border-radius: 6px; background: var(--tt-card); color: var(--tt-muted); font-size: 18px; width: 28px; height: 28px; cursor: pointer; }\n  .tt-sidebar .tt-panel-head, .tt-detail-nav { padding-inline-end: 24px; }\n  .tt-sheet-mask { display: block; position: absolute; z-index: 3; inset: 0; background: #0003; border: 0; }\n}\n";
 		//#endregion
 		//#region src/calendar-views.ts
 		/** 日历展示层，使用 FullCalendar 排版并沿用 EduWork 宿主的数据与编辑入口。 */
@@ -24134,7 +24134,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 		/** 月视图和周视图共享宿主持有的当前日期。 */
 		function CalendarCanvas(props) {
-			const { mode, focusedDate, occurrences, annotations, tintOf, occurrenceKeyOf, noteIndex } = props;
+			const { mode, focusedDate, occurrences, annotations, accentOf, draftAccent, occurrenceKeyOf, noteIndex } = props;
 			const root = (0, react.useRef)(null);
 			const instance = (0, react.useRef)(null);
 			const callbacks = (0, react.useRef)(props);
@@ -24142,7 +24142,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const type = mode === "month" ? "dayGridMonth" : "timeGridWeek";
 			const events = (0, react.useMemo)(() => [...occurrences.map((entry) => {
 				const allDay = entry.start.length === 10;
-				const accent = tintOf(entry.source || entry.uid).accent;
+				const accent = accentOf(entry);
 				const block = allDay || mode === "week";
 				const note = occurrenceNote(noteIndex, entry);
 				return {
@@ -24177,7 +24177,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				occurrences,
 				annotations,
 				mode,
-				tintOf,
+				accentOf,
 				occurrenceKeyOf,
 				noteIndex
 			]);
@@ -24233,7 +24233,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					selectable: true,
 					selectMinDistance: 6,
 					selectMirror: true,
-					eventColor: eventBlockColor(tintOf("manual").accent),
+					eventColor: eventBlockColor(draftAccent),
 					eventContrastColor: "var(--cal-ink)",
 					dayHeaderClass: "cal-column-heading",
 					dayCellInnerClass: "cal-cell-content",
@@ -24297,7 +24297,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 							el.setAttribute("aria-label", [time, el.title].join(" "));
 							el.setAttribute("data-occurrence", event.id);
 							el.dataset.eventTitle = entry.title;
-						} else if (isMirror) el.style.setProperty("--cal-event-ink", callbacks.current.tintOf("manual").accent);
+						} else if (isMirror) el.style.setProperty("--cal-event-ink", callbacks.current.draftAccent);
 					}
 				};
 				const calendar = new Calendar(root.current, options);
@@ -24492,7 +24492,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				"aria-label": "收起日程侧栏"
 			}, "×"), children));
 		}
-		function DailyAgenda({ date, entries, onSelect, onCreate, onDate, tintOf }) {
+		function DailyAgenda({ date, entries, onSelect, onCreate, onDate, accentOf }) {
 			const now = /* @__PURE__ */ new Date();
 			const today = localDate(now);
 			const instant = `${today}T${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -24509,7 +24509,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					type: "button",
 					className: "tt-agenda-entry",
 					onClick: () => onSelect(entry),
-					style: { "--tt-entry-accent": tintOf(entry.source).accent }
+					style: { "--tt-entry-accent": accentOf(entry) }
 				}, h("strong", null, entry.title), entry.location && h("span", null, entry.location), state && h("small", null, current ? "进行中" : "下一项")));
 			})) : h("p", { className: "tt-empty" }, "当天没有安排"), tomorrow && h("button", {
 				type: "button",
@@ -24521,7 +24521,123 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				onClick: onCreate
 			}, "＋ 添加日程")));
 		}
-		function TimetableDetails({ entry, source, remark, sourceDescription, note, recurrence, tint, actions, tools, onBack, children }) {
+		const textCopy = {
+			remark: {
+				label: "备注",
+				add: "添加备注",
+				hint: "导出日历时可选择包含备注"
+			},
+			note: {
+				label: "笔记",
+				add: "写笔记",
+				hint: "仅保存在本机"
+			}
+		};
+		function TextEditor({ field, content, onDone }) {
+			const [scope, setScope] = (0, react.useState)(content.recurring ? "once" : "series");
+			const [draft, setDraft] = (0, react.useState)();
+			const [text, setText] = (0, react.useState)("");
+			const [problem, setProblem] = (0, react.useState)("");
+			const [saving, setSaving] = (0, react.useState)(false);
+			const pending = (0, react.useRef)(false);
+			const read = (0, react.useRef)(content.read);
+			read.current = content.read;
+			const { label, hint } = textCopy[field];
+			(0, react.useEffect)(() => {
+				let active = true;
+				read.current(field, scope).then((next) => {
+					if (!active) return;
+					setDraft(next);
+					setText(next.text);
+				}).catch((error) => {
+					if (active) setProblem(String(error.message ?? error));
+				});
+				return () => {
+					active = false;
+				};
+			}, [field, scope]);
+			const save = async (value) => {
+				if (pending.current) return;
+				pending.current = true;
+				setSaving(true);
+				setProblem("");
+				try {
+					await content.save(field, scope, value);
+					onDone();
+				} catch (error) {
+					setProblem(error instanceof Error ? error.message : String(error));
+				} finally {
+					pending.current = false;
+					setSaving(false);
+				}
+			};
+			return h("form", {
+				className: "tt-text-editor",
+				"aria-label": `编辑${label}`,
+				onSubmit: (event) => {
+					event.preventDefault();
+					if (draft && text !== draft.text) save(text);
+				}
+			}, content.recurring && h("label", { className: "tt-text-scope" }, "应用于", h("select", {
+				value: scope,
+				disabled: saving,
+				onChange: (event) => {
+					setDraft(void 0);
+					setProblem("");
+					setScope(event.target.value === "once" ? "once" : "series");
+				}
+			}, h("option", { value: "once" }, "仅本次"), h("option", { value: "series" }, "整条日程"))), draft && h("textarea", {
+				"aria-label": label,
+				value: text,
+				autoFocus: true,
+				rows: 3,
+				disabled: saving,
+				onChange: (event) => setText(event.target.value)
+			}), !draft && !problem && h("small", { role: "status" }, "正在读取…"), problem && h("p", {
+				role: "alert",
+				className: "cal-destructive"
+			}, problem), h("div", { className: "tt-text-editor-footer" }, h("small", null, hint), h("div", null, draft?.canInherit && h(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				type: "button",
+				variant: "ghost",
+				size: "sm",
+				disabled: saving,
+				onClick: () => void save(null)
+			}, "沿用整条日程"), h(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				type: "button",
+				variant: "ghost",
+				size: "sm",
+				disabled: saving,
+				onClick: onDone
+			}, "取消"), h(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				type: "submit",
+				variant: "primary",
+				size: "sm",
+				disabled: saving || !draft || text === draft.text
+			}, "保存"))));
+		}
+		function TimetableText({ content }) {
+			const [editing, setEditing] = (0, react.useState)();
+			return h("section", {
+				className: "tt-text-fields",
+				"aria-label": "备注和笔记"
+			}, ...["remark", "note"].map((field) => {
+				const { label, add } = textCopy[field];
+				return h("div", {
+					className: "tt-detail-text",
+					key: field
+				}, h("div", { className: "tt-text-heading" }, h("strong", null, label), !editing && h(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					size: "sm",
+					variant: "ghost",
+					"aria-label": content[field] ? `编辑${label}` : add,
+					onClick: () => setEditing(field)
+				}, content[field] ? "编辑" : add)), editing === field ? h(TextEditor, {
+					field,
+					content,
+					onDone: () => setEditing(void 0)
+				}) : content[field] && h("p", null, content[field]));
+			}));
+		}
+		function TimetableDetails({ entry, source, sourceDescription, personalText, recurrence, tint, actions, tools, onBack, children }) {
 			return h(react.default.Fragment, null, h("div", { className: "tt-detail-nav" }, h(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant: "ghost",
 				size: "sm",
@@ -24529,23 +24645,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}, "‹ 当日安排"), tools), h("header", {
 				className: "tt-panel-head tt-detail-head",
 				style: { "--tt-entry-accent": tint }
-			}, h("span", { className: "tt-panel-kicker" }, source), h("h2", null, entry.title)), h("dl", { className: "tt-detail-facts" }, h("div", null, h("dt", null, "时间"), h("dd", null, fullDate.format(parseDate(entry.start.slice(0, 10))), h("span", null, isAllDay(entry) ? "全天" : [time(entry.start), time(endTime(entry))].filter((value, index, all) => index === 0 || value !== all[0]).join(" – ")))), entry.location && h("div", null, h("dt", null, "地点"), h("dd", null, entry.location)), recurrence && h("div", null, h("dt", null, "重复"), h("dd", null, recurrence))), [
-				{
-					label: "来源说明",
-					text: sourceDescription
-				},
-				{
-					label: "备注",
-					text: remark
-				},
-				{
-					label: "笔记",
-					text: note
-				}
-			].filter(({ text }) => text).map(({ label, text }) => h("div", {
-				key: label,
-				className: "tt-detail-text"
-			}, h("span", null, label), h("p", null, text))), children, h("footer", { className: "tt-panel-actions" }, actions));
+			}, h("span", { className: "tt-panel-kicker" }, source), h("h2", null, entry.title)), h("dl", { className: "tt-detail-facts" }, h("div", null, h("dt", null, "时间"), h("dd", null, fullDate.format(parseDate(entry.start.slice(0, 10))), h("span", null, isAllDay(entry) ? "全天" : [time(entry.start), time(endTime(entry))].filter((value, index, all) => index === 0 || value !== all[0]).join(" – ")))), entry.location && h("div", null, h("dt", null, "地点"), h("dd", null, entry.location)), recurrence && h("div", null, h("dt", null, "重复"), h("dd", null, recurrence))), personalText && h(TimetableText, { content: personalText }), sourceDescription && h("div", { className: "tt-detail-text" }, h("span", null, "来源说明"), h("p", null, sourceDescription)), children, h("footer", { className: "tt-panel-actions" }, actions));
 		}
 		//#endregion
 		//#region src/client.ts
@@ -24631,6 +24731,16 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			red: "#d4553f"
 		};
 		const TINT_FAMILIES = Object.keys(TINTS);
+		const COURSE_ACCENTS = [
+			"var(--dsw-static-blue-500, #4d6bfe)",
+			"#9273cf",
+			"#5595af",
+			"#c27491",
+			"var(--dsw-static-green-500, #2f9e68)",
+			"#9a962d",
+			"#a87451",
+			"#4e9b98"
+		];
 		const pad2 = (value) => String(value).padStart(2, "0");
 		const dateOf = (value) => value.slice(0, 10);
 		/** Clock part of a local time string, empty for a whole-day value. */
@@ -24660,17 +24770,30 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			if (start === "") return "全天";
 			return end === "" ? start : `${start}–${end}`;
 		}
-		/** A stable hue per data source, so one import keeps its colour across views and restarts. */
-		function tintOf(key) {
+		function paletteIndex(text, size) {
 			let hash = 0;
-			const text = key ?? "event";
 			for (let index = 0; index < text.length; index += 1) hash = (hash * 31 + text.charCodeAt(index)) % 100003;
-			const family = TINT_FAMILIES[hash % TINT_FAMILIES.length];
+			return hash % size;
+		}
+		/** 普通日程按来源配色，拖选创建沿用个人日历颜色。 */
+		function tintOf(key) {
+			const family = TINT_FAMILIES[paletteIndex(key ?? "event", TINT_FAMILIES.length)];
 			const accent = `var(--dsw-static-${family}-500, ${TINTS[family]})`;
 			return {
 				accent,
 				background: `color-mix(in srgb, ${accent} 15%, var(--dsw-alias-bg-layer-1, #fff))`
 			};
+		}
+		/** 教学班身份跨上课时间和节次，供所有日历表面共用颜色。 */
+		function entryAccent(entry) {
+			const academic = entry.extensions?.["eduwork.academic"];
+			if (academic && typeof academic === "object" && "institution" in academic && typeof academic.institution === "string" && "term" in academic && typeof academic.term === "string" && "teachingClassCode" in academic && typeof academic.teachingClassCode === "string" && academic.teachingClassCode.trim()) return COURSE_ACCENTS[paletteIndex(JSON.stringify([
+				entry.source,
+				academic.institution,
+				academic.term,
+				academic.teachingClassCode
+			]), COURSE_ACCENTS.length)];
+			return tintOf(entry.source).accent;
 		}
 		/** Drop undefined and blank entries, so a patch or an edit carries only what it means. */
 		function withoutEmpty(input) {
@@ -25464,7 +25587,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		* The fields of one record, shared by the new-entry dialog and the entry page:
 		* what the reader owns about an entry, as opposed to one date of a series.
 		*/
-		function EventForm({ draft, onChange, autoFocus, sourceDescription, recordMode = false, showDetails = true, showAllDay = false, advanced = false, showRepeat = true, extraOptions, endHint, allowAllDayChange = true }) {
+		function EventForm({ draft, onChange, autoFocus, sourceDescription, recordMode = false, showDetails = true, showAllDay = false, advanced = false, showRepeat = true, showRemark = true, extraOptions, endHint, allowAllDayChange = true }) {
 			const set = (patch) => onChange({
 				...draft,
 				...patch
@@ -25528,7 +25651,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				value: draft.location,
 				placeholder: "可留空",
 				onChange: (event) => set({ location: event.target.value })
-			})), sourceDescription && react.default.createElement("div", { className: "cal-record-source-description" }, react.default.createElement("span", { className: "cal-field-label" }, "来源说明"), react.default.createElement("p", null, sourceDescription)), react.default.createElement(Field, {
+			})), sourceDescription && react.default.createElement("div", { className: "cal-record-source-description" }, react.default.createElement("span", { className: "cal-field-label" }, "来源说明"), react.default.createElement("p", null, sourceDescription)), showRemark && react.default.createElement(Field, {
 				label: "备注",
 				hint: "导出时可选择是否包含"
 			}, react.default.createElement("textarea", {
@@ -25614,20 +25737,16 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			})) : void 0), extraOptions)));
 		}
 		/** 原型的共用编辑表单，保存到当前预览的独立数据目录。 */
-		function TimetableEditor({ slot, occurrence, record, wholeRemark, service, onCancel, onSaved }) {
+		function TimetableEditor({ slot, occurrence, record, service, onCancel, onSaved }) {
 			const recurring = Boolean(record?.recurrence);
 			const [scope, setScope] = (0, react.useState)(recurring ? "once" : "series");
 			const baseFor = (selected) => {
 				if (slot) return void 0;
 				if (selected === "once") return {
 					...occurrence,
-					recurrence: void 0,
-					description: occurrence.personal?.remark?.text ?? ""
+					recurrence: void 0
 				};
-				return {
-					...record,
-					description: mergeRemarks(record.source === "manual" ? record.description : void 0, wholeRemark)
-				};
+				return record;
 			};
 			const [draft, setDraft] = (0, react.useState)(() => {
 				if (!slot) return draftOf(baseFor(scope));
@@ -25669,7 +25788,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 							patch: reminderPatch
 						});
 					} else {
-						const { description, ...patch } = patchOf(draft, baseFor(scope));
+						const patch = patchOf(draft, baseFor(scope));
 						const ref = {
 							source: record.source,
 							uid: record.uid
@@ -25706,19 +25825,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 									date
 								});
 							}
-							if (description !== void 0 || reminder !== "") await service.setPersonal({
+							if (reminder !== "") await service.setPersonal({
 								...ref,
 								originalStart: occurrence.originalStart ?? occurrence.start,
-								patch: {
-									...reminderPatch,
-									...description !== void 0 && { remark: { text: description ?? "" } }
-								}
+								patch: reminderPatch
 							});
 						} else {
-							if (Object.keys(patch).length || description !== void 0) await service.updateEvent({
+							if (Object.keys(patch).length) await service.updateEvent({
 								...ref,
-								patch,
-								...description !== void 0 && { remark: description ?? "" }
+								patch
 							});
 							if (reminder !== "") await service.setPersonal({
 								...ref,
@@ -25764,6 +25879,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				showRepeat: scope === "series",
 				allowAllDayChange: scope !== "once",
 				endHint: scope === "once" ? "留空沿用系列时长" : void 0,
+				showRemark: Boolean(slot),
 				sourceDescription: record && record.source !== "manual" ? record.description : void 0,
 				extraOptions: react.default.createElement(Field, { label: "提醒" }, react.default.createElement("select", {
 					value: reminder,
@@ -26359,7 +26475,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						slot: timetable.kind === "create" ? timetable : void 0,
 						occurrence: chosen,
 						record: chosenRecord,
-						wholeRemark: chosen && remarkIndex.get(`${chosen.source}\u0000${chosen.uid}\u0000`),
 						service,
 						onSaved: saveInSidebar,
 						onCancel: () => {
@@ -26387,10 +26502,49 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 							key: occurrenceKeyOf(chosen),
 							entry: chosen,
 							source: sourceName(chosen.source),
-							tint: tintOf(chosen.source).accent,
-							remark: mergeRemarks(external ? void 0 : chosen.description, chosen.personal?.remark?.text),
+							tint: entryAccent(chosen),
 							sourceDescription: external ? chosen.description : void 0,
-							note: occurrenceNote(noteIndex, chosen),
+							personalText: !confirming && chosenRecord ? {
+								remark: mergeRemarks(external ? void 0 : chosen.description, chosen.personal?.remark?.text),
+								note: occurrenceNote(noteIndex, chosen),
+								recurring: series,
+								read: async (field, scope) => {
+									const target = scope === "once" || !series ? noteRefOf(chosen) : ref;
+									const [resolved, own] = await Promise.all([service.personalFor(target), scope === "once" ? service.notes(target) : []]);
+									const stored = resolved[field]?.text ?? "";
+									return {
+										text: field === "remark" && !external && scope === "series" ? mergeRemarks(chosenRecord.description, stored) : stored,
+										canInherit: scope === "once" && Boolean(own[0]?.[field])
+									};
+								},
+								save: async (field, scope, text) => {
+									if (field === "remark" && !external && scope === "series") {
+										const target = noteRefOf(chosen);
+										const previous = !series && (await service.notes(target))[0]?.remark;
+										await service.updateEvent({
+											...ref,
+											patch: {},
+											remark: text ?? ""
+										});
+										if (previous && target.originalStart) await service.setPersonal({
+											...target,
+											clear: ["remark"]
+										});
+									} else {
+										const target = scope === "once" || !series ? noteRefOf(chosen) : ref;
+										if (text === null) await service.setPersonal({
+											...target,
+											clear: [field]
+										});
+										else await service.setPersonal({
+											...target,
+											patch: { [field]: text ? { text } : { off: true } }
+										});
+									}
+									await refresh();
+									setToast(field === "remark" ? "备注已保存" : "笔记已保存");
+								}
+							} : void 0,
 							recurrence: series ? seriesSummary(chosenRecord) : void 0,
 							onBack: showDay,
 							tools: confirming || !chosenRecord ? null : react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
@@ -26419,7 +26573,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 									kind: "edit",
 									occurrence: chosen
 								})
-							}, "编辑")
+							}, "编辑日程")
 						}, confirming ? react.default.createElement("p", {
 							role: "status",
 							className: "cal-destructive"
@@ -26438,13 +26592,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 							service,
 							run,
 							Field,
-							showHeading: false
+							showHeading: false,
+							showTextSettings: false
 						})));
 					}
 					return react.default.createElement(DailyAgenda, {
 						date: focusedDate,
 						entries: visibleOccurrences,
-						tintOf,
+						accentOf: entryAccent,
 						onDate: selectDate,
 						onSelect: selectEntry,
 						onCreate: createInSidebar
@@ -26555,7 +26710,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}), view.kind === "week" ? displayMode !== "year" && react.default.createElement("div", { className: "tt-calendar-body" }, react.default.createElement(CalendarCanvas, {
 					mode: displayMode,
 					focusedDate,
-					tintOf,
+					accentOf: entryAccent,
+					draftAccent: tintOf("manual").accent,
 					occurrenceKeyOf,
 					occurrences: visibleOccurrences,
 					noteIndex,

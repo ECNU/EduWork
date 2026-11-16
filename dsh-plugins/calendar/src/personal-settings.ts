@@ -24,7 +24,7 @@ function draftOf(own: any, effective: any, once: boolean) {
 }
 
 /** One editor for both series defaults and occurrence overrides. */
-export function PersonalSettings({ identity, service, run, Field, allowOccurrence = true, showHeading = true, copyLegacyRemark }: any) {
+export function PersonalSettings({ identity, service, run, Field, allowOccurrence = true, showHeading = true, showTextSettings = true, copyLegacyRemark }: any) {
   const [target, setTarget] = useState(allowOccurrence && identity.originalStart ? 'once' : 'series')
   const [form, setForm] = useState<any>(null)
   const [baseline, setBaseline] = useState<any>(null)
@@ -102,10 +102,12 @@ export function PersonalSettings({ identity, service, run, Field, allowOccurrenc
   return React.createElement('section', { 'aria-label': '个人设置', className: 'cal-personal-settings' },
     showHeading && React.createElement('strong', null, '个人设置'),
     React.createElement('p', { className: 'cal-personal-help' },
-      '笔记、备注和隐藏设置仅保存在本机。提前提醒跟随日程，固定提醒按设定时间触发。提醒需保持 EduWork 运行。'),
+      showTextSettings
+        ? '笔记、备注和隐藏设置仅保存在本机。提前提醒跟随日程，固定提醒按设定时间触发。提醒需保持 EduWork 运行。'
+        : '隐藏设置保存在本机。提醒需保持 EduWork 运行。'),
     allowOccurrence && identity.originalStart ? select('设置范围', target, [['once', '仅这一次'], ['series', '整条日程']], setTarget) : undefined,
     !form ? React.createElement('p', null, problem || '正在读取个人设置…') : React.createElement(React.Fragment, null,
-      textField('note', '笔记'), once && textField('remark', '备注'),
+      showTextSettings && textField('note', '笔记'), showTextSettings && once && textField('remark', '备注'),
       select('显示设置', form.hidden, [...(once ? [['inherit', '沿用整条日程']] : []), ['show', '显示'], ['hide', '隐藏']], value => change('hidden', value)),
       select('提醒设置', form.reminder.mode, [...(once ? [['inherit', '沿用整条日程']] : []), ['off', '关闭提醒'], ['relative', '提前提醒'], ['fixed', '固定时间']], mode => change('reminder', { ...form.reminder, mode })),
       form.reminder.mode === 'relative' ? React.createElement(Field, { label: '提前分钟数' }, React.createElement(Input, {
@@ -118,7 +120,7 @@ export function PersonalSettings({ identity, service, run, Field, allowOccurrenc
       })) : undefined,
       effective.legacyDescription !== undefined ? React.createElement('div', { style: { margin: '12px 0', whiteSpace: 'pre-wrap' } },
         React.createElement('strong', null, '旧备注备份（归属待确认）'), React.createElement('p', null, effective.legacyDescription),
-        (once || copyLegacyRemark) && React.createElement(Button, { variant: 'outline', size: 'sm', onClick: () => {
+        (copyLegacyRemark || showTextSettings && once) && React.createElement(Button, { variant: 'outline', size: 'sm', onClick: () => {
           if (copyLegacyRemark) copyLegacyRemark(effective.legacyDescription)
           else change('remark', { mode: 'custom', text: effective.legacyDescription })
         } }, '复制到备注')) : undefined,

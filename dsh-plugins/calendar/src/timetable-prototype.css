@@ -52,6 +52,28 @@
 .tt-detail-facts dd span { display: block; margin-top: 3px; font-variant-numeric: tabular-nums; }
 .tt-detail-text { margin: 12px 0; }
 .tt-detail-text p { margin: 4px 0 0; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tt-text-fields { border-block: 1px solid var(--tt-line); }
+.tt-text-fields .tt-detail-text { margin: 0; padding: 7px 0; }
+.tt-text-fields .tt-detail-text + .tt-detail-text { border-top: 1px solid var(--tt-line); }
+.tt-text-fields .tt-detail-text p { margin: 2px 0 7px; }
+.tt-text-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 29px; }
+.tt-text-heading strong { font-size: 13px; font-weight: 600; }
+.tt-text-heading button { color: var(--tt-accent); }
+.tt-text-editor { display: grid; gap: 9px; margin-block: 3px 6px; }
+.tt-text-editor textarea, .tt-text-scope select {
+  font: inherit; font-size: 13px; color: var(--cal-ink); background: var(--tt-card);
+  border: 1px solid var(--tt-line); border-radius: 7px; padding: 7px 9px;
+}
+.tt-text-editor textarea { width: 100%; min-height: 74px; resize: vertical; line-height: 1.5; }
+.tt-text-editor textarea:focus-visible { outline: 1px solid var(--tt-accent); outline-offset: -1px; }
+.tt-text-scope, .tt-text-editor-footer {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 7px;
+  color: var(--tt-muted); font-size: 12px;
+}
+.tt-text-editor-footer > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin-inline-start: auto; }
+.tt-text-editor-footer small { font-size: 11px; }
+.tt-text-fields + .tt-editor-extra { border-top: 0; }
+.tt-sidebar:has(.tt-text-editor) > .tt-panel-actions { display: none; }
 .tt-editor .cal-field { margin-bottom: 11px; }
 .tt-editor .cal-schedule-fields .cal-field { margin-bottom: 0; }
 .tt-editor .cal-field :is(input, select, textarea) { min-width: 0; width: 100%; box-sizing: border-box; }

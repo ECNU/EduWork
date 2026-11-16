@@ -8,7 +8,7 @@ import { PersonalSettings, occurrenceNote } from './personal-settings.js'
 import { addDays, localDate, monthRange, monthStart, parseDate, shiftMonth, startOfWeek } from './dates.js'
 import { AcademicYear, CalendarCanvas, CalendarStyles } from './calendar-views.js'
 import { EventEditorSurface, OccurrenceSurface } from './event-surfaces.js'
-import { agendaFor, DailyAgenda, TimetableDetails, TimetableSidebar } from './timetable-prototype.js'
+import { agendaFor, DailyAgenda, TimetableDetails, TimetableSidebar, type TimetableTextField, type TimetableTextScope } from './timetable-prototype.js'
 
 /**
  * Resolve one icon from the loaded primitives package.
@@ -72,6 +72,10 @@ function Modal({ children, className, contentClassName, size, ...props }:
 /** The hues a source is drawn in, as the product's static palette names; the fallbacks are for themes without them. */
 const TINTS: Record<string, string> = { blue: '#4d6bfe', amber: '#d99a2b', green: '#2f9e68', deepseek: '#4d6bfe', red: '#d4553f' }
 const TINT_FAMILIES = Object.keys(TINTS)
+const COURSE_ACCENTS = [
+  'var(--dsw-static-blue-500, #4d6bfe)', '#9273cf', '#5595af', '#c27491',
+  'var(--dsw-static-green-500, #2f9e68)', '#9a962d', '#a87451', '#4e9b98',
+]
 
 const pad2 = (value: number) => String(value).padStart(2, '0')
 const dateOf = (value: string) => value.slice(0, 10)
@@ -105,14 +109,31 @@ function clockRange(occurrence: any) {
   return end === '' ? start : `${start}–${end}`
 }
 
-/** A stable hue per data source, so one import keeps its colour across views and restarts. */
-function tintOf(key?: string) {
+function paletteIndex(text: string, size: number) {
   let hash = 0
-  const text = key ?? 'event'
   for (let index = 0; index < text.length; index += 1) hash = (hash * 31 + text.charCodeAt(index)) % 100003
-  const family = TINT_FAMILIES[hash % TINT_FAMILIES.length]
+  return hash % size
+}
+
+/** 普通日程按来源配色，拖选创建沿用个人日历颜色。 */
+function tintOf(key?: string) {
+  const family = TINT_FAMILIES[paletteIndex(key ?? 'event', TINT_FAMILIES.length)]
   const accent = `var(--dsw-static-${family}-500, ${TINTS[family]})`
   return { accent, background: `color-mix(in srgb, ${accent} 15%, var(--dsw-alias-bg-layer-1, #fff))` }
+}
+
+/** 教学班身份跨上课时间和节次，供所有日历表面共用颜色。 */
+function entryAccent(entry: { source: string; extensions?: Record<string, unknown> }) {
+  const academic = entry.extensions?.['eduwork.academic']
+  if (academic && typeof academic === 'object'
+    && 'institution' in academic && typeof academic.institution === 'string'
+    && 'term' in academic && typeof academic.term === 'string'
+    && 'teachingClassCode' in academic && typeof academic.teachingClassCode === 'string'
+    && academic.teachingClassCode.trim()) {
+    const key = JSON.stringify([entry.source, academic.institution, academic.term, academic.teachingClassCode])
+    return COURSE_ACCENTS[paletteIndex(key, COURSE_ACCENTS.length)]
+  }
+  return tintOf(entry.source).accent
 }
 
 /** Drop undefined and blank entries, so a patch or an edit carries only what it means. */
@@ -779,7 +800,7 @@ function draftProblem(draft: any) {
  * The fields of one record, shared by the new-entry dialog and the entry page:
  * what the reader owns about an entry, as opposed to one date of a series.
  */
-function EventForm({ draft, onChange, autoFocus, sourceDescription, recordMode = false, showDetails = true, showAllDay = false, advanced = false, showRepeat = true, extraOptions, endHint, allowAllDayChange = true }: any) {
+function EventForm({ draft, onChange, autoFocus, sourceDescription, recordMode = false, showDetails = true, showAllDay = false, advanced = false, showRepeat = true, showRemark = true, extraOptions, endHint, allowAllDayChange = true }: any) {
   const set = (patch: any) => onChange({ ...draft, ...patch })
   const isAllDay = showAllDay && draft.start === '' && draft.end === ''
   const dateField = React.createElement(Field, { label: '日期' },
@@ -832,7 +853,7 @@ function EventForm({ draft, onChange, autoFocus, sourceDescription, recordMode =
     sourceDescription && React.createElement('div', { className: 'cal-record-source-description' },
       React.createElement('span', { className: 'cal-field-label' }, '来源说明'),
       React.createElement('p', null, sourceDescription)),
-    React.createElement(Field, { label: '备注', hint: '导出时可选择是否包含' },
+    showRemark && React.createElement(Field, { label: '备注', hint: '导出时可选择是否包含' },
       React.createElement('textarea', {
         'aria-label': '备注', value: draft.description, rows: 3, spellCheck: false,
         onChange: (event: any) => set({ description: event.target.value }),
@@ -879,13 +900,13 @@ type CreateSlot = { kind: 'create'; date: string; start?: string; end?: string; 
 type TimetableSelection = { kind: 'day' } | CreateSlot | { kind: 'detail' | 'edit' | 'remove'; occurrence: any }
 
 /** 原型的共用编辑表单，保存到当前预览的独立数据目录。 */
-function TimetableEditor({ slot, occurrence, record, wholeRemark, service, onCancel, onSaved }: any) {
+function TimetableEditor({ slot, occurrence, record, service, onCancel, onSaved }: any) {
   const recurring = Boolean(record?.recurrence)
   const [scope, setScope] = useState<'once' | 'series'>(recurring ? 'once' : 'series')
   const baseFor = (selected: 'once' | 'series') => {
     if (slot) return undefined
-    if (selected === 'once') return { ...occurrence, recurrence: undefined, description: occurrence.personal?.remark?.text ?? '' }
-    return { ...record, description: mergeRemarks(record.source === 'manual' ? record.description : undefined, wholeRemark) }
+    if (selected === 'once') return { ...occurrence, recurrence: undefined }
+    return record
   }
   const [draft, setDraft] = useState(() => {
     if (!slot) return draftOf(baseFor(scope))
@@ -914,7 +935,7 @@ function TimetableEditor({ slot, occurrence, record, wholeRemark, service, onCan
         const created = await service.putEvent(recordOf(draft, { uid: newRecord.current }))
         if (reminder !== '') await service.setPersonal({ source: created.source, uid: created.uid, patch: reminderPatch })
       } else {
-        const { description, ...patch } = patchOf(draft, baseFor(scope))
+        const patch = patchOf(draft, baseFor(scope))
         const ref = { source: record.source, uid: record.uid }
         if (scope === 'once') {
           const { title, start, end, location } = patch
@@ -932,14 +953,12 @@ function TimetableEditor({ slot, occurrence, record, wholeRemark, service, onCan
             if (Object.keys(override).length) await service.applyOverride({ ...ref, date, patch: override })
             else if (previous) await service.removeOverride({ ...ref, date })
           }
-          if (description !== undefined || reminder !== '') await service.setPersonal({
+          if (reminder !== '') await service.setPersonal({
             ...ref, originalStart: occurrence.originalStart ?? occurrence.start,
-            patch: { ...reminderPatch, ...(description !== undefined && { remark: { text: description ?? '' } }) },
+            patch: reminderPatch,
           })
         } else {
-          if (Object.keys(patch).length || description !== undefined) await service.updateEvent({
-            ...ref, patch, ...(description !== undefined && { remark: description ?? '' }),
-          })
+          if (Object.keys(patch).length) await service.updateEvent({ ...ref, patch })
           if (reminder !== '') await service.setPersonal({ ...ref, patch: reminderPatch })
         }
       }
@@ -967,6 +986,7 @@ function TimetableEditor({ slot, occurrence, record, wholeRemark, service, onCan
       }, value === 'once' ? '仅本次' : '整条日程'))),
     React.createElement(EventForm, {
       draft, onChange: setDraft, autoFocus: true, showAllDay: true, advanced: true, showRepeat: scope === 'series', allowAllDayChange: scope !== 'once', endHint: scope === 'once' ? '留空沿用系列时长' : undefined,
+      showRemark: Boolean(slot),
       sourceDescription: record && record.source !== 'manual' ? record.description : undefined,
       extraOptions: React.createElement(Field, { label: '提醒' },
         React.createElement('select', {
@@ -1442,7 +1462,6 @@ export function createCalendarPage(service: any) {
           key: timetable.kind === 'create' ? `new:${timetable.date}:${timetable.start ?? ''}` : occurrenceKeyOf(chosen),
           slot: timetable.kind === 'create' ? timetable : undefined,
           occurrence: chosen, record: chosenRecord,
-          wholeRemark: chosen && remarkIndex.get(`${chosen.source}\u0000${chosen.uid}\u0000`),
           service, onSaved: saveInSidebar, onCancel: () => { if (chosen) selectEntry(chosen); else showDay() },
         })
       }
@@ -1459,10 +1478,39 @@ export function createCalendarPage(service: any) {
         }
         return React.createElement(TimetableDetails, {
           key: occurrenceKeyOf(chosen), entry: chosen, source: sourceName(chosen.source),
-          tint: tintOf(chosen.source).accent,
-          remark: mergeRemarks(external ? undefined : chosen.description, chosen.personal?.remark?.text),
+          tint: entryAccent(chosen),
           sourceDescription: external ? chosen.description : undefined,
-          note: occurrenceNote(noteIndex, chosen), recurrence: series ? seriesSummary(chosenRecord) : undefined, onBack: showDay,
+          personalText: !confirming && chosenRecord ? {
+            remark: mergeRemarks(external ? undefined : chosen.description, chosen.personal?.remark?.text),
+            note: occurrenceNote(noteIndex, chosen),
+            recurring: series,
+            read: async (field: TimetableTextField, scope: TimetableTextScope) => {
+              const target = scope === 'once' || !series ? noteRefOf(chosen) : ref
+              const [resolved, own] = await Promise.all([
+                service.personalFor(target),
+                scope === 'once' ? service.notes(target) : [],
+              ])
+              const stored = resolved[field]?.text ?? ''
+              const text = field === 'remark' && !external && scope === 'series'
+                ? mergeRemarks(chosenRecord.description, stored) : stored
+              return { text, canInherit: scope === 'once' && Boolean(own[0]?.[field]) }
+            },
+            save: async (field: TimetableTextField, scope: TimetableTextScope, text: string | null) => {
+              if (field === 'remark' && !external && scope === 'series') {
+                const target = noteRefOf(chosen)
+                const previous = !series && (await service.notes(target))[0]?.remark
+                await service.updateEvent({ ...ref, patch: {}, remark: text ?? '' })
+                if (previous && target.originalStart) await service.setPersonal({ ...target, clear: ['remark'] })
+              } else {
+                const target = scope === 'once' || !series ? noteRefOf(chosen) : ref
+                if (text === null) await service.setPersonal({ ...target, clear: [field] })
+                else await service.setPersonal({ ...target, patch: { [field]: text ? { text } : { off: true } } })
+              }
+              await refresh()
+              setToast(field === 'remark' ? '备注已保存' : '笔记已保存')
+            },
+          } : undefined,
+          recurrence: series ? seriesSummary(chosenRecord) : undefined, onBack: showDay,
           tools: confirming || !chosenRecord ? null : React.createElement(Button, {
             variant: 'ghost', size: 'sm', onClick: () => setTimetable({ kind: 'remove', occurrence: chosen }),
           }, series ? '取消本次' : '删除'),
@@ -1471,7 +1519,7 @@ export function createCalendarPage(service: any) {
             React.createElement(Button, { variant: 'outline', size: 'sm', className: 'cal-destructive', disabled: busy, onClick: remove }, series ? '确认取消' : '确认删除'))
             : chosenRecord && React.createElement(Button, {
               variant: 'primary', size: 'sm', onClick: () => setTimetable({ kind: 'edit', occurrence: chosen }),
-            }, '编辑'),
+            }, '编辑日程'),
         }, confirming ? React.createElement('p', { role: 'status', className: 'cal-destructive' }, series ? '取消这一次安排？' : '删除这条日程？')
           : React.createElement('details', { className: 'tt-editor-extra' },
             React.createElement('summary', null, '个人设置'),
@@ -1479,10 +1527,10 @@ export function createCalendarPage(service: any) {
               variant: 'outline', size: 'sm', disabled: busy,
               onClick: async () => { if (await run(() => service.removeOverride({ ...ref, date }), '已撤销改期')) showDay() },
             }, '撤销改期'),
-            React.createElement(PersonalSettings, { identity: noteRefOf(chosen), service, run, Field, showHeading: false })))
+            React.createElement(PersonalSettings, { identity: noteRefOf(chosen), service, run, Field, showHeading: false, showTextSettings: false })))
       }
       return React.createElement(DailyAgenda, {
-        date: focusedDate, entries: visibleOccurrences, tintOf, onDate: selectDate,
+        date: focusedDate, entries: visibleOccurrences, accentOf: entryAccent, onDate: selectDate,
         onSelect: selectEntry, onCreate: createInSidebar,
       })
     }
@@ -1563,7 +1611,7 @@ export function createCalendarPage(service: any) {
       ? displayMode !== 'year' && React.createElement('div', { className: 'tt-calendar-body' }, React.createElement(CalendarCanvas, {
           mode: displayMode,
           focusedDate,
-          tintOf, occurrenceKeyOf,
+          accentOf: entryAccent, draftAccent: tintOf('manual').accent, occurrenceKeyOf,
           occurrences: visibleOccurrences,
           noteIndex,
           annotations,

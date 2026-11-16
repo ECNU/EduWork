@@ -35,6 +35,7 @@ interface Occurrence {
   start: string
   end?: string
   location?: string
+  extensions?: Record<string, unknown>
 }
 
 const startOf = (span: Span) => span.originalFirstDay ?? span.firstDay
@@ -68,7 +69,8 @@ interface CanvasProps {
   occurrences: Occurrence[]
   noteIndex: Map<string, string>
   annotations: { weeks: Array<{ firstDay: string; text: string }>; spans: Span[] }
-  tintOf: (key?: string) => { accent: string }
+  accentOf: (entry: Occurrence) => string
+  draftAccent: string
   occurrenceKeyOf: (entry: Occurrence) => string
   onSelect: (entry: Occurrence) => void
   onCreate: (date: string, from: number, to: number) => void
@@ -77,7 +79,7 @@ interface CanvasProps {
 
 /** 月视图和周视图共享宿主持有的当前日期。 */
 export function CalendarCanvas(props: CanvasProps) {
-  const { mode, focusedDate, occurrences, annotations, tintOf, occurrenceKeyOf, noteIndex } = props
+  const { mode, focusedDate, occurrences, annotations, accentOf, draftAccent, occurrenceKeyOf, noteIndex } = props
   const root = useRef<HTMLDivElement | null>(null)
   const instance = useRef<Calendar | null>(null)
   const callbacks = useRef(props)
@@ -86,7 +88,7 @@ export function CalendarCanvas(props: CanvasProps) {
   const events = useMemo<EventInput[]>(() => [
     ...occurrences.map(entry => {
       const allDay = entry.start.length === 10
-      const accent = tintOf(entry.source || entry.uid).accent
+      const accent = accentOf(entry)
       const block = allDay || mode === 'week'
       const note = occurrenceNote(noteIndex, entry)
       return {
@@ -103,7 +105,7 @@ export function CalendarCanvas(props: CanvasProps) {
       color: span.tone === 'quiet' ? 'var(--cal-rest-soft)' : 'var(--cal-accent-soft)',
       extendedProps: { span, order: 0 },
     })),
-  ], [occurrences, annotations, mode, tintOf, occurrenceKeyOf, noteIndex])
+  ], [occurrences, annotations, mode, accentOf, occurrenceKeyOf, noteIndex])
 
   useLayoutEffect(() => {
     if (!root.current) return
@@ -126,7 +128,7 @@ export function CalendarCanvas(props: CanvasProps) {
       eventOrder: 'order,start,title', eventOrderStrict: true,
       selectable: true, selectMinDistance: 6, selectMirror: true,
       // 拖选预览尚无来源，保存后会写入个人日程。
-      eventColor: eventBlockColor(tintOf('manual').accent),
+      eventColor: eventBlockColor(draftAccent),
       eventContrastColor: 'var(--cal-ink)',
       dayHeaderClass: 'cal-column-heading',
       dayCellInnerClass: 'cal-cell-content',
@@ -186,7 +188,7 @@ export function CalendarCanvas(props: CanvasProps) {
           el.setAttribute('data-occurrence', event.id)
           el.dataset.eventTitle = entry.title
         } else if (isMirror) {
-          el.style.setProperty('--cal-event-ink', callbacks.current.tintOf('manual').accent)
+          el.style.setProperty('--cal-event-ink', callbacks.current.draftAccent)
         }
       },
     }
