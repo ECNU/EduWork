@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, realpath } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { once } from 'node:events'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 async function decisionService(t, auto) {
@@ -123,7 +123,7 @@ test('real Runtime: an approved escalation runs without reaching the user, with 
   assert.equal(state.申请理由, 'Write the report to Downloads')
   assert.deepEqual(state.之前执行的命令, ['ls'])
   assert.equal(state.本次会话创建的文件.length, 1)
-  assert.match(state.本次会话创建的文件[0], /notes\/new\.md$/)
+  assert.equal(state.本次会话创建的文件[0], join(await realpath(result.home), 'notes/new.md'))
   const decided = result.events.filter(event => event.type === 'approval/decided')
   assert.equal(decided.length, 1)
   assert.equal(decided[0].data.outcome, 'allowed-once')
@@ -165,14 +165,14 @@ test('real Runtime: a file tool escalation is reviewed with the file it writes, 
   let outside
   const result = await run(t, { auto: 0.9, escalation: home => {
     outside = `${home}-outside`
-    return call('call-1', 'write', { file_path: '../' + outside.split('/').pop() + '/report.md', content: '# Report\n', sandbox_permissions: 'danger-full-access', justification: 'Write the report next to the workspace' })
+    return call('call-1', 'write', { file_path: `../${basename(outside)}/report.md`, content: '# Report\n', sandbox_permissions: 'danger-full-access', justification: 'Write the report next to the workspace' })
   } })
   assert.deepEqual(result.userAnswers, [])
   assert.equal(result.bodies.length, 2)
   const { state } = result.bodies[0]
   assert.match(state.系统, /，文件工具 write$/)
-  assert.equal(state.待执行的命令, `cat > ../${outside.split('/').pop()}/report.md <<'EOF'\n# Report\nEOF`)
-  assert.deepEqual(state.目标文件, [`${join(await realpath(join(outside, '..')), outside.split('/').pop())}/report.md：还不存在，会新建`])
+  assert.equal(state.待执行的命令, `cat > ../${basename(outside)}/report.md <<'EOF'\n# Report\nEOF`)
+  assert.deepEqual(state.目标文件, [`${join(await realpath(join(outside, '..')), basename(outside), 'report.md')}：还不存在，会新建`])
   assert.equal(await readFile(join(outside, 'report.md'), 'utf8'), '# Report\n')
   assert.deepEqual(result.notices.map(({ data }) => data.source.summary), ['已自动放行（分数 0.900）'])
 })

@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { chmod, mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { join, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { reviewRequest, scriptOf, sessionFacts, THRESHOLDS, verdict } from '../lib/review.js'
 
@@ -124,17 +124,18 @@ test('scriptOf reads the script a single command runs and truncates long ones', 
   await mkdir(root, { recursive: true })
   const dir = await mkdtemp(join(root, 'script-'))
   for (const path of ['work/tools', 'outside/nested']) await mkdir(join(dir, path), { recursive: true })
-  await symlink('../outside/nested', join(dir, 'work/link'))
+  // A junction needs no privilege on Windows; elsewhere the type is ignored.
+  await symlink(join(dir, 'outside/nested'), join(dir, 'work/link'), 'junction')
   const files = { 'work/task.sh': 'echo here', 'work/tools/sync.sh': 'rsync -a out/ host.example:/srv/\n', 'outside/nested/task.sh': 'echo nested',
-    'work/big.py': 'x'.repeat(20000), 'work/run.mjs': 'console.log(1)', 'work/plain.sh': 'echo plain', 'work/group.sh': 'echo group',
-    'work/~/task.sh': 'echo literal tilde' }
+    'work/big.py': 'x'.repeat(20000), 'work/run.mjs': 'console.log(1)', 'work/~/task.sh': 'echo literal tilde' }
   await mkdir(join(dir, 'work/~'))
   for (const [path, text] of Object.entries(files)) await writeFile(join(dir, path), text)
   for (const path of ['work/task.sh', 'work/tools/sync.sh', 'work/~/task.sh']) await chmod(join(dir, path), 0o755)
-  await chmod(join(dir, 'work/group.sh'), 0o654) // others may run it; its owner, this process, may not
   const work = join(dir, 'work')
+  // An absolute path as bash takes it, with forward slashes; on Windows it starts with the drive letter.
+  const sync = `${work.replaceAll(sep, '/')}/tools/sync.sh`
   assert.deepEqual(await scriptOf('bash tools/sync.sh', work), { 'tools/sync.sh': files['work/tools/sync.sh'] })
-  assert.deepEqual(await scriptOf(`${work}/tools/sync.sh --dry-run`, '/'), { [`${work}/tools/sync.sh`]: files['work/tools/sync.sh'] })
+  assert.deepEqual(await scriptOf(`${sync} --dry-run`, '/'), { [sync]: files['work/tools/sync.sh'] })
   assert.deepEqual(await scriptOf("bash -ex 'tools/sync.sh' prod", work), { 'tools/sync.sh': files['work/tools/sync.sh'] })
   assert.deepEqual(await scriptOf("./task.sh --all 'a > b'", work), { './task.sh': 'echo here' })
   assert.deepEqual(await scriptOf('  ./task.sh\n', work), { './task.sh': 'echo here' })
@@ -145,11 +146,33 @@ test('scriptOf reads the script a single command runs and truncates long ones', 
   assert.deepEqual(await scriptOf("'~/task.sh'", work), { '~/task.sh': 'echo literal tilde' })
   const big = await scriptOf('python3 -I big.py', work)
   assert.equal(big['big.py'].length, 16000 + '\n…（后面还有内容，未附上）'.length)
-  // Run directly, a file needs its execute bit; through an interpreter it only needs to be readable.
-  assert.equal(await scriptOf('./plain.sh', work), undefined)
-  assert.equal(await scriptOf('./group.sh', work), undefined)
-  assert.deepEqual(await scriptOf('bash plain.sh', work), { 'plain.sh': 'echo plain' })
   for (const command of ['bash missing.sh', 'ls tools', 'bash tools']) assert.equal(await scriptOf(command, work), undefined, command)
+})
+
+// Windows files have no execute bit; Git Bash runs a file directly without one.
+test('scriptOf reads a script run directly only if this process may execute it', { skip: process.platform === 'win32' && 'Windows files have no execute bit' }, async () => {
+  const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
+  await mkdir(root, { recursive: true })
+  const dir = await mkdtemp(join(root, 'mode-'))
+  for (const path of ['plain.sh', 'group.sh']) await writeFile(join(dir, path), 'echo x')
+  await chmod(join(dir, 'group.sh'), 0o654) // others may run it; its owner, this process, may not
+  assert.equal(await scriptOf('./plain.sh', dir), undefined)
+  assert.equal(await scriptOf('./group.sh', dir), undefined)
+  assert.deepEqual(await scriptOf('bash plain.sh', dir), { 'plain.sh': 'echo x' })
+})
+
+test('scriptOf on Windows reads no path whose meaning depends on the bash found on PATH', { skip: process.platform !== 'win32' && 'Windows only' }, async t => {
+  const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
+  await mkdir(root, { recursive: true })
+  const dir = await mkdtemp(join(root, 'windows-'))
+  await writeFile(join(dir, 'task.sh'), 'echo x')
+  // On this drive the path names the file, but Git Bash looks for `/…` under its own root and WSL under the Linux one.
+  assert.equal(await scriptOf(`bash ${dir.replaceAll(sep, '/').slice(2)}/task.sh`, dir), undefined)
+  // `~` depends on it too: Git Bash's home is the user profile, WSL's is not.
+  const profile = process.env.USERPROFILE
+  t.after(() => { process.env.USERPROFILE = profile })
+  process.env.USERPROFILE = dir
+  assert.equal(await scriptOf('bash ~/task.sh', dir), undefined)
 })
 
 test('scriptOf attaches nothing when the text alone does not say which file runs', async () => {
@@ -165,6 +188,8 @@ test('scriptOf attaches nothing when the text alone does not say which file runs
     // Sequences, cd, variables, globs, quoting and comments.
     'cd tools && bash task.sh', 'cd tools | cat; bash task.sh', 'DIR=tools; bash $DIR/task.sh', 'BASH_ENV=./startup.sh bash task.sh', 'NODE_ENV=production node task.sh', 'bash $DIR/task.sh', 'bash t*.sh', 'bash "quoted.sh extra.sh"',
     'exit 0; bash task.sh', 'false && bash task.sh', 'bash task.sh > task.sh', 'bash task.sh\r', 'bash task.sh\u00a0', 'bash task.sh\u2028', './tools/../task.sh', 'node tools/../task.sh', 'printf done # ; cd tools\nbash task.sh', "node <<'JS'\n// ; bash task.sh\nJS", 'bash task.sh | tee log',
+    // A backslash is no separator: unquoted it escapes the next character, quoted it stays in the name.
+    String.raw`bash tools\task.sh`, String.raw`bash 'tools\task.sh'`, String.raw`bash tools\ extra/task.sh`,
   ]) assert.equal(await scriptOf(command, dir), undefined, command)
 })
 

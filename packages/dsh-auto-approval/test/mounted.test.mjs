@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, realpath, symlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { isAbsolute, join, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
 import { once } from 'node:events'
@@ -84,7 +84,8 @@ test('a plain request asks two questions and is approved on their mean; a rule h
   assert.equal(await escalate('git push origin main', { workdir: 'site' }), 'allowed-once')
   assert.equal(bodies.length, 3)
   assert.equal(bodies[2].body.state.工作区, '/work')
-  assert.equal(bodies[2].body.state.当前目录, '/work/site')
+  // Joined as the bash tool joins it.
+  assert.equal(bodies[2].body.state.当前目录, `/work${sep}site`)
   assert.deepEqual(Object.keys(bodies[2].body.questions), ['decision'])
   assert.match(bodies[2].body.state.风险标记, /^推送和发布/)
   assert.match(logs.at(-1)[1], /approved/)
@@ -94,19 +95,22 @@ test('the workspace is the sandbox boundary; the current directory follows the s
   const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
   assert.equal(await mount({ ...base, baseURL }, { cwd: '/elsewhere' }).escalate('cp a.csv ~/Downloads/', { workdir: 'site' }), 'allowed-once')
   assert.equal(bodies[0].body.state.工作区, '/work')
-  assert.equal(bodies[0].body.state.当前目录, '/elsewhere/site')
-  // A workdir through a link is where the shell actually starts, and the script read is the one it runs.
+  assert.equal(bodies[0].body.state.当前目录, `/elsewhere${sep}site`)
+  // A workdir through a link is where the shell actually starts, and the script read is the one it runs: POSIX follows
+  // the link before `..`, Windows drops `link\..` from the path first.
   const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
   await mkdir(root, { recursive: true })
   const dir = await mkdtemp(join(root, 'workdir-'))
   await mkdir(join(dir, 'work'))
   await mkdir(join(dir, 'outside/nested'), { recursive: true })
-  await symlink('../outside/nested', join(dir, 'work/link'))
-  await writeFile(join(dir, 'work/task.sh'), 'echo here')
+  // A junction needs no privilege on Windows; elsewhere the type is ignored.
+  await symlink(join(dir, 'outside/nested'), join(dir, 'work/link'), 'junction')
+  await writeFile(join(dir, 'work/task.sh'), 'echo work')
   await writeFile(join(dir, 'outside/task.sh'), 'echo outside')
+  const starts = process.platform === 'win32' ? 'work' : 'outside'
   assert.equal(await mount({ ...base, baseURL }, { cwd: join(dir, 'work') }).escalate('bash task.sh', { workdir: 'link/..' }), 'allowed-once')
-  assert.equal(bodies.at(-1).body.state.当前目录, await realpath(join(dir, 'outside')))
-  assert.deepEqual(bodies.at(-1).body.state.命令要运行的脚本内容, { 'task.sh': 'echo outside' })
+  assert.equal(bodies.at(-1).body.state.当前目录, await realpath(join(dir, starts)))
+  assert.deepEqual(bodies.at(-1).body.state.命令要运行的脚本内容, { 'task.sh': `echo ${starts}` })
   // PowerShell commands are reviewed without a script.
   assert.equal(await mount({ ...base, baseURL }, { cwd: join(dir, 'work') }).escalate('bash task.sh', { name: 'pwsh' }), 'allowed-once')
   assert.equal(bodies.at(-1).body.state.命令要运行的脚本内容, undefined)
@@ -305,10 +309,11 @@ test('file tools are reviewed as the command they amount to, with each file they
   const dir = await realpath(await mkdtemp(join(root, 'files-')))
   await mkdir(join(dir, 'work')); await mkdir(join(dir, 'out'))
   await writeFile(join(dir, 'out/old.md'), 'old')
-  await symlink(join(dir, 'out'), join(dir, 'work/link'))
+  // A junction needs no privilege on Windows; elsewhere the type is ignored.
+  await symlink(join(dir, 'out'), join(dir, 'work/link'), 'junction')
   // The file system the tools write through: relative paths against the session's directory, links followed.
   const fs = { resolve: async (path, { cwd }) => {
-    const displayPath = path.startsWith('/') ? path : join(cwd, path)
+    const displayPath = isAbsolute(path) ? path : join(cwd, path)
     return { displayPath, targetKey: displayPath.replace(join(dir, 'work/link'), join(dir, 'out')) }
   } }
   const mounted = mount({ ...base, baseURL }, { services: { fs }, cwd: join(dir, 'work') })

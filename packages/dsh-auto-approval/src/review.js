@@ -84,10 +84,11 @@ export function sessionFacts(events, callId) {
 // path, directly or through an interpreter whose options take no code (`node -e`, `python3 -c`, `bash -c`), are
 // no syntax check (`bash -n`) and read no profile first (`bash -l`), with plain arguments. Sequences, `cd`, variables (including assignments before the
 // command, such as BASH_ENV), globs, redirections (which can empty the script first), `..` in the path (interpreters
-// resolve it differently) and every other form attach no script; the command itself is still reviewed. Groups:
-// interpreter, quote, file; a file starting with - or + would be read as an option.
+// resolve it differently) and every other form attach no script; the command itself is still reviewed. A path may start
+// with a drive letter (`D:/…`), which bash on Windows reads as that drive. Groups: interpreter, quote, file; a file
+// starting with - or + would be read as an option.
 const ARG = String.raw`(?:[\w./:,@%+=-]+|'[^']*'|"[^"$\x60\\!]*")`
-const RUNS = new RegExp(String.raw`^(?:(python3?(?:[ \t]+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:[ \t]+-[euvx]+)*)[ \t]+)?(["']?)((?:~/)?(?![-+])[\w./@+-]+\.(?:py|mjs|js|sh))\2(?:[ \t]+${ARG})*[ \t]*$`)
+const RUNS = new RegExp(String.raw`^(?:(python3?(?:[ \t]+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:[ \t]+-[euvx]+)*)[ \t]+)?(["']?)((?:[A-Za-z]:/|~/)?(?![-+])[\w./@+-]+\.(?:py|mjs|js|sh))\2(?:[ \t]+${ARG})*[ \t]*$`)
 
 /**
  * The content of the script a bash command runs, read from disk, so the rules and the model see what it does. Missing,
@@ -99,6 +100,8 @@ export async function scriptOf(command, cwd) {
   const [, interpreter, quote, path] = command.replace(/^[ \t\n]+|[ \t\n]+$/g, '').match(RUNS) ?? []
   // A bare name run without an interpreter is looked up on PATH, not in the current directory.
   if (!cwd || !path || (!interpreter && !path.includes('/')) || path.split('/').includes('..')) return undefined
+  // On Windows the bash found on PATH decides where `/` and `~` lead: Git Bash's own root and home, or WSL's.
+  if (process.platform === 'win32' && (path.startsWith('/') || !quote && path.startsWith('~/'))) return undefined
   // Quotes keep `~` literal.
   const expanded = quote ? path : path.replace(/^~(?=\/)/, homedir())
   const file = isAbsolute(expanded) ? expanded : `${cwd}${sep}${expanded}`
