@@ -96,11 +96,12 @@ func run(args []string) error {
 	f := flag.NewFlagSet("serve", flag.ContinueOnError)
 	root := f.String("root", "", "")
 	edition := f.String("edition", "", "")
+	stateFlag := f.String("state", "", "")
 	parent := f.Int("parent-pid", 0, "")
 	if err := f.Parse(args[1:]); err != nil {
 		return err
 	}
-	if !filepath.IsAbs(*root) || !filepath.IsAbs(*edition) || *parent <= 0 {
+	if !filepath.IsAbs(*root) || !filepath.IsAbs(*edition) || (*stateFlag != "" && !filepath.IsAbs(*stateFlag)) || *parent <= 0 {
 		return fmt.Errorf("invalid native startup arguments")
 	}
 	var identity struct {
@@ -114,7 +115,10 @@ func run(args []string) error {
 	if json.Unmarshal(bytes, &identity) != nil || identity.Shell != "electron" {
 		return fmt.Errorf("not an Electron installation")
 	}
-	state := filepath.Join(*root, "data/state")
+	state := *stateFlag
+	if state == "" {
+		state = filepath.Join(*root, "data/state")
+	}
 	self, err := os.Executable()
 	if err != nil {
 		return err

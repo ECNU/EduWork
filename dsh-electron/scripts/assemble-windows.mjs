@@ -2,7 +2,7 @@ import { assertPreparedNode } from '../../scripts/lib/node-runtime-contract.mjs'
 // Assembles the independent Windows Electron candidate from the frozen desktop
 // product, the shell build and the verified Electron runtime. Node.js port of
 // assemble-windows.ps1.
-import { rename } from 'node:fs/promises'
+import { rename, readdir, lstat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
@@ -29,6 +29,40 @@ const payloadFilters = {
 // Electron and the installer both read this manifest. Installed builds must
 // declare the product version there, or the uninstall entry and app.getVersion()
 // would report the DSH component version instead of EduWork's.
+// The updater replaces only manifest-owned program files. config/ stays with
+// the user, data/ never belongs in an installed program tree, and the manifest
+// itself is handled separately by the updater.
+export async function installedManifestRows(root) {
+  const rows = []
+  const walk = async (directory, prefix) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name
+      if (!prefix && (entry.name === 'config' || entry.name === 'data' || entry.name === 'RELEASE-MANIFEST.json')) continue
+      const path = join(directory, entry.name)
+      if (entry.isDirectory()) await walk(path, relative)
+      else if (entry.isFile()) rows.push({ path: relative, bytes: (await lstat(path)).size, sha256: await sha256File(path) })
+      else throw new Error(`Unsupported installed candidate entry: ${relative}`)
+    }
+  }
+  await walk(root, '')
+  return rows.sort((a, b) => a.path.localeCompare(b.path, 'en'))
+}
+
+export async function writeInstalledManifest({ output, version, distribution }) {
+  const files = await installedManifestRows(output)
+  // The updater verifies updates against this manifest, so installed builds
+  // must use the same release contract as update packages.
+  await writeJSON(join(output, 'RELEASE-MANIFEST.json'), {
+    schemaVersion: 1, kind: 'eduwork-portable-release', version, launcherVersion: version,
+    flavor: 'offline', distribution, shell: 'electron', platform: 'windows-x64',
+    launch: {
+      protocol: 'eduwork-desktop/v1', shell: 'electron', executable: 'EduWork-Electron.exe',
+      migration: 'wails-host-v1', distribution,
+    },
+    files,
+  })
+}
+
 export function desktopAppPackage({ identity, version, dataLayout = 'portable' }) {
   const installed = dataLayout === 'installed'
   return {
@@ -172,13 +206,14 @@ export async function assembleWindows({
       ? `Run EduWork-Electron.exe. Personal data stays under %LOCALAPPDATA%\\EduWork\\${identity.distribution}.`
       : `Run EduWork-Electron.exe. Local data stays under data/${identity.distribution}-electron.`,
     ...(dataLayout === 'installed'
-      ? ['Personal data does not move with the program folder. This candidate ships',
-        'without software updates; the installer step wires them in later.']
+      ? ['Personal data does not move with the program folder. Software updates use',
+        'the source configured in config/eduwork.jsonc; without a source they stay disabled.']
       : ['Close the application before moving the entire folder. When an update feed is',
         'configured, use Settings to check/download updates and choose when to restart.']),
     'To merge history from another installation, select its program root under',
     'Settings > Import history. Existing credentials and settings remain unchanged.',
   ].join('\n'))
+  if (dataLayout === 'installed') await writeInstalledManifest({ output, version, distribution: identity.distribution })
   console.log(`Independent Electron candidate assembled: ${output}`)
   return output
 }

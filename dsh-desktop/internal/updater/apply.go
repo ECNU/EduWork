@@ -351,6 +351,11 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 		return rollback(err)
 	}
 	_ = command.Process.Release()
+	// The installed files now answer for the new version. Keep the Windows
+	// uninstall registration in step without touching the uninstaller itself.
+	if err := updateInstalledRegistrationVersion(pending.InstallDir, pending.Version); err != nil {
+		fmt.Fprintln(os.Stderr, "update installation registration:", err)
+	}
 	_ = os.Remove(PendingFile(stateDir))
 	_ = os.Remove(pending.ZIPPath)
 	_ = os.Remove(rejectedDeltaFile(stateDir, pending.Version))

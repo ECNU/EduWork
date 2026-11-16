@@ -38,12 +38,16 @@ function argument(argv,key) {
   if(hits.length>1 || (hits.length&&(!argv[hits[0]+1]||argv[hits[0]+1].startsWith('--'))))throw Error('Invalid migration launch arguments')
   return hits.length?argv[hits[0]+1]:undefined
 }
-export async function readMigrationLaunch({root,settings,argv}) {
+export async function readMigrationLaunch({root,stateRoot,settings,argv}) {
   let file=argument(argv,'--eduwork-migration'),health=argument(argv,'--update-health-file')
   if(!file&&!health)return null
   if(!file&&health&&isAbsolute(health)) {
-    root=await realpath(root);health=await owned(root,health)
-    const rel=relative(join(root,'data/state/updates/transactions'),health).split(sep)
+    root=await realpath(root)
+    // Installed layouts keep updater state with personal data, outside the
+    // program root; portable layouts use the program root for both.
+    const healthRoot=stateRoot?await realpath(stateRoot):root
+    health=await owned(healthRoot,health)
+    const rel=relative(join(healthRoot,'data/state/updates/transactions'),health).split(sep)
     if(rel.length!==2||rel[0]!==settings.productVersion||rel[1]!=='health.ok')throw Error('Unexpected update health location')
     return {kind:'electron-update-v1',healthFile:health,version:settings.productVersion}
   }

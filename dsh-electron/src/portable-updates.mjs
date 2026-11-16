@@ -51,11 +51,13 @@ export function editablePortableUpdateConfiguration({defaults={},updates={},prio
  return result
 }
 
-export async function startPortableUpdates({root,updates={},defaults={},version,distribution,onQuit,enabled=true,applyScheduled=true,platform=process.platform,spawnProcess=spawn}) {
+export async function startPortableUpdates({root,stateRoot=root,updates={},defaults={},version,distribution,onQuit,enabled=true,applyScheduled=true,platform=process.platform,spawnProcess=spawn}) {
  // Callers may omit this backend entirely without touching pending installs.
  // The shared software-update controller owns the user's persisted choice.
+ // Installed layouts keep state outside the program directory; portable
+ // layouts use the program root for both.
  if(platform!=='win32'||!enabled)return null
- const state=join(root,'data/state/updates')
+ const state=join(stateRoot,'data/state/updates')
  const prior=await readFile(join(root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
  const configuration=resolveUpdateConfiguration(defaults,updates,prior)
  const edition=portableUpdateEdition({configuration,version,prior,distribution})
@@ -63,7 +65,7 @@ export async function startPortableUpdates({root,updates={},defaults={},version,
  const executable=join(root,'resources/update/EduWork-Updater.exe')
  let child
  try {
-  child=spawnProcess(executable,['serve','--root',root,'--edition',path,'--parent-pid',String(process.pid)],{windowsHide:true,stdio:['pipe','pipe','pipe']})
+  child=spawnProcess(executable,['serve','--root',root,'--edition',path,'--state',join(stateRoot,'data/state'),'--parent-pid',String(process.pid)],{windowsHide:true,stdio:['pipe','pipe','pipe']})
   // Wait for OS process creation before writing to stdin. On denied/missing
   // executables, Node emits an async error and writing early can also emit EPIPE.
   await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject)})

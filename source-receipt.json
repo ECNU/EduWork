@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-16T06:30:39.670Z",
-  "fileSetSHA256": "1cb3e60c03d3644b4ab55f486b465e5aa9fc4a37a2473aa5005d64674a69b594",
+  "createdAt": "2026-11-16T08:12:11.622Z",
+  "fileSetSHA256": "c0064e678374619ad71e0a669a74a86470950e9a375810880160211569fc8380",
   "files": [
     {
       "path": ".gitattributes",
@@ -29,7 +29,7 @@
     },
     {
       "path": ".github/workflows/development-desktop.yml",
-      "sha256": "4ed6853dc2c4bcea28e28664ccec87e72262624b88f43a35bac3f57d963ae8e6"
+      "sha256": "e3b461dacac4042d1e3c0547954426dbbd5a2bdc4ea083f8828b6b5816980f74"
     },
     {
       "path": ".github/workflows/packages-release.yml",
@@ -613,7 +613,7 @@
     },
     {
       "path": "dsh-desktop/cmd/eduwork-updater/main.go",
-      "sha256": "977fdf7f5b05d6b60ead2e5a7ef01049aa0e15868c72cdd52d27309e7b7d30e8"
+      "sha256": "05c7128b1dd12344749e737bab9bb940b1b8e211435bd960a7252ec1188d2a25"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-updater/runtime_access_test.go",
@@ -957,7 +957,7 @@
     },
     {
       "path": "dsh-desktop/internal/updater/apply.go",
-      "sha256": "51dbc5fb80ea51cc48200de2761529fee787085944206e53228a3e5ae1297fc6"
+      "sha256": "f5f87eb9a27b13164ef2c0864e9f886659f3f9cffad57435eee292d3f518a702"
     },
     {
       "path": "dsh-desktop/internal/updater/delta_test.go",
@@ -1002,6 +1002,22 @@
     {
       "path": "dsh-desktop/internal/updater/process_windows.go",
       "sha256": "1569b21d23f85d9ad441bce39242e60b2e81ffa9ec5b4b099ba78b57d138c35a"
+    },
+    {
+      "path": "dsh-desktop/internal/updater/registration_other.go",
+      "sha256": "30a2614f5473cb06129444f06532d01a84c05d867fd9a8134cec1c47e84f634f"
+    },
+    {
+      "path": "dsh-desktop/internal/updater/registration_test.go",
+      "sha256": "6174f88b9c3e607d1457e3a7cde2a8a82386f1462e83628b986e0728528d5d18"
+    },
+    {
+      "path": "dsh-desktop/internal/updater/registration_windows.go",
+      "sha256": "744e7c7d3cabfcde0afeb42431accf4168a847dd124e635015760d96f87f2186"
+    },
+    {
+      "path": "dsh-desktop/internal/updater/registration.go",
+      "sha256": "9a77d25b05a6eda4917894e635afebe4ae32c2e870d3dfac488fb62637b417d5"
     },
     {
       "path": "dsh-desktop/internal/updater/rollback_windows_test.go",
@@ -1145,7 +1161,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.mjs",
-      "sha256": "edb5b6efd0112c7fa852afa897e3d7edba80d677e0d74a3c2246bc8b5471713d"
+      "sha256": "7211960b86dd5e38d2743b492c65ee0f56f9f241b1597ead30b18d3dd41e23b4"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
@@ -1309,7 +1325,7 @@
     },
     {
       "path": "dsh-electron/src/legacy-migration.mjs",
-      "sha256": "221cd5c3ecd07d8340663c75108fec4027f87621fedbeff101761aae970ebdec"
+      "sha256": "3edd6e199f73c3596666c2c95060e8bf596a721abb2c45d47e456702ea25c91b"
     },
     {
       "path": "dsh-electron/src/lifecycle.mjs",
@@ -1345,7 +1361,7 @@
     },
     {
       "path": "dsh-electron/src/portable-updates.mjs",
-      "sha256": "1e55409f936dffd4968367fd0a21f07a77539761bf98f7ebb92ce53f35ae4354"
+      "sha256": "e395cdeaa760ed0b6b50d2c39f87ab98e8fbda7f7b5cb639a6b25bd66920a39f"
     },
     {
       "path": "dsh-electron/src/preload-pet.cjs",
@@ -1353,7 +1369,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "59afd1eba5d58e2632c86fa72b825d87967e5d4d05564d0825902cea92160ef5"
+      "sha256": "360dd7686ad1f8f823ae01ab1a52575d93df50e8ef0ed123651b86475aad594f"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1536,12 +1552,16 @@
       "sha256": "8523f087e7c598551dd12590a15f9d647148ad0bebbb795ca2fb45617bbe1a01"
     },
     {
+      "path": "dsh-electron/tests/installed-manifest.test.mjs",
+      "sha256": "3e5ddcbd22802dffa113d8e4d4e860db09a9c7dab6cd8e8ce7924b100bd63b59"
+    },
+    {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
       "sha256": "36a0ca295603d0f52a3ce0d624f9ef8e971519a32e82fcd27e55b1edd176ec49"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
-      "sha256": "199ea4b62fb127b880d32b266aa70a8f149d59398d8fb1ad7d4e41f4f7e3fa38"
+      "sha256": "6ec13a00442aa8b2dd4196cc18eeff0782c558f3d627ab1c32faa1af3c5d5dc7"
     },
     {
       "path": "dsh-electron/tests/lifecycle.test.mjs",
@@ -1573,7 +1593,7 @@
     },
     {
       "path": "dsh-electron/tests/portable-updates-startup.test.mjs",
-      "sha256": "618d6a1908fcb41cd3b6178464e7cc57233867b3864cb9ef0e79fca00e38d619"
+      "sha256": "62df4c0c02f15e15d9311327addcd80661598ad238ae053e919e72ae6aa89074"
     },
     {
       "path": "dsh-electron/tests/prepare-electron-macos.test.mjs",
@@ -7660,6 +7680,10 @@
       "sha256": "16b7314f6e2d90d6a20dd6647f31d18fef2684241f634d6c7a53fdc4b425f1f6"
     },
     {
+      "path": "scripts/pack-windows-update.mjs",
+      "sha256": "822d7e96312a1c0a3923fa9131a3b050a91b24005c967af1835a7c629a53246e"
+    },
+    {
       "path": "scripts/package-macos-external-config.mjs",
       "sha256": "c0e83d8f2093dd443cd0f61f75554ef2a5072e5720b37e63cf272c39e3491c08"
     },
@@ -8010,6 +8034,10 @@
     {
       "path": "scripts/test/windows-update-delta.test.mjs",
       "sha256": "b9de0bd2108646acecf4aa6a3a8481fd15887104827f2b69d4e84420feb6a241"
+    },
+    {
+      "path": "scripts/test/windows-update-pack.test.mjs",
+      "sha256": "04e03a4788f45607eb07c6d590bdf1249f9da698dc54d6ce3a5926bc2e0ca107"
     },
     {
       "path": "scripts/update-delta-bases.mjs",

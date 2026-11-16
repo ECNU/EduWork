@@ -254,7 +254,7 @@ async function prepareDesktop() {
     if (startupCancelled) throw new Error('Desktop preparation was cancelled')
   }
   check()
-  migrationLaunch = await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
+  migrationLaunch = await readMigrationLaunch({root:paths.root,stateRoot:paths.userRoot,settings,argv:process.argv})
   check()
   const appearance = startupAppearance()
   if (appearance.dock) app.dock.setIcon(appearance.dock)
@@ -318,11 +318,11 @@ async function prepareDesktop() {
   }
   const software = await softwareUpdateControl({dataRoot:paths.updateDataRoot,version:settings.productVersion,
     policy:contentUpdates.policy,defaultEnabled:user.updates.provider!=='disabled',
-    supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32'&&settings.dataLayout!=='installed',onPolicy:saveUpdatePolicy,
+    supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32',onPolicy:saveUpdatePolicy,
     start:({policy,applyScheduled})=>process.platform==='darwin'
       ? startMacSparkleUpdates({appPath:app.getAppPath(),version:settings.productVersion,enabled:true,
         feeds:effectiveUpdateDefaults.macFeeds,policy,onPolicy:saveUpdatePolicy})
-      : startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
+      : startPortableUpdates({root:paths.root,stateRoot:paths.userRoot,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
         version:settings.productVersion,distribution:settings.distribution,applyScheduled,onQuit:()=>desktopExit.handoff()})})
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
     beforeInstall:()=>process.platform==='darwin'||confirmQuit(),onPolicy:saveUpdatePolicy})
