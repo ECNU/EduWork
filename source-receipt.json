@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-15T13:46:58.636Z",
-  "fileSetSHA256": "3c84d1d2b4c07cd717f648f0b4ad55e08296d8dff2e363bd3b2b1f6392671017",
+  "createdAt": "2026-11-16T11:24:22.868Z",
+  "fileSetSHA256": "c49a2812823259e57ae81e25dce6746be333cec5196e14c8aa593e6632f441e4",
   "files": [
     {
       "path": ".gitattributes",
@@ -3065,7 +3065,7 @@
     },
     {
       "path": "dsh-plugins/desktop-services/lib/attention.js",
-      "sha256": "08515df7db9d4f5976701011b0ec725ceb1abe90ea107a73520a72d4bb966eb3"
+      "sha256": "6145e1b38a5bb03f29372204a0b906e3873bfc76c3189a56de85ff32e500ecd3"
     },
     {
       "path": "dsh-plugins/desktop-services/lib/directory-picker.js",
@@ -3089,7 +3089,7 @@
     },
     {
       "path": "dsh-plugins/desktop-services/test/attention-host.test.mjs",
-      "sha256": "d1ea2a32e23f78e467ccfebc4d7ef941c3bed43613f4226d8f68b65c378bd90c"
+      "sha256": "b8137f2e916b2d4e010604b1c65854ec154f9ff639f6bc653b3345039434a56c"
     },
     {
       "path": "dsh-plugins/desktop-services/test/workspace-access.test.mjs",

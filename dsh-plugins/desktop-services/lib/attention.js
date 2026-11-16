@@ -136,15 +136,16 @@ export class DesktopAttention {
 }
 
 export function observeDesktopAttention(ctx, attention) {
-  const root = session => ctx.get('agents')?.roots().some(agent => agent.id === session.id) === true
-  // Follow subagent lineage, as DSH does; a fork shares the field without the origin.
+  // A conversation of its own: a live agent that DSH did not start as a subagent.
+  const root = session => ctx.get('agents')?.get(session.id) !== undefined && session.header.origin !== 'subagent'
+  // Follow subagent lineage through live agents; a fork shares the field without the origin.
   const owner = session => {
     const seen = new Set()
     for (let header = session.header; header?.origin === 'subagent' && !seen.has(header.parentSession);) {
       seen.add(header.parentSession)
       const parent = ctx.get('agents')?.get(header.parentSession)
       if (!parent) return
-      if (root(parent)) return String(parent.id)
+      if (root(parent.session)) return String(parent.id)
       header = parent.session.header
     }
   }
