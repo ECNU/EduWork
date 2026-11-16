@@ -101,6 +101,6 @@
 
 ## 开发与装配
 
-源码在 `src/`，构建仅复制 ESM 模块。Node >=24.22.1，已在 DSH 0.2.2-rc.1 上验证。将 `EDUWORK_AUTO_APPROVAL_RUNTIME` 指向锁定 Runtime（含 package.json/node_modules 的目录），运行 `npm ci`、`npm run check`；测试使用合成材料与本地 HTTP，并在真实 Runtime 上跑通从模型发起申请到审批完成的流程。
+源码在 `src/`，构建仅复制 ESM 模块。Node >=24.22.1，已在 DSH 0.2.2-rc.1 和 0.2.2-rc.3 上验证。将 `EDUWORK_AUTO_APPROVAL_RUNTIME` 指向锁定 Runtime（含 package.json/node_modules 的目录），运行 `npm ci`、`npm run check`；测试使用合成材料与本地 HTTP，并在真实 Runtime 上跑通从模型发起申请到审批完成的流程。
 
 仓库统一入口为 `node scripts/packages/manage.mjs check dsh-auto-approval` 和 `pack dsh-auto-approval`，详见[包维护指南](../../docs/PACKAGES.md)。正式产品需先发布并核验 npm 原包，再更新精确锁。

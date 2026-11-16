@@ -101,6 +101,6 @@ A user message over 300 characters keeps its opening and its end, since a reply 
 
 ## Development and assembly
 
-Sources live in `src/`; the build only copies ESM modules. Node >=24.22.1, verified on DSH 0.2.2-rc.1. Point `EDUWORK_AUTO_APPROVAL_RUNTIME` at the locked Runtime (a directory with package.json/node_modules) and run `npm ci` and `npm run check`. Tests use synthetic material and local HTTP, and run the flow from a model's request to a completed approval on the real Runtime.
+Sources live in `src/`; the build only copies ESM modules. Node >=24.22.1, verified on DSH 0.2.2-rc.1 and 0.2.2-rc.3. Point `EDUWORK_AUTO_APPROVAL_RUNTIME` at the locked Runtime (a directory with package.json/node_modules) and run `npm ci` and `npm run check`. Tests use synthetic material and local HTTP, and run the flow from a model's request to a completed approval on the real Runtime.
 
 Repository entry points are `node scripts/packages/manage.mjs check dsh-auto-approval` and `pack dsh-auto-approval`; see the [package maintenance guide](../../docs/PACKAGES_EN.md). A production product must first publish and verify the npm package, then update its exact lock.
