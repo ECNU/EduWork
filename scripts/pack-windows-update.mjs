@@ -15,6 +15,11 @@ function requireMatch(condition, message) {
   if (!condition) throw new Error(message)
 }
 
+function validateFeedTarget(channel, target) {
+  requireMatch(channel === 'stable' || channel === 'development', 'Update channel must be stable or development')
+  requireMatch(/^windows-(?:amd64|x64)$/.test(target), 'Update target must be a Windows desktop target')
+}
+
 export function updateDistributionName(distribution) {
   const name = DISTRIBUTION_NAMES[distribution]
   requireMatch(name, 'Unknown update distribution')
@@ -35,6 +40,7 @@ export function validateUpdateBaseURL(baseURL) {
 
 export function updateManifest({ distribution, version, baseURL, channel = 'development', target = 'windows-amd64', artifact }) {
   baseURL = validateUpdateBaseURL(baseURL)
+  validateFeedTarget(channel, target)
   const fileName = updateArtifactName(version, distribution)
   return {
     schemaVersion: 1,
@@ -79,6 +85,7 @@ export async function packWindowsUpdate({ candidate, output, baseURL, installedR
   candidate = fullPath(candidate)
   output = fullPath(output)
   baseURL = validateUpdateBaseURL(baseURL)
+  validateFeedTarget(channel, target)
   requireMatch(!await pathExists(output), 'Update output must be a new directory')
   const desktop = await readJSON(join(candidate, 'resources/app/eduwork.desktop.json'))
   const release = await readJSON(join(candidate, 'release.json'))

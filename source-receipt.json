@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-16T08:12:11.622Z",
-  "fileSetSHA256": "c0064e678374619ad71e0a669a74a86470950e9a375810880160211569fc8380",
+  "createdAt": "2026-11-16T08:18:24.297Z",
+  "fileSetSHA256": "2fee1331a71cf5bc9020699b61725777b3e9f9ef2027336f7bdc18be475960eb",
   "files": [
     {
       "path": ".gitattributes",
@@ -7681,7 +7681,7 @@
     },
     {
       "path": "scripts/pack-windows-update.mjs",
-      "sha256": "822d7e96312a1c0a3923fa9131a3b050a91b24005c967af1835a7c629a53246e"
+      "sha256": "de91119c19c8e8d771db845e99e6f4184c222c95e984d5c3f113ba37afab6bdc"
     },
     {
       "path": "scripts/package-macos-external-config.mjs",
@@ -8037,7 +8037,7 @@
     },
     {
       "path": "scripts/test/windows-update-pack.test.mjs",
-      "sha256": "04e03a4788f45607eb07c6d590bdf1249f9da698dc54d6ce3a5926bc2e0ca107"
+      "sha256": "46495155c803715c81be230498e2d2db99e16bfeaa5d11623e77df8fcdf3818a"
     },
     {
       "path": "scripts/update-delta-bases.mjs",

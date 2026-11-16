@@ -49,6 +49,8 @@ test('update manifest names the artifact under its channel and target', () => {
     sha256Url: `${baseURL}/development/EduWork-${version}-windows-x64-update.zip.sha256`,
     shell: 'electron',
   }])
+  assert.throws(() => updateManifest({ distribution: 'eduwork', version, baseURL, channel: '../escape', artifact: { bytes: 1, sha256: 'a'.repeat(64) } }), /channel/)
+  assert.throws(() => updateManifest({ distribution: 'eduwork', version, baseURL, target: 'linux-x64', artifact: { bytes: 1, sha256: 'a'.repeat(64) } }), /target/)
 })
 
 test('update base URLs are HTTPS without credentials, query or fragment', () => {
