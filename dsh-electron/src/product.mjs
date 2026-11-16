@@ -1,10 +1,11 @@
 import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification, clipboard, net, powerMonitor } from 'electron'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
+import { createTaskbarIndicator } from './taskbar-indicator.mjs'
 import { createDesktopPet } from './desktop-pet.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
-import { join, isAbsolute, dirname } from 'node:path'
+import { join, isAbsolute, dirname, basename } from 'node:path'
 import { execFile } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
@@ -66,6 +67,10 @@ export const productUpdateObserver = createProductUpdateObserver({
 })
 let publisher
 let taskNotifications, notificationAdapter
+const taskbar = createTaskbarIndicator({
+  platform: process.platform, nativeImage, getDock: () => app.dock,
+  warn: error => desktopHostLog(`[taskbar] ${error.message}\n`),
+})
 let desktopPet, petMenu = () => []
 let refreshTray = () => {}
 const lifecycle = new DesktopLifecycle()
@@ -109,7 +114,7 @@ export async function stopDesktopServices() {
   // The lifecycle already reflects Host/bridge failures; pet/notification/tray
   // cleanup is cosmetic for process exit but must still be attempted and logged.
   const causes = [...lifecycle.failures, ...(serviceFailure === undefined ? [] : [serviceFailure])]
-  for (const close of [() => desktopPet?.close(), () => taskNotifications?.close(),
+  for (const close of [() => desktopPet?.close(), () => taskNotifications?.close(), () => taskbar.update({ count: 0 }),
     () => { tray?.destroy(); tray = undefined }]) {
     try { close() } catch (error) { causes.push(error) }
   }
@@ -343,14 +348,23 @@ async function prepareDesktop() {
   process.env.EDUWORK_ELECTRON_VERSION = process.versions.electron
   process.env.EDUWORK_CHROMIUM_VERSION = process.versions.chrome
   process.env.EDUWORK_PRODUCT_NAME = settings.productName
-  const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage)
+  const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage, {
+    confirmReplacement: async () => {
+      const zh = app.getLocale().toLowerCase().startsWith('zh')
+      const { response } = await showDesktopMessageBox({ type: 'warning', title: settings.productName,
+        message: zh ? '当前无法读取已保存的凭据。要备份原文件并写入新凭据吗？' : 'Saved credentials cannot be read. Back up the file and save new credentials?',
+        detail: zh ? '如果系统钥匙串暂时锁定，请先取消并解锁后重试。继续后，其他已保存的账号和密钥可能需要重新配置。' : 'If the system keychain is locked, cancel, unlock it, and retry. Continuing may require you to set up other accounts and keys again.',
+        buttons: zh ? ['取消', '备份并继续'] : ['Cancel', 'Back up and continue'], defaultId: 0, cancelId: 0 })
+      return response === 1
+    },
+    onUnreadable: ({ aside }) => desktopHostLog(JSON.stringify({ component: 'credential-vault', event: 'unreadable-backup', kept: basename(aside) }) + '\n') })
   const showNotificationWindow = () => { if (updateCompleted && mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } }
   notificationAdapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
     activate: key => taskNotifications.activate(key), show: showNotificationWindow, failed: () => { taskNotifications.delivery = 'unavailable' } })
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
     show: showNotificationWindow,
     publish: value => notificationAdapter.publish(value), dismiss: () => notificationAdapter.dismiss(),
-    changed: () => { refreshTray(); desktopPet.update(taskNotifications) } })
+    changed: status => { taskbar.update(status); refreshTray(); desktopPet.update(taskNotifications) } })
   // The pet page comes from the product's pet plugin; it never loads from a user plugin directory.
   let activation
   desktopPet = createDesktopPet({ packageRoot: join(paths.product, 'd/node_modules/@eduwork/dsh-desktop-pet'),
@@ -442,6 +456,7 @@ function shouldExitOnClose() { return (user?.closeAction ?? initialCloseAction) 
 
 export async function attachDesktopWindow(window) {
   mainWindow = window
+  taskbar.attach(window)
   mainWindowPresented = false
   window.on('show', () => { mainWindowPresented = true })
   window.setTitle(settings.productName)

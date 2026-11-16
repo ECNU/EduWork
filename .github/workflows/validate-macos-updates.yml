@@ -29,7 +29,9 @@ on:
       - 'dsh-electron/tests/tray-icon.electron.mjs'
       - 'dsh-electron/tests/task-notifications.electron.mjs'
       - 'dsh-electron/tests/task-notifications.test.mjs'
+      - 'dsh-electron/tests/taskbar-indicator.test.mjs'
       - 'dsh-electron/src/task-notifications.mjs'
+      - 'dsh-electron/src/taskbar-*'
       - 'dsh-electron/src/desktop-brand.mjs'
       - 'dsh-plugins/desktop-services/lib/attention.js'
       - 'assets/eduwork/tray-black.png'
@@ -88,7 +90,7 @@ jobs:
         run: '"$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" dsh-electron/tests/window-visibility.electron.mjs'
       - name: Verify native notification adapter and tray navigation
         run: |
-          node --test dsh-electron/tests/task-notifications.test.mjs
+          node --test dsh-electron/tests/task-notifications.test.mjs dsh-electron/tests/taskbar-indicator.test.mjs
           EDUWORK_TEST_EVIDENCE="$RUNNER_TEMP/sparkle-check/evidence" "$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" dsh-electron/tests/task-notifications.electron.mjs
       - name: Verify user configuration initialization in Electron
         run: node dsh-electron/tests/user-config-electron-smoke.mjs "$RUNNER_TEMP/sparkle-check" "$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
