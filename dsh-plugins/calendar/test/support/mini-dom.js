@@ -31,7 +31,9 @@ class Element {
     this.childNodes = []
     this.parentNode = null
     this.attributes = new Map()
-    this.style = {}
+    this.style = {
+      setProperty(name, value) { this[name] = String(value) },
+    }
     this._classes = new Set()
     this._listeners = new Map()
     this.classList = new ClassList(this)

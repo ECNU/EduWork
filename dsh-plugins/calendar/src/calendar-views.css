@@ -6,8 +6,10 @@
   --cal-line: var(--dsw-alias-border-l1, ButtonBorder);
   --cal-accent: var(--dsw-alias-state-business-primary, Highlight);
   --cal-accent-soft: var(--dsw-alias-state-business-tertiary, color-mix(in srgb, var(--cal-accent) 12%, Canvas));
-  --cal-rest: #487a61;
-  --cal-rest-soft: color-mix(in srgb, var(--cal-rest) 15%, var(--cal-surface));
+  --cal-rest: color-mix(in srgb, var(--cal-muted) 58%, var(--cal-surface));
+  --cal-rest-soft: color-mix(in srgb, var(--cal-muted) 16%, var(--cal-surface));
+  --cal-action-bg: color-mix(in srgb, var(--dsw-alias-button-info-fill, var(--cal-accent)) 90%, var(--cal-ink));
+  --cal-action-ink: var(--cal-surface);
   isolation: isolate;
   container-type: inline-size;
   padding: 0 20px 18px;
@@ -70,20 +72,6 @@
 .cal-source-trigger-label { display: inline-block; max-width: 16ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cal-actions .cal-more-button { min-width: 34px; padding-inline: 7px; }
 .cal-action-count { color: var(--cal-accent); font-size: 11px; font-variant-numeric: tabular-nums; }
-.cal-phase-summary {
-  display: flex;
-  gap: 9px 18px;
-  flex-wrap: wrap;
-  align-items: center;
-  color: var(--cal-muted);
-  padding: 0 0 13px;
-  font-size: 12px;
-}
-.cal-phase-key { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
-.cal-phase-key strong, .cal-week-label { font-weight: 600; color: var(--cal-ink); }
-.cal-phase-key i { width: 7px; height: 7px; border-radius: 50%; background: var(--cal-accent); }
-.cal-phase-key[data-tone="quiet"] i { background: var(--cal-rest); }
-.cal-week-label:not(:last-child) { padding-right: 16px; border-right: 1px solid var(--cal-line); }
 .cal-canvas {
   border: 1px solid var(--cal-line);
   border-radius: 11px;
@@ -95,7 +83,7 @@
 .cal-engine {
   height: 100%;
   --fc-monarch-primary: var(--cal-accent);
-  --fc-monarch-primary-foreground: var(--dsw-alias-brand-primary-invert, #fff);
+  --fc-monarch-primary-foreground: var(--cal-action-ink);
   --fc-monarch-primary-over: var(--cal-accent);
   --fc-monarch-primary-down: var(--cal-accent);
   --fc-monarch-secondary: var(--cal-accent-soft);
@@ -173,7 +161,8 @@
 }
 .cal-phase-band[data-tone="quiet"] {
   background: var(--cal-rest-soft) !important;
-  color: var(--cal-rest) !important;
+  color: var(--cal-ink) !important;
+  box-shadow: inset 2px 0 var(--cal-rest);
 }
 .cal-phase-continuation > * { visibility: hidden; }
 .cal-year { overflow: auto; border: 1px solid var(--cal-line); border-radius: 11px; flex: 0 1 auto; }

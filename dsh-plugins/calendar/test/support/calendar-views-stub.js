@@ -4,7 +4,6 @@ import { occurrenceNote } from '../../src/personal-settings.js'
 
 export const AcademicYear = () => null
 export const CalendarStyles = () => null
-export const PhaseSummary = () => null
 
 export function CalendarCanvas({ noteIndex, occurrences, occurrenceKeyOf, onSelect }) {
   return React.createElement('div', null, ...occurrences.map(entry => {

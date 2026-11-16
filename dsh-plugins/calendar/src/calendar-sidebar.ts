@@ -1,4 +1,4 @@
-/** 日历原型的当日安排及详情，沿用宿主主题。 */
+/** 当日安排和日程详情共用一个侧栏，沿用宿主主题。 */
 import React, { useEffect, useRef, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import { addDays, localDate, parseDate } from './dates.js'
@@ -43,10 +43,35 @@ export function TimetableSidebar({ open, onClose, children }: {
   onClose: () => void
   children?: React.ReactNode
 }) {
+  const closeButton = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    const button = closeButton.current
+    if (!open || !button?.offsetParent) return
+    const opener = document.activeElement
+    button.focus()
+    return () => { if (opener instanceof HTMLElement && opener.isConnected) opener.focus() }
+  }, [open])
+
   return h(React.Fragment, null,
     open && h('button', { className: 'tt-sheet-mask', type: 'button', tabIndex: -1, 'aria-hidden': true, onClick: onClose }),
-    h('aside', { className: 'tt-sidebar', 'data-open': open, 'aria-label': '日程侧栏' },
-      h('button', { className: 'tt-sheet-close', type: 'button', onClick: onClose, 'aria-label': '收起日程侧栏' }, '×'),
+    h('aside', {
+      className: 'tt-sidebar', 'data-open': open, 'aria-label': '日程侧栏',
+      onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
+        if (!open || !closeButton.current?.offsetParent) return
+        if (event.key === 'Escape') {
+          event.stopPropagation()
+          onClose()
+        }
+        if (event.key !== 'Tab') return
+        const focusable = [...event.currentTarget.querySelectorAll<HTMLElement>('button, input, select, textarea, summary, a[href]')]
+          .filter(element => element.tabIndex >= 0 && element.offsetParent && !element.matches(':disabled'))
+        const first = focusable[0]
+        const last = focusable.at(-1)
+        if (event.shiftKey && event.target === first) { event.preventDefault(); last?.focus() }
+        else if (!event.shiftKey && event.target === last) { event.preventDefault(); first?.focus() }
+      },
+    },
+      h('button', { ref: closeButton, className: 'tt-sheet-close', type: 'button', onClick: onClose, 'aria-label': '收起日程侧栏' }, '×'),
       children))
 }
 
@@ -148,7 +173,7 @@ function TextEditor({ field, content, onDone }: {
       h('div', null,
         draft?.canInherit && h(Button, { type: 'button', variant: 'ghost', size: 'sm', disabled: saving, onClick: () => void save(null) }, '沿用整条日程'),
         h(Button, { type: 'button', variant: 'ghost', size: 'sm', disabled: saving, onClick: onDone }, '取消'),
-        h(Button, { type: 'submit', variant: 'primary', size: 'sm', disabled: saving || !draft || text === draft.text }, '保存'))))
+        h(Button, { type: 'submit', variant: 'primary', size: 'sm', className: 'tt-primary', disabled: saving || !draft || text === draft.text }, '保存'))))
 }
 
 function TimetableText({ content }: { content: PersonalText }) {

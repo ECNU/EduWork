@@ -1,7 +1,7 @@
 .tt-workbench {
   padding-inline: 22px;
   --tt-muted: var(--dsw-alias-label-secondary, GrayText);
-  --tt-line: color-mix(in srgb, var(--cal-line) 76%, transparent);
+  --tt-line: var(--dsw-alias-border-l2, var(--cal-line));
   --tt-paper: var(--dsw-alias-bg-base, Canvas);
   --tt-card: var(--dsw-alias-bg-layer-1, Canvas);
   --tt-accent: var(--cal-accent);
@@ -13,6 +13,13 @@
 .tt-workbench .cal-arrows { border: 0; }
 .tt-workbench .cal-arrows button + button { border: 0; border-radius: 6px; }
 .tt-workbench .cal-actions .cal-primary { border-radius: 8px; min-height: 36px; }
+.tt-workbench .tt-primary:not(:disabled) {
+  background: var(--cal-action-bg);
+  color: var(--cal-action-ink);
+}
+.tt-workbench .tt-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--cal-action-bg) 88%, var(--cal-action-ink));
+}
 .tt-workbench .cal-column-heading { background: var(--tt-card); font-size: 13px; padding-block: 4px; }
 .tt-workbench .cal-canvas { border-color: var(--tt-line); border-radius: 10px; }
 .tt-workbench .cal-engine { --fc-monarch-border: var(--tt-line); --fc-monarch-strong-border: var(--tt-line); }
@@ -74,6 +81,7 @@
 .tt-text-editor-footer small { font-size: 11px; }
 .tt-text-fields + .tt-editor-extra { border-top: 0; }
 .tt-sidebar:has(.tt-text-editor) > .tt-panel-actions { display: none; }
+.tt-editor-fields { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
 .tt-editor .cal-field { margin-bottom: 11px; }
 .tt-editor .cal-schedule-fields .cal-field { margin-bottom: 0; }
 .tt-editor .cal-field :is(input, select, textarea) { min-width: 0; width: 100%; box-sizing: border-box; }

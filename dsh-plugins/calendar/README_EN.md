@@ -6,15 +6,15 @@ A local calendar and schedule manager. The calendar opens in month view and keep
 
 ## Features
 
-- Navigate dates, return to today, and choose and filter calendars from Calendar sources. Open additional entries on a month cell using its +N link.
-- The week view places events on an hourly axis, splits overlapping entries into columns, and displays all-day and multi-day entries. Click or drag-select empty time to create an event. Click an empty area of a month cell to create an all-day event for that date, or uncheck All day to pick times. Open more options for location, notes, and recurrence.
+- Select a date in month view to see its agenda. Use New event to create an all-day or timed entry for that date. The +N link reveals additional entries. Choose or filter calendars under Manage calendars → Calendar sources.
+- The week view places events on an hourly axis, splits overlaps into columns, and displays all-day and multi-day entries. Click or drag-select empty time to create an event. Classes with a teaching-class ID share a color across the month, week and daily agenda.
 - Create, edit and confirm deletion. Choose no repetition, daily, weekly or selected weekdays, with an optional end date. Selected weekdays also support a week interval.
 - Move or cancel one occurrence without changing the others, and undo a move. Open Occurrence times on the event record to see or restore cancelled dates.
-- Each event has one editable remark. Enable Include my remarks when exporting ICS to include it. The option is off by default. Private notes are stored separately and follow rescheduled occurrences that retain their original identity.
+- Edit remarks and notes directly from event details. Enable Include my remarks to export remarks in ICS. The option is off by default. Private notes stay on the device and follow rescheduled occurrences that retain their original identity.
 - Import an ICS file by selection, drag-and-drop or pasted text. The filename supplies the default calendar name. Distinct calendars coexist; a matching identifier within one calendar updates that event. Missing entries are preserved unless removal is explicitly enabled for that calendar.
 - Select an imported calendar to delete it with confirmation. Other calendars, private notes, remarks and reminder settings are preserved. The default personal calendar and managed school calendars cannot be deleted through this action. Managed calendars display their registered labels.
 - Copy or download ICS. It excludes private notes and is not a complete backup.
-- Personal settings support series defaults, occurrence overrides and restoring inheritance for notes, private remarks, visibility and relative/fixed reminders. Hidden occurrences remain manageable from More → Event records.
+- Choose whether a note, remark, visibility setting or reminder applies to one occurrence or the whole series. Restore hidden occurrences under Manage calendars → Event records.
 - Agent tools read and edit events, occurrences, notes and personal settings. Writes follow the existing session permission policy.
 - Open panels refresh after external source or Agent writes and resubscribe after disconnection.
 

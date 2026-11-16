@@ -9,7 +9,7 @@ import zhCN from 'fullcalendar/locales/zh-cn'
 import skeletonCss from 'fullcalendar/skeleton.css'
 import monarchCss from 'fullcalendar/themes/monarch/theme.css'
 import viewCss from './calendar-views.css'
-import timetableCss from './timetable-prototype.css'
+import sidebarCss from './calendar-sidebar.css'
 import { addDays, localDate, monthStart, parseDate } from './dates.js'
 import { occurrenceNote } from './personal-settings.js'
 
@@ -47,20 +47,7 @@ const spanDates = (span: Span) => `${short(startOf(span))}–${short(endOf(span)
 
 /** 挂载与宿主主题变量相连的日历样式。 */
 export function CalendarStyles() {
-  return h('style', null, [skeletonCss, monarchCss, viewCss, timetableCss].join('\n'))
-}
-
-/** 每个校历阶段仅在月份摘要中显示一次完整日期。 */
-export function PhaseSummary({ spans, weekLabel }: { spans: Span[]; weekLabel?: string }) {
-  const marked = phases(spans)
-  if (marked.length === 0 && !weekLabel) return null
-  return h('div', { className: 'cal-phase-summary', 'aria-label': '校历阶段' },
-    weekLabel && h('span', { className: 'cal-week-label' }, weekLabel),
-    ...marked.map(span => h('span', {
-      className: 'cal-phase-key',
-      'data-tone': span.tone,
-      key: `${startOf(span)}:${span.text}`,
-    }, h('i', { 'aria-hidden': true }), h('strong', null, phaseName(span)), h('span', null, spanDates(span)))))
+  return h('style', null, [skeletonCss, monarchCss, viewCss, sidebarCss].join('\n'))
 }
 
 interface CanvasProps {
@@ -91,12 +78,15 @@ export function CalendarCanvas(props: CanvasProps) {
       const accent = accentOf(entry)
       const block = allDay || mode === 'week'
       const note = occurrenceNote(noteIndex, entry)
+      const key = occurrenceKeyOf(entry)
       return {
-        id: occurrenceKeyOf(entry), title: entry.title, start: entry.start,
+        // FullCalendar 只在挂载时写入外层提示和无障碍名称。
+        id: JSON.stringify([key, entry.title, entry.start, entry.end, entry.location, note, accent]),
+        title: entry.title, start: entry.start,
         end: allDay ? nextDay(entry.end ?? entry.start) : entry.end,
         allDay, display: block ? 'block' as const : 'list-item' as const,
         color: block ? eventBlockColor(accent) : accent,
-        extendedProps: { entry, accent, block, note, order: allDay ? 1 : 2 },
+        extendedProps: { entry, key, accent, block, note, order: allDay ? 1 : 2 },
       }
     }),
     ...phases(annotations?.spans ?? []).map(span => ({
@@ -173,19 +163,19 @@ export function CalendarCanvas(props: CanvasProps) {
         return { domNodes: [details] }
       },
       eventDidMount: ({ event, el, isStart, isMirror }) => {
-        const { span, entry, accent, note } = event.extendedProps
+        const { span, entry, key, accent, note } = event.extendedProps
         if (span) {
           el.dataset.tone = span.tone
           el.dataset.phaseStart = startOf(span)
           el.dataset.phaseEnd = endOf(span)
           el.title = `${phaseName(span)} ${spanDates(span)}`
-          if (!isStart || span.firstDay !== startOf(span)) el.classList.add('cal-phase-continuation')
+          if (!isStart) el.classList.add('cal-phase-continuation')
         } else if (entry) {
           el.style.setProperty('--cal-event-ink', accent)
           const time = entry.start.length === 10 ? '全天' : entry.start.slice(11, 16)
           el.title = [entry.title, time, entry.location, note && `笔记：${note}`].filter(Boolean).join(' · ')
           el.setAttribute('aria-label', [time, el.title].join(' '))
-          el.setAttribute('data-occurrence', event.id)
+          el.setAttribute('data-occurrence', key)
           el.dataset.eventTitle = entry.title
         } else if (isMirror) {
           el.style.setProperty('--cal-event-ink', callbacks.current.draftAccent)
