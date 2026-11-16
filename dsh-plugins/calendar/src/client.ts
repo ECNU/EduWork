@@ -6,8 +6,9 @@ import calendarRemote from '../lib/typert.remote-client.js'
 import { mergeRemarks } from '../lib/model.js'
 import { PersonalSettings, occurrenceNote } from './personal-settings.js'
 import { addDays, localDate, monthRange, monthStart, parseDate, shiftMonth, startOfWeek } from './dates.js'
-import { AcademicYear, CalendarCanvas, CalendarStyles, PhaseSummary } from './calendar-views.js'
+import { AcademicYear, CalendarCanvas, CalendarStyles } from './calendar-views.js'
 import { EventEditorSurface, OccurrenceSurface } from './event-surfaces.js'
+import { agendaFor, DailyAgenda, TimetableDetails, TimetableSidebar } from './timetable-prototype.js'
 
 /**
  * Resolve one icon from the loaded primitives package.
@@ -778,7 +779,7 @@ function draftProblem(draft: any) {
  * The fields of one record, shared by the new-entry dialog and the entry page:
  * what the reader owns about an entry, as opposed to one date of a series.
  */
-function EventForm({ draft, onChange, autoFocus, sourceDescription, recordMode = false, showDetails = true, showAllDay = false }: any) {
+function EventForm({ draft, onChange, autoFocus, sourceDescription, recordMode = false, showDetails = true, showAllDay = false, advanced = false, showRepeat = true, extraOptions, endHint, allowAllDayChange = true }: any) {
   const set = (patch: any) => onChange({ ...draft, ...patch })
   const isAllDay = showAllDay && draft.start === '' && draft.end === ''
   const dateField = React.createElement(Field, { label: '日期' },
@@ -786,10 +787,10 @@ function EventForm({ draft, onChange, autoFocus, sourceDescription, recordMode =
   const timeFields = React.createElement('div', { className: 'cal-time-fields' },
     React.createElement(Field, { label: '开始' },
       React.createElement(Input, { type: 'time', value: draft.start, onChange: (event: any) => set({ start: event.target.value }) })),
-    React.createElement(Field, { label: '结束', hint: draft.end ? undefined : '留空按 45 分钟显示' },
+    React.createElement(Field, { label: '结束', hint: draft.end ? undefined : endHint ?? '留空按 45 分钟显示' },
       React.createElement(Input, { type: 'time', value: draft.end, onChange: (event: any) => set({ end: event.target.value }) })))
 
-  const allDayToggle = showAllDay && React.createElement('label', { className: 'cal-all-day' },
+  const allDayToggle = showAllDay && allowAllDayChange && React.createElement('label', { className: 'cal-all-day' },
     React.createElement('input', {
       type: 'checkbox', checked: isAllDay,
       onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -841,6 +842,9 @@ function EventForm({ draft, onChange, autoFocus, sourceDescription, recordMode =
           fontFamily: 'inherit', lineHeight: 1.5,
         },
       })),
+    React.createElement(advanced ? 'details' : React.Fragment, advanced ? { className: 'tt-editor-extra' } : null,
+      advanced && React.createElement('summary', null, '重复与提醒'),
+      showRepeat && React.createElement(React.Fragment, null,
     React.createElement(Field, { label: '重复' },
       React.createElement('select', {
         'aria-label': '重复', value: draft.repeatMode,
@@ -867,7 +871,115 @@ function EventForm({ draft, onChange, autoFocus, sourceDescription, recordMode =
           type: 'date', value: draft.until,
           onChange: (event: any) => set({ until: event.target.value }),
         }))
-      : undefined))
+      : undefined
+      ), extraOptions)))
+}
+
+type CreateSlot = { kind: 'create'; date: string; start?: string; end?: string; allDay?: boolean }
+type TimetableSelection = { kind: 'day' } | CreateSlot | { kind: 'detail' | 'edit' | 'remove'; occurrence: any }
+
+/** 原型的共用编辑表单，保存到当前预览的独立数据目录。 */
+function TimetableEditor({ slot, occurrence, record, wholeRemark, service, onCancel, onSaved }: any) {
+  const recurring = Boolean(record?.recurrence)
+  const [scope, setScope] = useState<'once' | 'series'>(recurring ? 'once' : 'series')
+  const baseFor = (selected: 'once' | 'series') => {
+    if (slot) return undefined
+    if (selected === 'once') return { ...occurrence, recurrence: undefined, description: occurrence.personal?.remark?.text ?? '' }
+    return { ...record, description: mergeRemarks(record.source === 'manual' ? record.description : undefined, wholeRemark) }
+  }
+  const [draft, setDraft] = useState(() => {
+    if (!slot) return draftOf(baseFor(scope))
+    const start = slot.start ?? clockAt(suggestedStart(slot.date))
+    return { ...draftOf(null), date: slot.date, start: slot.allDay ? '' : start,
+      end: slot.allDay ? '' : slot.end ?? clockAt(Math.min(clockMinutes(start) + 60, 1439)) }
+  })
+  const [reminder, setReminder] = useState('')
+  const [problem, setProblem] = useState('')
+  const [saving, setSaving] = useState(false)
+  const pending = useRef(false)
+  const newRecord = useRef<string | undefined>(undefined)
+  const complaint = draftProblem(draft)
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (pending.current) return
+    if (complaint) { setProblem(complaint); return }
+    pending.current = true
+    setSaving(true)
+    setProblem('')
+    try {
+      const reminderPatch = reminder === '' ? {} : { reminder: reminder === 'off' ? { off: true } : { kind: 'relative', minutes: Number(reminder) } }
+      if (slot) {
+        newRecord.current ??= newUid()
+        const created = await service.putEvent(recordOf(draft, { uid: newRecord.current }))
+        if (reminder !== '') await service.setPersonal({ source: created.source, uid: created.uid, patch: reminderPatch })
+      } else {
+        const { description, ...patch } = patchOf(draft, baseFor(scope))
+        const ref = { source: record.source, uid: record.uid }
+        if (scope === 'once') {
+          const { title, start, end, location } = patch
+          const date = occurrence.occurrenceDate ?? dateOf(occurrence.start)
+          if ([title, start, end, location].some(value => value !== undefined)) {
+            const previous = record.overrides?.find((override: { date: string }) => override.date === date)
+            const { date: _date, ...stored } = previous ?? {}
+            const nextEnd = start && stored.end && end === undefined ? recordOf(draft, occurrence).end ?? null : end
+            const override = { ...stored, ...withoutEmpty({ title, start }) }
+            if (nextEnd !== undefined) {
+              if (nextEnd === null) delete override.end
+              else override.end = nextEnd
+            }
+            if (location !== undefined) override.location = location ?? ''
+            if (Object.keys(override).length) await service.applyOverride({ ...ref, date, patch: override })
+            else if (previous) await service.removeOverride({ ...ref, date })
+          }
+          if (description !== undefined || reminder !== '') await service.setPersonal({
+            ...ref, originalStart: occurrence.originalStart ?? occurrence.start,
+            patch: { ...reminderPatch, ...(description !== undefined && { remark: { text: description ?? '' } }) },
+          })
+        } else {
+          if (Object.keys(patch).length || description !== undefined) await service.updateEvent({
+            ...ref, patch, ...(description !== undefined && { remark: description ?? '' }),
+          })
+          if (reminder !== '') await service.setPersonal({ ...ref, patch: reminderPatch })
+        }
+      }
+      await onSaved(draft.date)
+    } catch (error) {
+      setProblem(messageOf(error))
+    } finally {
+      pending.current = false
+      setSaving(false)
+    }
+  }
+
+  return React.createElement('form', { className: 'tt-editor', onSubmit: submit, 'aria-label': slot ? '新建日程' : '编辑日程' },
+    React.createElement('header', { className: 'tt-panel-head' }, React.createElement('h2', null, slot ? '新建日程' : '编辑日程')),
+    recurring && React.createElement('div', { className: 'tt-editor-scope', role: 'group', 'aria-label': '编辑范围' },
+      ...(['once', 'series'] as const).map(value => React.createElement(Button, {
+        key: value, size: 'sm', variant: 'ghost', disabled: saving, 'aria-pressed': scope === value,
+        onClick: () => {
+          if (value === scope) return
+          setScope(value)
+          setDraft(draftOf(baseFor(value)))
+          setReminder('')
+          setProblem('')
+        },
+      }, value === 'once' ? '仅本次' : '整条日程'))),
+    React.createElement(EventForm, {
+      draft, onChange: setDraft, autoFocus: true, showAllDay: true, advanced: true, showRepeat: scope === 'series', allowAllDayChange: scope !== 'once', endHint: scope === 'once' ? '留空沿用系列时长' : undefined,
+      sourceDescription: record && record.source !== 'manual' ? record.description : undefined,
+      extraOptions: React.createElement(Field, { label: '提醒' },
+        React.createElement('select', {
+          value: reminder, 'aria-label': '提醒', disabled: saving,
+          onChange: (event: React.ChangeEvent<HTMLSelectElement>) => setReminder(event.target.value),
+        }, React.createElement('option', { value: '' }, slot ? '默认关闭' : '沿用当前设置'),
+        React.createElement('option', { value: 'off' }, '关闭'), React.createElement('option', { value: '10' }, '提前 10 分钟'),
+        React.createElement('option', { value: '30' }, '提前 30 分钟'))),
+    }),
+    problem && React.createElement('p', { role: 'alert', className: 'cal-destructive' }, problem),
+    React.createElement('footer', { className: 'tt-panel-actions' },
+      React.createElement(Button, { size: 'sm', variant: 'ghost', disabled: saving, onClick: onCancel }, '取消'),
+      React.createElement(Button, { size: 'sm', variant: 'primary', type: 'submit', disabled: saving || Boolean(complaint) }, saving ? '保存中…' : '保存')))
 }
 
 /** The dialog that creates one entry by hand. */
@@ -1083,6 +1195,8 @@ export function createCalendarPage(service: any) {
     const [view, setView] = useState<{ kind: string; id?: string; source?: string }>({ kind: 'week' })
     const [focusedDate, setFocusedDate] = useState(() => localDate())
     const [displayMode, setDisplayMode] = useState<'week' | 'month' | 'year'>('month')
+    const [timetable, setTimetable] = useState<TimetableSelection>({ kind: 'day' })
+    const [sheetOpen, setSheetOpen] = useState(false)
     const anchor = startOfWeek(focusedDate)
     const monthAnchor = monthStart(focusedDate)
     const [calendarSource, setCalendarSource] = useState('*')
@@ -1243,8 +1357,26 @@ export function createCalendarPage(service: any) {
 
     /** A drag or a double click in the week asks for a new entry over that span. */
     const createAt = useCallback((date: string, from: number, to: number) => {
-      setDialog({ kind: 'create', date, start: clockAt(from), end: clockAt(Math.min(Math.max(to, from + 15), 24 * 60 - 1)) })
+      setFocusedDate(date)
+      setSheetOpen(true)
+      setTimetable({ kind: 'create', date, start: clockAt(from), end: clockAt(Math.min(Math.max(to, from + 15), 24 * 60 - 1)) })
     }, [])
+
+    const selectDate = (date: string, showSheet = true) => {
+      setFocusedDate(date)
+      setTimetable({ kind: 'day' })
+      setSheetOpen(showSheet)
+    }
+    const selectEntry = (occurrence: any) => {
+      if (agendaFor(focusedDate, [occurrence]).length === 0) setFocusedDate(dateOf(occurrence.start))
+      setTimetable({ kind: 'detail', occurrence })
+      setSheetOpen(true)
+    }
+    const createInSidebar = () => {
+      if (displayMode === 'year') setDisplayMode('month')
+      setTimetable({ kind: 'create', date: focusedDate, allDay: displayMode !== 'week' })
+      setSheetOpen(true)
+    }
 
     const current = view.kind === 'event'
       ? events.find((event: any) => event.uid === view.id && event.source === view.source)
@@ -1259,8 +1391,9 @@ export function createCalendarPage(service: any) {
     /** The week on screen is today's, so an entry started from here means today. */
     const selectedAcademicCalendar = annotationChoices.find(choice => choice.group === 'academic-calendar' && choice.selected)
     const academicYear = academicSpans[0]?.text.match(/^\d{4}[-–]\d{4}/)?.[0]?.replace('-', '–')
-    const title = displayMode === 'year' ? (academicYear ? `${academicYear} 学年` : '学年总览') : monthOf(focusedDate)
-    const weekNote = displayMode === 'week' ? annotations?.weeks?.find((week: any) => week.firstDay === anchor)?.text : undefined
+    const weekNote = annotations?.weeks?.find((week: any) => week.firstDay === anchor)?.text
+    const title = displayMode === 'year' ? (academicYear ? `${academicYear} 学年` : '学年总览')
+      : displayMode === 'week' && weekNote ? weekNote.split(' · ')[0] : monthOf(focusedDate)
     const subtitle = displayMode === 'week' ? `${shortDate(anchor)} – ${shortDate(addDays(anchor, 6))}` : ''
 
     const recordItems = events.map((event: any) => ({
@@ -1269,6 +1402,7 @@ export function createCalendarPage(service: any) {
       }))
     const moreItems = [
       ...(view.kind === 'event' ? [{ id: 'create', label: '新建日程', icon: React.createElement(IconPlus) }] : []),
+      { id: 'sources', label: '日历来源', icon: React.createElement(IconFolderOpen) },
       { id: 'records', label: '日程记录', icon: React.createElement(IconClock) },
       { id: 'import', label: '导入日历', icon: React.createElement(IconFolderOpen) },
       { id: 'export', label: '导出日历', icon: React.createElement(IconDownload) },
@@ -1287,16 +1421,74 @@ export function createCalendarPage(service: any) {
       align: 'end',
       anchor: React.createElement(Button, {
         variant: 'ghost', size: 'sm', className: 'cal-tool-button cal-more-button',
-        'aria-label': '更多日历操作', 'aria-haspopup': 'menu', 'aria-expanded': menuOpen,
-        icon: React.createElement(IconEllipsis), onClick: () => setMenuOpen(!menuOpen),
-      }, reminderInbox.unread ? React.createElement('span', { className: 'cal-action-count' }, reminderInbox.unread) : undefined),
+        'aria-label': '日历管理', 'aria-haspopup': 'menu', 'aria-expanded': menuOpen,
+        onClick: () => setMenuOpen(!menuOpen),
+      }, '日历管理', React.createElement(IconChevronDown), reminderInbox.unread ? React.createElement('span', { className: 'cal-action-count' }, reminderInbox.unread) : undefined),
     })
     const pendingSources = sourceStatuses.filter(item => item.state !== 'ready')
-    const visibleSpans = annotations.spans.filter((span: { firstDay: string; lastDay: string }) =>
-      span.firstDay <= weekRange.to && span.lastDay >= weekRange.from)
+    const chosen = 'occurrence' in timetable
+      ? visibleOccurrences.find((item: any) => occurrenceKeyOf(item) === occurrenceKeyOf(timetable.occurrence)) ?? timetable.occurrence
+      : undefined
+    const chosenRecord = chosen && events.find((event: any) => event.uid === chosen.uid && event.source === chosen.source)
+    const showDay = () => setTimetable({ kind: 'day' })
+    const saveInSidebar = async (date: string) => {
+      selectDate(date)
+      await refresh()
+      setToast('日程已保存')
+    }
+    const sidebar = () => {
+      if (timetable.kind === 'create' || (timetable.kind === 'edit' && chosenRecord)) {
+        return React.createElement(TimetableEditor, {
+          key: timetable.kind === 'create' ? `new:${timetable.date}:${timetable.start ?? ''}` : occurrenceKeyOf(chosen),
+          slot: timetable.kind === 'create' ? timetable : undefined,
+          occurrence: chosen, record: chosenRecord,
+          wholeRemark: chosen && remarkIndex.get(`${chosen.source}\u0000${chosen.uid}\u0000`),
+          service, onSaved: saveInSidebar, onCancel: () => { if (chosen) selectEntry(chosen); else showDay() },
+        })
+      }
+      if (chosen) {
+        const series = Boolean(chosenRecord?.recurrence)
+        const external = chosen.source !== 'manual'
+        const ref = { source: chosen.source, uid: chosen.uid }
+        const date = chosen.occurrenceDate ?? dateOf(chosen.start)
+        const confirming = timetable.kind === 'remove'
+        const remove = async () => {
+          if (busy) return
+          const removed = await run(() => series ? service.cancelOccurrence({ ...ref, date }) : service.deleteEvent(ref), series ? '已取消这一次' : '已删除日程')
+          if (removed) showDay()
+        }
+        return React.createElement(TimetableDetails, {
+          key: occurrenceKeyOf(chosen), entry: chosen, source: sourceName(chosen.source),
+          tint: tintOf(chosen.source).accent,
+          remark: mergeRemarks(external ? undefined : chosen.description, chosen.personal?.remark?.text),
+          sourceDescription: external ? chosen.description : undefined,
+          note: occurrenceNote(noteIndex, chosen), recurrence: series ? seriesSummary(chosenRecord) : undefined, onBack: showDay,
+          tools: confirming || !chosenRecord ? null : React.createElement(Button, {
+            variant: 'ghost', size: 'sm', onClick: () => setTimetable({ kind: 'remove', occurrence: chosen }),
+          }, series ? '取消本次' : '删除'),
+          actions: confirming ? React.createElement(React.Fragment, null,
+            React.createElement(Button, { variant: 'ghost', size: 'sm', disabled: busy, onClick: () => selectEntry(chosen) }, '返回详情'),
+            React.createElement(Button, { variant: 'outline', size: 'sm', className: 'cal-destructive', disabled: busy, onClick: remove }, series ? '确认取消' : '确认删除'))
+            : chosenRecord && React.createElement(Button, {
+              variant: 'primary', size: 'sm', onClick: () => setTimetable({ kind: 'edit', occurrence: chosen }),
+            }, '编辑'),
+        }, confirming ? React.createElement('p', { role: 'status', className: 'cal-destructive' }, series ? '取消这一次安排？' : '删除这条日程？')
+          : React.createElement('details', { className: 'tt-editor-extra' },
+            React.createElement('summary', null, '个人设置'),
+            chosen.overridden && React.createElement(Button, {
+              variant: 'outline', size: 'sm', disabled: busy,
+              onClick: async () => { if (await run(() => service.removeOverride({ ...ref, date }), '已撤销改期')) showDay() },
+            }, '撤销改期'),
+            React.createElement(PersonalSettings, { identity: noteRefOf(chosen), service, run, Field, showHeading: false })))
+      }
+      return React.createElement(DailyAgenda, {
+        date: focusedDate, entries: visibleOccurrences, tintOf, onDate: selectDate,
+        onSelect: selectEntry, onCreate: createInSidebar,
+      })
+    }
 
     return React.createElement('div', {
-      className: 'cal-workbench',
+      className: 'cal-workbench tt-workbench',
       'aria-busy': loading,
       onDragEnter: (event: any) => { if (event.dataTransfer?.types?.includes('Files')) { event.preventDefault(); setDropping(true) } },
       onDragOver: (event: any) => { if (event.dataTransfer?.types?.includes('Files')) event.preventDefault() },
@@ -1330,29 +1522,24 @@ export function createCalendarPage(service: any) {
         ...[-1, 1].map(direction => React.createElement('button', {
           key: direction, type: 'button',
           'aria-label': `${direction < 0 ? '上一' : '下一'}${displayMode === 'month' ? '月' : '周'}`,
-          onClick: () => setFocusedDate(date => displayMode === 'month' ? shiftMonth(date, direction) : addDays(date, direction * 7)),
+          onClick: () => selectDate(displayMode === 'month' ? shiftMonth(focusedDate, direction) : addDays(focusedDate, direction * 7), false),
         }, React.createElement(direction < 0 ? IconChevronLeft : IconChevronRight)))),
         React.createElement('button', { type: 'button', className: 'cal-today-button',
-          onClick: () => {
-            setFocusedDate(localDate())
-          },
+          onClick: () => selectDate(localDate()),
         }, '今天'))),
       React.createElement('div', { className: 'cal-actions' },
         React.createElement('div', { className: 'cal-segmented', role: 'group', 'aria-label': '日历视图' },
-          ...(['month', 'week', ...(selectedAcademicCalendar || displayMode === 'year' ? ['year'] as const : [])] as const).map(mode =>
-            React.createElement('button', { key: mode, type: 'button', 'aria-pressed': mode === displayMode, onClick: () => setDisplayMode(mode) },
-              mode === 'month' ? '月' : mode === 'week' ? '周' : '学年'))),
-        React.createElement(Button, {
-          variant: 'ghost', size: 'sm', className: 'cal-tool-button cal-source-trigger',
-          'aria-label': '日历来源', onClick: () => setDialog({ kind: 'sources' }),
-        }, React.createElement('span', { className: 'cal-source-trigger-label' }, calendarSource === '*' ? '日历来源' : sourceName(calendarSource)),
-          React.createElement(IconChevronDown)),
+          ...(['month', 'week'] as const).map(mode => React.createElement('button', {
+            key: mode, type: 'button', 'aria-pressed': mode === displayMode, onClick: () => { setDisplayMode(mode); setSheetOpen(false) },
+          }, mode === 'month' ? '月' : '周'))),
         calendarTools,
         React.createElement(Button, {
           variant: 'primary', size: 'sm', className: 'cal-primary', icon: React.createElement(IconPlus),
-          onClick: () => setDialog({ kind: 'create', date: focusedDate }),
+          onClick: createInSidebar,
         }, '新建日程'))),
-    view.kind === 'week' && displayMode !== 'year' && React.createElement(PhaseSummary, { spans: visibleSpans, weekLabel: weekNote }),
+    view.kind === 'week' && displayMode !== 'year' && selectedAcademicCalendar && React.createElement(Button, {
+      variant: 'ghost', size: 'sm', className: 'tt-academic-link', onClick: () => setDisplayMode('year'),
+    }, '学年总览', React.createElement(IconChevronRight)),
     problem
       ? React.createElement('div', {
         style: {
@@ -1368,25 +1555,22 @@ export function createCalendarPage(service: any) {
       focusedDate,
       spans: selectedAcademicCalendar ? academicSpans : [],
       onOpenMonth: (date: string) => {
-        setFocusedDate(date)
+        selectDate(date, false)
         setDisplayMode('month')
       },
     }),
     view.kind === 'week'
-      ? displayMode !== 'year' && React.createElement(CalendarCanvas, {
+      ? displayMode !== 'year' && React.createElement('div', { className: 'tt-calendar-body' }, React.createElement(CalendarCanvas, {
           mode: displayMode,
           focusedDate,
           tintOf, occurrenceKeyOf,
           occurrences: visibleOccurrences,
           noteIndex,
           annotations,
-          onSelect: (occurrence: any) => setDialog({ kind: 'event', occurrence }),
+          onSelect: selectEntry,
           onCreate: createAt,
-          onCreateDay: (date: string) => {
-            setFocusedDate(date)
-            setDialog({ kind: 'create', date, allDay: true })
-          },
-        })
+          onCreateDay: selectDate,
+        }), React.createElement(TimetableSidebar, { open: sheetOpen, onClose: () => setSheetOpen(false) }, sidebar()))
       : React.createElement(EventWorkspace, {
         key: JSON.stringify([view.source, view.id]),
         event: current,

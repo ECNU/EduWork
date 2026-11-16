@@ -9,6 +9,7 @@ import zhCN from 'fullcalendar/locales/zh-cn'
 import skeletonCss from 'fullcalendar/skeleton.css'
 import monarchCss from 'fullcalendar/themes/monarch/theme.css'
 import viewCss from './calendar-views.css'
+import timetableCss from './timetable-prototype.css'
 import { addDays, localDate, monthStart, parseDate } from './dates.js'
 import { occurrenceNote } from './personal-settings.js'
 
@@ -45,7 +46,7 @@ const spanDates = (span: Span) => `${short(startOf(span))}–${short(endOf(span)
 
 /** 挂载与宿主主题变量相连的日历样式。 */
 export function CalendarStyles() {
-  return h('style', null, [skeletonCss, monarchCss, viewCss].join('\n'))
+  return h('style', null, [skeletonCss, monarchCss, viewCss, timetableCss].join('\n'))
 }
 
 /** 每个校历阶段仅在月份摘要中显示一次完整日期。 */
@@ -97,7 +98,7 @@ export function CalendarCanvas(props: CanvasProps) {
       }
     }),
     ...phases(annotations?.spans ?? []).map(span => ({
-      id: `phase:${span.firstDay}:${span.text}`, title: phaseName(span),
+      id: `phase:${span.firstDay}:${span.text}`, title: `${phaseName(span)} ${spanDates(span)}`,
       start: span.firstDay, end: nextDay(span.lastDay), allDay: true, display: 'block' as const,
       color: span.tone === 'quiet' ? 'var(--cal-rest-soft)' : 'var(--cal-accent-soft)',
       extendedProps: { span, order: 0 },
@@ -109,7 +110,7 @@ export function CalendarCanvas(props: CanvasProps) {
     const options: CalendarOptions = {
       plugins: [monarch, dayGrid, timeGrid, interaction],
       locale: zhCN, firstDay: 1, initialView: type, initialDate: focusedDate,
-      navLinks: true, navLinkHint: '在 $0 新建日程',
+      navLinks: true, navLinkHint: '查看 $0 的安排',
       navLinkDayClick: date => callbacks.current.onCreateDay(localDate(date)),
       headerToolbar: false, height: '100%', expandRows: true, fixedWeekCount: false,
       displayEventEnd: false, dayMaxEvents: true, moreLinkClick: 'popover',
@@ -154,17 +155,19 @@ export function CalendarCanvas(props: CanvasProps) {
         if (isMirror && !event.extendedProps.entry) return 'cal-event-block cal-selection-preview'
         return event.extendedProps.block ? 'cal-event cal-event-block' : 'cal-event'
       },
-      eventContent: ({ event, timeText }) => {
+      eventContent: ({ event, timeText, view }) => {
         const { note } = event.extendedProps
-        if (!note) return true
+        const compact = view.type === 'dayGridMonth' && Boolean(event.extendedProps.entry)
+        if (!note && !compact) return true
         const details = document.createElement('span')
         details.className = 'cal-event-details'
         const title = document.createElement('span')
-        title.textContent = [timeText, event.title].filter(Boolean).join(' ')
+        title.textContent = compact ? event.title : [timeText, event.title].filter(Boolean).join(' ')
         const summary = document.createElement('span')
         summary.className = 'cal-event-note'
         summary.textContent = `笔记：${note}`
-        details.append(title, summary)
+        details.append(title)
+        if (note) details.append(summary)
         return { domNodes: [details] }
       },
       eventDidMount: ({ event, el, isStart, isMirror }) => {
@@ -178,7 +181,7 @@ export function CalendarCanvas(props: CanvasProps) {
         } else if (entry) {
           el.style.setProperty('--cal-event-ink', accent)
           const time = entry.start.length === 10 ? '全天' : entry.start.slice(11, 16)
-          el.title = [entry.title, entry.location, note && `笔记：${note}`].filter(Boolean).join(' · ')
+          el.title = [entry.title, time, entry.location, note && `笔记：${note}`].filter(Boolean).join(' · ')
           el.setAttribute('aria-label', [time, el.title].join(' '))
           el.setAttribute('data-occurrence', event.id)
           el.dataset.eventTitle = entry.title
