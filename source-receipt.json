@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-16T17:13:39.135Z",
-  "fileSetSHA256": "2238505045c01f4d17570e57c4eed953f8e7fb378718f889f5b56ebd9339b414",
+  "createdAt": "2026-11-16T17:27:07.933Z",
+  "fileSetSHA256": "8e082cfc19e013792520593cd1a9bbcf2caf125718d9d4ac254c37c6f58d77c1",
   "files": [
     {
       "path": ".gitattributes",
@@ -1309,7 +1309,7 @@
     },
     {
       "path": "dsh-electron/src/desktop-paths.mjs",
-      "sha256": "e762646e219c79796b562307ccd754894dfd2896e035fce03c99379f8525eda5"
+      "sha256": "8291fece8c40f2363532d356ee4d801bcb9a0f65fd1bd25d67326eb6cd644429"
     },
     {
       "path": "dsh-electron/src/desktop-pet-core.mjs",
@@ -1609,7 +1609,7 @@
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
-      "sha256": "2631ad857fc41d81c4f0266103be6974da5e0927da4db8d16826698f51368516"
+      "sha256": "204139f3042b669b1fa03ee39630a417ddf8f11f77dbb59a505a750d1e467969"
     },
     {
       "path": "dsh-electron/tests/lifecycle.test.mjs",

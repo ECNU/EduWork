@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { mkdtemp, mkdir, writeFile, readFile, readdir, rename, rm, symlink } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, readdir, realpath, rename, rm, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { spawn } from 'node:child_process'
@@ -143,7 +143,7 @@ test('installed layouts acknowledge update health below the personal data root',
  const health=join(transaction,'health.ok')
  const launch=await readMigrationLaunch({root:program,stateRoot,settings:f.settings,argv:['--update-health-file',health]})
  assert.equal(launch.kind,'electron-update-v1')
- assert.equal(launch.healthFile,health)
+ assert.equal(launch.healthFile,join(await realpath(transaction),'health.ok'))
  await writeMigrationHealth(launch,'ready');assert.equal(await readFile(health,'utf8'),'ok\n')
  await assert.rejects(readMigrationLaunch({root:program,settings:f.settings,argv:['--update-health-file',health]}),/outside this installation/)
 })

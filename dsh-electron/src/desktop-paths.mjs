@@ -1,11 +1,12 @@
-import { join, resolve, relative, isAbsolute, sep } from 'node:path'
+import { join, resolve, relative, isAbsolute, sep, win32, posix } from 'node:path'
 import { desktopConfigurationPath } from './configuration-policy.mjs'
 import { existsSync } from 'node:fs'
 
 export function assertSeparateRoots(programRoot, userRoot, platform = process.platform) {
-  const normalize = path => { const resolved = resolve(path); return platform === 'win32' ? resolved.toLowerCase() : resolved }
+  const path = platform === 'win32' ? win32 : posix
+  const normalize = value => { const resolved = path.resolve(value); return platform === 'win32' ? resolved.toLowerCase() : resolved }
   const a = normalize(programRoot), b = normalize(userRoot)
-  const contains = (parent, child) => { const rel = relative(parent, child); return rel !== '' && rel !== '..' && !rel.startsWith('..' + sep) && !isAbsolute(rel) }
+  const contains = (parent, child) => { const rel = path.relative(parent, child); return rel !== '' && rel !== '..' && !rel.startsWith('..' + path.sep) && !path.isAbsolute(rel) }
   if (a === b || contains(a, b) || contains(b, a)) throw new Error('Program and user data directories must be separate')
 }
 
