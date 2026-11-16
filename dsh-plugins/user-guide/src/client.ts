@@ -16,7 +16,7 @@ export const OPEN_EVENT = 'eduwork:open-user-guide'
 const PANEL_ID = 'eduwork-user-guide-panel'
 const h = createElement
 
-export interface TourSettings { productName: string; autoStart: boolean; copy: CopyOverrides }
+export interface TourSettings { productName: string; autoStart: boolean; copy: CopyOverrides; guideUrl?: string }
 const DEFAULTS: TourSettings = { productName: 'EduWork', autoStart: true, copy: {} }
 let settings: TourSettings = DEFAULTS
 
@@ -70,11 +70,26 @@ export function openGuide(): void {
   replay.textContent = ui.replay
   replay.style.cssText = 'font:inherit;font-size:13px;padding:4px 10px;border-radius:8px;border:.5px solid var(--dsw-alias-border-l4,rgba(0,0,0,.2));background:transparent;color:inherit;cursor:pointer'
   replay.addEventListener('click', () => { dismiss(); replayTour?.() })
-  bar.append(label, replay, close)
+  bar.append(label)
   const frame = document.createElement('iframe')
-  frame.src = `${GUIDE_URL}?theme=${dark ? 'dark' : 'light'}`
-  // A static bundled page: no scripts; only outside links may open a new window.
-  frame.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox')
+  const offlineUrl = `${GUIDE_URL}?theme=${dark ? 'dark' : 'light'}`
+  const onlineUrl = settings.guideUrl
+  const switchGuide = document.createElement('button')
+  const showPage = (online: boolean) => {
+    frame.setAttribute('sandbox', online ? 'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox' : 'allow-popups allow-popups-to-escape-sandbox')
+    frame.referrerPolicy = 'no-referrer'
+    frame.src = online && onlineUrl ? onlineUrl : offlineUrl
+    switchGuide.textContent = online ? ui.offlineGuide : ui.onlineGuide
+  }
+  let online = Boolean(onlineUrl) && navigator.onLine !== false
+  if (onlineUrl) {
+    switchGuide.type = 'button'
+    switchGuide.style.cssText = replay.style.cssText
+    switchGuide.addEventListener('click', () => { online = !online; showPage(online) })
+    bar.append(switchGuide)
+  }
+  bar.append(replay, close)
+  showPage(online)
   frame.title = title
   frame.style.cssText = `flex:1;width:100%;border:0;background:${dark ? '#12161d' : '#fff'}`
   panel.append(bar, frame)
@@ -174,10 +189,16 @@ export async function loadSettings(fetcher: typeof fetch = fetch): Promise<TourS
   try {
     const response = await fetcher(TOUR_URL, { cache: 'no-store' })
     const value = response.ok ? await response.json() : {}
+    let guideUrl: string | undefined
+    if (typeof value?.guideUrl === 'string' && URL.canParse(value.guideUrl)) {
+      const url = new URL(value.guideUrl)
+      if (url.protocol === 'https:' && url.origin !== window.location.origin && !url.username && !url.password) guideUrl = url.href
+    }
     return {
       productName: typeof value?.productName === 'string' && value.productName ? value.productName : DEFAULTS.productName,
       autoStart: value?.autoStart !== false,
       copy: value?.copy ?? {},
+      ...(guideUrl ? { guideUrl } : {}),
     }
   } catch { return DEFAULTS }
 }

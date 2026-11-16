@@ -14,6 +14,7 @@ const localeCopy = z.object({
 })
 
 export const Config = z.object({
+  guideUrl: z.string(),
   productName: z.string().default('EduWork'),
   autoStart: z.boolean().default(true),
   copy: z.object({ 'zh-CN': localeCopy, en: localeCopy }),

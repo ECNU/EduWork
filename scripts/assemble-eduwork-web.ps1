@@ -190,10 +190,6 @@ foreach ($resource in $distribution.resources) {
     New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
     Copy-Item -LiteralPath $source -Destination $target -Recurse
 }
-if ($selected.userGuide) {
-    & node (Child $CoreRoot 'scripts/build-edition-user-guide.mjs') $EditionRoot $selected.userGuide.source $selected.userGuide.sourceUrl $runtime
-    if ($LASTEXITCODE -ne 0) { throw 'Edition user guide build failed' }
-}
 if ($distribution.brand.product.logoResource) {
     $logo = Child (Join-Path $Output 'resources') $distribution.brand.product.logoResource
     $mime = switch ([IO.Path]::GetExtension($logo).ToLowerInvariant()) {

@@ -72,9 +72,6 @@ jobs:
           # release snapshot. The build still audits its actual source inputs.
           node core/scripts/ci-eduwork-web.mjs --core-root ./core --edition-root ./core --distribution-config config/distributions/generic.json --build-only
           if ($LASTEXITCODE) { throw 'Node Web assembly failed' }
-          $env:EDUWORK_TEST_RUNTIME = (Resolve-Path 'core/dist/ci-local-web/assembly/d').Path
-          node --test core/scripts/test/edition-user-guide.test.mjs
-          if ($LASTEXITCODE) { throw 'Offline edition guide checks failed' }
       - name: Retain local Web validation evidence
         if: always() && steps.changes.outputs.build == 'true'
         uses: actions/upload-artifact@v4

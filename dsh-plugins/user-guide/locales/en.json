@@ -39,6 +39,8 @@
     "next": "Next",
     "done": "Done",
     "openGuide": "Open user guide",
+    "offlineGuide": "View offline guide",
+    "onlineGuide": "View online guide",
     "progress": "{current} / {total}",
     "panelTitle": "{product} user guide",
     "close": "Close",

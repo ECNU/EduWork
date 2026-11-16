@@ -8,7 +8,7 @@ Ships an offline user guide and plays a short tour the first time the workbench 
 
 The Host serves the static pages in `guide/` at `/eduwork-user-guide/`. Once the desktop shell sees this route, the application menu shows **User Guide**, which opens the guide in an in-app panel; Esc, the close button or a click outside closes it. Distributions that provide an account menu service (`accountMenuEntries`) also get an entry there; without it nothing is shown and loading is unaffected.
 
-- The page uses system fonts, runs no script and loads nothing from the network; outside links open in the system browser.
+- The bundled quick start uses system fonts and works offline. An edition can also supply an online handbook. Its online/offline switch stays in the panel even if the website fails to load. External new-window links open in the system browser.
 - Only HTML, CSS and images inside `guide/` are served; `..`, hidden files and unknown types are refused, and responses carry `nosniff` and a `default-src 'none'` CSP.
 - The panel passes `?theme=light|dark` from the app's theme setting, and the server writes `<html data-theme>`.
 
@@ -28,6 +28,7 @@ Override the `eduwork-user-guide` entry in the distribution configuration. The d
 | --- | --- | --- |
 | `productName` | `EduWork` | Substituted for `{product}` in the copy |
 | `autoStart` | `true` | Start automatically on first use; the guide panel also allows manual replay |
+| `guideUrl` | Unset | Cross-origin HTTPS URL of the edition's handbook. Opens when online with the offline guide available in the toolbar. Unset editions open the bundled quick start. |
 | `copy` | `{}` | Override individual fields by locale and step ID |
 
 A distribution that changes only the Chinese explanation for the new-session step can use this configuration.
@@ -51,27 +52,14 @@ A distribution that changes only the Chinese explanation for the new-session ste
 
 Missing, blank or invalid fields use the public default in the same language. The plugin owns step order, targets, navigation and replay. Updating copy preserves the user's first-run completion state.
 
-Each locale has 26 fields.
+Each locale has 28 fields.
 
 - `steps` contains a `title` and `body` for each of the eight steps.
-- `ui` contains five tour button labels, the progress format, the panel title, Close, Replay and the account menu entry. The progress format accepts `{current}` and `{total}`.
+- `ui` contains tour buttons, online and offline switches, the progress format, the panel title, Close, Replay and the account menu entry. The progress format accepts `{current}` and `{total}`.
 
 ## Updating the guide
 
-Edit the public guide in `guide/index.html` and keep its screenshots in `guide/images/`. The guide ships with the client.
-
-An edition can select its own Markdown handbook in `edition/distribution.json`. Assembly builds it as the offline landing page with a local link to the common guide. Editions that omit `userGuide` open the public guide directly.
-
-```json
-{
-  "userGuide": {
-    "source": "docs/USER_GUIDE.md",
-    "sourceUrl": "https://github.com/example/edition/blob/main/docs/USER_GUIDE.md"
-  }
-}
-```
-
-Use a level-one heading for the title and level-two headings for the contents. GitHub-style tables are supported. Relative document links resolve against `sourceUrl` and open in the external browser. Reference local PNG, JPEG or WebP screenshots by relative path. Assembly embeds them for offline reading. Redact personal information before adding screenshots.
+Edit the bundled quick start in `guide/index.html`. Editions with a `guideUrl` maintain the full handbook on their own website. The online page must allow cross-origin iframe embedding and loads when the guide panel opens. The first-run tour runs locally.
 
 ## Development
 

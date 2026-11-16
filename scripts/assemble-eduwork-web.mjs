@@ -14,7 +14,6 @@ import { resolveEduworkUpstream, withUpstreamLock } from './lib/upstream.mjs'
 import { installLockedDshPackage, copyDshPackagePayload } from './lib/dsh-packages.mjs'
 import { copyDshBundledSkills } from './lib/dsh-skills.mjs'
 import { prepareWebRuntime } from './prepare-eduwork-web-runtime.mjs'
-import { buildEditionUserGuide } from './build-edition-user-guide.mjs'
 import { provisionBuildTools } from './prepare-eduwork-build-tools.mjs'
 import { verifyPluginNotificationConsumers } from './plugin-notification-contract.mjs'
 
@@ -243,7 +242,6 @@ export async function assembleEduworkWeb({
     if ((await statEntry(source))?.isDirectory()) await copyTree(source, target)
     else await copyFileTo(source, target)
   }
-  await buildEditionUserGuide(editionRoot, selected.userGuide, runtime)
   if (distribution.brand?.product?.logoResource) {
     const logo = childPath(join(output, 'resources'), distribution.brand.product.logoResource)
     const mimes = { '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp' }

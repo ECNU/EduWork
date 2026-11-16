@@ -25,7 +25,7 @@ test('handler returns the bundled guide with safe headers', async () => {
   const page = await call(ROUTE + '/')
   assert.equal(page.status, 200)
   assert.match(page.headers['Content-Type'], /text\/html/)
-  assert.match(String(page.body), /EduWork 使用教程/)
+  assert.match(String(page.body), /EduWork 快速入门/)
   assert.match(page.headers['Content-Security-Policy'], /default-src 'none'/)
   assert.equal((await call(ROUTE)).status, 301)
   assert.equal((await call(ROUTE + '/missing.html')).status, 404)

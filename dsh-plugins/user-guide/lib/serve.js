@@ -32,9 +32,7 @@ export function resolveGuidePath(pathname, root = GUIDE_ROOT) {
 /** Writes data-theme on <html>; other values leave the page unchanged. */
 export function withTheme(body, theme) {
   if (theme !== 'light' && theme !== 'dark') return body
-  return Buffer.from(String(body)
-    .replace(/<html\b/i, `<html data-theme="${theme}"`)
-    .replace(/href="\.\/(general|index)\.html"/g, `href="./$1.html?theme=${theme}"`))
+  return Buffer.from(String(body).replace(/<html\b/i, `<html data-theme="${theme}"`))
 }
 
 /** The tour settings the client reads: product name, autoplay and localized copy overrides. */
@@ -42,7 +40,8 @@ export const TOUR_PATH = ROUTE + '/tour.json'
 
 /** The part of the configuration the client needs; tourSeen travels through the settings form. */
 export function tourSettings(config = {}) {
-  return { productName: config.productName || 'EduWork', autoStart: config.autoStart !== false, copy: config.copy ?? {} }
+  return { productName: config.productName || 'EduWork', autoStart: config.autoStart !== false, copy: config.copy ?? {},
+    ...(config.guideUrl ? { guideUrl: config.guideUrl } : {}) }
 }
 
 /** GET/HEAD serve files and tour.json; anything else is 404/405. */

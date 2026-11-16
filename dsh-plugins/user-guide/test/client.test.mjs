@@ -118,3 +118,28 @@ test('without an account menu service the plugin still loads', () => {
   assert.deepEqual(injected, [['accountMenuEntries']])
   assert.deepEqual(mod.inject, ['configForms'])
 })
+
+test('edition reader keeps its offline switch outside the online frame', async () => {
+  const dom = fakeDom()
+  const url = 'https://campus.example.org/guide.html'
+  window.location = new URL('https://desktop.example.org')
+  const mod = load()
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ guideUrl: url }) })
+  mod.apply({ configForms: { get: () => seenForm }, effect() {}, inject() {} })
+  window.fire('eduwork:open-user-guide')
+  await new Promise(setImmediate)
+  const [bar, frame] = dom.body.children[0].children[0].children
+  const button = bar.children.find(node => node.textContent === '查看离线教程')
+  assert.equal(frame.src, url)
+  assert.match(frame.attrs.sandbox, /allow-scripts/)
+  button.listeners.click()
+  assert.equal(frame.src, '/eduwork-user-guide/?theme=light')
+  assert.doesNotMatch(frame.attrs.sandbox, /allow-scripts/)
+  button.listeners.click()
+  assert.equal(frame.src, url)
+  mod.closeGuide()
+  for (const value of ['http://campus.example.org', 'https://desktop.example.org/guide', 'about:blank', 'https://user@campus.example.org']) {
+    const settings = await mod.loadSettings(async () => ({ ok: true, json: async () => ({ guideUrl: value }) }))
+    assert.equal(settings.guideUrl, undefined)
+  }
+})
