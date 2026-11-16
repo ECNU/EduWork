@@ -300,6 +300,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'in
     app.isHidden = () => { assert.equal(process.platform, 'darwin'); return scenario === 'application-hidden' }
     app.requestSingleInstanceLock = () => { calls.push('lock'); return scenario !== 'second-instance' }
     app.whenReady = async () => { calls.push('ready') }
+    app.relaunch = () => { calls.push('relaunch') }
     app.quit = () => {
       if (!exit.complete) { void exit.request(); return }
       calls.push('quit'); app.emit('will-quit'); completed()
@@ -852,8 +853,8 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'in
       assert.equal(calls.includes('activate-paths'), false, 'Cancelling the first run must not create the target')
       assert.equal(calls.includes('window'), false, 'Cancelling the first run must not open a window')
     } else if (scenario === 'first-run-fresh' || scenario === 'first-run-imported') {
-      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'first-run', 'activate-paths', 'read-close-action', 'window', 'page-loaded', 'host-startup-progress',
-        'window-show', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready'])
+      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'first-run', 'relaunch', 'quit'])
+      assert.equal(exit.complete, true)
     } else {
       assert.deepEqual(calls, ['ready', 'installer', 'quit'])
       assert.equal(exit.complete, true)
