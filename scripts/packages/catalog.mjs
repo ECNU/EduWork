@@ -18,6 +18,8 @@ export const packages = [
   { id: 'dsh-remote-access', name: '@eduwork/dsh-remote-access', directory: 'packages/dsh-remote-access', group: 'dsh-remote-access' },
 ]
 export const groups = [...new Set(packages.map(p => p.group))]
+// Also checked on Windows: these plugins handle the host's own paths, which differ there.
+export const windowsGroups = ['dsh-auto-approval']
 export function selectPackage(id) {
   const selected = packages.find(p => p.id === id)
   if (!selected) throw new Error(`Unknown package: ${id}. Choose ${packages.map(p => p.id).join(', ')}`)
@@ -75,6 +77,8 @@ export function selectProductChecks(files, { receiptOnly = false, full = false, 
     build: full || buildInputs.length > 0,
     integration: full || integrationInputs.length > 0,
     groups: selectedGroups,
+    // The npm package check matrix: one job per group and runner.
+    checks: selectedGroups.flatMap(group => ['ubuntu-latest', ...windowsGroups.includes(group) ? ['windows-latest'] : []].map(os => ({ package: group, os }))),
     packages: selectedGroups.length > 0,
     reasons: {
       build: full ? [reason] : buildInputs.length ? buildInputs : ['No product assembly inputs changed'],

@@ -43,7 +43,7 @@ Existing commands also work from each development root. Run `check` before `pack
 
 Studio/shared-service Node tests generate real Office files. Prepare a separate Python 3.12+ environment, run `python -m pip install -r packages/dsh-knowledge-studio/packages/artifact-services/python/requirements.txt` and set `DSH_OFFICE_PYTHON` to that interpreter's absolute path. CI performs this setup automatically, without a browser or enterprise login.
 
-CI selects affected development roots; shared-service changes also select Studio. Markdown/image-only changes run documentation and entry-point checks. Browser, real login/mail, Office and media acceptance remain targeted local work for relevant behavior changes. Ordinary CI does not install browsers, call real models or publish packages/desktop Releases.
+CI selects affected development roots and checks them on Linux; `dsh-auto-approval`, which handles host paths, is also checked on Windows. Shared-service changes also select Studio. Markdown/image-only changes run documentation and entry-point checks. Browser, real login/mail, Office and media acceptance remain targeted local work for relevant behavior changes. Ordinary CI does not install browsers, call real models or publish packages/desktop Releases.
 
 ## Localized approval prompts
 
