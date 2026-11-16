@@ -1,5 +1,6 @@
 import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification, clipboard, net, powerMonitor } from 'electron'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
+import { createTaskbarIndicator } from './taskbar-indicator.mjs'
 import { createDesktopPet } from './desktop-pet.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
@@ -66,6 +67,10 @@ export const productUpdateObserver = createProductUpdateObserver({
 })
 let publisher
 let taskNotifications, notificationAdapter
+const taskbar = createTaskbarIndicator({
+  platform: process.platform, nativeImage, getDock: () => app.dock,
+  warn: error => desktopHostLog(`[taskbar] ${error.message}\n`),
+})
 let desktopPet, petMenu = () => []
 let refreshTray = () => {}
 const lifecycle = new DesktopLifecycle()
@@ -109,7 +114,7 @@ export async function stopDesktopServices() {
   // The lifecycle already reflects Host/bridge failures; pet/notification/tray
   // cleanup is cosmetic for process exit but must still be attempted and logged.
   const causes = [...lifecycle.failures, ...(serviceFailure === undefined ? [] : [serviceFailure])]
-  for (const close of [() => desktopPet?.close(), () => taskNotifications?.close(),
+  for (const close of [() => desktopPet?.close(), () => taskNotifications?.close(), () => taskbar.update({ count: 0 }),
     () => { tray?.destroy(); tray = undefined }]) {
     try { close() } catch (error) { causes.push(error) }
   }
@@ -359,7 +364,7 @@ async function prepareDesktop() {
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
     show: showNotificationWindow,
     publish: value => notificationAdapter.publish(value), dismiss: () => notificationAdapter.dismiss(),
-    changed: () => { refreshTray(); desktopPet.update(taskNotifications) } })
+    changed: status => { taskbar.update(status); refreshTray(); desktopPet.update(taskNotifications) } })
   // The pet page comes from the product's pet plugin; it never loads from a user plugin directory.
   let activation
   desktopPet = createDesktopPet({ packageRoot: join(paths.product, 'd/node_modules/@eduwork/dsh-desktop-pet'),
@@ -451,6 +456,7 @@ function shouldExitOnClose() { return (user?.closeAction ?? initialCloseAction) 
 
 export async function attachDesktopWindow(window) {
   mainWindow = window
+  taskbar.attach(window)
   mainWindowPresented = false
   window.on('show', () => { mainWindowPresented = true })
   window.setTitle(settings.productName)

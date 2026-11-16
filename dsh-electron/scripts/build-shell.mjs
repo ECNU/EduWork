@@ -40,7 +40,7 @@ for (const file of files) {
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
   rows.push({ path: file, originalSHA256: digest(before), derivedSHA256: digest(text), changed: !before.equals(Buffer.from(text)) })
 }
-const electronAdapters = ['runtime-access.mjs', 'workspace-access.mjs', 'update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-locale.mjs', 'desktop-exit.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'update-presentation.mjs', 'update-observer.mjs', 'update-workbench.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'software-update-control.mjs', 'software-update-scheduler.mjs', 'startup-failure.mjs', 'desktop-web-paths.mjs', 'startup-presentation.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'desktop-menu.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'settings-open-request.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs', 'directory-picker.mjs', 'host-git-identity.mjs', 'desktop-pet.mjs', 'desktop-pet-core.mjs', 'startup-hint.mjs']
+const electronAdapters = ['runtime-access.mjs', 'workspace-access.mjs', 'update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-locale.mjs', 'desktop-exit.mjs', 'task-notifications.mjs', 'taskbar-indicator.mjs', 'update-coordinator.mjs', 'update-presentation.mjs', 'update-observer.mjs', 'update-workbench.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'software-update-control.mjs', 'software-update-scheduler.mjs', 'startup-failure.mjs', 'desktop-web-paths.mjs', 'startup-presentation.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'desktop-menu.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'settings-open-request.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs', 'directory-picker.mjs', 'host-git-identity.mjs', 'desktop-pet.mjs', 'desktop-pet-core.mjs', 'startup-hint.mjs']
 for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
 await writeFile(join(output,'src/alpha-update-migration.mjs'), (await readFile(join(output,'src/alpha-update-migration.mjs'),'utf8'))
@@ -83,7 +83,9 @@ await writeFile(join(output, 'package.json'), JSON.stringify({ ...manifest, name
 }
 // The pet preload requires only electron; the sandbox loads it as written.
 await copyFile(join(repository, 'dsh-electron/src/preload-pet.cjs'), join(output, 'lib/preload-pet.cjs'))
+await copyFile(join(repository, 'dsh-electron/src/taskbar-badges.png'), join(output, 'lib/taskbar-badges.png'))
 const adapters = {}
+adapters['dsh-electron/src/taskbar-badges.png'] = digest(await readFile(join(repository, 'dsh-electron/src/taskbar-badges.png')))
 for (const name of ['dock-theme-preload.cjs', 'boot-motion-preload.cjs', 'preload-pet.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
 for (const name of ['boot-brand-preload.cjs', 'boot-hint-preload.cjs', 'sidebar-browser-preload.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
