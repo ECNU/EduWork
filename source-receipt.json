@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
-  "version": "0.4.13",
+  "version": "0.4.14",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-16T11:24:22.868Z",
   "fileSetSHA256": "c49a2812823259e57ae81e25dce6746be333cec5196e14c8aa593e6632f441e4",
