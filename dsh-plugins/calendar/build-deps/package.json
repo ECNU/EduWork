@@ -1,0 +1,10 @@
+{
+  "name": "eduwork-calendar-client-dependencies",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "fullcalendar": "7.1.5",
+    "preact": "10.29.8",
+    "temporal-polyfill": "1.0.7"
+  }
+}

@@ -198,7 +198,7 @@ function SelectionToolbar({ target, t, onAnnotate, actions, onAction }) {
   const icon = kind => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
     h('path', { d: kind === 'side-chat' ? 'M13 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6M13 4v16M4 7h5M4 12h5M4 17h5' : 'M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6 4V6a2 2 0 0 1 2-2ZM8 9h8M8 13h5' }))
   return h('div', {
-    ref, [UI]: '', 'data-eduwork-selection-toolbar': '', role: 'toolbar', 'aria-label': t('selectionActions'),
+    ref, [UI]: '', 'data-window-drag-exclude': '', 'data-eduwork-selection-toolbar': '', role: 'toolbar', 'aria-label': t('selectionActions'),
     style: { ...card, ...position, display: 'flex', alignItems: 'center', padding: 4, borderRadius: 12, maxWidth: 'calc(100vw - 16px)' },
     onMouseDown: event => event.preventDefault(),
   },
@@ -259,7 +259,7 @@ function Editor({ draft, t, onAdd, onCancel }) {
   const [note, setNote] = useState('')
   const [ref, position] = useFloating(draft)
   const submit = () => onAdd(note)
-  return h('div', { ref, [UI]: '', role: 'dialog', style: { ...card, ...position, width: 320, maxWidth: 'calc(100vw - 16px)', maxHeight: 'calc(100vh - 16px)', boxSizing: 'border-box', overflowY: 'auto', padding: 12 } },
+  return h('div', { ref, [UI]: '', 'data-window-drag-exclude': '', role: 'dialog', style: { ...card, ...position, width: 320, maxWidth: 'calc(100vw - 16px)', maxHeight: 'calc(100vh - 16px)', boxSizing: 'border-box', overflowY: 'auto', padding: 12 } },
     h('div', { style: { marginBottom: 8, color: secondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, draft.quote),
     h('textarea', {
       autoFocus: true, value: note, maxLength: MAX_NOTE, rows: 3, placeholder: t('notePlaceholder'), 'aria-label': t('noteLabel'),
@@ -305,7 +305,7 @@ function Preview({ panel, items, sessionId, previews, t, onClose, onOpen, onSave
   }, [onClose, editing])
   // Bound the whole preview, not only the quote: long notes must remain
   // readable and the dialog must fit even when the window is short.
-  return h('div', { ref, [UI]: '', role: 'dialog', 'aria-label': t(panel.kind === 'list' ? 'list' : 'preview'), style: { ...card, left: '50%', bottom: 'min(160px, 20vh)', transform: 'translateX(-50%)', width: 'min(560px, calc(100vw - 32px))', maxHeight: 'calc(100vh - min(160px, 20vh) - 16px)', boxSizing: 'border-box', overflowY: 'auto', padding: 14 } },
+  return h('div', { ref, [UI]: '', 'data-window-drag-exclude': '', role: 'dialog', 'aria-label': t(panel.kind === 'list' ? 'list' : 'preview'), style: { ...card, left: '50%', bottom: 'min(160px, 20vh)', transform: 'translateX(-50%)', width: 'min(560px, calc(100vw - 32px))', maxHeight: 'calc(100vh - min(160px, 20vh) - 16px)', boxSizing: 'border-box', overflowY: 'auto', padding: 14 } },
     h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 } },
       h('strong', null, entry ? `${t('number')} ${entry.number}` : t(panel.kind === 'list' ? 'list' : 'preview')),
       h('button', { type: 'button', onClick: onClose, style: button(false) }, t(editing ? 'cancel' : 'close'))),

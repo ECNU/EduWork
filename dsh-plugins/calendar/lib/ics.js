@@ -29,7 +29,7 @@
 //   therefore carries the source as well (see `lib/keys.js`), and an import reads
 //   that back. A file written by anything else has a plain `UID`, which is taken to
 //   belong to the single source the import named — the behaviour there is unchanged.
-import { WEEKDAYS, isRealLocalTime } from './model.js'
+import { WEEKDAYS, isRealLocalTime, mergeRemarks, seriesInstants } from './model.js'
 import { decodeIdentity, encodeIdentity } from './keys.js'
 
 /** The source an entry belongs to when it does not name one. */
@@ -624,6 +624,42 @@ function exportedUid(event) {
   const source = event.source
   if (!source || source === DEFAULT_SOURCE) return event.uid
   return encodeIdentity({ source, uid: event.uid })
+}
+
+/** 仅在生成导出时处理备注。未选择包含备注时，保留来源提供的说明。 */
+export function eventForExport(event, annotations) {
+  if (!annotations) {
+    if (event.source !== DEFAULT_SOURCE) return event
+    const overrides = event.overrides?.map(({ description, ...entry }) => entry)
+      .filter(entry => Object.keys(entry).length > 1)
+    const extensions = Object.fromEntries(Object.entries(event.extensions ?? {}).filter(([key]) => key.toUpperCase() !== 'DESCRIPTION'))
+    return { ...event, description: undefined, extensions, overrides }
+  }
+
+  const seriesRemark = annotations.get(undefined)
+  if (!event.recurrence) {
+    const remark = annotations.get(event.originalStart ?? event.start) ?? seriesRemark
+    return { ...event, description: mergeRemarks(event.description, remark?.text) }
+  }
+
+  const description = mergeRemarks(event.description, seriesRemark?.text)
+  const overrides = new Map((event.overrides ?? []).map(entry => [entry.date, entry]))
+  for (const [date, entry] of overrides) {
+    if (entry.description !== undefined) overrides.set(date, { ...entry, description: mergeRemarks(entry.description, seriesRemark?.text) })
+  }
+  const instants = [...annotations.keys()].filter(Boolean).sort()
+  if (instants.length > 0) {
+    const valid = new Set(seriesInstants(event, instants.at(-1).slice(0, 10)))
+    const cancelled = new Set((event.exceptions ?? []).map(date => date.slice(0, 10)))
+    for (const instant of instants) {
+      const date = instant.slice(0, 10)
+      if (!valid.has(instant) || cancelled.has(date)) continue
+      const entry = event.overrides?.find(override => override.date === date)
+      const text = mergeRemarks(entry?.description ?? event.description, annotations.get(instant)?.text)
+      if (entry?.description !== undefined || text !== description) overrides.set(date, { ...entry, date, description: text })
+    }
+  }
+  return { ...event, description, overrides: [...overrides.values()] }
 }
 
 /**

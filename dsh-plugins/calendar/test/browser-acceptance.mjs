@@ -127,7 +127,8 @@ async function bundlePanel() {
     target: 'es2022',
     jsx: 'automatic',
     define: { 'process.env.NODE_ENV': '"production"' },
-    nodePaths: [join(runtime, 'node_modules')],
+    nodePaths: [join(pluginRoot, 'build-deps/node_modules'), join(runtime, 'node_modules')],
+    loader: { '.css': 'text' },
     plugins: [{
       name: 'from-the-page',
       setup(context) {
@@ -260,7 +261,7 @@ async function serve(calendar, panel, methods) {
       response.end(`<html lang="zh"><meta charset="utf-8">
 <style>
 body { font: 14px system-ui; margin: 0 }
-#calendar { width: 900px }
+#calendar { width: 900px; max-width: 100% }
 * { transition: none !important }
 </style>
 <div id="calendar"></div>
@@ -287,12 +288,13 @@ body { font: 14px system-ui; margin: 0 }
  * Node-side instance keeps one writer: both are the same calendar, but a call made
  * through the page is a call the panel's own view is looking at.
  */
-async function withBrowser(calendar, panel, methods, body) {
+async function withBrowser(calendar, panel, methods, body, { initialView = 'week', viewport = { width: 1000, height: 900 }, date = new Date(2027, 0, 13, 12) } = {}) {
   const { server, url } = await serve(calendar, panel, methods)
   let browser
   try {
     browser = await chromium.launch({ channel: process.env.EDUWORK_BROWSER_CHANNEL || 'msedge', headless: true })
-    const page = await browser.newPage({ viewport: { width: 1000, height: 900 }, locale: 'zh-CN' })
+    const page = await browser.newPage({ viewport, locale: 'zh-CN' })
+    if (date) await page.clock.setFixedTime(date)
     const errors = []
     page.on('pageerror', error => errors.push(error.message))
     page.on('console', message => { if (message.type() === 'error') errors.push(`console: ${message.text()}`) })
@@ -300,12 +302,17 @@ async function withBrowser(calendar, panel, methods, body) {
     // How many reads the panel makes for one screen. A view that re-reads on every
     // render is a view that never settles, and the count is what shows it.
     let reads = 0
-    page.on('request', request => { if (request.url().includes('/api/occurrences')) reads += 1 })
+    page.on('request', request => {
+      if (!request.url().endsWith('/api/occurrences')) return
+      const { from, to } = request.postDataJSON()?.args?.[0] ?? {}
+      if (Date.parse(to) - Date.parse(from) === 6 * 86_400_000) reads += 1
+    })
+    const openView = async () => {
+      await page.getByRole('region', { name: '月日历' }).waitFor()
+      if (initialView === 'week') await page.getByRole('button', { name: '周', exact: true }).click()
+    }
     await page.goto(url)
-    // The panel reads what it needs in effects; the first redraw is when those reads
-    // have landed. Nothing is asserted here — each pass seeds its own entries and then
-    // waits for what it seeded.
-    await page.waitForFunction(() => typeof window.__dayInWeek === 'function' && document.querySelector('#calendar')?.textContent?.includes('我的日历'))
+    await openView()
     /** A date inside the week the panel is drawing, from the panel's own clock. */
     const dayInWeek = offset => page.evaluate(offset => window.__dayInWeek(offset), offset)
     /** One call to the calendar the page is using, so both sides see the same writes. */
@@ -321,7 +328,7 @@ async function withBrowser(calendar, panel, methods, body) {
     /** Read the calendar back, so an assertion is about the data and not the drawing. */
     const events = async () => (await call('snapshot')).events
     /** Redraw from the service, which is what the panel does after it writes. */
-    const refresh = () => page.reload()
+    const refresh = async () => { await page.reload(); await openView() }
     return await body({ page, errors, dayInWeek, call, events, refresh, reads: () => reads })
   } finally {
     await browser?.close()
@@ -331,10 +338,36 @@ async function withBrowser(calendar, panel, methods, body) {
 
 const METHODS = [
   'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'applySource', 'applyOverride', 'removeOverride',
-  'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'deleteCalendar', 'putEvent', 'updateEvent', 'putNote', 'removeNote', 'notes', 'setPersonal', 'personalFor', 'sourceStatuses', 'reminders', 'ackReminder',
+  'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'deleteCalendar', 'putEvent', 'updateEvent', 'putNote', 'removeNote', 'notes', 'setPersonal', 'personalFor', 'sourceStatuses', 'annotationsFor', 'annotationChoices', 'selectAnnotations', 'reminders', 'ackReminder',
 ]
 
 const panel = await bundlePanel()
+async function moreAction(page, name) {
+  await page.getByRole('button', { name: '日历管理', exact: true }).click()
+  await page.getByRole('menuitem', { name, exact: typeof name === 'string' }).click()
+}
+
+async function openSources(page) {
+  await moreAction(page, '日历来源')
+  const selector = page.getByRole('dialog', { name: '日历来源' }).getByRole('combobox', { name: '显示日程', exact: true })
+  await selector.waitFor()
+  return selector
+}
+
+async function closeList(page) {
+  await page.getByRole('dialog').getByRole('button', { name: '完成', exact: true }).click()
+}
+
+const sidebar = page => page.getByRole('complementary', { name: '日程侧栏' })
+const createForm = page => sidebar(page).getByRole('form', { name: '新建日程' })
+const textForm = (page, label) => sidebar(page).getByRole('form', { name: `编辑${label}` })
+const leaveDetails = page => sidebar(page).getByRole('button', { name: '‹ 当日安排', exact: true }).click()
+
+async function openRecord(page, title) {
+  await moreAction(page, '日程记录')
+  await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', { name: title }).click()
+}
+
 const report = []
 let failures = 0
 
@@ -372,16 +405,17 @@ await acceptance('在真实浏览器里写笔记 → 保存 → 重新打开确�
         // A real `<textarea>` in a real browser: `fill` sets the value through the
         // browser's own input pipeline, which is what a keyboard would do and what
         // the stand-in DOM could not reproduce.
-        const field = page.getByRole('textbox', { name: '我的笔记' })
+        const field = textForm(page, '笔记').getByRole('textbox', { name: '笔记' })
         await field.waitFor()
         await field.fill(NOTE)
         assert.equal(await field.inputValue(), NOTE, 'the textarea holds what was typed')
-        await page.getByRole('button', { name: '保存笔记' }).click()
+        await textForm(page, '笔记').getByRole('button', { name: '保存', exact: true }).click()
 
         // Written where it belongs: the personal layer, not the record. The save is
         // asynchronous — the panel writes, then re-reads — so the note is waited for
         // rather than assumed to have landed by the time the click returns.
-        await page.getByText('我的笔记').first().waitFor()
+        await field.waitFor({ state: 'detached' })
+        await sidebar(page).getByText(NOTE, { exact: true }).waitFor()
         await poll(
           async () => (await call('notes', { scope: 'source', source: 'manual', uid: 'personal-1' }))[0]?.note.text,
           NOTE,
@@ -394,29 +428,30 @@ await acceptance('在真实浏览器里写笔记 → 保存 → 重新打开确�
         )
 
         // Reopen the class from scratch and read it back.
-        await page.getByRole('button', { name: '关闭' }).click()
-        await page.getByRole('button', { name: /个人复习课/ }).click()
-        await page.getByText('我的笔记').first().waitFor()
+        await leaveDetails(page)
+        await page.locator('[data-event-title="个人复习课"]').click()
+        await sidebar(page).getByText(NOTE, { exact: true }).waitFor()
         assert.ok(
           await page.getByText(NOTE).first().isVisible(),
           'reopening the class shows the note that was typed',
         )
 
         // Clear it: an emptied note is a removal, not a blank note left behind.
-        await page.getByRole('button', { name: '改笔记' }).click()
-        const again = page.getByRole('textbox', { name: '我的笔记' })
+        await sidebar(page).getByRole('button', { name: '编辑笔记' }).click()
+        const again = textForm(page, '笔记').getByRole('textbox', { name: '笔记' })
         await again.fill('')
         assert.equal(await again.inputValue(), '', 'the textarea is empty')
-        await page.getByRole('button', { name: '保存笔记' }).click()
-        await page.getByRole('button', { name: '关闭' }).click()
+        await textForm(page, '笔记').getByRole('button', { name: '保存', exact: true }).click()
+        await again.waitFor({ state: 'detached' })
+        await leaveDetails(page)
 
         assert.deepEqual(
           await call('notes', { scope: 'source', source: 'manual', uid: 'personal-1' }),
           [],
           'clearing removed the note instead of storing a blank one',
         )
-        await page.getByRole('button', { name: /个人复习课/ }).waitFor()
-        const drawn = await page.getByRole('button', { name: /个人复习课/ }).getAttribute('aria-label')
+        await page.locator('[data-event-title="个人复习课"]').waitFor()
+        const drawn = await page.locator('[data-event-title="个人复习课"]').getAttribute('aria-label')
         assert.ok(drawn && !drawn.includes('笔记：'), `the class is drawn without a note, saw ${drawn}`)
         assert.deepEqual(errors, [], 'the page raised no error')
       })
@@ -458,8 +493,15 @@ await acceptance('删除导入日程，同编号的个人日程不受影响', as
         // The imported one carries its source in the label, which is what tells the
         // two apart on the week.
         await page.getByRole('button', { name: /高等数学 A/ }).click()
-        await page.getByRole('button', { name: '删除日程' }).click()
-        await page.getByRole('button', { name: '删除', exact: true }).click()
+        const detail = sidebar(page)
+        const deleteAction = detail.getByRole('button', { name: '删除', exact: true })
+        await deleteAction.click()
+        await detail.getByRole('status').getByText('删除这条日程？', { exact: true }).waitFor()
+        assert.equal(await page.getByRole('dialog').count(), 0)
+        assert.equal(await detail.getByRole('button', { name: '编辑日程', exact: true }).count(), 0)
+        await detail.getByRole('button', { name: '返回详情', exact: true }).click()
+        await deleteAction.click()
+        await detail.getByRole('button', { name: '确认删除', exact: true }).click()
 
         // The dialog closes and the week redraws from the service.
         await page.getByRole('button', { name: /自己加的复习课/ }).waitFor()
@@ -493,6 +535,60 @@ await acceptance('删除导入日程，同编号的个人日程不受影响', as
   })
 })
 
+await acceptance('窄屏侧栏保持键盘焦点并可按 Escape 返回', async () => {
+  await withRoot('eduwork-browser-sheet-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page }) => {
+      const opener = page.locator('[data-calendar-day="2027-01-13"]').getByRole('link')
+      await opener.focus()
+      await page.keyboard.press('Enter')
+      const sheet = sidebar(page)
+      const close = sheet.getByRole('button', { name: '收起日程侧栏' })
+      await sheet.waitFor()
+      assert.equal(await close.evaluate(element => element === document.activeElement), true)
+      await page.keyboard.press('Shift+Tab')
+      const add = sheet.getByRole('button', { name: /添加日程/ })
+      assert.equal(await add.evaluate(element => element === document.activeElement), true)
+      await page.keyboard.press('Tab')
+      assert.equal(await close.evaluate(element => element === document.activeElement), true)
+      await page.keyboard.press('Escape')
+      await sheet.waitFor({ state: 'hidden' })
+      assert.equal(await opener.evaluate(element => element === document.activeElement), true)
+    }, { viewport: { width: 690, height: 800 }, initialView: 'month' })
+  }))
+})
+
+await acceptance('周历拖选预览与保存后的个人日程配色一致', async () => {
+  await withRoot('eduwork-browser-selection-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, dayInWeek }) => {
+      const week = page.getByRole('region', { name: '周日历' })
+      const tuesday = await dayInWeek(1)
+      const column = week.locator(`[role="cell"][data-date="${tuesday}"]:not([data-calendar-day])`)
+      const lane = await column.boundingBox()
+      const start = await week.locator('[data-time="10:00:00"]').last().boundingBox()
+      const end = await week.locator('[data-time="11:00:00"]').last().boundingBox()
+      assert.ok(lane && start && end, '周历需要显示拖选的日期与时段')
+      const x = lane.x + lane.width / 2
+      const readColors = element => {
+        const styles = getComputedStyle(element)
+        return [styles.backgroundColor, styles.borderInlineStartColor, styles.color]
+      }
+
+      await page.mouse.move(x, start.y + start.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(x, end.y + end.height / 2, { steps: 10 })
+      const preview = week.locator('.cal-selection-preview')
+      const previewColors = await preview.evaluate(readColors)
+      await page.mouse.up()
+
+      const create = createForm(page)
+      await create.getByLabel('标题', { exact: true }).fill('拖选创建的个人日程')
+      await create.getByRole('button', { name: '保存', exact: true }).click()
+      const saved = week.getByRole('button', { name: /拖选创建的个人日程/ })
+      assert.deepEqual(await saved.evaluate(readColors), previewColors)
+    })
+  }))
+})
+
 // 3. The record page is the other first-class way to delete: the week's dialog asks
 //    before it removes every date of a series, and the page over one record has to
 //    ask too, or the same act is careful in one place and abrupt in the other. This
@@ -507,9 +603,7 @@ await acceptance('记录页删除前会问一句，取消就不删', async () =>
         })
         await refresh()
 
-        // Into the record page: open the occurrence, then the entry behind it.
-        await page.getByRole('button', { name: /个人复习课/ }).click()
-        await page.getByRole('button', { name: '编辑日程信息' }).click()
+        await openRecord(page, /个人复习课/)
         await page.getByRole('button', { name: '删除这条日程' }).waitFor()
 
         // Asking is the point: a click here removes every date of the record, which is
@@ -554,10 +648,10 @@ await acceptance('学校改时间后，浏览器里仍能看到原笔记挂在�
         // path as the first one and then asks whether the school can disturb it.
         await page.getByRole('button', { name: /高等数学 A/ }).click()
         await page.getByRole('button', { name: '写笔记' }).click()
-        await page.getByRole('textbox', { name: '我的笔记' }).fill(NOTE)
-        await page.getByRole('button', { name: '保存笔记' }).click()
-        await page.getByText('我的笔记').first().waitFor()
-        await page.getByRole('button', { name: '关闭' }).click()
+        await textForm(page, '笔记').getByRole('textbox', { name: '笔记' }).fill(NOTE)
+        await textForm(page, '笔记').getByRole('button', { name: '保存', exact: true }).click()
+        await sidebar(page).getByText(NOTE, { exact: true }).waitFor()
+        await leaveDetails(page)
         assert.equal(
           (await call('notes', { scope: 'source', source: SOURCE, uid: 'MATH101-01' }))[0]?.note.text,
           NOTE,
@@ -605,20 +699,19 @@ await acceptance('个人单次日程写笔记后改时间，重开仍显示原�
         await refresh()
         await page.getByRole('button', { name: /Personal note anchor/ }).click()
         await page.getByRole('button', { name: '写笔记' }).click()
-        await page.getByRole('textbox', { name: '我的笔记' }).fill(NOTE)
-        await page.getByRole('button', { name: '保存笔记' }).click()
+        await textForm(page, '笔记').getByRole('textbox', { name: '笔记' }).fill(NOTE)
+        await textForm(page, '笔记').getByRole('button', { name: '保存', exact: true }).click()
         await poll(async () => (await call('notes', { source: 'manual', uid: 'personal-anchor' }))[0]?.note.text, NOTE, 'note saved')
-        await page.getByRole('button', { name: '编辑日程信息' }).click()
+        await sidebar(page).getByRole('button', { name: '编辑日程', exact: true }).click()
         await page.getByLabel('开始', { exact: true }).fill('20:00')
         await page.getByLabel(/^结束/).fill('21:00')
-        await page.getByRole('button', { name: '保存更改' }).click()
+        await sidebar(page).getByRole('button', { name: '保存', exact: true }).click()
         await poll(async () => (await events()).find(event => event.uid === 'personal-anchor')?.start, `${day}T20:00`, 'time saved')
         const afterEdit = (await call('occurrences', { from: day, to: day })).occurrences[0]
         assert.equal(afterEdit.originalStart, `${day}T19:00`, JSON.stringify(await events()))
         assert.equal((await call('notes', { source: 'manual', uid: 'personal-anchor', originalStart: afterEdit.originalStart }))[0]?.note.text, NOTE)
 
-        await page.getByRole('button', { name: '返回', exact: true }).click()
-        await page.getByRole('button', { name: /Personal note anchor/ }).click()
+        await page.locator('[data-event-title="Personal note anchor"]').click()
         await page.getByText(NOTE).first().waitFor()
         await refresh()
         await page.getByRole('button', { name: /Personal note anchor/ }).click()
@@ -634,9 +727,8 @@ await acceptance('空日历直接显示周网格', async () => {
   await withRoot('eduwork-browser-empty-grid-', async root => {
     await withCalendar(root, async calendar => {
       await withBrowser(calendar, panel, METHODS, async ({ page }) => {
-        await page.getByText('周一', { exact: true }).waitFor({ timeout: 2000 })
-        assert.equal(await page.getByText('日历还是空的').count(), 0)
-        assert.equal(await page.getByText('09:00', { exact: true }).count(), 1)
+        await page.getByRole('region', { name: '周日历' }).waitFor({ timeout: 2000 })
+        assert.equal(await page.locator('[data-occurrence]').count(), 0)
       })
     })
   })
@@ -648,7 +740,7 @@ await acceptance('默认导入不同文件不会覆盖已有日历', async () =>
     await withCalendar(root, async calendar => {
       await withBrowser(calendar, panel, METHODS, async ({ page, events }) => {
         for (const title of ['基础日历', '来源A']) {
-          await page.getByRole('button', { name: '导入', exact: true }).click()
+          await moreAction(page, '导入日历')
           const text = ['BEGIN:VCALENDAR','VERSION:2.0','BEGIN:VEVENT','UID:shared-id',`SUMMARY:${title}`,'DTSTART:20261019T090000','DTEND:20261019T100000','END:VEVENT','END:VCALENDAR'].join('\r\n')
           await page.locator('input[type=file]').setInputFiles({ name: `${title}.ics`, mimeType: 'text/calendar', buffer: Buffer.from(text) })
           const dialog = page.getByRole('dialog')
@@ -673,17 +765,18 @@ await acceptance('重复可选每天和自选星期', async () => {
         const monday = await dayInWeek(0)
         for (const mode of ['daily', 'custom']) {
           await page.getByRole('button', { name: '新建日程', exact: true }).click()
-          const dialog = page.getByRole('dialog')
+          const dialog = createForm(page)
           await dialog.getByLabel('标题', { exact: true }).fill(`Repeat ${mode}`)
           await dialog.getByLabel('日期', { exact: true }).fill(monday)
+          await dialog.getByText('重复与提醒', { exact: true }).click()
           await dialog.getByRole('combobox', { name: '重复', exact: true }).selectOption(mode)
           if (mode === 'custom') {
             await dialog.getByRole('button', { name: '周一', exact: true }).click()
             await dialog.getByRole('button', { name: '周二', exact: true }).click()
             await dialog.getByRole('button', { name: '周四', exact: true }).click()
           }
-          await dialog.getByRole('button', { name: '新建', exact: true }).click()
-          await page.getByRole('dialog').waitFor({ state: 'detached' })
+          await dialog.getByRole('button', { name: '保存', exact: true }).click()
+          await dialog.waitFor({ state: 'detached' })
         }
         const records = await events()
         assert.equal(records.find(row => row.title === 'Repeat daily').recurrence.byDay.length, 7)
@@ -702,35 +795,123 @@ await acceptance('周月切换、跨月导航和月视图编辑共用同一条�
     await withCalendar(root, async calendar => {
       await withBrowser(calendar, panel, METHODS, async ({ page, call, events, refresh, errors }) => {
         const dates = await page.evaluate(() => {
-          const d = new Date(); const fmt = v => `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-01`;
+          const d = new Date(); const fmt = v => `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-15`;
           return [fmt(d), fmt(new Date(d.getFullYear(),d.getMonth()+1,1))]
         })
         await call('putEvent', {uid:'month-one',title:'本月月视图日程',start:`${dates[0]}T09:00`,end:`${dates[0]}T10:00`})
         await call('putEvent', {uid:'month-two',title:'下月月视图日程',start:`${dates[1]}T09:00`})
         await refresh()
         await page.getByRole('button',{name:'月',exact:true}).click()
-        await page.getByRole('grid',{name:'月日历'}).waitFor({timeout:2000})
-        assert.equal(await page.getByRole('gridcell').count(),42)
+        await page.getByRole('region', { name: '月日历' }).waitFor({timeout:2000})
         const monthEntry=page.getByRole('button',{name:/本月月视图日程/})
         await monthEntry.waitFor()
-        assert.equal(await monthEntry.evaluate(node=>getComputedStyle(node).borderLeftWidth),'3px','month entries retain their source colour marker')
+        assert.ok(await monthEntry.getAttribute('data-occurrence'), 'timed entries retain their occurrence identity')
         await page.getByRole('button',{name:/本月月视图日程/}).click()
         await page.getByRole('button',{name:'写笔记',exact:true}).click()
-        await page.getByRole('textbox',{name:'我的笔记'}).fill('从月视图写的笔记')
-        await page.getByRole('button',{name:'保存笔记',exact:true}).click()
+        await textForm(page, '笔记').getByRole('textbox', { name: '笔记' }).fill('从月视图写的笔记')
+        await textForm(page, '笔记').getByRole('button', { name: '保存', exact: true }).click()
         await poll(async()=> (await call('notes',{source:'manual',uid:'month-one'}))[0]?.note.text,'从月视图写的笔记','month note persisted')
-        await page.getByRole('button',{name:'关闭',exact:true}).click()
+        await leaveDetails(page)
         await page.getByRole('button',{name:'下一月',exact:true}).click()
-        await page.getByRole('button',{name:/下月月视图日程/}).waitFor()
+        await page.locator('[data-event-title="下月月视图日程"]').waitFor()
         await page.getByRole('button',{name:'周',exact:true}).click()
         await page.getByRole('button',{name:'下一周',exact:true}).waitFor()
         assert.equal((await events()).length,2)
         assert.deepEqual(errors,[])
-      })
+      }, { initialView: 'month' })
     })
   })
 })
 
+await acceptance('校历首屏、周月日期保持和学年下钻', async () => {
+  await withRoot('eduwork-browser-academic-views-', async root => withCalendar(root, async calendar => {
+    calendar.registerAnnotations({
+      id: 'school-calendar', label: '2026–2027 本科校历', selectionGroup: 'academic-calendar',
+      annotationsFor: () => ({
+        weeks: [{ firstDay: '2027-01-11', text: '第 18 周 · 考试周', tone: 'highlight' }],
+        spans: [
+          { firstDay: '2026-09-14', lastDay: '2027-01-01', text: '秋季学期' },
+          { firstDay: '2027-01-04', lastDay: '2027-01-15', text: '期末考试', tone: 'highlight' },
+          { firstDay: '2027-01-18', lastDay: '2027-02-20', text: '寒假', tone: 'quiet' },
+        ],
+      }),
+    })
+    const scheduled = { uid: 'exam-review', title: '复习讨论', start: '2027-01-13T14:00', end: '2027-01-13T15:00' }
+    await calendar.putEvent(scheduled)
+    await withBrowser(calendar, panel, METHODS, async ({ page, events, errors }) => {
+      const grid = page.getByRole('region', { name: '月日历' })
+      await page.getByRole('heading', { name: '2027年1月' }).waitFor()
+      await grid.getByRole('button', { name: /复习讨论/ }).waitFor()
+      await grid.locator('[data-phase-start="2027-01-18"][data-phase-end="2027-02-20"]').first().waitFor()
+      await grid.locator('[data-phase-end="2027-01-15"]').first().waitFor()
+      assert.ok(await grid.evaluate(node => node.getBoundingClientRect().bottom <= innerHeight))
+      const screenshotDir = process.env.EDUWORK_CALENDAR_SCREENSHOTS
+      if (screenshotDir) await page.screenshot({ path: join(screenshotDir, 'calendar-january.png') })
+
+      await page.getByRole('button', { name: '周', exact: true }).click()
+      await page.getByText(/1月11日 – 1月17日/).waitFor()
+      await page.getByRole('button', { name: '月', exact: true }).click()
+      await page.getByRole('button', { name: '周', exact: true }).click()
+      await page.getByText(/1月11日 – 1月17日/).waitFor()
+
+      await page.getByRole('button', { name: '学年总览', exact: true }).click()
+      await page.getByRole('list', { name: '学年阶段' }).getByRole('button', { name: /寒假/ }).click()
+      await grid.locator('[data-calendar-day="2027-01-18"]').getByRole('link').press('Enter')
+      await sidebar(page).getByRole('heading', { name: /1月18日/ }).waitFor()
+      await page.getByRole('button', { name: '新建日程', exact: true }).click()
+      const dialog = createForm(page)
+      assert.ok(await dialog.getByRole('checkbox', { name: '全天' }).isChecked())
+      await dialog.getByLabel('标题', { exact: true }).fill('开始放假')
+      await dialog.getByRole('button', { name: '保存', exact: true }).click()
+      await dialog.waitFor({ state: 'hidden' })
+      assert.equal((await events()).find(record => record.title === '开始放假')?.start, '2027-01-18')
+
+      const nextMonth = page.getByRole('button', { name: '下一月', exact: true })
+      for (const month of [2, 3, 4, 5]) {
+        await nextMonth.click()
+        await page.getByRole('heading', { name: `2027年${month}月` }).waitFor()
+      }
+      assert.equal(await grid.locator('[data-calendar-day]').count(), 42)
+      assert.ok(await grid.evaluate(node => node.getBoundingClientRect().bottom <= innerHeight))
+      assert.deepEqual(errors, [])
+    }, { initialView: 'month', viewport: { width: 1280, height: 800 }, date: new Date(2027, 0, 13, 12) })
+  }))
+})
+
+await acceptance('同一教学班在月历、周历和侧栏用相同颜色', async () => {
+  await withRoot('calendar-browser-course-colors-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, dayInWeek, call }) => {
+      const tuesday = await dayInWeek(1)
+      const month = page.getByRole('region', { name: '月日历' })
+      const week = page.getByRole('region', { name: '周日历' })
+      await call('applySource', {
+        source: SOURCE,
+        events: [
+          { uid: 'a-1', title: '课程甲', start: `${tuesday}T09:00`, code: 'CS101' },
+          { uid: 'a-2', title: '课程甲', start: `${tuesday}T10:00`, code: 'CS101' },
+          { uid: 'b-1', title: '课程乙', start: `${tuesday}T14:00`, code: 'CS102' },
+        ].map(({ code, ...event }) => ({
+          ...event, extensions: { 'eduwork.academic': { institution: 'example-school', term: '2026-1', teachingClassCode: code } },
+        })),
+      })
+      const accent = element => element.style.getPropertyValue('--cal-event-ink')
+      const monthA = month.locator('[data-event-title="课程甲"]')
+      const monthB = month.locator('[data-event-title="课程乙"]')
+      await monthB.waitFor()
+      const monthAccents = await monthA.evaluateAll(elements => elements.map(element => element.style.getPropertyValue('--cal-event-ink')))
+      assert.equal(monthAccents.length, 2)
+      assert.ok(monthAccents[0])
+      assert.equal(monthAccents[0], monthAccents[1])
+      assert.notEqual(monthAccents[0], await monthB.evaluate(accent))
+      await month.locator(`[data-calendar-day="${tuesday}"]`).getByRole('link').press('Enter')
+      const agenda = sidebar(page).getByRole('button', { name: '课程甲', exact: true })
+      await agenda.first().waitFor()
+      assert.equal(await agenda.first().evaluate(element => element.style.getPropertyValue('--tt-entry-accent')), monthAccents[0])
+      await page.getByRole('button', { name: '周', exact: true }).click()
+      assert.equal(await week.locator('[data-event-title="课程甲"]').first().evaluate(accent), monthAccents[0])
+    }, { initialView: 'month' })
+  }))
+})
 await acceptance('跨天改期详情显示实际日期，取消后可从日程菜单恢复', async()=> {
   await withRoot('eduwork-browser-move-date-', async root=> {
     await withCalendar(root,async calendar=> {
@@ -739,20 +920,34 @@ await acceptance('跨天改期详情显示实际日期，取消后可从日程�
         await call('putEvent',{uid:'weekly-date',title:'跨天日期验收',description:'带教材',start:`${monday}T09:00`,end:`${monday}T10:00`,recurrence:{freq:'weekly',count:3}})
         await refresh()
         await page.getByRole('button',{name:/跨天日期验收/}).click()
-        await page.getByText('日程备注',{exact:true}).waitFor()
-        await page.getByRole('button',{name:'改期或改地点',exact:true}).click()
-        const fields=page.locator('input[type=datetime-local]')
-        await fields.nth(0).fill(`${wednesday}T14:00`)
-        await page.getByRole('button',{name:'保存',exact:true}).click()
-        await page.getByRole('dialog').waitFor({state:'detached'})
-        await page.getByRole('button',{name:/跨天日期验收/}).click()
-        const d=new Date(`${wednesday}T00:00`)
-        await page.getByText(`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 周三 14:00–15:00`,{exact:true}).waitFor()
-        await page.getByRole('button',{name:'取消这一次',exact:true}).click()
-        await page.getByRole('dialog').waitFor({state:'detached'})
-        assert.equal(await page.locator('button[data-occurrence]').count(),0)
-        await page.getByRole('button',{name:'日程',exact:true}).click()
-        await page.getByRole('menuitem',{name:/跨天日期验收 · 已取消 1 次/}).click()
+        await sidebar(page).getByText('带教材', { exact: true }).waitFor()
+        const reschedule = sidebar(page).getByRole('button', { name: '编辑日程', exact: true })
+        const editor = sidebar(page).getByRole('form', { name: '编辑日程' })
+        await reschedule.click()
+        const dateField = editor.getByLabel('日期', { exact: true })
+        const startField = editor.getByLabel('开始', { exact: true })
+        await dateField.fill(wednesday)
+        assert.equal(await page.getByRole('dialog').count(), 0)
+        assert.deepEqual(await editor.locator('footer').getByRole('button').allTextContents(), ['取消', '保存'])
+        await editor.getByRole('button', { name: '取消', exact: true }).click()
+        await reschedule.click()
+        assert.equal(await dateField.inputValue(), monday)
+        assert.equal(await startField.inputValue(), '09:00')
+        await dateField.fill(wednesday)
+        await startField.fill('08:00')
+        await editor.getByRole('button', { name: '保存', exact: true }).click()
+        await editor.waitFor({ state: 'detached' })
+        await page.locator('[data-event-title="跨天日期验收"]').click()
+        const d = new Date(`${wednesday}T00:00`)
+        await sidebar(page).getByText(`${d.getMonth()+1}月${d.getDate()}日星期三`, { exact: false }).waitFor()
+        await sidebar(page).getByText('08:00 – 09:00', { exact: true }).waitFor()
+        await sidebar(page).getByRole('button', { name: '取消本次', exact: true }).click()
+        await sidebar(page).getByRole('button', { name: '确认取消', exact: true }).click()
+        await page.locator('[data-event-title="跨天日期验收"]').waitFor({ state: 'detached' })
+        assert.equal(await page.locator('[data-occurrence]').count(),0)
+        await moreAction(page, '日程记录')
+        await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', {name:/跨天日期验收 · 已取消 1 次/}).click()
+        await page.getByRole('button', { name: '出现时间', exact: true }).click()
         await page.getByText('已取消的日期',{exact:true}).waitFor()
         await page.getByRole('button',{name:`恢复 ${Number(monday.slice(5,7))}月${Number(monday.slice(8))}日`,exact:true}).click()
         await poll(async()=> (await call('snapshot')).events[0].exceptions?.length??0,0,'cancellation restored')
@@ -769,7 +964,7 @@ await acceptance('结束有时间而开始为空时禁止保存', async()=> {
     await page.getByRole('button',{name:'新建日程',exact:true}).click()
     await page.getByLabel('标题',{exact:true}).fill('不应成为全天')
     await page.getByLabel('开始',{exact:true}).fill('')
-    assert.equal(await page.getByRole('button',{name:'新建',exact:true}).isDisabled(),true)
+    assert.equal(await createForm(page).getByRole('button',{name:'保存',exact:true}).isDisabled(),true)
   })))
 })
 
@@ -779,9 +974,9 @@ await acceptance('跨夜日程只改备注仍保留次日结束', async()=> {
     await call('putEvent',{uid:'overnight-edit',title:'夜间活动',start:`${day}T23:00`,end:`${next}T02:00`})
     await refresh()
     await page.getByRole('button',{name:/夜间活动/}).first().click()
-    await page.getByRole('button',{name:'编辑日程信息',exact:true}).click()
-    await page.getByLabel('备注',{exact:true}).fill('只改备注')
-    await page.getByRole('button',{name:'保存更改',exact:true}).click({timeout:2000})
+    await sidebar(page).getByRole('button', { name: '添加备注', exact: true }).click()
+    await textForm(page, '备注').getByLabel('备注', { exact: true }).fill('只改备注')
+    await textForm(page, '备注').getByRole('button', { name: '保存', exact: true }).click()
     await poll(async()=>(await events())[0].description,'只改备注','description saved')
     assert.equal((await events())[0].end,`${next}T02:00`)
   })))
@@ -793,8 +988,8 @@ await acceptance('记录页的出现时间只属于选中的来源', async()=> {
     await call('putEvent',{uid:'same-record',source:'source-A',title:'只看来源A',start:`${day}T09:00`,end:`${day}T10:00`})
     await call('putEvent',{uid:'same-record',source:'source-B',title:'不能显示来源B',start:`${day}T14:00`,end:`${day}T15:00`})
     await refresh()
-    await page.getByRole('button',{name:/只看来源A/}).click()
-    await page.getByRole('button',{name:'编辑日程信息',exact:true}).click()
+    await openRecord(page, /只看来源A/)
+    await page.getByRole('button', { name: '出现时间', exact: true }).click()
     await page.getByRole('button',{name:/只看来源A/}).waitFor()
     assert.equal(await page.getByRole('button',{name:/不能显示来源B/}).count(),0)
   })))
@@ -835,8 +1030,8 @@ await acceptance('慢写入时双击新建不会生成重复日程', async()=> {
       await route.fulfill({response})
     })
     try {
-      await page.getByRole('dialog').getByRole('button',{name:'新建',exact:true}).dblclick()
-      await page.getByRole('dialog').waitFor({state:'detached'})
+      await createForm(page).getByRole('button',{name:'保存',exact:true}).dblclick()
+      await createForm(page).waitFor({state:'detached'})
       assert.equal((await events()).filter(e=>e.title==='只应创建一次').length,1)
     } finally {await page.unroute('**/api/putEvent')}
   })))
@@ -855,7 +1050,7 @@ await acceptance('损坏文件开启替换导入后仍保留日程和笔记', as
           'BEGIN:VCALENDAR\r\nEND:WRONG\r\n',
           'BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:unfinished\r\n',
         ]) {
-          await page.getByRole('button', { name: '导入', exact: true }).click()
+          await moreAction(page, '导入日历')
           await page.locator('input[type=file]').setInputFiles({ name: 'structure.ics', mimeType: 'text/calendar', buffer: Buffer.from(text) })
           const dialog = page.getByRole('dialog')
           await dialog.getByRole('switch').click()
@@ -887,7 +1082,7 @@ await acceptance('全天导入拒绝无效结束日期，合法的一天仍正�
           const next = new Date(`${day}T12:00:00`)
           next.setDate(next.getDate() + 1)
           const end = valid ? `${next.getFullYear()}${String(next.getMonth() + 1).padStart(2, '0')}${String(next.getDate()).padStart(2, '0')}` : compact
-          await page.getByRole('button', { name: '导入', exact: true }).click()
+          await moreAction(page, '导入日历')
           await page.locator('input[type=file]').setInputFiles({ name: 'all-day.ics', mimeType: 'text/calendar', buffer: Buffer.from(text(end)) })
           const dialog = page.getByRole('dialog')
           await dialog.getByRole('switch').click()
@@ -933,28 +1128,31 @@ await acceptance('整门课笔记、单次覆盖、恢复默认和提醒设置�
       const block = page.getByRole('button', { name: /Personal settings class/ })
       await block.waitFor()
       await block.click()
-      await page.getByRole('button', { name: '更多个人设置', exact: true }).click()
+      await sidebar(page).getByRole('button', { name: '写笔记', exact: true }).click()
+      const editor = textForm(page, '笔记')
+      await editor.getByRole('combobox', { name: '应用于' }).selectOption('series')
+      await editor.getByRole('textbox', { name: '笔记' }).fill('Every class note')
+      await editor.getByRole('button', { name: '保存', exact: true }).click()
+      await editor.waitFor({ state: 'detached' })
+      await sidebar(page).getByText('个人设置', { exact: true }).click()
       await page.getByRole('combobox', { name: '设置范围' }).selectOption('series')
-      await page.getByRole('combobox', { name: '笔记设置' }).selectOption('custom')
-      await page.getByRole('textbox', { name: '默认笔记' }).fill('Every class note')
       await page.getByRole('combobox', { name: '提醒设置' }).selectOption('relative')
       await page.getByRole('spinbutton', { name: '提前分钟数' }).fill('15')
       await page.getByRole('button', { name: '保存个人设置', exact: true }).click()
       await poll(async () => calendar.personalFor({ source: SOURCE, uid: 'settings' }).note?.text, 'Every class note', 'series note was saved')
-      await page.getByRole('button', { name: '关闭', exact: true }).click()
-      await block.getByText('笔记：Every class note').waitFor()
-      await block.click()
-      await page.getByRole('button', { name: '更多个人设置', exact: true }).click()
-      await page.getByRole('combobox', { name: '笔记设置' }).selectOption('custom')
-      await page.getByRole('textbox', { name: '默认笔记' }).fill('Only this class')
-      await page.getByRole('button', { name: '保存个人设置', exact: true }).click()
       const ref = { source: SOURCE, uid: 'settings', originalStart: `${day}T09:00` }
-      await poll(async () => calendar.personalFor(ref).note?.text, 'Only this class', 'one class overrides the default')
-      await page.getByRole('dialog').getByText(/我的笔记\s*Only this class/).waitFor({ timeout: 3000 })
-      await page.getByRole('combobox', { name: '笔记设置' }).selectOption('inherit')
-      await page.getByRole('button', { name: '保存个人设置', exact: true }).click()
-      await poll(async () => calendar.personalFor(ref).note?.text, 'Every class note', 'restore the default')
-      await page.getByRole('dialog').getByText(/我的笔记\s*Every class note/).waitFor({ timeout: 3000 })
+      await poll(() => calendar.personalFor(ref).reminder?.minutes, 15, 'series reminder saved')
+      await sidebar(page).getByRole('button', { name: '编辑笔记', exact: true }).click()
+      await editor.getByRole('textbox', { name: '笔记' }).fill('Only this class')
+      await editor.getByRole('button', { name: '保存', exact: true }).click()
+      await editor.waitFor({ state: 'detached' })
+      await sidebar(page).getByText('Only this class', { exact: true }).waitFor()
+      assert.equal(calendar.personalFor(ref).note?.text, 'Only this class')
+      await sidebar(page).getByRole('button', { name: '编辑笔记', exact: true }).click()
+      await editor.getByRole('button', { name: '沿用整条日程', exact: true }).click()
+      await editor.waitFor({ state: 'detached' })
+      await sidebar(page).getByText('Every class note', { exact: true }).waitFor()
+      assert.equal(calendar.personalFor(ref).note?.text, 'Every class note')
       assert.deepEqual(calendar.personalFor(ref).reminder, { kind: 'relative', minutes: 15 })
     })
   }))
@@ -967,15 +1165,15 @@ await acceptance('提醒到点后自动进入提醒记录，标为已读后重�
       const at = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
       await call('putEvent', { uid: 'due', title: '我的到点提醒', start: `${await dayInWeek(1)}T09:00` })
       await call('setPersonal', { source: 'manual', uid: 'due', patch: { reminder: { kind: 'fixed', at } } })
-      await page.getByRole('button', { name: '提醒记录', exact: true }).click({ timeout: 3000 })
+      await moreAction(page, /提醒记录/)
       const dialog = page.getByRole('dialog')
       await dialog.getByText('我的到点提醒', { exact: true }).waitFor({ timeout: 4000 })
       assert.ok((await dialog.innerText()).includes('应用内提醒'))
       await dialog.getByRole('button', { name: '标为已读', exact: true }).click()
       await poll(async () => (await call('reminders')).unread, 0, 'receipt acknowledged')
-      await page.getByRole('button', { name: '关闭', exact: true }).click()
+      await dialog.locator('header').getByRole('button', { name: '关闭', exact: true }).click()
       await page.reload()
-      await page.getByRole('button', { name: '提醒记录', exact: true }).click()
+      await moreAction(page, /提醒记录/)
       await page.getByRole('dialog').getByText('已读', { exact: true }).waitFor()
       assert.deepEqual(errors, [])
     })
@@ -988,13 +1186,15 @@ await acceptance('同步日历用可读名称显示，内部来源不暴露为�
     await withBrowser(calendar, panel, METHODS, async ({ page, dayInWeek, errors }) => {
       const day = await dayInWeek(1)
       await handle.apply({ events: [{ uid: 'label', title: '可读名称课程', start: `${day}T09:00`, end: `${day}T10:00` }] })
-      await page.getByRole('group', { name: '筛选日历' }).getByRole('button', { name: '学校校历', exact: true }).waitFor({ timeout: 3000 })
+      await openSources(page)
+      await page.getByRole('option', { name: '学校校历', exact: true }).waitFor({ state: 'attached' })
       assert.equal(await page.getByRole('button', { name: '删除所选日历', exact: true }).count(), 0)
+      await closeList(page)
       await page.getByRole('button', { name: /09:00.*可读名称课程/ }).click()
-      await page.getByText('日历：学校校历', { exact: true }).waitFor({ timeout: 3000 })
+      await sidebar(page).getByText('学校校历', { exact: true }).waitFor({ timeout: 3000 })
       assert.ok(!(await page.locator('body').innerText()).includes(handle.source))
-      await page.getByRole('button', { name: '关闭', exact: true }).click()
-      await page.getByRole('button', { name: '导入', exact: true }).click()
+      await leaveDetails(page)
+      await moreAction(page, '导入日历')
       assert.equal(await page.locator('#calendar-import-names option').count(), 0, 'managed calendars cannot be file import targets')
       assert.deepEqual(errors, [])
     })
@@ -1008,17 +1208,24 @@ await acceptance('删除导入日历须确认，可取消，删除后其他日�
       const day = await dayInWeek(1)
       for (const source of ['导入A', '导入B', 'manual']) await call('putEvent', { source, uid: 'shared', title: source, start: `${day}T09:00` })
       await call('putNote', { source: '导入A', uid: 'shared', text: '保留我的笔记' })
-      const filters = page.getByRole('group', { name: '筛选日历' })
-      await filters.getByRole('button', { name: '导入A', exact: true }).click()
-      await page.getByRole('button', { name: '删除所选日历', exact: true }).click({ timeout: 3000 })
-      await page.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click()
+      const filters = await openSources(page)
+      const sources = page.getByRole('dialog', { name: '日历来源' })
+      const originalPanel = await sources.elementHandle()
+      await filters.selectOption('导入A')
+      await sources.getByRole('button', { name: '删除所选日历', exact: true }).click({ timeout: 3000 })
+      await sources.getByText('删除“导入A”及其中的全部日程？', { exact: true }).waitFor()
+      assert.equal(await page.getByRole('dialog').count(), 1)
+      assert.ok(await originalPanel.evaluate(element => element.isConnected))
+      await sources.getByRole('button', { name: '取消', exact: true }).click()
       assert.equal(calendar.snapshot().events.length, 3)
-      await page.getByRole('button', { name: '删除所选日历', exact: true }).click()
-      await page.getByRole('dialog').getByRole('button', { name: '删除日历', exact: true }).click()
+      assert.equal(await filters.inputValue(), '导入A')
+      await sources.getByRole('button', { name: '删除所选日历', exact: true }).click()
+      await sources.getByRole('button', { name: '删除日历', exact: true }).click()
       await poll(async () => calendar.snapshot().events.map(e => e.source).sort(), ['manual', '导入B'].sort(), 'only the chosen calendar is removed')
-      await poll(() => filters.getByRole('button', { name: '导入A', exact: true }).count(), 0, 'deleted calendar filter disappears')
+      await poll(() => filters.getByRole('option', { name: '导入A', exact: true }).count(), 0, 'deleted calendar filter disappears')
+      assert.equal(await filters.inputValue(), '*')
       assert.equal(calendar.unlinkedNotes()[0].note.text, '保留我的笔记')
-      await filters.getByRole('button', { name: '个人日程', exact: true }).click()
+      await filters.selectOption('manual')
       assert.equal(await page.getByRole('button', { name: '删除所选日历', exact: true }).count(), 0)
       assert.deepEqual(errors, [])
     })
@@ -1032,7 +1239,7 @@ await acceptance('来源状态显示失败并保留已有课表，重试成功�
     await withBrowser(calendar, panel, METHODS, async ({ page }) => {
       await page.getByText('测试课表：同步失败，保留上次数据', { exact: true }).waitFor({ timeout: 3000 })
       await handle.apply({ complete: true, events: [] })
-      await page.getByText('测试课表：已更新', { exact: true }).waitFor({ timeout: 3000 })
+      await page.getByText('测试课表：同步失败，保留上次数据', { exact: true }).waitFor({ state: 'hidden', timeout: 3000 })
       assert.ok(!(await page.locator('body').innerText()).includes('token=never-display'))
     })
     handle.dispose()
@@ -1046,19 +1253,23 @@ await acceptance('隐藏单次后可从日程页恢复，私人备注与固定�
       await call('applySource', { source: SOURCE, events: [{ uid: 'hidden', title: 'Hidden settings class', start: `${day}T09:00`, end: `${day}T11:00`, description: 'Source text' }] })
       const block = page.getByRole('button', { name: /09:00.*Hidden settings class/ })
       await block.waitFor(); await block.click()
-      await page.getByRole('button', { name: '更多个人设置', exact: true }).click()
-      await page.getByRole('combobox', { name: '备注设置' }).selectOption('custom')
-      await page.getByRole('textbox', { name: '我的备注' }).fill('Private remark')
+      await sidebar(page).getByRole('button', { name: '添加备注', exact: true }).click()
+      const editor = textForm(page, '备注')
+      await editor.getByRole('textbox', { name: '备注' }).fill('Private remark')
+      await editor.getByRole('button', { name: '保存', exact: true }).click()
+      await editor.waitFor({ state: 'detached' })
+      await sidebar(page).getByText('个人设置', { exact: true }).click()
       await page.getByRole('combobox', { name: '提醒设置' }).selectOption('fixed')
       await page.getByLabel('固定提醒时间', { exact: true }).fill(`${day}T20:00`)
       await page.getByRole('combobox', { name: '显示设置' }).selectOption('hide')
       await page.getByRole('button', { name: '保存个人设置', exact: true }).click()
       const ref = { source: SOURCE, uid: 'hidden', originalStart: `${day}T09:00` }
       await poll(() => calendar.personalFor(ref).hidden, true, 'hidden persisted')
-      await page.getByRole('button', { name: '关闭', exact: true }).click()
+      await leaveDetails(page)
       await block.waitFor({ state: 'detached' })
-      await page.getByRole('button', { name: '日程', exact: true }).click()
-      await page.getByRole('menuitem', { name: /Hidden settings class/ }).click()
+      await moreAction(page, '日程记录')
+      await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', { name: /Hidden settings class/ }).click()
+      await page.getByRole('button', { name: '出现时间', exact: true }).click()
       await page.getByRole('button', { name: /Hidden settings class.*已隐藏/ }).click({ timeout: 3000 })
       const dialog = page.getByRole('dialog')
       await dialog.getByRole('button', { name: '更多个人设置', exact: true }).click()
@@ -1079,7 +1290,8 @@ await acceptance('编辑只发送改动字段，同步更新后保存备注不�
       await call('putEvent', { uid: 'sparse-ui', source: 'manual', title: 'Sparse original', start: `${day}T09:00`, end: `${day}T10:00`, location: 'A' })
       await refresh()
       await page.getByRole('button', { name: /Sparse original/ }).click()
-      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
+      await sidebar(page).getByRole('button', { name: '添加备注', exact: true }).click()
+      const editor = textForm(page, '备注')
       let sent
       await page.route('**/api/updateEvent', async route => {
         sent = route.request().postDataJSON().args[0]
@@ -1087,13 +1299,72 @@ await acceptance('编辑只发送改动字段，同步更新后保存备注不�
         await calendar.updateEvent({ uid: 'sparse-ui', source: 'manual', patch: { title: 'Synced title', location: 'B' } })
         await route.continue()
       })
-      await page.getByLabel('备注', { exact: true }).fill('Private from browser')
-      await page.getByRole('button', { name: '保存更改', exact: true }).click()
+      await editor.getByLabel('备注', { exact: true }).fill('Private from browser')
+      await editor.getByRole('button', { name: '保存', exact: true }).click()
       await poll(() => calendar.getEvent({ uid: 'sparse-ui', source: 'manual' }).description, 'Private from browser', 'private remark saved')
-      assert.deepEqual(sent, { uid: 'sparse-ui', source: 'manual', patch: { description: 'Private from browser' } })
+      assert.deepEqual(sent, { uid: 'sparse-ui', source: 'manual', patch: {}, remark: 'Private from browser' })
       const event = calendar.getEvent({ uid: 'sparse-ui', source: 'manual' })
       assert.equal(event.title, 'Synced title')
       assert.equal(event.location, 'B')
+      await sidebar(page).getByRole('heading', { name: 'Synced title', exact: true }).waitFor()
+      await sidebar(page).getByRole('button', { name: '编辑日程', exact: true }).click()
+      const form = sidebar(page).getByRole('form', { name: '编辑日程' })
+      await form.getByLabel('地点', { exact: true }).fill('User location')
+      await page.unroute('**/api/updateEvent')
+      await calendar.updateEvent({ uid: 'sparse-ui', source: 'manual', patch: { title: 'New synced title' } })
+      await poll(() => form.getByLabel('标题', { exact: true }).inputValue(), 'New synced title', 'untouched title follows refresh')
+      await page.getByRole('region', { name: '周日历' }).getByRole('button', { name: /New synced title/ }).waitFor()
+      const saved = page.waitForRequest(request => request.url().endsWith('/api/updateEvent'))
+      await form.getByRole('button', { name: '保存', exact: true }).click()
+      assert.deepEqual((await saved).postDataJSON().args[0].patch, { location: 'User location' })
+      await poll(() => calendar.getEvent({ uid: 'sparse-ui' }).location, 'User location', 'sidebar location saved')
+      assert.equal(calendar.getEvent({ uid: 'sparse-ui' }).title, 'New synced title')
+    })
+  }))
+})
+
+await acceptance('旧备注合并在一个字段内，导出需要主动选择', async () => {
+  await withRoot('calendar-browser-remarks-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek, refresh }) => {
+      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'local-remark' }
+      await call('putEvent', { ...ref, title: '旧版个人日程', start: `${day}T09:00`, description: '原日程说明' })
+      await call('setPersonal', { ...ref, patch: { remark: { text: '旧私人附注' } } })
+      await call('applySource', { source: SOURCE, events: [{ uid: 'school-remark', title: '学校日程', start: `${day}T11:00`, description: '学校原始说明' }] })
+      await refresh()
+      await page.getByRole('button', { name: /旧版个人日程/ }).click()
+      await sidebar(page).getByRole('button', { name: '编辑备注', exact: true }).click()
+      const editor = textForm(page, '备注')
+      const field = editor.getByRole('textbox', { name: '备注', exact: true })
+      await poll(() => field.inputValue(), '原日程说明\n\n旧私人附注', '两个旧值都可在同一个字段编辑')
+      await field.fill('原日程说明\n\n旧私人附注\n合并后的增补')
+      await sidebar(page).getByText('个人设置', { exact: true }).click()
+      assert.equal(await page.getByRole('combobox', { name: '备注设置' }).count(), 0)
+      assert.equal(await field.inputValue(), '原日程说明\n\n旧私人附注\n合并后的增补')
+      await editor.getByRole('button', { name: '保存', exact: true }).click()
+      await poll(() => calendar.personalFor(ref).remark, undefined, '保存后旧附注已归入日程备注')
+      await leaveDetails(page)
+      await page.locator('[data-event-title="学校日程"]').click()
+      await sidebar(page).getByText('学校原始说明', { exact: true }).waitFor()
+      await sidebar(page).getByRole('button', { name: '添加备注', exact: true }).click()
+      await field.fill('自己的课程备注')
+      await editor.getByRole('button', { name: '保存', exact: true }).click()
+      const school = { source: SOURCE, uid: 'school-remark', originalStart: `${day}T11:00` }
+      await poll(() => calendar.personalFor(school).remark?.text, '自己的课程备注', '来源说明保持独立')
+      assert.equal(calendar.getEvent(school).description, '学校原始说明')
+
+      await moreAction(page, '导出日历')
+      const preview = page.getByRole('textbox', { name: '日历导出预览' })
+      const include = page.getByRole('switch', { name: '包含我的备注' })
+      assert.equal(await include.getAttribute('aria-checked'), 'false')
+      assert.ok(await page.getByText('包含我的备注', { exact: true }).isVisible())
+      await poll(async () => (await preview.inputValue()).includes('学校原始说明'), true, '默认保留来源说明')
+      assert.doesNotMatch(await preview.inputValue(), /原日程说明|旧私人附注|自己的课程备注/)
+      await page.getByText('包含我的备注', { exact: true }).click()
+      await poll(async () => (await preview.inputValue()).includes('自己的课程备注'), true, '主动选择后写入备注')
+      assert.match(await preview.inputValue(), /旧私人附注/)
+      await include.click()
+      await poll(async () => (await preview.inputValue()).includes('学校原始说明'), true, '关闭时重新生成预览')
+      assert.doesNotMatch(await preview.inputValue(), /旧私人附注|自己的课程备注/)
     })
   }))
 })
@@ -1105,17 +1376,16 @@ await acceptance('编辑草稿不受其他来源的后台刷新影响', async ()
       await call('putEvent', { uid: 'draft', title: 'Personal original', start: `${day}T09:00`, end: `${day}T10:00` })
       await call('putEvent', { source: 'other', uid: 'draft', title: 'Other original', start: `${day}T13:00` })
       await refresh()
-      await page.getByRole('button', { name: /Personal original/ }).click()
-      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
-      await page.getByRole('button', { name: '刷新', exact: true }).click()
-      await poll(() => page.getByRole('button', { name: '刷新', exact: true }).isEnabled(), true, 'initial reads settled')
+      await openRecord(page, /Personal original/)
+      await moreAction(page, '刷新')
+      await poll(() => page.locator('.cal-workbench').getAttribute('aria-busy'), 'false', 'initial reads settled')
       const title = page.getByLabel('标题', { exact: true })
       await title.fill('User unsaved title')
       for (const next of ['Other refreshed once', 'Other refreshed twice']) {
         await calendar.updateEvent({ source: 'other', uid: 'draft', patch: { title: next } })
-        await page.getByRole('button', { name: '日程', exact: true }).click()
-        await page.getByRole('menuitem', { name: new RegExp(next) }).waitFor()
-        await page.getByRole('button', { name: '日程', exact: true }).click()
+        await moreAction(page, '日程记录')
+        await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', { name: new RegExp(next) }).waitFor()
+        await closeList(page)
         assert.equal(await title.inputValue(), 'User unsaved title', 'an unrelated source refresh must preserve the unsaved title')
       }
       await page.getByRole('button', { name: '保存更改', exact: true }).click()
@@ -1132,8 +1402,7 @@ await acceptance('同一日程同步时保留编辑字段并更新未编辑字�
       const original = { uid: 'draft', title: 'School original', start: `${day}T09:00`, end: `${day}T10:00`, location: 'A', description: 'School description' }
       assert.equal((await source.apply({ revision: 1, events: [original] })).state, 'ready')
       await refresh()
-      await page.getByRole('button', { name: /School original/ }).click()
-      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
+      await openRecord(page, /School original/)
       const title = page.getByLabel('标题', { exact: true }), location = page.getByLabel('地点', { exact: true })
       await title.fill('User title')
       assert.equal((await source.apply({ revision: 2, events: [{ ...original, title: 'School latest', end: `${day}T11:00`, location: 'B' }] })).state, 'ready')
@@ -1167,22 +1436,20 @@ await acceptance('切换同编号不同来源及返回后重置草稿，保存�
       await call('putEvent', { uid: 'same', title: 'Personal reset', start: `${day}T09:00`, end: `${day}T10:00` })
       await call('putEvent', { source: 'other', uid: 'same', title: 'Other reset', start: `${day}T13:00` })
       await refresh()
-      await page.getByRole('button', { name: /Personal reset/ }).click()
-      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
+      await openRecord(page, /Personal reset/)
       const title = page.getByLabel('标题', { exact: true })
       await title.fill('Do not copy this draft')
-      await page.getByRole('button', { name: '日程', exact: true }).click()
-      await page.getByRole('menuitem', { name: /Other reset/ }).click()
+      await moreAction(page, '日程记录')
+      await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', { name: /Other reset/ }).click()
       assert.equal(await title.inputValue(), 'Other reset')
       await title.fill('Discard on switching')
-      await page.getByRole('button', { name: '日程', exact: true }).click()
-      await page.getByRole('menuitem', { name: /Personal reset/ }).click()
+      await moreAction(page, '日程记录')
+      await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', { name: /Personal reset/ }).click()
       assert.equal(await title.inputValue(), 'Personal reset')
       assert.equal(await page.getByRole('button', { name: '保存更改', exact: true }).isDisabled(), true)
       await title.fill('Discard on return')
       await page.getByRole('button', { name: '返回', exact: true }).click()
-      await page.getByRole('button', { name: /Personal reset/ }).click()
-      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
+      await openRecord(page, /Personal reset/)
       assert.equal(await title.inputValue(), 'Personal reset')
       await title.fill('  Saved normalized  ')
       await page.getByRole('button', { name: '保存更改', exact: true }).click()
@@ -1201,8 +1468,7 @@ await acceptance('保存等待期间再次编辑或改回原值也不丢失', as
       const day = await dayInWeek(1)
       await call('putEvent', { uid: 'pending', title: 'Pending original', start: `${day}T09:00` })
       await refresh()
-      await page.getByRole('button', { name: /Pending original/ }).click()
-      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
+      await openRecord(page, /Pending original/)
       const title = page.getByLabel('标题', { exact: true }), save = page.getByRole('button', { name: '保存更改', exact: true })
       let release
       const gate = new Promise(done => { release = done })
@@ -1213,8 +1479,10 @@ await acceptance('保存等待期间再次编辑或改回原值也不丢失', as
         await save.click(); await request
         await title.fill('Pending original')
       } finally { release() }
-      await page.getByText('First submitted title', { exact: true }).first().waitFor()
-      await poll(() => page.getByRole('button', { name: '刷新', exact: true }).isEnabled(), true, 'save refresh completed')
+      await page.getByRole('button', { name: '出现时间', exact: true }).click()
+      await page.getByRole('heading', { name: 'First submitted title', exact: true }).waitFor()
+      await poll(() => page.locator('.cal-workbench').getAttribute('aria-busy'), 'false', 'save refresh completed')
+      await page.getByRole('button', { name: '编辑', exact: true }).click()
       assert.equal(calendar.getEvent({ uid: 'pending' }).title, 'First submitted title')
       assert.equal(await title.inputValue(), 'Pending original', 'typing during the request must remain an unsaved edit, including reverting to the previous value')
       assert.equal(await save.isEnabled(), true)
@@ -1232,8 +1500,7 @@ await acceptance('保存失败后草稿保留，后台刷新后仍可重试', as
       const day = await dayInWeek(1)
       await call('putEvent', { uid: 'retry', title: 'Retry original', start: `${day}T09:00` })
       await refresh()
-      await page.getByRole('button', { name: /Retry original/ }).click()
-      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
+      await openRecord(page, /Retry original/)
       const title = page.getByLabel('标题', { exact: true }), save = page.getByRole('button', { name: '保存更改', exact: true })
       await title.fill('Retry unsaved title')
       await page.route('**/api/updateEvent', route => route.fulfill({ status: 503, body: 'Synthetic save rejected' }))
@@ -1242,9 +1509,9 @@ await acceptance('保存失败后草稿保留，后台刷新后仍可重试', as
       assert.equal(await title.inputValue(), 'Retry unsaved title')
       assert.equal(calendar.getEvent({ uid: 'retry' }).title, 'Retry original')
       await calendar.putEvent({ source: 'other', uid: 'retry', title: 'Refresh after failure', start: `${day}T13:00` })
-      await page.getByRole('button', { name: '日程', exact: true }).click()
-      await page.getByRole('menuitem', { name: /Refresh after failure/ }).waitFor()
-      await page.getByRole('button', { name: '日程', exact: true }).click()
+      await moreAction(page, '日程记录')
+      await page.getByRole('dialog', { name: '日程记录' }).getByRole('button', { name: /Refresh after failure/ }).waitFor()
+      await closeList(page)
       assert.equal(await title.inputValue(), 'Retry unsaved title')
       await page.unroute('**/api/updateEvent')
       await save.click()
@@ -1257,14 +1524,17 @@ await acceptance('保存失败后草稿保留，后台刷新后仍可重试', as
 await acceptance('个人设置保存中继续编辑笔记、备注和提醒，后续草稿保留', async () => {
   await withRoot('calendar-browser-personal-pending-', async root => withCalendar(root, async calendar => {
     await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek, refresh }) => {
-      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'personal-pending' }
+      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'personal-pending', originalStart: `${day}T09:00` }
       await call('putEvent', { ...ref, title: 'Personal pending', start: `${day}T09:00` })
       await refresh()
-      await page.getByRole('button', { name: /Personal pending/ }).click()
-      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
-      await page.getByLabel('备注设置', { exact: true }).selectOption('custom')
-      const remark = page.getByLabel('我的备注', { exact: true })
-      const save = page.getByRole('button', { name: '保存个人设置', exact: true })
+      await openRecord(page, /Personal pending/)
+      await page.getByRole('button', { name: '出现时间', exact: true }).click()
+      await page.getByRole('button', { name: /Personal pending/ }).first().click()
+      const dialog = page.getByRole('dialog')
+      await dialog.getByRole('button', { name: '更多个人设置', exact: true }).click()
+      await dialog.getByLabel('备注设置', { exact: true }).selectOption('custom')
+      const remark = dialog.getByLabel('我的备注', { exact: true })
+      const save = dialog.getByRole('button', { name: '保存个人设置', exact: true })
       let release
       const gate = new Promise(done => { release = done })
       await page.route('**/api/setPersonal', async route => { await gate; await route.continue() })
@@ -1273,16 +1543,16 @@ await acceptance('个人设置保存中继续编辑笔记、备注和提醒，�
         const request = page.waitForRequest(request => request.url().endsWith('/api/setPersonal'))
         await save.click(); await request
         await remark.fill('Later remark')
-        await page.getByLabel('笔记设置', { exact: true }).selectOption('custom')
-        await page.getByLabel('默认笔记', { exact: true }).fill('Later note')
-        await page.getByLabel('提醒设置', { exact: true }).selectOption('relative')
-        await page.getByLabel('提前分钟数', { exact: true }).fill('12')
+        await dialog.getByLabel('笔记设置', { exact: true }).selectOption('custom')
+        await dialog.getByLabel('默认笔记', { exact: true }).fill('Later note')
+        await dialog.getByLabel('提醒设置', { exact: true }).selectOption('relative')
+        await dialog.getByLabel('提前分钟数', { exact: true }).fill('12')
       } finally { release() }
       await poll(() => calendar.personalFor(ref).remark?.text, 'Submitted remark', 'only the submitted values were saved')
       await poll(() => save.isEnabled(), true, 'later input remains dirty after the save and reload')
       assert.equal(await remark.inputValue(), 'Later remark')
-      assert.equal(await page.getByLabel('默认笔记', { exact: true }).inputValue(), 'Later note')
-      assert.equal(await page.getByLabel('提前分钟数', { exact: true }).inputValue(), '12')
+      assert.equal(await dialog.getByLabel('默认笔记', { exact: true }).inputValue(), 'Later note')
+      assert.equal(await dialog.getByLabel('提前分钟数', { exact: true }).inputValue(), '12')
       await page.unroute('**/api/setPersonal')
       await save.click()
       await poll(() => calendar.personalFor(ref).remark?.text, 'Later remark', 'the later values were stored')
@@ -1297,14 +1567,17 @@ await acceptance('个人设置保存中继续编辑笔记、备注和提醒，�
 await acceptance('个人设置保存失败可保留草稿重试', async () => {
   await withRoot('calendar-browser-personal-retry-', async root => withCalendar(root, async calendar => {
     await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek, refresh }) => {
-      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'personal-retry' }
+      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'personal-retry', originalStart: `${day}T09:00` }
       await call('putEvent', { ...ref, title: 'Personal retry', start: `${day}T09:00` })
       await refresh()
-      await page.getByRole('button', { name: /Personal retry/ }).click()
-      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
-      await page.getByLabel('备注设置', { exact: true }).selectOption('custom')
-      const remark = page.getByLabel('我的备注', { exact: true })
-      const save = page.getByRole('button', { name: '保存个人设置', exact: true })
+      await openRecord(page, /Personal retry/)
+      await page.getByRole('button', { name: '出现时间', exact: true }).click()
+      await page.getByRole('button', { name: /Personal retry/ }).first().click()
+      const dialog = page.getByRole('dialog')
+      await dialog.getByRole('button', { name: '更多个人设置', exact: true }).click()
+      await dialog.getByLabel('备注设置', { exact: true }).selectOption('custom')
+      const remark = dialog.getByLabel('我的备注', { exact: true })
+      const save = dialog.getByRole('button', { name: '保存个人设置', exact: true })
       await remark.fill('Retain on failure')
       await page.route('**/api/setPersonal', route => route.fulfill({ status: 503, body: 'Synthetic personal save rejected' }))
       await save.click()
@@ -1324,34 +1597,37 @@ await acceptance('切换设置范围后，旧保存的迟到读取不覆盖当�
     await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek }) => {
       const day = await dayInWeek(1), ref = { source: SOURCE, uid: 'personal-scope' }
       await call('applySource', { source: SOURCE, events: [{ uid: ref.uid, title: 'Personal scope', start: `${day}T09:00`, recurrence: { freq: 'weekly', count: 3 } }] })
-      await call('setPersonal', { ...ref, patch: { remark: { text: 'Series remark' } } })
-      await page.getByRole('button', { name: /Personal scope/ }).click()
-      await page.getByRole('button', { name: '更多个人设置', exact: true }).click()
-      await page.getByLabel('备注设置', { exact: true }).selectOption('custom')
-      const remark = page.getByLabel('我的备注', { exact: true })
-      const save = page.getByRole('button', { name: '保存个人设置', exact: true })
+      await call('setPersonal', { ...ref, patch: { note: { text: 'Series note' } } })
+      await openRecord(page, /Personal scope/)
+      await page.getByRole('button', { name: '出现时间', exact: true }).click()
+      await page.getByRole('button', { name: /Personal scope/ }).first().click()
+      const dialog = page.getByRole('dialog')
+      await dialog.getByRole('button', { name: '更多个人设置', exact: true }).click()
+      await dialog.getByLabel('笔记设置', { exact: true }).selectOption('custom')
+      const note = dialog.getByLabel('默认笔记', { exact: true })
+      const save = dialog.getByRole('button', { name: '保存个人设置', exact: true })
       let release
       const gate = new Promise(done => { release = done })
       const isOnce = request => request.url().endsWith('/api/personalFor') && request.postDataJSON()?.args?.[0]?.originalStart
       const oldResponse = page.waitForResponse(response => isOnce(response.request()))
       await page.route('**/api/personalFor', async route => { if (isOnce(route.request())) await gate; await route.continue() })
       try {
-        await remark.fill('Saved for one occurrence')
+        await note.fill('Saved for one occurrence')
         const request = page.waitForRequest(isOnce)
         await save.click(); await request
-        await page.getByLabel('设置范围', { exact: true }).selectOption('series')
-        await poll(() => remark.inputValue(), 'Series remark', 'series editor loaded')
-        await remark.fill('Unsaved series remark')
+        await dialog.getByLabel('设置范围', { exact: true }).selectOption('series')
+        await poll(() => note.inputValue(), 'Series note', 'series editor loaded')
+        await note.fill('Unsaved series note')
       } finally { release() }
       // Observe completion of the old read before asserting it cannot replace this target.
       await (await oldResponse).finished()
       await page.unrouteAll({ behavior: 'wait' })
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
-      assert.equal(await remark.inputValue(), 'Unsaved series remark')
+      assert.equal(await note.inputValue(), 'Unsaved series note')
       assert.equal(await save.isEnabled(), true)
       await save.click()
-      await poll(() => calendar.personalFor(ref).remark?.text, 'Unsaved series remark', 'current target remains independently saveable')
-      assert.equal(calendar.personalFor({ ...ref, originalStart: `${day}T09:00` }).remark.text, 'Saved for one occurrence')
+      await poll(() => calendar.personalFor(ref).note?.text, 'Unsaved series note', 'current target remains independently saveable')
+      assert.equal(calendar.personalFor({ ...ref, originalStart: `${day}T09:00` }).note.text, 'Saved for one occurrence')
     })
   }))
 })
@@ -1364,27 +1640,52 @@ await acceptance('快捷笔记保存期间暂锁编辑，失败保留输入且�
       await refresh()
       await page.getByRole('button', { name: /Note pending/ }).click()
       await page.getByRole('button', { name: '写笔记', exact: true }).click()
-      const input = page.getByRole('textbox', { name: '我的笔记' })
-      const save = page.getByRole('button', { name: '保存笔记', exact: true })
+      const input = textForm(page, '笔记').getByRole('textbox', { name: '笔记' })
+      const save = textForm(page, '笔记').getByRole('button', { name: '保存', exact: true })
       let release
       const gate = new Promise(done => { release = done })
-      await page.route('**/api/putNote', async route => { await gate; await route.fulfill({ status: 503, body: 'Synthetic note save rejected' }) })
+      await page.route('**/api/setPersonal', async route => { await gate; await route.fulfill({ status: 503, body: 'Synthetic note save rejected' }) })
       try {
         await input.fill('Pending note')
-        const request = page.waitForRequest(request => request.url().endsWith('/api/putNote'))
+        const request = page.waitForRequest(request => request.url().endsWith('/api/setPersonal'))
         await save.click(); await request
         assert.equal(await input.isDisabled(), true)
         assert.equal(await save.isDisabled(), true)
         assert.equal(await page.getByRole('button', { name: '取消', exact: true }).isDisabled(), true)
       } finally { release() }
-      await page.getByText(/putNote: Synthetic note save rejected/).waitFor()
+      await page.getByText(/setPersonal: Synthetic note save rejected/).waitFor()
       await poll(() => input.isEnabled(), true, 'failed save unlocks the retained note')
       assert.equal(await input.inputValue(), 'Pending note')
-      await page.unroute('**/api/putNote')
+      await page.unroute('**/api/setPersonal')
       await input.fill('Corrected note')
       await save.click()
       await input.waitFor({ state: 'detached' })
       assert.equal(calendar.notes(ref)[0]?.note.text, 'Corrected note')
+    })
+  }))
+})
+
+await acceptance('手动校历切换与不显示背景不影响日程', async () => {
+  await withRoot('calendar-browser-selection-', async root => withCalendar(root, async calendar => {
+    for (const [id, label] of [['a', '校历甲'], ['b', '校历乙']]) {
+      calendar.registerAnnotations({ id, label, selectionGroup: 'academic-calendar', annotationsFor: ({ from, to }) => ({
+        weeks: [{ firstDay: from, text: `${label}的周次` }], spans: [{ firstDay: from, lastDay: to, text: label }],
+      }) })
+    }
+    await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek }) => {
+      const day = await dayInWeek(1)
+      await call('putEvent', { uid: 'selection-kept', title: '校历切换保留日程', start: `${day}T09:00` })
+      await openSources(page)
+      const selector = page.getByLabel('选择校历', { exact: true })
+      await selector.selectOption('b')
+      await page.getByText(/校历乙的周次/).waitFor()
+      assert.equal(calendar.annotationChoices().find(x => x.selected).id, 'b')
+      await selector.selectOption('')
+      await poll(() => calendar.annotationChoices().some(x => x.selected), false, 'background disabled')
+      await closeList(page)
+      await page.getByRole('button', { name: /校历切换保留日程/ }).waitFor()
+      assert.equal(calendar.snapshot().events.length, 1)
+      assert.deepEqual(await calendar.annotationsFor({ from: day, to: day }), { weeks: [], spans: [] })
     })
   }))
 })

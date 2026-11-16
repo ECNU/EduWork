@@ -1,0 +1,50 @@
+{
+  "steps": {
+    "welcome": {
+      "title": "Welcome to {product}",
+      "body": "Take a minute to see where things are. Press Esc to skip at any time."
+    },
+    "new-session": {
+      "title": "New session",
+      "body": "Start every task here. A session keeps its own conversation and context. Long sessions get slow; start a new one when a stage is done."
+    },
+    "workspaces": {
+      "title": "Workspaces",
+      "body": "A workspace is a folder on your computer; {product} reads and writes files only inside it. Sessions are grouped by the folder they started in."
+    },
+    "composer": {
+      "title": "Describe the task",
+      "body": "Say what to do, where the files are and what done looks like. Type @ to reference files or sessions, / for commands and skills."
+    },
+    "permission-model": {
+      "title": "Permissions and model",
+      "body": "On the left, choose what it may do: Workspace Write can create and edit files in the workspace and is the safe default; Full Access can change files outside it and system settings, so use it with care. On the right, pick the model and reasoning level."
+    },
+    "skills": {
+      "title": "Skills and plugins",
+      "body": "Available skills and plugins are listed here. Skills are used when needed, or call them with /."
+    },
+    "files": {
+      "title": "Files",
+      "body": "Open the right sidebar to browse the workspace and preview generated documents, sheets and images."
+    },
+    "guide": {
+      "title": "Want to learn more?",
+      "body": "The user guide covers common tasks and troubleshooting. Open it any time from the application menu."
+    }
+  },
+  "ui": {
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "openGuide": "Open user guide",
+    "offlineGuide": "View offline guide",
+    "onlineGuide": "View online guide",
+    "progress": "{current} / {total}",
+    "panelTitle": "{product} user guide",
+    "close": "Close",
+    "replay": "Replay tour",
+    "menuEntry": "User guide"
+  }
+}

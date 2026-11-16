@@ -171,10 +171,10 @@ test('the week draws what it holds when two records share an identifier', { skip
         const imported = drawn.find(element => (element.getAttribute('data-occurrence') ?? '').startsWith(`${SOURCE}\u0000`))
         assert.ok(imported, 'the imported class is on the week view')
         await act(async () => { imported.click() })
-        const remove = findButton(container, /^删除日程$/)
-        assert.ok(remove, 'the dialog offers to delete it')
+        const remove = findButton(container, /^删除$/)
+        assert.ok(remove, 'the sidebar offers to delete it')
         await act(async () => { remove.click() })
-        const confirm = findButton(container, /^删除$/)
+        const confirm = findButton(container, /^确认删除$/)
         assert.ok(confirm, 'and asks to confirm')
         await act(async () => { confirm.click() })
 
@@ -196,7 +196,7 @@ test('the week draws what it holds when two records share an identifier', { skip
           )
         })
       } finally {
-        await mounted.unmount()
+        await act(async () => mounted.unmount())
       }
     })
   })

@@ -1,0 +1,103 @@
+.tt-workbench {
+  padding-inline: 22px;
+  --tt-muted: var(--dsw-alias-label-secondary, GrayText);
+  --tt-line: var(--dsw-alias-border-l2, var(--cal-line));
+  --tt-paper: var(--dsw-alias-bg-base, Canvas);
+  --tt-card: var(--dsw-alias-bg-layer-1, Canvas);
+  --tt-accent: var(--cal-accent);
+}
+.tt-workbench .cal-head { padding-block: 20px 14px; }
+.tt-workbench .cal-period h1 { font-size: clamp(22px, 3.3cqw, 32px); font-weight: 720; letter-spacing: -.045em; }
+.tt-workbench .cal-period-subtitle { font-size: 13px; }
+.tt-workbench .cal-segmented { background: none; border-color: var(--tt-line); }
+.tt-workbench .cal-arrows { border: 0; }
+.tt-workbench .cal-arrows button + button { border: 0; border-radius: 6px; }
+.tt-workbench .cal-actions .cal-primary { border-radius: 8px; min-height: 36px; }
+.tt-workbench .tt-primary:not(:disabled) {
+  background: var(--cal-action-bg);
+  color: var(--cal-action-ink);
+}
+.tt-workbench .tt-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--cal-action-bg) 88%, var(--cal-action-ink));
+}
+.tt-workbench .cal-column-heading { background: var(--tt-card); font-size: 13px; padding-block: 4px; }
+.tt-workbench .cal-canvas { border-color: var(--tt-line); border-radius: 10px; }
+.tt-workbench .cal-engine { --fc-monarch-border: var(--tt-line); --fc-monarch-strong-border: var(--tt-line); }
+.tt-workbench .cal-event-block { border-radius: 5px; }
+.tt-workbench .cal-day-number { font-size: 15px; }
+.tt-workbench .cal-focused-day .cal-day-number:not(.cal-today) { background: var(--cal-accent-soft); color: var(--tt-accent); }
+.tt-workbench .cal-phase-band { font-size: 11px; }
+.tt-academic-link { align-self: flex-start; margin-bottom: 12px; }
+.tt-calendar-body { display: grid; flex: 1 1 0; min-height: 0; grid-template-columns: minmax(0, 1fr) minmax(260px, 30%); gap: 18px; }
+.tt-calendar-body .cal-canvas { min-width: 0; height: 100%; }
+.tt-sidebar { min-width: 0; height: 100%; overflow-y: auto; overflow-x: hidden; padding: 14px 0 6px 17px; border-inline-start: 1px solid var(--tt-line); position: relative; }
+.tt-panel-head { margin: 0 0 18px; }
+.tt-panel-kicker { display: block; color: var(--tt-muted); font-size: 12px; margin-bottom: 5px; }
+.tt-panel-head h2 { margin: 0; font-size: 23px; line-height: 1.3; font-weight: 680; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.tt-agenda { list-style: none; margin: 0; padding: 0; }
+.tt-agenda li { display: grid; grid-template-columns: 49px minmax(0, 1fr); align-items: start; gap: 11px; padding-bottom: 8px; }
+.tt-agenda-time { padding-top: 9px; color: var(--tt-muted); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.tt-agenda-time small { display: block; margin-top: 4px; font-size: 11px; }
+.tt-agenda-entry { position: relative; display: grid; gap: 4px; justify-items: start; width: 100%; min-width: 0; padding: 8px 10px; border: 0; border-inline-start: 2px solid color-mix(in srgb, var(--tt-entry-accent) 60%, transparent); border-radius: 6px; background: var(--tt-card); color: var(--cal-ink); font: inherit; text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.tt-agenda-entry:hover { background: var(--dsw-alias-interactive-bg-hover, var(--tt-card)); }
+.tt-agenda-entry strong { font-size: 14px; font-weight: 620; }
+.tt-agenda-entry span { font-size: 12px; color: var(--tt-muted); }
+.tt-agenda-entry small { color: var(--tt-accent); font-size: 11px; }
+.tt-agenda li[data-state='active'] .tt-agenda-entry { background: var(--cal-accent-soft); }
+.tt-empty { margin: 12px 0 20px; color: var(--tt-muted); font-size: 13px; }
+.tt-tomorrow { display: grid; gap: 5px; margin: 16px 0 0; padding: 9px 0; text-align: left; width: 100%; border: 0; border-top: 1px solid var(--tt-line); background: none; color: var(--cal-ink); font: inherit; cursor: pointer; }
+.tt-tomorrow span { color: var(--tt-muted); font-size: 12px; }
+.tt-tomorrow strong { font-size: 13px; font-weight: 580; }
+.tt-panel-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 15px; padding-top: 11px; border-top: 1px solid var(--tt-line); }
+.tt-panel-actions > button { min-height: 32px; }
+.tt-detail-nav { display: flex; align-items: center; justify-content: space-between; gap: 5px; margin: -6px 0 12px -7px; }
+.tt-detail-head { border-inline-start: 3px solid var(--tt-entry-accent); padding-inline-start: 10px; }
+.tt-detail-facts { display: grid; gap: 11px; margin: 0 0 16px; }
+.tt-detail-facts div { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 9px; }
+.tt-detail-facts dt, .tt-detail-text > span { color: var(--tt-muted); font-size: 12px; }
+.tt-detail-facts dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.tt-detail-facts dd span { display: block; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.tt-detail-text { margin: 12px 0; }
+.tt-detail-text p { margin: 4px 0 0; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tt-text-fields { border-block: 1px solid var(--tt-line); }
+.tt-text-fields .tt-detail-text { margin: 0; padding: 7px 0; }
+.tt-text-fields .tt-detail-text + .tt-detail-text { border-top: 1px solid var(--tt-line); }
+.tt-text-fields .tt-detail-text p { margin: 2px 0 7px; }
+.tt-text-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 29px; }
+.tt-text-heading strong { font-size: 13px; font-weight: 600; }
+.tt-text-heading button { color: var(--tt-accent); }
+.tt-text-editor { display: grid; gap: 9px; margin-block: 3px 6px; }
+.tt-text-editor textarea, .tt-text-scope select {
+  font: inherit; font-size: 13px; color: var(--cal-ink); background: var(--tt-card);
+  border: 1px solid var(--tt-line); border-radius: 7px; padding: 7px 9px;
+}
+.tt-text-editor textarea { width: 100%; min-height: 74px; resize: vertical; line-height: 1.5; }
+.tt-text-editor textarea:focus-visible { outline: 1px solid var(--tt-accent); outline-offset: -1px; }
+.tt-text-scope, .tt-text-editor-footer {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 7px;
+  color: var(--tt-muted); font-size: 12px;
+}
+.tt-text-editor-footer > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin-inline-start: auto; }
+.tt-text-editor-footer small { font-size: 11px; }
+.tt-text-fields + .tt-editor-extra { border-top: 0; }
+.tt-sidebar:has(.tt-text-editor) > .tt-panel-actions { display: none; }
+.tt-editor-fields { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+.tt-editor .cal-field { margin-bottom: 11px; }
+.tt-editor .cal-schedule-fields .cal-field { margin-bottom: 0; }
+.tt-editor .cal-field :is(input, select, textarea) { min-width: 0; width: 100%; box-sizing: border-box; }
+.tt-editor .cal-field:first-child > input { font-size: 15px; }
+.tt-editor .cal-field-hint { font-size: 11px; }
+.tt-editor .tt-panel-head { margin-bottom: 14px; }
+.tt-editor-extra { margin-top: 12px; border-top: 1px solid var(--tt-line); }
+.tt-editor-extra > summary { padding: 10px 0; font-size: 12px; color: var(--tt-muted); cursor: pointer; }
+.tt-editor-scope { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+.tt-editor-scope button[aria-pressed='true'] { color: var(--tt-accent); background: var(--cal-accent-soft); }
+.tt-sheet-close, .tt-sheet-mask { display: none; }
+@container (max-width: 790px) {
+  .tt-calendar-body { grid-template-columns: minmax(0, 1fr); }
+  .tt-sidebar { display: none; }
+  .tt-sidebar[data-open='true'] { display: block; position: absolute; z-index: 4; inset: auto 8px 8px; height: auto; max-height: min(72%, 590px); padding: 18px 18px 15px; border: 1px solid var(--tt-line); border-radius: 12px; background: var(--tt-paper); box-shadow: 0 8px 36px #0004; }
+  .tt-sheet-close { display: block; position: absolute; z-index: 1; top: 7px; right: 9px; border: 0; border-radius: 6px; background: var(--tt-card); color: var(--tt-muted); font-size: 18px; width: 28px; height: 28px; cursor: pointer; }
+  .tt-sidebar .tt-panel-head, .tt-detail-nav { padding-inline-end: 24px; }
+  .tt-sheet-mask { display: block; position: absolute; z-index: 3; inset: 0; background: #0003; border: 0; }
+}

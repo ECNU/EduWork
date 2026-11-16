@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 FROM node:24.22.1-alpine@sha256:6a1c190e17215d844926b0677f4bf87273ff7d5e54db06d3b5b5863ab0b09a3d
 
-ARG REMOTE_ACCESS_VERSION=0.1.2
+ARG REMOTE_ACCESS_VERSION=0.1.7
 WORKDIR /opt/eduwork-remote
 # Install the published relay at build time; startup never downloads packages.
 RUN npm install --omit=dev --omit=optional --ignore-scripts --no-audit --no-fund \

@@ -13,6 +13,12 @@ export async function nativePresetPatches(runtime, parse) {
   const result = []
   const replaceSkills = rows => rows.map(row => ({ ...row,
     ...(row.name === '@deepseek-ai/dsh-skill-filesystem' ? { name: '@chatecnu-work/dsh-skill-control-native' } : {}),
+    // rc.2's native Office tools are admitted by the skill names the model
+    // actually loads. Keep upstream names as well as EduWork's public aliases.
+    ...(row.name === '@deepseek-ai/dsh-tool-office' ? { config: { ...row.config,
+      activationSkills: [...new Set([...(row.config?.activationSkills ?? ['office', 'office-docx', 'office-xlsx', 'office-pptx']),
+        'artifact-documents', 'artifact-spreadsheets', 'artifact-presentations'])],
+    } } : {}),
     ...(row.group === true && Array.isArray(row.config) ? { config: replaceSkills(row.config) } : {}),
   }))
   for (const name of ['standard', 'ptc', 'minimal', 'cordis']) {

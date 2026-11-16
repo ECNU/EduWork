@@ -7,7 +7,8 @@
 // Every remote method takes one object argument and returns one value; the
 // descriptors that point at those schemas are in `lib/typert-descriptors.js`.
 import { z } from 'zod'
-import { AnnotationSchema, ReminderReceiptSchema, PersonalViewSchema, PersonalPatchSchema, PersonalFields, EventFields, EventSchema, EventPatchSchema, LocalTimeSchema, RecurrenceSchema, ScopeSchema } from './model.js'
+import { weekAnnotationSchema, spanDecorationSchema } from './annotations.js'
+import { AnnotationSchema, ReminderReceiptSchema, PersonalViewSchema, PersonalPatchSchema, PersonalFields, EventFields, EventSchema, EventPatchSchema, LocalTimeSchema, RecurrenceSchema, ScopeSchema, OverridesSchema } from './model.js'
 
 const snapshot = z.object({
   schemaVersion: z.number().int().positive(),
@@ -75,6 +76,7 @@ const importOutcome = z.object({
 /** What to call the exported calendar. */
 const exportInput = z.object({
   name: z.string().min(1).optional(),
+  includeRemarks: z.boolean().optional(),
 }).strict()
 
 const exportOutcome = z.object({ text: z.string() }).strict()
@@ -116,6 +118,8 @@ const removalOutcome = z.object({ removed: z.boolean() }).strict()
  * `movedFrom` is what makes a reschedule attributable: it names the instant the
  * changed class was originally scheduled for. Without it a changed anchor cannot
  * be matched to one occurrence, and the service reports that instead of guessing.
+ * `overrides` is the same statement in bulk: the one-off changes (`RECURRENCE-ID`)
+ * a feed lists beside its frozen series, in the stored record's own shape.
  */
 export const sourceEvent = z.object({
   uid: z.string().min(1),
@@ -126,13 +130,16 @@ export const sourceEvent = z.object({
   description: z.string().optional(),
   recurrence: RecurrenceSchema.optional(),
   movedFrom: LocalTimeSchema.optional(),
+  extensions: z.record(z.string(), z.unknown()).optional(),
   cancelledDates: z.array(LocalTimeSchema).optional(),
+  overrides: OverridesSchema.optional(),
 }).strict()
 
 export const applySourceInput = z.object({
   source: z.string().min(1),
   events: z.array(sourceEvent),
   complete: z.boolean().optional(),
+  replaceInstances: z.boolean().optional(),
   revision: z.number().int().positive().optional(),
 }).strict()
 
@@ -204,6 +211,22 @@ const jsonParameter = (method, name, schema) => Object.freeze({
 })
 
 export const rangeParameter = jsonParameter('occurrences', 'range', rangeSchema)
+// Annotations speak in whole days: a range carrying clock parts or record
+// filters would be range vocabulary leaking into a decoration contract.
+const annotationDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD')
+export const annotationRangeSchema = z.object({
+  from: annotationDay.optional(), to: annotationDay.optional(),
+  group: z.string().min(1).optional(), includeOriginalSpan: z.boolean().optional(),
+}).strict()
+export const annotationsRangeParameter = jsonParameter('annotationsFor', 'range', annotationRangeSchema)
+export const annotationSelectionParameter = jsonParameter('selectAnnotations', 'input', z.object({ group: z.string().min(1), id: z.string().nullable() }).strict())
+export const annotationChoicesResult = result('@eduwork/dsh-calendar#AnnotationChoices', z.array(z.object({
+  id: z.string(), label: z.string(), group: z.string(), selected: z.boolean(),
+}).strict()))
+export const annotationsResult = result('@eduwork/dsh-calendar#CalendarAnnotations', z.object({
+  weeks: z.array(weekAnnotationSchema),
+  spans: z.array(spanDecorationSchema),
+}).strict())
 export const remindersResult = result('@eduwork/dsh-calendar#ReminderInbox', z.object({ channel: z.enum(['in-app', 'system', 'unavailable']), unread: z.number().int().nonnegative(), items: z.array(ReminderReceiptSchema.omit({ nativeSent: true })) }).strict())
 export const ackReminderParameter = jsonParameter('ackReminder', 'input', z.object({ id: z.string().regex(/^[a-f0-9]{64}$/) }).strict())
 export const ackReminderResult = result('@eduwork/dsh-calendar#ReminderAcknowledgement', z.object({ updated: z.boolean() }).strict())
@@ -250,4 +273,6 @@ export const sourceStatusesResult = result('@eduwork/dsh-calendar#CalendarSource
   updatedAt: z.string().optional(), error: z.enum(['incomplete_snapshot', 'unattributable', 'sync_failed', 'sync_timeout']).optional(),
 }).strict()))
 
-export const updateEventParameter = jsonParameter('updateEvent', 'input', z.object({ uid: z.string().min(1), ...sourceRef, patch: EventPatchSchema }).strict())
+export const updateEventParameter = jsonParameter('updateEvent', 'input', z.object({
+  uid: z.string().min(1), ...sourceRef, patch: EventPatchSchema, remark: z.string().optional(),
+}).strict())

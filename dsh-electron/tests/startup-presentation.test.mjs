@@ -50,7 +50,9 @@ function startupHarness() {
   const app = Object.assign(new EventEmitter(), { hidden: false, isHidden() { return this.hidden } })
   const build = new Function('BrowserWindow', 'app', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'showDesktopWindows',
     `let mainWindow, tray, mainWindowPresented = false, startupMessage = '', migrationLaunch = null, updateCompleted = false
-    let quitting = false, desktopFailureShown = false, startupCancelled = false, flushCalls = 0
+    let quitting = false, desktopFailureShown = false, startupCancelled = false, flushCalls = 0, backgroundStarts = 0
+    const softwareUpdates = { startBackground() { backgroundStarts += 1 } }
+    const net = { isOnline: () => true }, powerMonitor = {}
     const isQuitting = () => quitting
     const desktopBootBrand = () => ({ name: 'Fixture', message: startupMessage })
     let flushPendingSettings = () => { flushCalls += 1 }
@@ -66,6 +68,7 @@ function startupHarness() {
       showStartupProgress, showHostStartupProgress, desktopReady, showDesktop, activationWindows,
       prepareDesktopRecovery, showRecoveryProgress, hideRecoveryProgress,
       flushCalls: () => flushCalls,
+      backgroundStarts: () => backgroundStarts,
     }`)
   const harness = build(FakeWindow, app, { ready: async () => {} }, async () => {},
     { start() {}, owns: window => window.pet }, { action: () => Promise.resolve() }, showDesktopWindows)
@@ -116,6 +119,7 @@ test('preparation uses the main BootPage and clears its status without presentin
   assert.equal(main.visible, false)
   assert.equal(main.showCalls, 1)
   assert.equal(harness.flushCalls(), 1)
+  assert.equal(harness.backgroundStarts(), 1)
 })
 
 test('Host startup presents the existing BootPage with a generic hint', () => {

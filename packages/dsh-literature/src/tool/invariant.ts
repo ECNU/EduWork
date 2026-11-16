@@ -5,7 +5,7 @@
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import { registerLegacyInvariant } from '../legacy-invariant.ts'
 
 const PACKAGE_NAME = '@eduwork/dsh-literature/tool'
 
@@ -18,7 +18,6 @@ export const inject = ['invariants']
  * No runtime invariant: the tools register schemas on `ctx.tools` and emit no package-owned
  * session event; the tool pipeline owns every result-observation contract.
  */
-const install: InvariantInstaller = () => {}
 
 /**
  * Register this package's invariant companion.
@@ -26,5 +25,5 @@ const install: InvariantInstaller = () => {}
  * @returns the installed registration's disposer after setup succeeds.
  */
 export const apply = (ctx: Context): Promise<() => void> =>
-  Promise.resolve(ctx.invariants.register(PACKAGE_NAME, install))
+  registerLegacyInvariant(ctx, PACKAGE_NAME)
 /* jscpd:ignore-end */

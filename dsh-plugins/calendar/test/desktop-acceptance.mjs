@@ -31,6 +31,7 @@ try {
     await page.getByRole('button', { name: '新建日程', exact: true }).click()
     const dialog = page.getByRole('dialog'), title = `${prefix}-${width}`
     await dialog.getByLabel('标题', { exact: true }).fill(title)
+    await dialog.getByRole('button', { name: '更多选项', exact: true }).click()
     await dialog.getByRole('combobox', { name: '重复', exact: true }).selectOption('custom')
     const save = dialog.getByRole('button', { name: '新建', exact: true })
     const rect = await save.boundingBox()

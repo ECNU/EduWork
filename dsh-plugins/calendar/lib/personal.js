@@ -32,6 +32,7 @@ export const personalDomain = defineDomain({
   version: 1,
   layout: 'per-record',
   tables: {
+    view_preferences: domainTable(z.object({ group: z.string().min(1), provider: z.string().nullable() }).strict()),
     annotations: domainTable(AnnotationSchema),
     source_receipts: domainTable(z.object({
       source: z.string().min(1), uid: z.string().min(1), legacyDescription: z.string().optional(), legacyExtensions: z.record(z.string(), z.unknown()).optional(),
@@ -148,6 +149,16 @@ export class PersonalStore {
       if (this.get(ref)?.[field] === undefined) return false
       await this.writeFields(ref, {}, [field])
       return true
+    })
+  }
+
+  /** 清理合并进日程的旧备注之前，先让调用方持久化合并结果。 */
+  async consolidateRemark(ref, preserve) {
+    await this.enqueue(annotationKey(ref), async () => {
+      const remark = this.get(ref)?.remark
+      if (remark === undefined) return
+      await preserve(remark.text)
+      await this.writeFields(ref, {}, ['remark'])
     })
   }
 

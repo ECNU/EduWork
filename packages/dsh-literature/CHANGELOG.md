@@ -1,5 +1,12 @@
 # 变更记录 / Changelog
 
+## 0.1.7 — Unreleased
+
+- 兼容 DSH 0.2.2-rc.2；将已验证的 0.2.2 预发布 API 系列纳入有界兼容范围，保留原有受支持的宿主。
+- Support DSH 0.2.2-rc.2 and the qualified 0.2.2 prerelease API family while retaining previously supported hosts.
+- 保留旧宿主的 invariant companion 导出，移除会拉入旧 Cordis 的已退役依赖；新版工具执行验证使用官方 pipeline，全文获取、后台任务与取消行为保持不变。
+- Retain legacy invariant companion exports without installing the retired dependency and its older Cordis tree. Check tool execution through the official pipeline, preserving full-text retrieval, background jobs and cancellation.
+
 ## 0.1.6 — 2026-11-05
 
 - 支持 arXiv 返回的 gzip 单文件 TeX；空文本、不可识别和损坏的源码归档会继续尝试 HTML/PDF，避免返回空的成功结果（#266）。

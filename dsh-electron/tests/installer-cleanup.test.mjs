@@ -426,7 +426,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'in
       prepareDesktopRecovery: () => calls.push('prepare-recovery'),
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop,
       pickDesktopDirectory: pickDirectory,
-      desktopBootBrand: bootBrand,
+      desktopBootBrand: bootBrand, desktopStartupHint: () => '',
       readInitialCloseAction: () => calls.push('read-close-action'),
       showHostStartupProgress: () => { calls.push('host-startup-progress'); presentBootPage() },
       productUpdateObserver: { dispose() {}, subscribe: () => () => {}, status: async () => undefined,
