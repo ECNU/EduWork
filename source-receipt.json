@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-15T15:00:09.914Z",
-  "fileSetSHA256": "b8e344fa0b85d5c8d7e14aa5bc91a6a343f9ecef96cc25be6007e513f990ef82",
+  "createdAt": "2026-11-16T05:40:42.231Z",
+  "fileSetSHA256": "bf619ad45d3b8c4cc323420f88d9b6288a11a1d20da5b8068bf443839884ae2c",
   "files": [
     {
       "path": ".gitattributes",
@@ -29,7 +29,7 @@
     },
     {
       "path": ".github/workflows/development-desktop.yml",
-      "sha256": "4dc407326800f9df0f8f760d9ec41ff5f6e14a00723adce7e12441bf5eacca7d"
+      "sha256": "4ed6853dc2c4bcea28e28664ccec87e72262624b88f43a35bac3f57d963ae8e6"
     },
     {
       "path": ".github/workflows/packages-release.yml",
@@ -249,7 +249,7 @@
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "973c7321d03eeed822a52bb4db8575f9449045ae4f2597cf8b49640f2ac8aabe"
+      "sha256": "cdd6a89487e9b2f82a9d09c5db6869535494d4898a939d1a5a6a31b0bceb73ee"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -1145,7 +1145,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.mjs",
-      "sha256": "7da7f3eb3b6a47a9a19a72152530b89632a0becdd0fa5610ca01fc1d2a91dfac"
+      "sha256": "edb5b6efd0112c7fa852afa897e3d7edba80d677e0d74a3c2246bc8b5471713d"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
@@ -7648,6 +7648,10 @@
       "sha256": "d2e7d364fd15e1c6a53691db6132233d8e371e7c838d7353be618573562856da"
     },
     {
+      "path": "scripts/pack-windows-installer.mjs",
+      "sha256": "268196586f51d400088bd78a8de3d10bb4e1f9fc2532c18c5c244a03293a4785"
+    },
+    {
       "path": "scripts/pack-windows-release.mjs",
       "sha256": "edaa531aac85a1a8b5b9dd4e645b41223ea0a35ef7e1503be198e9c73d363b01"
     },
@@ -7998,6 +8002,10 @@
     {
       "path": "scripts/test/update-delta-bases.test.mjs",
       "sha256": "4b34bb1405e9ea84b594751a50e310f0628412cb7e8bc8bdcce1e102235d9138"
+    },
+    {
+      "path": "scripts/test/windows-installer.test.mjs",
+      "sha256": "440216af11003e327a9612eac6b6240439cabbb4ee2425e952f48f393cd40a8c"
     },
     {
       "path": "scripts/test/windows-update-delta.test.mjs",

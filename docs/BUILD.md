@@ -15,7 +15,7 @@
 
 手动开发包验证不需要发行说明，也不会创建 Release。新 workflow 文件尚未进入仓库默认分支时，可运行已注册的 `desktop-candidates.yml`：选择 feature 分支、`build_mode=node`、`development=true`、开发版本及目标平台，并保持发布关闭、发行说明为空、审批未勾选。
 
-Windows 迁移开发可手动运行 `development-desktop.yml`，选择实现分支、`platform=windows` 并勾选 `windows_installed_candidate`。流水线先执行原有完整构建与便携包启动检查，再复用同一批输入组装 `installed` 布局，将程序与源码身份回执上传为 `windows-installed-candidate` artifact（保留 7 天）。该候选关闭软件更新，不创建 Release，也不包含安装器；下载后运行 `electron-candidate/EduWork-Electron.exe`，完成旧数据迁入、凭据解密和冷启动验收。回执将这些 `installed` 运行验收标为未执行，不沿用便携包的通过结论。
+Windows 迁移开发可手动运行 `development-desktop.yml`，选择实现分支、`platform=windows` 并勾选 `windows_installed_candidate` 或 `windows_installer_candidate`。流水线先执行原有完整构建与便携包启动检查，再复用同一批输入组装 `installed` 布局，将程序与源码身份回执上传为 `windows-installed-candidate` artifact（保留 7 天）。该候选关闭软件更新，不创建 Release；下载后运行 `electron-candidate/EduWork-Electron.exe`，完成旧数据迁入、凭据解密和冷启动验收。回执将这些 `installed` 运行验收标为未执行，不沿用便携包的通过结论。勾选 `windows_installer_candidate` 时还会用锁定的 electron-builder 26.17.0 + NSIS 生成按用户安装的安装包，上传为 `windows-installer-candidate`（安装包、SHA-256 与回执，保留 7 天）：默认装到 `%LOCALAPPDATA%\Programs\EduWork\<发行标识>`，数据仍在 `%LOCALAPPDATA%\EduWork\<发行标识>`，默认卸载保留数据。安装包同样不创建 Release。
 
 ## CI 检查范围
 

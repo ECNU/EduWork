@@ -19,10 +19,15 @@ on:
         required: false
         default: false
         type: boolean
+      windows_installer_candidate:
+        description: 'Also build a per-user Windows NSIS installer from the installed-layout candidate (artifact only; manual acceptance required)'
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: read
 concurrency:
-  group: desktop-apps-${{ github.sha }}-${{ inputs.platform || 'both' }}-${{ inputs.windows_installed_candidate || false }}
+  group: desktop-apps-${{ github.sha }}-${{ inputs.platform || 'both' }}-${{ inputs.windows_installed_candidate || false }}-${{ inputs.windows_installer_candidate || false }}
   cancel-in-progress: false
 jobs:
   version:
@@ -118,7 +123,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
       - name: Assemble Windows installed-layout candidate
-        if: matrix.script == 'windows' && inputs.windows_installed_candidate
+        if: matrix.script == 'windows' && (inputs.windows_installed_candidate || inputs.windows_installer_candidate)
         shell: bash
         run: |
           node core/scripts/assemble-windows-installed-candidate.mjs \
@@ -172,6 +177,32 @@ jobs:
             ${{ runner.temp }}/windows-installed-candidate.zip
             ${{ runner.temp }}/windows-installed-candidate.zip.sha256
           compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+      - name: Install the locked electron-builder
+        if: matrix.script == 'windows' && inputs.windows_installer_candidate
+        shell: bash
+        run: |
+          npm install --no-save --no-audit --no-fund --loglevel=error \
+            --prefix "$RUNNER_TEMP/eb-tool" electron-builder@26.17.0
+      - name: Assemble Windows installer candidate
+        if: matrix.script == 'windows' && inputs.windows_installer_candidate
+        shell: bash
+        run: |
+          node core/scripts/pack-windows-installer.mjs \
+            --candidate "$RUNNER_TEMP/ew-installed/electron-candidate" \
+            --installed-receipt "$RUNNER_TEMP/ew-installed/installed-candidate-receipt.json" \
+            --output "$RUNNER_TEMP/ew-installer" \
+            --electron-builder-cli "$RUNNER_TEMP/eb-tool/node_modules/electron-builder/cli.js" \
+            --icon "$GITHUB_WORKSPACE/core/assets/eduwork/icon.ico"
+      - name: Retain Windows installer candidate
+        if: matrix.script == 'windows' && inputs.windows_installer_candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer-candidate
+          path: |
+            ${{ runner.temp }}/ew-installer/artifacts/*
+            ${{ runner.temp }}/ew-installer/installer-candidate-receipt.json
           retention-days: 7
           if-no-files-found: error
   result:

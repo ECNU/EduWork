@@ -26,6 +26,23 @@ const payloadFilters = {
   excludeDir: name => name === '__pycache__',
 }
 
+// Electron and the installer both read this manifest. Installed builds must
+// declare the product version there, or the uninstall entry and app.getVersion()
+// would report the DSH component version instead of EduWork's.
+export function desktopAppPackage({ identity, version, dataLayout = 'portable' }) {
+  const installed = dataLayout === 'installed'
+  return {
+    name: 'eduwork-desktop-electron',
+    version: installed ? version : identity.dshVersion,
+    ...(installed ? { dshVersion: identity.dshVersion } : {}),
+    private: true,
+    type: 'module',
+    main: 'lib/main.js',
+    description: 'EduWork official DSH Electron integration',
+    license: 'MulanPSL-2.0 AND MIT',
+  }
+}
+
 export async function assembleWindows({
   product,
   shellBuild,
@@ -74,15 +91,7 @@ export async function assembleWindows({
   await copyFileTo(nodeLicense, join(output, 'resources/runtime/LICENSE-Node'))
   await copyFileTo(join(shellBuild, 'source-receipt.json'), join(app, 'source-receipt.json'))
   const name = identity.brand.product.name
-  await writeJSON(join(app, 'package.json'), {
-    name: 'eduwork-desktop-electron',
-    version: identity.dshVersion,
-    private: true,
-    type: 'module',
-    main: 'lib/main.js',
-    description: 'EduWork official DSH Electron integration',
-    license: 'MulanPSL-2.0 AND MIT',
-  })
+  await writeJSON(join(app, 'package.json'), desktopAppPackage({ identity, version, dataLayout }))
   const config = {
     schemaVersion: 1,
     shell: 'electron',
