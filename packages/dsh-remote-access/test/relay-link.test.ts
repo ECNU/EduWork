@@ -1,5 +1,6 @@
 // The Host's link to a real relay on loopback, for credentials that expire.
 import assert from 'node:assert/strict'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { mkdtemp } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
@@ -141,4 +142,30 @@ test('a Host whose credential only its owner can renew stops once the last one l
   await new Promise(resolve => setTimeout(resolve, 1000))
   assert.deepEqual(states, ['connecting', 'online', 'online', 'offline', 'connecting', 'lapsed'])
   assert.equal(asked, 3)
+})
+
+test('what a device sends runs in the context the link started in, though its socket took over a model call\'s connection', async t => {
+  // The relay on the model gateway's origin: a model call, made in its authorization, leaves an idle connection there.
+  const relay = await startRelay(t)
+  const call = new AsyncLocalStorage<string>()
+  await call.run('a model call', async () => (await fetch(new URL('healthz', relay))).text())
+  const { identity } = await HostStore.open(join(await mkdtemp(join(tmpdir(), 'relay-link-')), 'state.json'))
+  const contexts: (string | undefined)[] = []
+  const states: LinkState['state'][] = []
+  const link = new RelayLink({
+    relay,
+    identity,
+    credential: withKey(),
+    accept: socket => socket.addEventListener('message', () => contexts.push(call.getStore())),
+    onState: state => states.push(state.state),
+  })
+  link.start()
+  t.after(() => link.stop())
+  await until(() => states.includes('online'), 'registration')
+  const device = new Client(relay.replace('http', 'ws') + RELAY_PATHS.connect + identity.hostId)
+  t.after(() => device.close())
+  await new Promise(resolve => device.once('message', resolve))
+  device.send(new Uint8Array(1))
+  await until(() => contexts.length === 1, 'the message')
+  assert.deepEqual(contexts, [undefined])
 })

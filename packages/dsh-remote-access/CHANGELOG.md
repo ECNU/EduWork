@@ -1,5 +1,11 @@
 # 变更记录 / Changelog
 
+## 0.1.8 — Unreleased
+
+- 修复远程设备上机构模型一直加载失败（“Gateway authorization changed; start a new model request”），刷新页面也不恢复，电脑上却正常。中继与机构模型服务同域名时，电脑到中继的连接可能接着用一次模型请求留下的网络连接，那次请求的授权就带进了远程设备的所有请求，重新登录后它失效，模型列表随之失败。电脑到中继的连接现在不再沿用这份授权。只需更新电脑端，中继不用更新。
+
+- Fix organization models that kept failing to load on remote devices ("Gateway authorization changed; start a new model request"), even after reloading, while the computer listed them. With the relay on the domain of the organization's model service, the computer's connection to the relay could take over a network connection a model request had left open, and every request from a remote device then carried that request's authorization, which no longer held once the member signed in again. The computer's relay connections no longer carry it over. Only computers need updating; the relay does not.
+
 ## 0.1.7 — 2026-11-15
 
 - 修复 iOS / iPadOS 16.4–17.3 上远程界面白屏：配对成功、电脑上也显示已连接，但设备上什么都不显示。远程网页现在会补上这些系统缺少的浏览器功能，DSH 界面也能正常加载。低于 16.4 的系统会提示版本过低，不再白屏。只需更新中继，电脑端不用更新。
