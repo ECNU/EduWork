@@ -109,6 +109,36 @@ func TestMoveManagedPathRemovesPartialTargetWhenCopyFails(t *testing.T) {
 	assertFileValue(t, filepath.Join(source, "a.txt"), "copied-before-failure")
 }
 
+func TestMoveManagedPathReportsCopyCompleteWhenSourceCleanupFails(t *testing.T) {
+	root := t.TempDir()
+	source := filepath.Join(root, "program", "resources")
+	writeFixtureFile(t, filepath.Join(source, "version.txt"), []byte("old-version"))
+	locked := filepath.Join(source, "z-locked.txt")
+	writeFixtureFile(t, locked, []byte("readable but not deletable"))
+	name, err := windows.UTF16PtrFromString(locked)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handle, err := windows.CreateFile(name, windows.GENERIC_READ, windows.FILE_SHARE_READ, nil, windows.OPEN_EXISTING, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer windows.CloseHandle(handle)
+	target := filepath.Join(root, "transaction", "backup", "resources")
+	err = moveManagedPathWithRename(source, target, func(string, string) error {
+		return &os.LinkError{Op: "rename", Old: source, New: target, Err: windows.ERROR_NOT_SAME_DEVICE}
+	})
+	var cleanup *sourceCleanupError
+	if !errors.As(err, &cleanup) {
+		t.Fatalf("source cleanup failure was not classified: %v", err)
+	}
+	assertFileValue(t, filepath.Join(target, "version.txt"), "old-version")
+	assertFileValue(t, filepath.Join(target, "z-locked.txt"), "readable but not deletable")
+	if _, err := os.Stat(filepath.Join(source, "version.txt")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("test did not leave a partial source: %v", err)
+	}
+}
+
 func TestMoveManagedPathDoesNotMaskOtherRenameErrors(t *testing.T) {
 	root := t.TempDir()
 	source := filepath.Join(root, "program", "app.exe")

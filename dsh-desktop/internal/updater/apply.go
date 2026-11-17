@@ -282,7 +282,17 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 		}
 		for index := len(backedUp) - 1; index >= 0; index-- {
 			name := backedUp[index]
-			if err := moveManagedPath(filepath.Join(backupDir, name), filepath.Join(pending.InstallDir, name)); err != nil {
+			destination := filepath.Join(pending.InstallDir, name)
+			// A cross-volume backup can complete before removing the source and
+			// still fail while deleting it, leaving a partially deleted tree at
+			// the destination. The backup is complete, so clear the damaged path
+			// before restoring; a lock here is a recovery failure and must not
+			// lead to restarting the incomplete program.
+			if err := os.RemoveAll(destination); err != nil {
+				failures = append(failures, fmt.Errorf("clear damaged path %s: %w", name, err))
+				continue
+			}
+			if err := moveManagedPath(filepath.Join(backupDir, name), destination); err != nil {
 				failures = append(failures, fmt.Errorf("restore %s: %w", name, err))
 			}
 		}
@@ -299,6 +309,13 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 				return rollback(err)
 			}
 			if err := moveManagedPath(target, backup); err != nil {
+				var copied *sourceCleanupError
+				if errors.As(err, &copied) {
+					// The backup is complete even though deleting the source
+					// failed partway. Restore this root from that backup instead
+					// of assuming the original program is still intact.
+					backedUp = append(backedUp, name)
+				}
 				return rollback(fmt.Errorf("backup managed path %s: %w", name, err))
 			}
 			backedUp = append(backedUp, name)
@@ -854,6 +871,16 @@ func moveManagedPath(source, target string) error {
 	return moveManagedPathWithRename(source, target, os.Rename)
 }
 
+// sourceCleanupError reports that the cross-volume copy completed but removing
+// the source failed. The source may now be partially deleted; callers must
+// treat the completed copy as the recoverable original.
+type sourceCleanupError struct {
+	Err error
+}
+
+func (e *sourceCleanupError) Error() string { return e.Err.Error() }
+func (e *sourceCleanupError) Unwrap() error { return e.Err }
+
 func moveManagedPathWithRename(source, target string, rename func(string, string) error) error {
 	if _, err := os.Lstat(source); err != nil {
 		return err
@@ -875,7 +902,10 @@ func moveManagedPathWithRename(source, target string, rename func(string, string
 		_ = os.RemoveAll(target)
 		return err
 	}
-	return os.RemoveAll(source)
+	if err := os.RemoveAll(source); err != nil {
+		return &sourceCleanupError{Err: fmt.Errorf("remove source after copy: %w", err)}
+	}
+	return nil
 }
 
 func mergeReleaseData(source, target string) error {

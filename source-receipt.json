@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-17T06:30:07.793Z",
-  "fileSetSHA256": "0573a1e986e18da0ef13b302b1d3e8fc071ee2dca1709deb3d68b35201c5531d",
+  "createdAt": "2026-11-17T08:40:13.319Z",
+  "fileSetSHA256": "10f3aa406e378c4d55d7b3a2bdb4bbc0e95167a4f4292e82c45c3e3513b42dd4",
   "files": [
     {
       "path": ".gitattributes",
@@ -985,11 +985,11 @@
     },
     {
       "path": "dsh-desktop/internal/updater/apply.go",
-      "sha256": "160b013b0bcc3137a2472e704359c96e71e8da80c3d6b498cc2eb9cfbf13c0a2"
+      "sha256": "e47d8bbde32e2a573aa608a639bfecd3852e53fa3b09962014a44c3a660be63f"
     },
     {
       "path": "dsh-desktop/internal/updater/cross_volume_windows_test.go",
-      "sha256": "67a65fc7efba9bfdbe9070c5e205226fdd21e6e355ac2bde113494e8d9759279"
+      "sha256": "923061e5f275e40f94ac24bf7b2916b3843db1e4f8a6604ecf0737c430bc16ef"
     },
     {
       "path": "dsh-desktop/internal/updater/delta_test.go",
@@ -1029,7 +1029,7 @@
     },
     {
       "path": "dsh-desktop/internal/updater/move_windows_test.go",
-      "sha256": "efa50de376fdfb9e8d17fd15c74a51fa737e3e6ae98607d00ca43a38695478a0"
+      "sha256": "59e1c7a359f3083dff97d6a6d9a5d50640d8bc4164477739cb5a4a9de73dc1ab"
     },
     {
       "path": "dsh-desktop/internal/updater/move_windows.go",
