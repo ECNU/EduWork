@@ -1,11 +1,27 @@
 import { readFile, writeFile, mkdir, rename, readdir, lstat, rm } from 'node:fs/promises'
 import { join, dirname, relative, isAbsolute, sep } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { isDeepStrictEqual } from 'node:util'
 import { loadUserConfig } from './user-config.mjs'
 import { verifiedManifest, validateBundle, incompatible, fetchContent, digest, CONTENT_LIMIT } from './content-update-protocol.mjs'
 import { ConfigurationFile } from './configuration-file.mjs'
 import { configurationDocumentationOptions } from './configuration-documentation.mjs'
 import { redactDiagnostic } from './diagnostics.mjs'
+
+function checkCalendarRevisions(previous, incoming) {
+  const oldYears = previous.academicCalendars, newYears = incoming.academicCalendars
+  if (!oldYears && !newYears) return
+  if (!newYears) throw Error('配置快照遗漏了已发布的校历')
+  if (previous.components.configuration === incoming.components.configuration && !isDeepStrictEqual(oldYears, newYears)) {
+    throw Error('修改校历后须增加配置修订号')
+  }
+  for (const dataset of newYears) {
+    const prior = oldYears?.find(year => year.academicYear === dataset.academicYear)
+    if (prior && (dataset.revision < prior.revision || dataset.revision === prior.revision && !isDeepStrictEqual(dataset, prior))) {
+      throw Error('校历数据变更须增加该学年的修订号')
+    }
+  }
+}
 
 async function readJSON(path, fallback) { try { return JSON.parse(await readFile(path,'utf8')) } catch(error) { if(error.code==='ENOENT')return fallback;throw error } }
 async function atomic(path,value) {
@@ -131,6 +147,10 @@ export class ContentUpdates {
       // transaction only after all selected components have been verified.
       loadUserConfig(this.configPath,{overlay:bundle.configuration})
       result.configurationDefaults=bundle.configuration;result.configurationRevision=manifest.components.configuration
+      if (manifest.academicCalendars) {
+        result.academicCalendarsFile = join(directory, 'academic-calendars.json')
+        await atomic(result.academicCalendarsFile, manifest.academicCalendars)
+      }
     }
     if(includeSkills&&bundle.skills) {
       await this.unchangedBundledSkills()
@@ -301,6 +321,8 @@ export class ContentUpdates {
   async installContent(envelope,bytes,{retryFailed=false}={}) {
     const manifest=verifiedManifest(envelope,this.source,this.policy),key=`${manifest.revision}-${manifest.bundle.sha256}`
     const repair=manifest.revision===this.state.highest&&this.canRepair(key,retryFailed)
+    const calendarDigest = manifest.academicCalendars ? digest(Buffer.from(JSON.stringify(manifest.academicCalendars))) : null
+    if (repair && this.state.calendarReceipt?.key === key && this.state.calendarReceipt.digest !== calendarDigest) throw Error('已接收修订的校历内容不能替换')
     if(this.state.rejected.includes(key)&&!repair)throw this.rejectedError(key)
     if(manifest.revision<=this.state.highest&&!repair)throw Error('内容修订号必须高于已接收的版本')
     const reason=incompatible(manifest.requires,this.environment);if(reason)throw Error(reason)
@@ -311,7 +333,11 @@ export class ContentUpdates {
       for(const [name,revision] of Object.entries(manifest.components)) {
         if(revision<this.view[name+'Revision'])throw Error('内容组件修订号不能倒退')
         const active=this.state.active[name]
-        if(active&&!(repair&&active===key)&&await this.cachedRevision(active,name)>revision)throw Error('内容组件修订号不能倒退')
+        if (active && !(repair && active === key)) {
+          const previous = await this.cachedManifest(active)
+          if (name === 'configuration') checkCalendarRevisions(previous, manifest)
+          if (previous.components[name] > revision) throw Error('内容组件修订号不能倒退')
+        }
       }
       await mkdir(temporary)
       await writeFile(join(temporary,'bundle.json'),bytes,{flag:'wx'})
@@ -330,6 +356,7 @@ export class ContentUpdates {
       }
       else await rename(temporary,target)
       this.state.pending=key;this.state.highest=manifest.revision;this.state.retryable=null
+      this.state.calendarReceipt = { key, digest: calendarDigest }
       this.state.rejected=this.state.rejected.filter(value=>value!==key);await this.save()
       this.view={...this.view,state:'ready',message:'已下载并校验，下次启动生效'}
     } finally {await rm(temporary,{recursive:true,force:true})}

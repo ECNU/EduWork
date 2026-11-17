@@ -49,7 +49,7 @@ export default class AcademicCalendar extends Service {
       await this.applyTimetable(id, record)
     }
   }
-  async registerDataset({ id, label, dataset, source: sourceIdentity }) {
+  async registerDataset({ id, label, dataset, source: sourceIdentity, retainLastAccepted = false }) {
     validateDataset(dataset)
     dataset = structuredClone(dataset)
     await this.ready
@@ -60,15 +60,23 @@ export default class AcademicCalendar extends Service {
     catch (error) { annotation.dispose(); throw error }
     const handle = { dispose: () => { annotation.dispose(); source.dispose(); this.datasets.delete(id); this.handles.delete(id); this.syncSelection() } }
     try {
+      // A desktop content trial can roll back independently of the calendar store.
+      // Keep the same source and its personal notes when reopening a published year.
+      const snapshots = retainLastAccepted ? this.storage.table('feeds') : null
+      const cached = snapshots?.get(source.source)
+      if (cached?.kind === 'calendar' && cached.data.revision >= dataset.revision) {
+        dataset = validateDataset(cached.data)
+      }
       const version = this.checkRevision(source.source, dataset)
       const outcome = await source.apply({ complete: true, events: eventsForDataset(dataset), ...(dataset.revision ? { revision: dataset.revision } : {}) })
       if (outcome.state !== 'ready') throw new Error('academic calendar snapshot rejected')
       if (version) await this.storage.table('versions').put(source.source, version)
+      if (snapshots && cached?.data !== dataset) await snapshots.put(source.source, { kind: 'calendar', data: dataset })
       if (this.closed) { handle.dispose(); throw new Error('academic calendar stopped') }
       this.datasets.set(id, { id, label, dataset, source, active: true })
       this.handles.set(id, handle)
       this.syncSelection()
-      return handle
+      return retainLastAccepted ? { ...handle, dataset: structuredClone(dataset) } : handle
     } catch (error) { handle.dispose(); throw error }
   }
   syncSelection() {

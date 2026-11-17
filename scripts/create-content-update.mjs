@@ -37,6 +37,13 @@ export async function createContentUpdate({ config, planFile, keyFile, output })
   const bytes=Buffer.from(JSON.stringify(bundle)),sha256=digest(bytes),filename=`content-${plan.revision}-${sha256}.json`
   const manifest={schemaVersion:1,publisher:source.publisher,channel:plan.channel,revision:plan.revision,requires:plan.requires,components,
     bundle:{url:`${source.baseURL}/bundles/${filename}`,bytes:bytes.length,sha256}}
+  // Older clients accept additive signed manifest fields and enforce a strict
+  // configuration-bundle schema. Keep their normal configuration usable.
+  if (plan.configuration?.academicCalendars !== undefined) {
+    const paths = plan.configuration.academicCalendars
+    if (!Array.isArray(paths) || !paths.length) throw Error('academicCalendars 须列出校历 JSON 路径')
+    manifest.academicCalendars = await Promise.all(paths.map(async path => JSON.parse(await readFile(resolve(base, path), 'utf8'))))
+  }
   const payload=Buffer.from(JSON.stringify(manifest)),key=createPrivateKey(await readFile(keyFile))
   if(key.asymmetricKeyType!=='ed25519')throw Error('签名私钥必须为 Ed25519')
   const envelope={schemaVersion:1,payload:payload.toString('base64url'),signature:sign(null,payload,key).toString('base64url')}
