@@ -4,10 +4,12 @@ import { isMainModule } from './lib/build-util.mjs'
 // Intel uses the same macOS scripts, with a separate native runner and artifact.
 export function desktopBuildTargets(selection = 'both', mode = 'node') {
   if (!['node', 'ps1'].includes(mode)) throw new Error('Unknown desktop build mode')
-  if (!['both', 'windows', 'macos', 'macos-arm64', 'macos-x64'].includes(selection)) throw new Error('Unknown desktop target')
+  if (!['both', 'windows', 'linux', 'macos', 'macos-arm64', 'macos-x64'].includes(selection)) throw new Error('Unknown desktop target')
+  if (mode === 'ps1' && selection === 'linux') throw new Error('Linux AppImage requires the Node build recipe')
   if (mode === 'ps1' && selection === 'macos-x64') throw new Error('Intel Mac requires the Node build recipe')
   const targets = [
     { platform: 'windows', script: 'windows', runner: 'windows-latest' },
+    ...(selection === 'linux' ? [{ platform: 'linux', script: 'linux', runner: 'ubuntu-24.04' }] : []),
     { platform: 'macos', script: 'macos', runner: 'macos-26', compatibilityRunner: 'macos-15' },
     ...(mode === 'node' ? [{ platform: 'macos-x64', script: 'macos', runner: 'macos-26-intel', compatibilityRunner: 'macos-15-intel' }] : []),
   ]

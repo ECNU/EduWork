@@ -2,18 +2,19 @@ import { join, resolve, isAbsolute } from 'node:path'
 import { desktopConfigurationPath } from './configuration-policy.mjs'
 import { existsSync } from 'node:fs'
 
-/** Keep the signed app bundle separate from per-user mutable state on macOS. */
+/** Keep the read-only application bundle separate from per-user mutable state. */
 export function desktopPaths({ appRoot, appData, settings, platform = process.platform, testRoot, configOverride, exists = existsSync }) {
   const mac = platform === 'darwin'
+  const linux = platform === 'linux'
   const root = resolve(appRoot, mac ? '../../..' : '../..')
   let namespace = settings.distribution + '-electron' + (mac && settings.sourceAlpha === true ? '-alpha' : '')
   // First ordinary-identity adoption may reuse the Alpha home in place. Never combine two
   // existing homes or copy a live database. Future launches make the same choice.
   if (mac && !testRoot && !settings.sourceAlpha
     && !exists(join(appData, namespace)) && exists(join(appData, namespace + '-alpha'))) namespace += '-alpha'
-  const writableRoot = mac ? join(appData, namespace) : root
+  const writableRoot = mac || linux ? join(appData, namespace) : root
   if (testRoot && (!isAbsolute(testRoot) || /(?:^|[\\/])current(?:[\\/]|$)/iu.test(testRoot))) throw new Error('Test data requires an isolated absolute directory')
-  const dataRoot = testRoot ? resolve(testRoot) : mac ? writableRoot : join(root, 'data', namespace)
+  const dataRoot = testRoot ? resolve(testRoot) : (mac || linux) ? writableRoot : join(root, 'data', namespace)
   return {
     root,
     updateDataRoot: testRoot ? join(dataRoot, 'updates') : join(writableRoot, 'data'),
