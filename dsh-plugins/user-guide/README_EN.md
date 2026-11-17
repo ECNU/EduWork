@@ -18,6 +18,8 @@ Plays once after the workbench first opens: only when the plugin settings have l
 
 Eight built-in steps: welcome, new session, workspaces, composer, permissions and model, skills and plugins, files, user guide. DSH class names change between builds, so targets are found by accessible labels and button text in both Chinese and English; a step whose target is missing is centered and dims the window. After a DSH upgrade, walk through the tour in a test build to confirm each highlight.
 
+The last step highlights the Application menu on Windows. On macOS, use the application menu in the system menu bar. Select **Done** to return to the workbench and open **User Guide** from the menu whenever you need it.
+
 It coexists with the upstream welcome notice that `brand-settings-native` writes to `ui-onboarding`: the tour waits while the notice is open.
 
 ## Distribution settings

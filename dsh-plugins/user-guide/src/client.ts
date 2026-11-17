@@ -180,7 +180,6 @@ export function runTour(form: GuideForm): void {
   startTour({
     copy: currentCopy(),
     onDone: () => { void form.set('tourSeen', true).catch(() => {}) },
-    onOpenGuide: () => openGuide(),
   })
 }
 

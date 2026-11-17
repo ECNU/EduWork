@@ -80,34 +80,59 @@ test('eight steps with Chinese and English copy; the last one leads to the guide
   assert.equal(mod.STEPS.at(-1).id, 'guide')
 })
 
-test('walking through to the end offers the guide and records completion', () => {
+test('the last step points to the Windows menu when present and finishes in the workbench', () => {
   const doc = fakeDocument()
   const mod = load(doc)
-  const done = []; let opened = 0
-  mod.startTour({ copy: mod.guideCopy('zh-CN'), doc, onDone: r => done.push(r), onOpenGuide: () => { opened++ } })
+  const done = []
+  assert.equal(mod.STEPS.at(-1).find(doc), null)
+  const menu = makeEl('button', doc)
+  menu.rect = { left: 48, top: 4, width: 50, height: 28 }
+  doc.querySelector = selector => selector === '[data-windows-menu]' ? {
+    shadowRoot: { querySelector: selector => selector === '[role="menubar"] > [role="menuitem"]:first-child' ? menu : null },
+  } : null
+  mod.startTour({ copy: mod.guideCopy('zh-CN'), doc, onDone: r => done.push(r) })
   const root = doc.body.children[0]
-  const [, card] = root.children
+  const [hole, card] = root.children
   const [title, , foot] = card.children
-  const [count, skip, back, next, guide] = foot.children
+  const [count, skip, back, next] = foot.children
   assert.equal(title.textContent, '欢迎使用 EduWork'); assert.equal(count.textContent, '1 / 8'); assert.equal(back.hidden, true)
   assert.equal(root.style.background, 'rgba(8,12,20,.58)', 'a step without a target dims the whole window')
   for (let i = 0; i < 7; i++) next.click()
-  assert.equal(count.textContent, '8 / 8'); assert.equal(guide.hidden, false); assert.equal(skip.hidden, true); assert.equal(next.textContent, '完成')
-  guide.click()
-  assert.deepEqual(done, ['finished']); assert.equal(opened, 1); assert.equal(doc.body.children.length, 0)
+  assert.equal(count.textContent, '8 / 8')
+  assert.equal(hole.style.left, '42px')
+  assert.deepEqual(foot.children.filter(el => el.tag === 'button' && !el.hidden).map(el => el.textContent), ['上一步', '完成'])
+  assert.equal(doc.focused, next)
+  next.click()
+  assert.deepEqual(done, ['finished'])
+  assert.equal(doc.body.children.length, 0)
+})
+
+test('macOS names the edition menu and completes with the keyboard', () => {
+  const doc = fakeDocument()
+  doc.documentElement.dataset = { platform: 'darwin' }
+  const mod = load(doc)
+  const done = []
+  mod.startTour({ copy: mod.guideCopy('en', {}, 'Campus'), doc, onDone: r => done.push(r) })
+  for (let i = 1; i < mod.STEPS.length; i++) doc.key('ArrowRight')
+  const body = doc.body.children[0].children[1].children[1]
+  assert.match(body.children[0].textContent, /Campus → User Guide/)
+  assert.equal(doc.focused.textContent, 'Done')
+  doc.key('ArrowRight')
+  assert.deepEqual(done, ['finished'])
+  assert.equal(doc.body.children.length, 0)
 })
 
 test('Escape skips, arrows move, and unloading neither records nor opens anything', () => {
   const doc = fakeDocument()
   const mod = load(doc)
   const done = []
-  mod.startTour({ copy: mod.guideCopy('en'), doc, onDone: r => done.push(r), onOpenGuide: assert.fail })
+  mod.startTour({ copy: mod.guideCopy('en'), doc, onDone: r => done.push(r) })
   const count = doc.body.children[0].children[1].children[2].children[0]
   doc.key('ArrowRight'); doc.key('ArrowRight'); doc.key('ArrowLeft')
   assert.equal(count.textContent, '2 / 8')
   doc.key('Escape')
   assert.deepEqual(done, ['skipped'])
-  mod.startTour({ copy: mod.guideCopy('en'), doc, onDone: r => done.push(r), onOpenGuide: assert.fail })
+  mod.startTour({ copy: mod.guideCopy('en'), doc, onDone: r => done.push(r) })
   mod.stopTour()
   assert.deepEqual(done, ['skipped']); assert.equal(doc.body.children.length, 0)
 })
@@ -148,7 +173,7 @@ test('one localized field inherits every other field and keeps the eight built-i
   doc.nodes.push(target)
   assert.equal(mod.STEPS[1].find(doc), target)
   const resolved = mod.guideCopy('zh-CN', { 'zh-CN': { steps: copy['zh-CN'].steps, ui: { next: '继续', progress: '{current}／{total}' } } }, 'Campus $&')
-  mod.startTour({ copy: resolved, doc, onDone() {}, onOpenGuide() {} })
+  mod.startTour({ copy: resolved, doc, onDone() {} })
   const [title, body, foot] = doc.body.children[0].children[1].children
   const [count, , , next] = foot.children
   assert.equal(next.textContent, '继续')
