@@ -282,7 +282,7 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 		}
 		for index := len(backedUp) - 1; index >= 0; index-- {
 			name := backedUp[index]
-			if err := os.Rename(filepath.Join(backupDir, name), filepath.Join(pending.InstallDir, name)); err != nil {
+			if err := moveManagedPath(filepath.Join(backupDir, name), filepath.Join(pending.InstallDir, name)); err != nil {
 				failures = append(failures, fmt.Errorf("restore %s: %w", name, err))
 			}
 		}
@@ -298,7 +298,7 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 			if err := os.MkdirAll(filepath.Dir(backup), 0o700); err != nil {
 				return rollback(err)
 			}
-			if err := os.Rename(target, backup); err != nil {
+			if err := moveManagedPath(target, backup); err != nil {
 				return rollback(fmt.Errorf("backup managed path %s: %w", name, err))
 			}
 			backedUp = append(backedUp, name)
@@ -843,6 +843,39 @@ func moveOrCopy(source, target string) error {
 		return nil
 	}
 	return copyTree(source, target, false)
+}
+
+// moveManagedPath moves a managed program file or directory into or out of the
+// update transaction. Windows cannot rename across volumes; an independent
+// personal-data root puts the transaction on another volume, so fall back to a
+// complete copy followed by removing the source. Other rename errors (sharing,
+// permissions) are returned unchanged and never partially copy a live tree.
+func moveManagedPath(source, target string) error {
+	return moveManagedPathWithRename(source, target, os.Rename)
+}
+
+func moveManagedPathWithRename(source, target string, rename func(string, string) error) error {
+	if _, err := os.Lstat(source); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return err
+	}
+	if _, err := os.Lstat(target); err == nil {
+		return fmt.Errorf("move target already exists: %s", target)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := rename(source, target); err == nil {
+		return nil
+	} else if !isCrossDeviceError(err) {
+		return err
+	}
+	if err := copyTree(source, target, false); err != nil {
+		_ = os.RemoveAll(target)
+		return err
+	}
+	return os.RemoveAll(source)
 }
 
 func mergeReleaseData(source, target string) error {

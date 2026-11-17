@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-16T17:36:13.885Z",
-  "fileSetSHA256": "083e41b90ef47c616a43c45db5dc1b8daf2846fc6e2128a53fd2c66da961e7b7",
+  "createdAt": "2026-11-17T06:30:07.793Z",
+  "fileSetSHA256": "0573a1e986e18da0ef13b302b1d3e8fc071ee2dca1709deb3d68b35201c5531d",
   "files": [
     {
       "path": ".gitattributes",
@@ -985,7 +985,11 @@
     },
     {
       "path": "dsh-desktop/internal/updater/apply.go",
-      "sha256": "f5f87eb9a27b13164ef2c0864e9f886659f3f9cffad57435eee292d3f518a702"
+      "sha256": "160b013b0bcc3137a2472e704359c96e71e8da80c3d6b498cc2eb9cfbf13c0a2"
+    },
+    {
+      "path": "dsh-desktop/internal/updater/cross_volume_windows_test.go",
+      "sha256": "67a65fc7efba9bfdbe9070c5e205226fdd21e6e355ac2bde113494e8d9759279"
     },
     {
       "path": "dsh-desktop/internal/updater/delta_test.go",
@@ -1018,6 +1022,18 @@
     {
       "path": "dsh-desktop/internal/updater/install_guard_test.go",
       "sha256": "abf4a22422fc5586e584a97bdf827a2830f5217f80ffecd9e1a23f66011c8730"
+    },
+    {
+      "path": "dsh-desktop/internal/updater/move_other.go",
+      "sha256": "e369d9fda4d050b2f911dfd5580a324b2f026d31e6251a9cc3ecdea0bcd101f5"
+    },
+    {
+      "path": "dsh-desktop/internal/updater/move_windows_test.go",
+      "sha256": "efa50de376fdfb9e8d17fd15c74a51fa737e3e6ae98607d00ca43a38695478a0"
+    },
+    {
+      "path": "dsh-desktop/internal/updater/move_windows.go",
+      "sha256": "20f01d037897dc097b47bb8218b6c5513594ae500171ff2d85018af2e8fbbd7c"
     },
     {
       "path": "dsh-desktop/internal/updater/process_other.go",
@@ -1065,7 +1081,7 @@
     },
     {
       "path": "dsh-desktop/internal/updater/updater_test.go",
-      "sha256": "561e970973fa9f050a66b78b9452c2cf44d720211e00dc693f1e9dd3831e82e6"
+      "sha256": "c5eb641c1a143fbc214ea8c371fb0e7ac03f23ca589e43a70de5c0c448b0f75c"
     },
     {
       "path": "dsh-desktop/internal/updater/updater.go",
