@@ -823,6 +823,97 @@ await acceptance('周月切换、跨月导航和月视图编辑共用同一条�
   })
 })
 
+await acceptance('翻页上下文：查看相邻月份的日期、日程和跨周日程', async () => {
+  await withRoot('calendar-browser-selection-', root => withCalendar(root, async calendar => {
+    await calendar.putEvent({ uid: 'activity', title: '校园主题活动日', start: '2026-10-28' })
+    await calendar.putEvent({ uid: 'multi-month', title: '跨月活动', start: '2026-10-24', end: '2026-11-03' })
+    await calendar.putEvent({ uid: 'multi-week', title: '跨周活动', start: '2026-11-15', end: '2026-11-17' })
+    await withBrowser(calendar, panel, METHODS, async ({ page, errors }) => {
+      const button = name => page.getByRole('button', { name, exact: true })
+      const month = page.locator('.cal-period h1')
+      const event = title => page.locator(`[data-event-title="${title}"]`)
+      await event('校园主题活动日').click()
+      await sidebar(page).getByRole('heading', { name: '校园主题活动日' }).waitFor()
+      assert.equal(await month.innerText(), '2026年11月')
+      await leaveDetails(page)
+      await sidebar(page).getByRole('heading', { name: /10月28日/ }).waitFor()
+      await event('跨月活动').last().click()
+      await sidebar(page).getByRole('heading', { name: '跨月活动' }).waitFor()
+      assert.equal(await month.innerText(), '2026年11月')
+      assert.match(await page.locator('.cal-focused-day').getAttribute('data-calendar-day'), /^2026-11-0[23]$/)
+      await page.locator('[data-calendar-day="2026-12-01"]').getByRole('link').press('Enter')
+      await sidebar(page).getByRole('heading', { name: /12月1日/ }).waitFor()
+      assert.equal(await month.innerText(), '2026年11月')
+      await button('下一月').click()
+      assert.equal(await month.innerText(), '2026年12月')
+      await button('今天').click()
+      await button('周').click()
+      await event('跨周活动').first().click()
+      await sidebar(page).getByRole('heading', { name: '跨周活动' }).waitFor()
+      assert.equal(await page.locator('.cal-period-subtitle').innerText(), '11月16日 – 11月22日')
+      await leaveDetails(page)
+      await sidebar(page).getByRole('heading', { name: /11月1[67]日/ }).waitFor()
+      assert.deepEqual(errors, [])
+    }, { initialView: 'month', date: new Date(2026, 10, 18, 12), viewport: { width: 1366, height: 900 } })
+  }))
+})
+
+await acceptance('翻页上下文：编辑重复日程保留当前月份，明确改期才跳转', async () => {
+  await withRoot('calendar-browser-series-date-', root => withCalendar(root, async calendar => {
+    await calendar.putEvent({ uid: 'weekly', title: '每周例会', start: '2026-09-02T19:00',
+      end: '2026-09-02T20:00', recurrence: { freq: 'weekly', count: 18 } })
+    await withBrowser(calendar, panel, METHODS, async ({ page, events, errors }) => {
+      const button = name => page.getByRole('button', { name, exact: true })
+      const occurrence = page.locator('[data-calendar-day="2026-11-18"] [data-occurrence]')
+      const form = sidebar(page).getByRole('form', { name: '编辑日程' })
+      await occurrence.click()
+      await button('编辑日程').click()
+      await button('整条日程').click()
+      await form.getByLabel('标题', { exact: true }).fill('新例会名称')
+      await button('保存').click()
+      await form.waitFor({ state: 'hidden' })
+      assert.equal(await page.locator('.cal-period h1').innerText(), '2026年11月')
+      await sidebar(page).getByRole('heading', { name: /11月18日/ }).waitFor()
+      const series = (await events()).find(record => record.uid === 'weekly')
+      assert.equal(series.title, '新例会名称')
+      assert.equal(series.start, '2026-09-02T19:00')
+      await occurrence.click()
+      await button('编辑日程').click()
+      await form.locator('input[type=date]').first().fill('2026-12-07')
+      await button('保存').click()
+      await form.waitFor({ state: 'hidden' })
+      assert.equal(await page.locator('.cal-period h1').innerText(), '2026年12月')
+      await sidebar(page).getByRole('heading', { name: /12月7日/ }).waitFor()
+      assert.deepEqual(errors, [])
+    }, { initialView: 'month', date: new Date(2026, 10, 18, 12) })
+  }))
+})
+
+await acceptance('翻页上下文：新建草稿在翻月和切换视图时保留原定日期', async () => {
+  await withRoot('calendar-browser-page-draft-', root => withCalendar(root, async calendar => {
+    calendar.registerAnnotations({ id: 'school', label: '校历', selectionGroup: 'academic-calendar',
+      annotationsFor: () => ({ weeks: [], spans: [{ firstDay: '2026-09-01', lastDay: '2027-01-15', text: '秋季学期' }] }) })
+    await withBrowser(calendar, panel, METHODS, async ({ page, events, errors }) => {
+      const button = name => page.getByRole('button', { name, exact: true })
+      const form = createForm(page)
+      await button('新建日程').click()
+      await form.getByLabel('标题', { exact: true }).fill('跨页草稿')
+      await button('下一月').click()
+      assert.equal(await page.locator('.cal-period h1').innerText(), '2026年12月')
+      assert.equal(await form.getByLabel('标题', { exact: true }).inputValue(), '跨页草稿')
+      await button('上一月').click()
+      await button('学年总览').click()
+      await page.getByRole('region', { name: '学年时间轴' }).waitFor()
+      await button('周').click()
+      assert.equal(await form.locator('input[type=date]').first().inputValue(), '2026-11-18')
+      await form.getByRole('button', { name: '保存' }).click()
+      await form.waitFor({ state: 'hidden' })
+      assert.deepEqual((await events()).map(record => [record.title, record.start]), [['跨页草稿', '2026-11-18']])
+      assert.deepEqual(errors, [])
+    }, { initialView: 'month', date: new Date(2026, 10, 18, 12) })
+  }))
+})
+
 await acceptance('校历首屏、周月日期保持和学年下钻', async () => {
   await withRoot('eduwork-browser-academic-views-', async root => withCalendar(root, async calendar => {
     calendar.registerAnnotations({

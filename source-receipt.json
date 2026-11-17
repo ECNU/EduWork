@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-16T11:24:22.868Z",
-  "fileSetSHA256": "c49a2812823259e57ae81e25dce6746be333cec5196e14c8aa593e6632f441e4",
+  "createdAt": "2026-11-17T14:25:14.983Z",
+  "fileSetSHA256": "d2ea5fe89d5d0ef8e608638eb3c8a7308e726b3b6c1eb1019b26e12d82f7ea6f",
   "files": [
     {
       "path": ".gitattributes",
@@ -261,11 +261,11 @@
     },
     {
       "path": "docs/CONTENT_UPDATES_EN.md",
-      "sha256": "f2ed9305b1b3258dc11394e138b17758809a550742ec4e96b67c03094457a7e9"
+      "sha256": "267d0de401e489ef4f34c16892e38b1570c54cc19c4b19e204f1bc338ebd2e92"
     },
     {
       "path": "docs/CONTENT_UPDATES.md",
-      "sha256": "c6ccfd08299c3935784e706358b30414997c4872eca74c1751799a93ee16d567"
+      "sha256": "73b264665158508b4acf9e8e51f117df4af8358e713418540c0c7f5bc88f49e5"
     },
     {
       "path": "docs/CORE-020_EN.md",
@@ -1185,7 +1185,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "4178503cc7a1cc0964b373a2f8f6280f2f64d4e4a8ad58f2710d8cd1489ee733"
+      "sha256": "d928d89a6817b7c8640fa0d89efeb45465f7cdfab0845acd77457cb776e2170e"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1728,6 +1728,10 @@
       "sha256": "bc4fb7e14179c98270e9a267331f8dc3535011933d96989a422050e1d1bde1bf"
     },
     {
+      "path": "dsh-host/academic-calendar-model.mjs",
+      "sha256": "cc06ba23832289cc2998dbaa1fe9125897dfe1a0c9a35bd5ccab59f86894de3c"
+    },
+    {
       "path": "dsh-host/bridge.mjs",
       "sha256": "383a08172c8f006a24d0e03d254ecb5d0f042ef6c642779b0adc28ea747761d5"
     },
@@ -1749,11 +1753,11 @@
     },
     {
       "path": "dsh-host/content-update-protocol.mjs",
-      "sha256": "26ad87af647cbc55cc0cca6997c5117c5ac97bfe29ae812c751f96d2a18bb188"
+      "sha256": "588e9982b418c9eaca1c8f1f49509c316a7aa4bc4179a27c3f4771decc09874f"
     },
     {
       "path": "dsh-host/content-updates.mjs",
-      "sha256": "0a6db2c48a6ed0409b63ceef25898997839b107ad7637a8f59750cd2d6e3f380"
+      "sha256": "01283ec4bdac89e2c785f9058f059e10c891a2c44c29ef6c44935295ad6976d8"
     },
     {
       "path": "dsh-host/desktop-log.mjs",
@@ -1817,7 +1821,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "6570e43b49ca2f657399b6833fb26e83a5abc3cc168b9e3fce6426784467a574"
+      "sha256": "83c30563e78d1f017ec8c482896786dd25c763b4d58ee7d09d0d51f274acf247"
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
@@ -1861,7 +1865,7 @@
     },
     {
       "path": "dsh-host/test/content-updates.test.mjs",
-      "sha256": "85d233eb2ea02c8c07bc08c30d956841abf4a3f251403d3747ca3475c9d60b92"
+      "sha256": "0103856d1174524b43fc44ec566fa5c23f7695b5c3aa71b731d861ee75227018"
     },
     {
       "path": "dsh-host/test/desktop-updates.test.mjs",
@@ -2369,7 +2373,7 @@
     },
     {
       "path": "dsh-plugins/calendar/lib/annotations.js",
-      "sha256": "b897f332a4810828283cd87212cca456de14ef16c520256a09997bc0cd5316ad"
+      "sha256": "a52cd1a55c39fbc96de667a751624ae8aa55abafdd7a048504242f1a99ea2fff"
     },
     {
       "path": "dsh-plugins/calendar/lib/client.js",
@@ -2485,7 +2489,7 @@
     },
     {
       "path": "dsh-plugins/calendar/test/academic.test.mjs",
-      "sha256": "90bb3337e4586183cacba402eac20f38b7afa3e1ed42c7289629638e17b7c199"
+      "sha256": "bb72ecf5374b249eda3649643ec69d3271b7e674c097b205f6969b489bebb960"
     },
     {
       "path": "dsh-plugins/calendar/test/annotations.test.mjs",
@@ -3697,7 +3701,7 @@
     },
     {
       "path": "packages/dsh-academic-calendar/lib/index.js",
-      "sha256": "b35eda62fd8840539596ecae39b9a793cdbf4ba54c7eaa26f41e309c3fb22afb"
+      "sha256": "941d7d29c47d97090e537786da3b99f2f020ae5f3d9aac8bef3cc026e2eab2d7"
     },
     {
       "path": "packages/dsh-academic-calendar/lib/model.js",
@@ -7657,7 +7661,7 @@
     },
     {
       "path": "scripts/create-content-update.mjs",
-      "sha256": "cb99e253b3d18e9f5ccf4a9e10f2023e5c6f355871442186e4165ae7093db08c"
+      "sha256": "a5dd566955378e607bdf5b3625e30fb9fdf6966f989b1e956313f17d0f57994f"
     },
     {
       "path": "scripts/desktop-build-plan.mjs",

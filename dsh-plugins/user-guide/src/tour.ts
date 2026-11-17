@@ -82,6 +82,9 @@ export const STEPS: TourStep[] = [
   },
   {
     id: 'guide',
+    // The desktop preload owns the Windows caption menu. macOS uses the system menu bar.
+    find: doc => doc.querySelector('[data-windows-menu]')?.shadowRoot
+      ?.querySelector('[role="menubar"] > [role="menuitem"]:first-child') ?? null,
   },
 ]
 
@@ -111,7 +114,6 @@ export function placeCard(target: Rect | null, card: { width: number; height: nu
 export interface TourOptions {
   copy?: GuideCopy
   onDone: (reason: 'finished' | 'skipped') => void
-  onOpenGuide: () => void
   doc?: Document
 }
 
@@ -121,7 +123,7 @@ export const tourRunning = () => stopCurrent !== null
 /** Closes a running tour without recording it as seen. */
 export function stopTour(): void { stopCurrent?.() }
 
-export function startTour({ copy = guideCopy('zh-CN'), onDone, onOpenGuide, doc = document }: TourOptions): void {
+export function startTour({ copy = guideCopy('zh-CN'), onDone, doc = document }: TourOptions): void {
   if (doc.getElementById(ROOT_ID)) return
   const steps = STEPS
   const win = doc.defaultView ?? window
@@ -159,8 +161,7 @@ export function startTour({ copy = guideCopy('zh-CN'), onDone, onOpenGuide, doc 
   const skip = button(copy.ui.skip)
   const back = button(copy.ui.back)
   const next = button(copy.ui.next, true)
-  const guide = button(copy.ui.openGuide, true)
-  foot.append(count, skip, back, next, guide)
+  foot.append(count, skip, back, next)
   card.append(title, body, foot)
   root.append(hole, card)
 
@@ -190,18 +191,18 @@ export function startTour({ copy = guideCopy('zh-CN'), onDone, onOpenGuide, doc 
     const last = index === steps.length - 1
     title.textContent = copy.steps[step.id].title
     body.textContent = copy.steps[step.id].body
+    if (step.id === 'guide' && doc.documentElement.dataset?.platform === 'darwin') {
+      const path = doc.createElement('div')
+      path.textContent = copy.ui.macGuideMenu
+      body.append(path)
+    }
     card.setAttribute('aria-label', copy.steps[step.id].title)
     count.textContent = copy.ui.progress.replaceAll('{current}', String(index + 1)).replaceAll('{total}', String(steps.length))
     back.hidden = index === 0
     next.textContent = last ? copy.ui.done : copy.ui.next
-    // On the last step Done turns secondary so Open user guide stands out.
-    next.style.background = last ? 'transparent' : 'var(--dsw-alias-state-business-primary,#4176e6)'
-    next.style.color = last ? 'inherit' : 'var(--dsw-alias-bg-base,#fff)'
-    next.style.border = last ? '.5px solid var(--dsw-alias-border-l4,rgba(0,0,0,.2))' : '0'
-    guide.hidden = !last
     skip.hidden = last
     layout()
-    ;(last ? guide : next).focus()
+    next.focus()
   }
   const finish = (reason: 'finished' | 'skipped', notify = true) => {
     if (timer) clearInterval(timer)
@@ -226,7 +227,6 @@ export function startTour({ copy = guideCopy('zh-CN'), onDone, onOpenGuide, doc 
   skip.addEventListener('click', () => finish('skipped'))
   back.addEventListener('click', () => go(-1))
   next.addEventListener('click', () => go(1))
-  guide.addEventListener('click', () => { finish('finished'); onOpenGuide() })
   doc.addEventListener('keydown', onKey, true)
   win.addEventListener('resize', layout)
   // Sidebars and lists move targets as they load: re-layout periodically.
