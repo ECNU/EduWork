@@ -14,7 +14,7 @@ const [mode, id] = process.argv.slice(2)
 assert.ok(['preflight', 'publish'].includes(mode), 'Expected preflight or publish')
 const selected = selectPackage(id)
 const manifest = JSON.parse(await readFile(join(root, selected.directory, 'package.json'), 'utf8'))
-const groupDirectory = `packages/${selected.group}`
+const groupDirectory = selectPackage(selected.group).directory
 const groupManifest = JSON.parse(await readFile(join(root, groupDirectory, 'package.json'), 'utf8'))
 const lock = JSON.parse(await readFile(join(root, groupDirectory, 'package-lock.json'), 'utf8'))
 const importer = selected.directory === groupDirectory ? '' : selected.directory.slice(groupDirectory.length + 1)
