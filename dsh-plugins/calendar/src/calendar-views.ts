@@ -52,6 +52,7 @@ export function CalendarStyles() {
 
 interface CanvasProps {
   mode: 'month' | 'week'
+  visibleDate: string
   focusedDate: string
   occurrences: Occurrence[]
   noteIndex: Map<string, string>
@@ -59,14 +60,14 @@ interface CanvasProps {
   accentOf: (entry: Occurrence) => string
   draftAccent: string
   occurrenceKeyOf: (entry: Occurrence) => string
-  onSelect: (entry: Occurrence) => void
+  onSelect: (entry: Occurrence, segmentDate?: string) => void
   onCreate: (date: string, from: number, to: number) => void
   onCreateDay: (date: string) => void
 }
 
 /** 月视图和周视图共享宿主持有的当前日期。 */
 export function CalendarCanvas(props: CanvasProps) {
-  const { mode, focusedDate, occurrences, annotations, accentOf, draftAccent, occurrenceKeyOf, noteIndex } = props
+  const { mode, visibleDate, focusedDate, occurrences, annotations, accentOf, draftAccent, occurrenceKeyOf, noteIndex } = props
   const root = useRef<HTMLDivElement | null>(null)
   const instance = useRef<Calendar | null>(null)
   const callbacks = useRef(props)
@@ -101,7 +102,7 @@ export function CalendarCanvas(props: CanvasProps) {
     if (!root.current) return
     const options: CalendarOptions = {
       plugins: [monarch, dayGrid, timeGrid, interaction],
-      locale: zhCN, firstDay: 1, initialView: type, initialDate: focusedDate,
+      locale: zhCN, firstDay: 1, initialView: type, initialDate: visibleDate,
       navLinks: true, navLinkHint: '查看 $0 的安排',
       navLinkDayClick: date => callbacks.current.onCreateDay(localDate(date)),
       headerToolbar: false, height: '100%', expandRows: true, fixedWeekCount: false,
@@ -138,9 +139,9 @@ export function CalendarCanvas(props: CanvasProps) {
           callbacks.current.onCreate(startStr.slice(0, 10), minutes(startStr), minutes(endStr))
         }
       },
-      eventClick: ({ event }) => {
+      eventClick: ({ event, el }) => {
         const entry = event.extendedProps.entry as Occurrence | undefined
-        if (entry) callbacks.current.onSelect(entry)
+        if (entry) callbacks.current.onSelect(entry, el.closest<HTMLElement>('[data-calendar-day]')?.dataset.calendarDay)
       },
       eventClass: ({ event, isMirror }) => {
         if (event.extendedProps.span) return 'cal-phase-band'
@@ -193,8 +194,8 @@ export function CalendarCanvas(props: CanvasProps) {
     if (!calendar) return
     const weeks = new Map((annotations?.weeks ?? []).map(week => [week.firstDay, week.text]))
     calendar.batchRendering(() => {
-      if (calendar.view.type !== type) calendar.changeView(type, focusedDate)
-      else if (localDate(calendar.getDate()) !== focusedDate) calendar.gotoDate(focusedDate)
+      if (calendar.view.type !== type) calendar.changeView(type, visibleDate)
+      else if (localDate(calendar.getDate()) !== visibleDate) calendar.gotoDate(visibleDate)
       calendar.setOption('dayCellClass', ({ date }) => localDate(date) === focusedDate ? 'cal-focused-day' : '')
       calendar.setOption('dayCellTopContent', ({ date, isToday, isOther, view }) => {
         const day = localDate(date)
@@ -218,7 +219,7 @@ export function CalendarCanvas(props: CanvasProps) {
       })
       calendar.setOption('events', events)
     })
-  }, [annotations, events, focusedDate, type])
+  }, [annotations, events, focusedDate, visibleDate, type])
 
   return h('section', {
     'aria-label': mode === 'month' ? '月日历' : '周日历',

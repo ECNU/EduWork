@@ -971,7 +971,8 @@ function TimetableEditor({ slot, occurrence, record, service, onCancel, onSaved 
           if (reminder !== '') await service.setPersonal({ ...ref, patch: reminderPatch })
         }
       }
-      await onSaved(draft.date)
+      const initialDate = slot?.date ?? dateOf(editor.base.start)
+      await onSaved(draft.date === initialDate ? undefined : draft.date)
     } catch (error) {
       setProblem(messageOf(error))
     } finally {
@@ -1224,11 +1225,12 @@ export function createCalendarPage(service: any) {
   return function CalendarPanel() {
     const [view, setView] = useState<{ kind: string; id?: string; source?: string }>({ kind: 'week' })
     const [focusedDate, setFocusedDate] = useState(() => localDate())
+    const [visibleDate, setVisibleDate] = useState(focusedDate)
     const [displayMode, setDisplayMode] = useState<'week' | 'month' | 'year'>('month')
     const [timetable, setTimetable] = useState<TimetableSelection>({ kind: 'day' })
     const [sheetOpen, setSheetOpen] = useState(false)
-    const anchor = startOfWeek(focusedDate)
-    const monthAnchor = monthStart(focusedDate)
+    const anchor = startOfWeek(visibleDate)
+    const monthAnchor = monthStart(visibleDate)
     const [calendarSource, setCalendarSource] = useState('*')
     const [snapshot, setSnapshot] = useState<any>(null)
     const [sourceStatuses, setSourceStatuses] = useState<any[]>([])
@@ -1397,8 +1399,22 @@ export function createCalendarPage(service: any) {
       setTimetable({ kind: 'day' })
       setSheetOpen(showSheet)
     }
-    const selectEntry = (occurrence: any) => {
-      if (agendaFor(focusedDate, [occurrence]).length === 0) setFocusedDate(dateOf(occurrence.start))
+    const editing = timetable.kind === 'create' || timetable.kind === 'edit'
+    const navigateTo = (date: string, showSheet = false) => {
+      setVisibleDate(date)
+      if (editing) setFocusedDate(date)
+      else selectDate(date, showSheet)
+    }
+    const turnPage = (direction: number) => {
+      const periodStart = displayMode === 'month' ? monthStart : startOfWeek
+      const date = periodStart(focusedDate) === periodStart(visibleDate) ? focusedDate : visibleDate
+      navigateTo(displayMode === 'month' ? shiftMonth(date, direction) : addDays(date, direction * 7))
+    }
+    const selectEntry = (occurrence: any, segmentDate?: string) => {
+      // A continuation can start outside this grid. Prefer a day shown here.
+      const day = [segmentDate, focusedDate, weekRange.from].find(date =>
+        date && agendaFor(date, [occurrence]).length)
+      setFocusedDate(day ?? dateOf(occurrence.start))
       setTimetable({ kind: 'detail', occurrence })
       setSheetOpen(true)
     }
@@ -1423,7 +1439,7 @@ export function createCalendarPage(service: any) {
     const academicYear = academicSpans[0]?.text.match(/^\d{4}[-–]\d{4}/)?.[0]?.replace('-', '–')
     const weekNote = annotations?.weeks?.find((week: any) => week.firstDay === anchor)?.text
     const title = displayMode === 'year' ? (academicYear ? `${academicYear} 学年` : '学年总览')
-      : displayMode === 'week' && weekNote ? weekNote.split(' · ')[0] : monthOf(focusedDate)
+      : displayMode === 'week' && weekNote ? weekNote.split(' · ')[0] : monthOf(visibleDate)
     const subtitle = displayMode === 'week' ? `${shortDate(anchor)} – ${shortDate(addDays(anchor, 6))}` : ''
 
     const recordItems = events.map((event: any) => ({
@@ -1461,8 +1477,12 @@ export function createCalendarPage(service: any) {
       : undefined
     const chosenRecord = chosen && events.find((event: any) => event.uid === chosen.uid && event.source === chosen.source)
     const showDay = () => setTimetable({ kind: 'day' })
-    const saveInSidebar = async (date: string) => {
-      selectDate(date)
+    const saveInSidebar = async (movedTo?: string) => {
+      if (movedTo) {
+        setVisibleDate(movedTo)
+        setFocusedDate(movedTo)
+      }
+      showDay()
       await refresh()
       setToast('日程已保存')
     }
@@ -1581,15 +1601,20 @@ export function createCalendarPage(service: any) {
         ...[-1, 1].map(direction => React.createElement('button', {
           key: direction, type: 'button',
           'aria-label': `${direction < 0 ? '上一' : '下一'}${displayMode === 'month' ? '月' : '周'}`,
-          onClick: () => selectDate(displayMode === 'month' ? shiftMonth(focusedDate, direction) : addDays(focusedDate, direction * 7), false),
+          onClick: () => turnPage(direction),
         }, React.createElement(direction < 0 ? IconChevronLeft : IconChevronRight)))),
         React.createElement('button', { type: 'button', className: 'cal-today-button',
-          onClick: () => selectDate(localDate()),
+          onClick: () => navigateTo(localDate(), true),
         }, '今天'))),
       React.createElement('div', { className: 'cal-actions' },
         React.createElement('div', { className: 'cal-segmented', role: 'group', 'aria-label': '日历视图' },
           ...(['month', 'week'] as const).map(mode => React.createElement('button', {
-            key: mode, type: 'button', 'aria-pressed': mode === displayMode, onClick: () => { setDisplayMode(mode); setSheetOpen(false) },
+            key: mode, type: 'button', 'aria-pressed': mode === displayMode, onClick: () => {
+              if (mode === displayMode) return
+              setVisibleDate(focusedDate)
+              setDisplayMode(mode)
+              if (!editing) setSheetOpen(false)
+            },
           }, mode === 'month' ? '月' : '周'))),
         calendarTools,
         React.createElement(Button, {
@@ -1614,13 +1639,16 @@ export function createCalendarPage(service: any) {
       focusedDate,
       spans: selectedAcademicCalendar ? academicSpans : [],
       onOpenMonth: (date: string) => {
-        selectDate(date, false)
+        navigateTo(date)
         setDisplayMode('month')
       },
     }),
     view.kind === 'week'
-      ? displayMode !== 'year' && React.createElement('div', { className: 'tt-calendar-body' }, React.createElement(CalendarCanvas, {
+      ? (displayMode !== 'year' || editing) && React.createElement('div', {
+          className: 'tt-calendar-body', style: displayMode === 'year' ? { display: 'none' } : undefined,
+        }, displayMode !== 'year' && React.createElement(CalendarCanvas, {
           mode: displayMode,
+          visibleDate,
           focusedDate,
           accentOf: entryAccent, draftAccent: tintOf('manual').accent, occurrenceKeyOf,
           occurrences: visibleOccurrences,
