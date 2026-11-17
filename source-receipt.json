@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-17T16:02:19.745Z",
-  "fileSetSHA256": "36c6ed58c59e6cb33ba69550dedbf8fd2bdb3286f495369fb5b61a5f22ca2983",
+  "createdAt": "2026-11-17T16:12:31.993Z",
+  "fileSetSHA256": "69cf255fac97c854abdf2d545e1f3c943fb80555a819cc339edcb58a270cd3e6",
   "files": [
     {
       "path": ".gitattributes",
@@ -429,7 +429,7 @@
     },
     {
       "path": "docs/plugin-catalog.json",
-      "sha256": "6293db1339bb18df5832264a01c0e510c9759bfcb28812f4ad98053a5c6835c6"
+      "sha256": "d94ec62638ad02d2db158887a915d48d11fe09bd814ef18cc62c541591b2c71f"
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.en.md",
@@ -7565,11 +7565,11 @@
     },
     {
       "path": "README_EN.md",
-      "sha256": "5c2ad4f9de2794d516d521fe8587deaef6629d015fda998d4ce69dc9c6dd35e3"
+      "sha256": "855a50ba71572925452deaaed3397ba457e15008b847de64c411dc285d7cbaed"
     },
     {
       "path": "README.md",
-      "sha256": "8f0e50155b2fbe13c91b8f0765be07b0252f83bb70d56034cd7dae646b240d20"
+      "sha256": "18fbd901a647b9d32f35a1be7adb219008cd40173c4a8fb91f95c6f98449321a"
     },
     {
       "path": "RELEASE-CHECKLIST_EN.md",
@@ -8125,11 +8125,11 @@
     },
     {
       "path": "scripts/project-plugin-catalog.mjs",
-      "sha256": "d8544b4395ad1bf796b03175d2e135adb04bc5e57f048aa5053b187ff07c0990"
+      "sha256": "65a34ae0b6340a2a41ca83eb4f037a889e4f08f33733c9fb24115c18d9f27e82"
     },
     {
       "path": "scripts/project-plugin-catalog.test.mjs",
-      "sha256": "06c9307e4fb7a85db5c3c7164c56b176b1098ae984ebd6e0702cfa51459a3c5f"
+      "sha256": "912de1ba050468587048910c2fdf9a9c131b0cea5039e7576b245b21c143e535"
     },
     {
       "path": "scripts/publish-desktop-candidate.mjs",
@@ -9161,7 +9161,7 @@
     },
     {
       "path": "website/index.html",
-      "sha256": "a6890c044119eb7b9bf0aadc311bc16bef811779a30915ff1efa725d5899beda"
+      "sha256": "09e4417a1ac2a0fddc74d1ed8d70616caa33e87e6cf0db178c8ba17b54f6adc9"
     },
     {
       "path": "website/language.js",
