@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
+import { installedUpdateFeed, installedUpdateYAML } from '../dsh-electron/scripts/assemble-windows.mjs'
 import { ensureDir, fullPath, isFile, isMainModule, pathExists, readJSON, runNode, writeJSON } from './lib/build-util.mjs'
 
 const EXECUTABLE = 'EduWork-Electron.exe'
@@ -62,6 +63,7 @@ export function installerInclude(desktop) {
 
 export function installerProject({ desktop, release, electronVersion, artifactsDir, icon, includePath }) {
   requireMatch(/^\d+\.\d+\.\d+/.test(electronVersion ?? ''), 'Electron runtime version is invalid')
+  const publish = installedUpdateFeed(desktop.updates)
   return {
     packageJSON: {
       name: `eduwork-installer-${desktop.distribution}`,
@@ -90,14 +92,14 @@ export function installerProject({ desktop, release, electronVersion, artifactsD
         runAfterFinish: false,
         uninstallDisplayName: desktop.productName,
         deleteAppDataOnUninstall: false,
-        differentialPackage: false,
+        differentialPackage: publish !== null,
         installerLanguages: ['zh_CN', 'en_US'],
         installerIcon: icon,
         uninstallerIcon: icon,
         include: includePath,
         artifactName: `${desktop.productName}-Setup-${release.version}-\${arch}.\${ext}`,
       },
-      publish: null,
+      publish,
     },
   }
 }
@@ -125,6 +127,12 @@ export async function packWindowsInstaller({ candidate, output, installedReceipt
   const includePath = join(staging, 'installer.nsh')
   await writeFile(includePath, installerInclude(desktop))
   const project = installerProject({ desktop, release, electronVersion, artifactsDir: artifacts, icon, includePath })
+  const updateConfig = join(candidate, 'resources/app-update.yml')
+  if (project.config.publish) {
+    requireMatch(await readFile(updateConfig, 'utf8') === installedUpdateYAML(project.config.publish), 'Packaged update source differs from installer configuration')
+  } else {
+    requireMatch(!await pathExists(updateConfig), 'Installer without a publish source must not declare an update feed')
+  }
   await writeJSON(join(staging, 'package.json'), project.packageJSON)
   const configPath = join(staging, 'electron-builder.json')
   await writeJSON(configPath, project.config)
@@ -139,6 +147,15 @@ export async function packWindowsInstaller({ candidate, output, installedReceipt
   const bytes = await readFile(artifact)
   const sha256 = createHash('sha256').update(bytes).digest('hex')
   await writeFile(`${artifact}.sha256`, `${sha256} *${expected}\n`)
+  const updateArtifacts = []
+  if (project.config.publish) {
+    const channel = release.version.includes('-dev.') ? 'dev' : 'latest'
+    for (const file of [`${channel}.yml`, `${expected}.blockmap`]) {
+      const contents = await readFile(join(artifacts, file))
+      requireMatch(contents.length > 0, `Installer update artifact is empty: ${file}`)
+      updateArtifacts.push({ file, bytes: contents.length, sha256: createHash('sha256').update(contents).digest('hex') })
+    }
+  }
   const result = {
     schemaVersion: 1,
     kind: 'eduwork-windows-installer-candidate',
@@ -151,6 +168,7 @@ export async function packWindowsInstaller({ candidate, output, installedReceipt
     installDir: `%LOCALAPPDATA%\\Programs\\EduWork\\${desktop.distribution}`,
     dataDir: `%LOCALAPPDATA%\\EduWork\\${desktop.distribution}`,
     artifact: { file: expected, bytes: bytes.length, sha256 },
+    updateArtifacts,
     publication: 'artifact-only',
     checks: { installedAssembly: 'passed', installerBuilt: 'passed', install: 'not-run', import: 'not-run', uninstall: 'not-run', reinstall: 'not-run' },
   }

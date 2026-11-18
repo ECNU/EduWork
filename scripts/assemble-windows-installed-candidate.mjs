@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
-import { assembleWindows } from '../dsh-electron/scripts/assemble-windows.mjs'
+import { assembleWindows, installedUpdateFeed } from '../dsh-electron/scripts/assemble-windows.mjs'
 import { ensureDir, fullPath, isMainModule, pathExists, readJSON, writeJSON } from './lib/build-util.mjs'
 
 function verifySource(source) {
@@ -22,12 +22,12 @@ export async function installedCandidateReceipt(candidate, source) {
   assert.equal(config.shell, 'electron')
   assert.equal(config.productVersion, source.version)
   assert.equal(config.distribution, source.distribution)
-  assert.equal(config.updates?.provider, 'disabled')
-  assert.equal(config.updateChannel, 'disabled-candidate')
+  const automaticUpdates = installedUpdateFeed(config.updates) !== null
+  assert.equal(config.updateChannel, automaticUpdates ? 'github' : 'disabled-candidate')
   assert.equal(release.version, source.version)
   assert.equal(release.dshVersion, source.dshVersion)
   assert.equal(release.distribution, source.distribution)
-  assert.equal(release.automaticUpdates, false)
+  assert.equal(release.automaticUpdates, automaticUpdates)
   assert.equal(release.published, false)
   return {
     schemaVersion: 1,
@@ -39,7 +39,7 @@ export async function installedCandidateReceipt(candidate, source) {
     distribution: source.distribution,
     dshVersion: source.dshVersion,
     dataLayout: 'installed',
-    automaticUpdates: false,
+    automaticUpdates,
     publication: 'artifact-only',
     checks: { portableBuildAndLaunch: 'passed', installedAssembly: 'passed', installedLaunch: 'not-run', migration: 'not-run' },
   }

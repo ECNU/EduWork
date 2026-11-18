@@ -29,9 +29,6 @@ const payloadFilters = {
 // Electron and the installer both read this manifest. Installed builds must
 // declare the product version there, or the uninstall entry and app.getVersion()
 // would report the DSH component version instead of EduWork's.
-// The updater replaces only manifest-owned program files. config/ stays with
-// the user, data/ never belongs in an installed program tree, and the manifest
-// itself is handled separately by the updater.
 export async function installedManifestRows(root) {
   const rows = []
   const walk = async (directory, prefix) => {
@@ -50,8 +47,6 @@ export async function installedManifestRows(root) {
 
 export async function writeInstalledManifest({ output, version, distribution }) {
   const files = await installedManifestRows(output)
-  // The updater verifies updates against this manifest, so installed builds
-  // must use the same release contract as update packages.
   await writeJSON(join(output, 'RELEASE-MANIFEST.json'), {
     schemaVersion: 1, kind: 'eduwork-portable-release', version, launcherVersion: version,
     flavor: 'offline', distribution, shell: 'electron', platform: 'windows-x64',
@@ -75,6 +70,19 @@ export function desktopAppPackage({ identity, version, dataLayout = 'portable' }
     description: 'EduWork official DSH Electron integration',
     license: 'MulanPSL-2.0 AND MIT',
   }
+}
+
+export function installedUpdateFeed(updates) {
+  if (updates?.provider !== 'github') return null
+  if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(updates.repository ?? '')) {
+    throw new Error('Installed GitHub update repository must be owner/repo')
+  }
+  const [owner, repo] = updates.repository.split('/')
+  return { provider: 'github', owner, repo }
+}
+
+export function installedUpdateYAML(feed) {
+  return `provider: github\nowner: ${JSON.stringify(feed.owner)}\nrepo: ${JSON.stringify(feed.repo)}\n`
 }
 
 export async function assembleWindows({
@@ -150,7 +158,7 @@ export async function assembleWindows({
     config.updates.repository = 'ecnu/EduWork'
     config.updateChannel = 'github'
   }
-  if (updateManifestURL) {
+  if (updateManifestURL && dataLayout === 'portable') {
     config.updates = { provider: 'static', manifestURL: updateManifestURL, defaultPolicy: updateDefaultPolicy }
     config.updateChannel = 'configured'
   }
@@ -164,18 +172,18 @@ export async function assembleWindows({
     config.updateChannel = 'disabled-candidate'
   }
   if (dataLayout === 'installed') {
-    // First-round import candidates ship without software updates; the updater
-    // is wired in the installer step against the same user data directory.
+    const feed = config.sourceAlpha ? null : installedUpdateFeed(config.updates)
     config.dataLayout = 'installed'
-    config.updates = { provider: 'disabled', defaultPolicy: updateDefaultPolicy }
-    config.updateChannel = 'disabled-candidate'
+    if (!feed) config.updates = { provider: 'disabled', defaultPolicy: config.updates.defaultPolicy }
+    config.updateChannel = feed ? 'github' : 'disabled-candidate'
+    if (feed) await writeText(join(output, 'resources/app-update.yml'), installedUpdateYAML(feed), { trailingNewline: false })
   }
   await writeJSON(join(app, 'eduwork.desktop.json'), config)
 
   const updaterPath = join(output, 'resources/update/EduWork-Updater.exe')
   await ensureDir(dirname(updaterPath))
   await run('go', ['build', '-buildvcs=false', '-trimpath', '-ldflags', '-s -w -H windowsgui', '-o', updaterPath, './cmd/eduwork-updater'], { cwd: join(scriptRoot, '../../dsh-desktop') })
-    .catch(() => { throw new Error('Portable update helper build failed') })
+    .catch(() => { throw new Error('Windows desktop helper build failed') })
   await setUpdaterManifest({ executable: updaterPath })
   await rename(join(output, 'electron.exe'), join(output, 'EduWork-Electron.exe'))
   await setDesktopIcon({ executable: join(output, 'EduWork-Electron.exe'), shell: 'electron' })
@@ -206,8 +214,8 @@ export async function assembleWindows({
       ? `Run EduWork-Electron.exe. Personal data stays under %LOCALAPPDATA%\\EduWork\\${identity.distribution}.`
       : `Run EduWork-Electron.exe. Local data stays under data/${identity.distribution}-electron.`,
     ...(dataLayout === 'installed'
-      ? ['Personal data does not move with the program folder. Software updates use',
-        'the source configured in config/eduwork.jsonc; without a source they stay disabled.']
+      ? ['Personal data does not move with the program folder. Software updates require',
+        'a packaged update source.']
       : ['Close the application before moving the entire folder. When an update feed is',
         'configured, use Settings to check/download updates and choose when to restart.']),
     'To merge history from another installation, select its program root under',

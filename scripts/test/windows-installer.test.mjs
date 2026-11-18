@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { desktopAppPackage } from '../../dsh-electron/scripts/assemble-windows.mjs'
+import { desktopAppPackage, installedUpdateFeed } from '../../dsh-electron/scripts/assemble-windows.mjs'
 import { installerInclude, installerProject, packWindowsInstaller, verifyInstalledCandidate } from '../pack-windows-installer.mjs'
 
 const version = '0.4.13-dev.20261116.1'
@@ -14,6 +14,16 @@ const desktop = {
 const release = { schemaVersion: 1, shell: 'electron', version, distribution: 'eduwork', productName: 'EduWork' }
 const receipt = { kind: 'eduwork-windows-installed-candidate', version, distribution: 'eduwork', coreCommit: 'a'.repeat(40), checks: { installedAssembly: 'passed' } }
 const valid = { desktop, release, receipt, appPackage: { version }, executableExists: true }
+
+test('installed update metadata uses the same GitHub repository as the installer', () => {
+  const updates = { provider: 'github', repository: 'ecnu/EduWork' }
+  assert.deepEqual(installedUpdateFeed(updates), { provider: 'github', owner: 'ecnu', repo: 'EduWork' })
+  assert.equal(installedUpdateFeed({ provider: 'static', manifestURL: 'https://example.test/update.json' }), null)
+  assert.throws(() => installedUpdateFeed({ provider: 'github', repository: 'bad/repo\npublisherName: override' }), /owner\/repo/)
+  const { config } = installerProject({ desktop: { ...desktop, updates }, release, electronVersion: '44.0.0' })
+  assert.deepEqual(config.publish, installedUpdateFeed(updates))
+  assert.equal(config.nsis.differentialPackage, true)
+})
 
 test('installed app manifest carries the product version and keeps the DSH version', () => {
   const installed = desktopAppPackage({ identity: { dshVersion: '0.2.2-rc.1' }, version, dataLayout: 'installed' })
