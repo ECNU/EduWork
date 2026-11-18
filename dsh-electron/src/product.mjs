@@ -83,6 +83,7 @@ const relaunchDesktop = configureDesktopRelaunch(app, process.platform === 'win3
 delete process.env.EDUWORK_LAUNCHER_RESTART
 let confirmQuit = async () => true
 let reportUpdateStopFailure
+let installTasksBeforeConfirmation = false
 const desktopExit = new DesktopExit({
   confirm: () => confirmQuit(),
   close: () => stopDesktopForExit(),
@@ -112,11 +113,12 @@ async function stopDesktopForExit(options) {
   await directoryPicker.close()
   await stopDesktopServices(options)
 }
-export async function stopDesktopServices({ beforeInstall = false } = {}) {
+export async function stopDesktopServices({ beforeInstall = false, requireGraceful = false, activeBeforeConfirmation = false } = {}) {
   const stoppingContent = contentUpdates?.close()
   if (beforeInstall) {
     await stoppingContent
-    await lifecycle.stopHosts()
+    if (requireGraceful) await lifecycle.prepareUpdateStop(activeBeforeConfirmation)
+    else await lifecycle.stopHosts()
     return
   }
   let serviceFailure
@@ -352,7 +354,8 @@ async function prepareDesktop() {
         ? import('./update-coordinator.ts').then(({ DesktopUpdateCoordinator }) => startInstalledUpdates({
           app, resourcesPath:process.resourcesPath, version:settings.productVersion, policy, onPolicy:saveUpdatePolicy,
           Coordinator:DesktopUpdateCoordinator,
-          stopBeforeInstall:()=>desktopExit.prepareInstaller(()=>stopDesktopForExit({beforeInstall:true}),reportUpdateStopFailure),
+          stopBeforeInstall:()=>desktopExit.prepareInstaller(()=>stopDesktopForExit({beforeInstall:true,requireGraceful:true,
+            activeBeforeConfirmation:installTasksBeforeConfirmation}),reportUpdateStopFailure),
         }))
       : startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
         version:settings.productVersion,distribution:settings.distribution,
@@ -361,7 +364,11 @@ async function prepareDesktop() {
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
     migrationNotice: settings.dataLayout === 'installed' ? undefined : portableMigrationNotice({ distribution: settings.distribution,
       version: settings.productVersion, releasesURL: trustedUpdates?.releasesURL }),
-    beforeInstall:()=>process.platform==='darwin'||confirmQuit(),onPolicy:saveUpdatePolicy})
+    beforeInstall:async()=>{
+      if(process.platform==='darwin')return true
+      installTasksBeforeConfirmation=await lifecycle.updateTasks('inspect')
+      return confirmQuit()
+    },onPolicy:saveUpdatePolicy})
   if(portableUpdates)lifecycle.trackBridge(portableUpdates)
   if (user.product.name) {
     settings.productName = user.product.name

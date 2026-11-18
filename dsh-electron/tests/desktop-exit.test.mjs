@@ -43,6 +43,54 @@ test('failed Host stop reports recovery and never hands off to the installer', a
   assert.equal(exit.complete, false)
 })
 
+test('an update task that starts after confirmation unlocks the Host and blocks installation', async () => {
+  const events = [], lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({
+    async updateTasks(action) { events.push(action); return action === 'lock' },
+    async stop() { events.push('stop'); },
+  })
+  await assert.rejects(lifecycle.prepareUpdateStop(false), /New tasks started/)
+  assert.deepEqual(events, ['lock', 'unlock'])
+})
+
+test('update installation requires a graceful Host stop', async () => {
+  const events = [], lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({
+    async updateTasks(action) { events.push(action); return false },
+    async stop(requireGraceful) { events.push(['stop', requireGraceful]); },
+  })
+  await lifecycle.prepareUpdateStop(false)
+  assert.deepEqual(events, ['lock', ['stop', true]])
+})
+
+test('a forced Host termination blocks installer handoff and unlocks when possible', async () => {
+  const events = [], lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({
+    async updateTasks(action) { events.push(action); return false },
+    async stop(requireGraceful) { events.push(['stop', requireGraceful]); throw Error('forced termination') },
+  })
+  await assert.rejects(lifecycle.prepareUpdateStop(false), error => error instanceof AggregateError && /forced termination/.test(error.errors[0].message))
+  assert.deepEqual(events, ['lock', ['stop', true], 'unlock'])
+})
+
+test('a Host without shutdown-complete blocks installer handoff', async () => {
+  const lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({
+    async updateTasks() { return false },
+    async stop(requireGraceful) {
+      assert.equal(requireGraceful, true)
+      throw Error('shutdown was not acknowledged')
+    },
+  })
+  await assert.rejects(lifecycle.prepareUpdateStop(false), error => error instanceof AggregateError && /shutdown was not acknowledged/.test(error.errors[0].message))
+})
+
+test('an unavailable Host task inspection cannot authorize installer handoff', async () => {
+  const lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({ updateTasks: async () => { throw Error('Host unavailable') }, stop: assert.fail })
+  await assert.rejects(lifecycle.updateTasks('inspect'), /Host unavailable/)
+})
+
 test('immediate teardown defers the final quit beyond the native event microtasks', async () => {
   let closed, quit = false
   const cleanup = new Promise(resolve => { closed = resolve })

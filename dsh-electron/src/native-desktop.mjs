@@ -42,13 +42,26 @@ const backend = new DesktopBackendController(onFailure => new DesktopHostProcess
   { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure, environment: hostEnvironment }), state => {
   if (state.phase === 'error' && !isQuitting()) reportWindowFailure(state.failure, hostStarting ? 'host' : 'main')
 })
-async function closeBackend() {
+async function closeBackend(requireGraceful = false) {
   // Cancel shell preparation before the controller waits for startup to settle.
   loginShellRead.abort()
   // A drag cleanup failure must not leave the Host running during quit/restart.
+  if (requireGraceful) {
+    await bridge?.disposeFileDrags()
+    const host = backend.host
+    if (!host) throw new Error('Desktop Host task state is unavailable')
+    try { await host.stop(true) }
+    catch (error) { await backend.close().catch(() => {}); throw error }
+    await backend.close()
+    return
+  }
   await Promise.all([bridge?.disposeFileDrags(), backend.close()])
 }
-trackHost({ stop: closeBackend })
+trackHost({ stop: closeBackend, updateTasks: action => {
+  const host = backend.host
+  if (!host) return Promise.reject(new Error('Desktop Host task state is unavailable'))
+  return host.updateTasks(action)
+} })
 const quit = new DesktopQuitConfirmation({ locale, inspect: () => backend.host?.inspectQuit(),
   show: options => dialog.showMessageBox(options), focus: () => { if (process.platform === 'darwin') app.focus({ steal: true }) } })
 setDesktopQuitGuard(() => recoveryExit || sessionEnding ? Promise.resolve(true) : quit.confirm(),
