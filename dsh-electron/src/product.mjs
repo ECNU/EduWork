@@ -22,7 +22,7 @@ import { importPortableData, inspectPortableSource } from './portable-import.mjs
 import { portableMigrationNotice, portableSourceSuggestion, writePortableSourceHint } from './portable-source-hint.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
-import { startPortableUpdates, editablePortableUpdateConfiguration, resolveUpdateConfiguration } from './portable-updates.mjs'
+import { startPortableUpdates, portableStartupUpdateConfiguration, resolveUpdateConfiguration } from './portable-updates.mjs'
 import { startMacSparkleUpdates, editableMacUpdateConfiguration } from './mac-sparkle-updates.mjs'
 import { startInstalledUpdates } from './installed-updates.mjs'
 import { softwareUpdateControl, updatesWhenEnabled } from './software-update-control.mjs'
@@ -323,7 +323,7 @@ async function prepareDesktop() {
     }})
   user=loadUserConfig(paths.config)
   const updateDefaults = process.platform === 'win32'
-    ? editablePortableUpdateConfiguration({defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
+    ? portableStartupUpdateConfiguration({platform:process.platform,dataLayout:settings.dataLayout,defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
     : editableMacUpdateConfiguration({defaults:settings.updates,updates:user.updates,feeds:settings.macSparkle?.feeds,version:settings.productVersion})
   contentUpdates = await new ContentUpdates({root:paths.root,dataRoot:paths.updateDataRoot,skillsManifestPath:paths.skillsManifestPath,product:paths.product,configPath:paths.config,version:settings.productVersion,distribution:settings.distribution,identity,
     configurationDefaults:{updates:updateDefaults},
@@ -338,7 +338,7 @@ async function prepareDesktop() {
   catch (error) { desktopHostLog(`[configuration] Could not refresh optional JSONC help: ${error.message}\n`) }
   user=loadUserConfig(paths.config)
   const effectiveUpdateDefaults = process.platform === 'win32'
-    ? editablePortableUpdateConfiguration({defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
+    ? portableStartupUpdateConfiguration({platform:process.platform,dataLayout:settings.dataLayout,defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
     : editableMacUpdateConfiguration({defaults:settings.updates,updates:user.updates,feeds:settings.macSparkle?.feeds,version:settings.productVersion})
   const saveUpdatePolicy = async policy=>{
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
