@@ -11,6 +11,9 @@ test('the candidate archive step writes a real ZIP and verifies its format', asy
   // Windows tar.exe has no zip write support; -a only selects compression and
   // silently produced a ustar tar named .zip.
   assert.doesNotMatch(step, /^\s*tar\.exe/m)
+  assert.match(step, /INSTALLED_UPDATE_URL: \$\{\{ inputs\.installed_update_url \}\}/)
+  assert.match(step, /--installed-update-url "\$INSTALLED_UPDATE_URL"/)
+  assert.doesNotMatch(step, /--installed-update-url "\$\{\{/)
   // CreateFromDirectory emits backslash entry names; entries must be written
   // with forward slashes and verified.
   assert.match(step, /CreateEntryFromFile/)

@@ -130,10 +130,12 @@ jobs:
       - name: Assemble Windows installed-layout candidate
         if: matrix.script == 'windows' && (inputs.windows_installed_candidate || inputs.windows_installer_candidate)
         shell: bash
+        env:
+          INSTALLED_UPDATE_URL: ${{ inputs.installed_update_url }}
         run: |
           node core/scripts/assemble-windows-installed-candidate.mjs \
             --workspace "$RUNNER_TEMP/ew-development" --output "$RUNNER_TEMP/ew-installed" \
-            --installed-update-url "${{ inputs.installed_update_url }}"
+            --installed-update-url "$INSTALLED_UPDATE_URL"
           cd "$RUNNER_TEMP"
           # Windows tar.exe cannot write ZIP (-a only selects compression and
           # silently produced a ustar tar named .zip); the built-in .NET writer
