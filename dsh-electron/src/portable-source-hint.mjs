@@ -14,6 +14,16 @@ export function portableMigrationNotice({ distribution, version, releasesURL }) 
   return { installerURL: url.href }
 }
 
+export function portableMigrationNoticeForBuild({ platform, dataLayout, distribution, version, trustedUpdates }) {
+  if (platform !== 'win32' || dataLayout === 'installed') return undefined
+  return portableMigrationNotice({ distribution, version, releasesURL: trustedUpdates?.updates?.releasesURL })
+}
+
+export async function writePortableSourceHintBestEffort(options, warn = () => {}) {
+  try { return await writePortableSourceHint(options) }
+  catch (error) { warn(error); return undefined }
+}
+
 export async function writePortableSourceHint({ localAppData, distribution, root, version, now = () => new Date() }) {
   if (!localAppData || !isAbsolute(localAppData) || !isAbsolute(root)) throw new Error('Portable source hint requires absolute paths')
   if (!/^[a-z0-9-]+$/.test(distribution) || typeof version !== 'string' || !version) throw new Error('Portable source identity is invalid')

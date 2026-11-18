@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { portableMigrationNotice, portableSourceHintPath, portableSourceSuggestion, readPortableSourceHint, writePortableSourceHint } from '../src/portable-source-hint.mjs'
+import { portableMigrationNotice, portableMigrationNoticeForBuild, portableSourceHintPath, portableSourceSuggestion, readPortableSourceHint, writePortableSourceHint, writePortableSourceHintBestEffort } from '../src/portable-source-hint.mjs'
 
 test('portable migration notice uses the public release or signed edition release URL', () => {
   assert.deepEqual(portableMigrationNotice({ distribution: 'eduwork', version: '0.4.14', releasesURL: 'https://ignored.example/releases' }),
@@ -12,6 +12,23 @@ test('portable migration notice uses the public release or signed edition releas
     { installerURL: 'https://example.edu/downloads' })
   assert.equal(portableMigrationNotice({ distribution: 'school', version: '0.4.14' }), undefined)
   assert.throws(() => portableMigrationNotice({ distribution: 'school', version: '0.4.14', releasesURL: 'http://example.edu/downloads' }), /HTTPS/)
+})
+
+test('migration notice is Windows-portable only and reads publisher releases URL from updates', () => {
+  assert.equal(portableMigrationNoticeForBuild({ platform: 'darwin', dataLayout: 'portable', distribution: 'eduwork', version: '0.4.14' }), undefined)
+  assert.equal(portableMigrationNoticeForBuild({ platform: 'win32', dataLayout: 'installed', distribution: 'school', version: '0.4.14',
+    trustedUpdates: { updates: { releasesURL: 'https://example.edu/downloads' } } }), undefined)
+  assert.deepEqual(portableMigrationNoticeForBuild({ platform: 'win32', dataLayout: 'portable', distribution: 'school', version: '0.4.14',
+    trustedUpdates: { updates: { releasesURL: 'https://example.edu/downloads' } } }), { installerURL: 'https://example.edu/downloads' })
+  assert.equal(portableMigrationNoticeForBuild({ platform: 'win32', dataLayout: 'portable', distribution: 'school', version: '0.4.14',
+    trustedUpdates: { releasesURL: 'https://wrong-level.example' } }), undefined)
+})
+
+test('portable hint write failures are logged and do not reject startup preparation', async () => {
+  let logged
+  const result = await writePortableSourceHintBestEffort({}, error => { logged = error })
+  assert.equal(result, undefined)
+  assert.equal(logged.message, 'Portable source hint requires absolute paths')
 })
 
 test('portable source hint is written beside, never inside, the installed data directory', async t => {
