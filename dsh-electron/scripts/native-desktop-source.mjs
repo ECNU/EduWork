@@ -56,15 +56,16 @@ export ${source.slice(start, end)}
     replace("await inspection.catch((error: unknown) => {\n      console.warn('desktop quit: task inspection unavailable', error)",
       "await inspection.catch(() => {\n      console.warn('desktop quit: task inspection unavailable')")
   }
+  if (file === 'apps/desktop/src/ipc.ts') {
+    replace("  readonly percent?: number\n  readonly failedOperation?: 'check' | 'download' | 'install'", "  readonly percent?: number\n  readonly downloadedBytes?: number\n  readonly totalBytes?: number\n  readonly failedOperation?: 'check' | 'download' | 'install'")
+  }
   if (file === 'apps/desktop/src/updates/electron-updater/channel.ts') {
     replace('updater.channel = channel', "updater.channel = channel === 'stable' ? 'latest' : 'dev'")
     replace('updater.allowPrerelease = true', "updater.allowPrerelease = channel === 'nightly'")
   }
   if (file === 'apps/desktop/src/update-coordinator.ts') {
-    replace("import { gt, valid } from 'semver'", "import { CancellationToken } from 'builder-util-runtime'\nimport { gt, valid } from 'semver'")
-    replace('  private installOperation: Promise<DesktopUpdateState> | undefined', '  private installOperation: Promise<DesktopUpdateState> | undefined\n  private downloadCancellation: CancellationToken | undefined')
-    replace('await this.updater.downloadUpdate()', 'this.downloadCancellation = new CancellationToken()\n        await this.updater.downloadUpdate(this.downloadCancellation)\n        this.downloadCancellation = undefined')
-    replace('    this.disposed = true\n    this.updater.off(\'download-progress\', this.onProgress)', '    this.disposed = true\n    this.downloadCancellation?.cancel()\n    this.updater.off(\'download-progress\', this.onProgress)')
+    replace('this.setState({ phase: percent >= 100 ? \'verifying\' : \'downloading\', ...this.target(), percent })', 'this.setState({ phase: percent >= 100 ? \'verifying\' : \'downloading\', ...this.target(), percent, downloadedBytes: progress.transferred, totalBytes: progress.total })')
+    replace('    this.disposed = true\n    this.updater.off(\'download-progress\', this.onProgress)', '    this.disposed = true\n    this.cancellation?.cancel()\n    this.updater.off(\'download-progress\', this.onProgress)')
   }
   return source
 }

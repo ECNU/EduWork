@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 import { stripTypeScriptTypes } from 'node:module'
+import { execFileSync } from 'node:child_process'
 import test from 'node:test'
 import { adaptNativeDesktopSource } from '../scripts/native-desktop-source.mjs'
 
@@ -21,29 +24,25 @@ test('Windows channel adaptation uses the release metadata names without permitt
   }
 })
 
-test('the upstream update coordinator passes a cancellation token to downloads and cancels it on dispose', async () => {
+test('the locked upstream coordinator cancels its active download token on dispose', async () => {
   const file = 'apps/desktop/src/update-coordinator.ts'
-  const upstream = `import { gt, valid } from 'semver'
-class DesktopUpdateCoordinator {
-  private disposed = false
-  private downloadOperation: Promise<DesktopUpdateState> | undefined
-  private installOperation: Promise<DesktopUpdateState> | undefined
-  private readonly updater = { downloadUpdate: async () => {}, off: () => {} }
-  private readonly onProgress = () => {}
-  async download() {
-    this.installOperation ??= Promise.resolve().then(async () => {
-      await this.updater.downloadUpdate()
-      this.installOperation = undefined
-    })
-    return this.installOperation
-  }
-  dispose(): void {
-    this.disposed = true
-    this.updater.off('download-progress', this.onProgress)
-  }
-}`
-  const source = stripTypeScriptTypes(adaptNativeDesktopSource(file, upstream))
-  assert.match(source, /CancellationToken/)
-  assert.match(source, /downloadUpdate\(this\.downloadCancellation\)/)
-  assert.match(source, /this\.downloadCancellation\?\.cancel\(\)/)
+  const upstream = execFileSync('git', ['-C', 'D:/Workspace/EduWork/upstream/dsh', 'show', `38a6a5c965aa99ab525161efb7cc5cf1fe62fced:${file}`])
+  const lock = JSON.parse(await readFile(new URL('../upstream-inputs-pinned-source.json', import.meta.url), 'utf8'))
+  assert.equal(createHash('sha256').update(upstream).digest('hex'), lock[file])
+  const original = upstream.toString('utf8')
+  assert.match(original, /downloadUpdate\(this\.cancellation\)/)
+  assert.match(original, /this\.cancellation\?\.cancel\(\)/)
+  const source = adaptNativeDesktopSource(file, original)
+  assert.match(source, /await this\.updater\.downloadUpdate\(this\.cancellation\)/)
+  assert.match(source, /dispose\(\): void \{\s*this\.disposed = true\s*this\.cancellation\?\.cancel\(\)/)
+  assert.match(source, /downloadedBytes: progress\.transferred, totalBytes: progress\.total/)
+})
+
+test('the desktop update contract exposes real download byte counts', async () => {
+  const file = 'apps/desktop/src/ipc.ts'
+  const upstream = execFileSync('git', ['-C', 'D:/Workspace/EduWork/upstream/dsh', 'show', `38a6a5c965aa99ab525161efb7cc5cf1fe62fced:${file}`]).toString('utf8')
+  const lock = JSON.parse(await readFile(new URL('../upstream-inputs-pinned-source.json', import.meta.url), 'utf8'))
+  assert.equal(createHash('sha256').update(upstream).digest('hex'), lock[file])
+  const source = adaptNativeDesktopSource(file, upstream)
+  assert.match(source, /readonly downloadedBytes\?: number\s+readonly totalBytes\?: number/)
 })
