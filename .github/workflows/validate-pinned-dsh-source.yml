@@ -93,6 +93,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Portable source product links failed' }
           node --test core/dsh-electron/tests/directory-picker.test.mjs core/dsh-host/test/product-profile.test.mjs core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-host/test/quit-inspection.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/desktop-web-paths.test.mjs core/dsh-electron/tests/startup-presentation.test.mjs core/dsh-electron/tests/startup-close-policy.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
+          node --test core/dsh-electron/tests/installed-updates.test.mjs core/dsh-electron/tests/update-channel-adaptation.test.mjs core/dsh-electron/tests/portable-source-hint.test.mjs core/dsh-electron/tests/update-policy.test.mjs core/scripts/test/windows-installer.test.mjs core/tests/installed-candidate.test.mjs
+          if ($LASTEXITCODE) { throw 'Installed update and migration integration checks failed' }
           node --test core/dsh-electron/tests/legacy-migration.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop migration and update health checks failed' }
           node --test core/dsh-electron/tests/electron-locales.test.mjs
