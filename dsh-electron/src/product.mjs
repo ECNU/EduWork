@@ -3,7 +3,7 @@ import { TaskNotifications, nativeNotificationAdapter } from './task-notificatio
 import { createTaskbarIndicator } from './taskbar-indicator.mjs'
 import { createDesktopPet } from './desktop-pet.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
-import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
+import { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
 import { join, isAbsolute, dirname, basename } from 'node:path'
 import { execFile } from 'node:child_process'
