@@ -20,7 +20,7 @@ export function firstRunPendingSync({ userRoot, dataLayout, platform = process.p
   catch (error) { if (error.code === 'ENOENT') return true; throw error }
 }
 
-export function firstRunDialogs({ productName = 'EduWork', showMessageBox, showOpenDialog }) {
+export function firstRunDialogs({ productName = 'EduWork', suggestedSource, showMessageBox, showOpenDialog }) {
   return {
     choose: async () => {
       const { response } = await showMessageBox({ type: 'question', title: `开始使用 ${productName}`,
@@ -30,7 +30,7 @@ export function firstRunDialogs({ productName = 'EduWork', showMessageBox, showO
       return ['import', 'fresh', 'cancel'][response]
     },
     pickSource: async () => {
-      const { canceled, filePaths } = await showOpenDialog({ title: `选择旧版 ${productName} 便携客户端目录`, properties: ['openDirectory'] })
+      const { canceled, filePaths } = await showOpenDialog({ title: `选择旧版 ${productName} 便携客户端目录`, properties: ['openDirectory'], ...(suggestedSource ? { defaultPath: suggestedSource } : {}) })
       return canceled ? undefined : filePaths[0]
     },
     importFailed: async error => {

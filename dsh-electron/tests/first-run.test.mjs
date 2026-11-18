@@ -93,9 +93,9 @@ test('a settled first-run relaunches to rebind os_crypt; cancel quits without a 
   assert.ok(main.indexOf('app.relaunch()') < main.indexOf('activateEduworkPaths()'))
 })
 
-function dialogFixture(responses) {
+function dialogFixture(responses, suggestedSource) {
   const boxes = [], opens = []
-  const dialogs = firstRunDialogs({ productName: 'EduWork 测试版',
+  const dialogs = firstRunDialogs({ productName: 'EduWork 测试版', suggestedSource,
     showMessageBox: async options => { boxes.push(options); return { response: responses.box.shift() } },
     showOpenDialog: async options => { opens.push(options); return responses.open.shift() } })
   return { dialogs, boxes, opens }
@@ -127,6 +127,16 @@ test('directory picker selects a real directory and treats a closed dialog as no
     assert.deepEqual(options.properties, ['openDirectory'])
     assert.match(options.title, /EduWork 测试版/)
   }
+})
+
+test('a verified portable source is preselected while missing or invalid hints leave manual selection', async () => {
+  const source = 'D:\\旧 客户端\\EduWork'
+  const verified = dialogFixture({ box: [], open: [{ canceled: false, filePaths: [source] }] }, source)
+  assert.equal(await verified.dialogs.pickSource(), source)
+  assert.equal(verified.opens[0].defaultPath, source)
+  const manual = dialogFixture({ box: [], open: [{ canceled: false, filePaths: ['D:\\手动选择'] }] })
+  assert.equal(await manual.dialogs.pickSource(), 'D:\\手动选择')
+  assert.equal(Object.hasOwn(manual.opens[0], 'defaultPath'), false)
 })
 
 test('import failure dialog keeps the source error visible and maps retry versus cancel', async () => {

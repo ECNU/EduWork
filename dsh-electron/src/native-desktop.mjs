@@ -20,7 +20,7 @@ import { redactDiagnostic } from './diagnostics.mjs'
 import { startupDiagnostic } from './startup-failure.mjs'
 import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
-import { configureEduworkPaths, activateEduworkPaths, resolveInstalledFirstRun, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
+import { configureEduworkPaths, activateEduworkPaths, resolveInstalledFirstRun, recordPortableSourceHint, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
   showDesktopFailure, prepareDesktopRecovery, cancelDesktopStartup, isShutdownFailed, recordStartupStopFailureHealth, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand, desktopStartupHint,
   showHostStartupProgress, readInitialCloseAction, productUpdateObserver } from './product.mjs'
@@ -194,6 +194,7 @@ async function handleStartupFailure(error, source = 'main') {
 }
 async function main() {
   if (await installEduworkFromDmg() || isQuitting()) return
+  await recordPortableSourceHint()
   // Lock stays in default userData: an early redirect would let Chromium bootstrap write the target before the choice.
   if (!claimDesktopSingleInstance(app, showDesktop)) return
   // The installed first-run data choice precedes any target write, the browser

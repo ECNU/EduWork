@@ -18,7 +18,8 @@ import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
 import { firstRunPending, firstRunPendingSync, firstRunDialogs, resolveFirstRunData } from './first-run.mjs'
-import { importPortableData } from './portable-import.mjs'
+import { importPortableData, inspectPortableSource } from './portable-import.mjs'
+import { portableMigrationNotice, portableSourceSuggestion, writePortableSourceHint } from './portable-source-hint.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
 import { startPortableUpdates, editablePortableUpdateConfiguration, resolveUpdateConfiguration } from './portable-updates.mjs'
@@ -197,14 +198,23 @@ export function activateEduworkPaths() {
 }
 export async function resolveInstalledFirstRun() {
   if (!await firstRunPending({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) return 'reuse'
+  const suggestedSource = await portableSourceSuggestion({ localAppData: process.env.LOCALAPPDATA,
+    distribution: settings.distribution, validate: root => inspectPortableSource({ sourceRoot: root, distribution: settings.distribution }) })
   const { action } = await resolveFirstRunData({
     ...firstRunDialogs({ productName: settings.productName,
+      suggestedSource,
       showMessageBox: options => dialog.showMessageBox(options),
       showOpenDialog: options => dialog.showOpenDialog(options) }),
     importSource: sourceRoot => importPortableData({ sourceRoot, targetRoot: paths.userRoot, distribution: settings.distribution }),
     createTarget: () => activateEduworkPaths(),
   })
   return action
+}
+export async function recordPortableSourceHint() {
+  if (process.platform !== 'win32' || settings.dataLayout === 'installed') return
+  const { realpath } = await import('node:fs/promises')
+  await writePortableSourceHint({ localAppData: process.env.LOCALAPPDATA, distribution: settings.distribution,
+    root: await realpath(paths.root), version: settings.productVersion })
 }
 export function installEduworkFromDmg() {
   return installFromDmg({ app, shell, dialog, appPath: paths.root, warn: message => desktopHostLog(`[installer] ${message}\n`) })
@@ -345,9 +355,12 @@ async function prepareDesktop() {
           stopBeforeInstall:()=>desktopExit.prepareInstaller(()=>stopDesktopForExit({beforeInstall:true}),reportUpdateStopFailure),
         }))
       : startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
-        version:settings.productVersion,distribution:settings.distribution,applyScheduled,onQuit:()=>desktopExit.handoff()})})
+        version:settings.productVersion,distribution:settings.distribution,
+        applyScheduled,onQuit:()=>desktopExit.handoff()})})
   softwareUpdates = software
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
+    migrationNotice: settings.dataLayout === 'installed' ? undefined : portableMigrationNotice({ distribution: settings.distribution,
+      version: settings.productVersion, releasesURL: trustedUpdates?.releasesURL }),
     beforeInstall:()=>process.platform==='darwin'||confirmQuit(),onPolicy:saveUpdatePolicy})
   if(portableUpdates)lifecycle.trackBridge(portableUpdates)
   if (user.product.name) {
