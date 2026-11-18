@@ -141,12 +141,15 @@ test('calendar revisions protect the full education document across restart', { 
       changed.breaks[0].name = '修改假期名称'
       await assert.rejects(education.registerDataset({ id: 'versioned', label: '版本测试', dataset: changed }), /revision_conflict/)
       changed.revision = 5
-      const updated = await education.registerDataset({ id: 'versioned', label: '版本测试', dataset: changed })
+      const updated = await education.registerDataset({ id: 'versioned', label: '版本测试', dataset: changed, retainLastAccepted: true })
       assert.equal(education.query({ from: '2027-01-18' }).days[0].break.name, '修改假期名称')
       updated.dispose()
     })
     await withCalendar(root, async education => {
       await assert.rejects(education.registerDataset({ id: 'versioned', label: '版本测试', dataset: original }), /stale_revision/)
+      const reopened = await education.registerDataset({ id: 'versioned', label: '版本测试', dataset: original, retainLastAccepted: true })
+      assert.equal(reopened.dataset.revision, 5)
+      assert.equal(education.query({ from: '2027-01-18' }).days[0].break.name, '修改假期名称')
     })
   })
 })
@@ -230,6 +233,7 @@ test('calendar choice survives restart independent of provider order', { skip: !
     })
     await withCalendar(root, async (education, calendar) => {
       await education.registerDataset({ id: 'a', label: 'A', dataset: DATA })
+      assert.equal(calendar.annotationChoices().find(x => x.selected).id, 'a', 'a retired selection falls back to an available year')
       await education.registerDataset({ id: 'b', label: 'B', dataset: DATA })
       assert.equal(calendar.annotationChoices().find(x => x.selected).id, 'b')
     })

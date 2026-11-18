@@ -45,6 +45,7 @@ export async function buildClient({ upstream, output, runtimePackages } = {}) {
     for (const entry of await readdir(join(stage, 'lib'), { withFileTypes: true })) {
       if (!entry.isFile() || !entry.name.endsWith('.js')) continue
       const content = (await readFile(join(stage, 'lib', entry.name), 'utf8'))
+        .replace(/^([ \t]*\/\/#region \\0calendar-css:)[^\r\n]*[\\/]src[\\/]([^\\/\r\n]+\.css\.js)$/gm, '$1src/$2')
         .replace(/^\/\/# sourceMappingURL=.*$/gm, '')
         .replace(/[ \t]+(?=\r?$)/gm, '')
       const banner = entry.name === 'client.js' ? await calendarClientLicenseBanner(buildDeps) : ''
