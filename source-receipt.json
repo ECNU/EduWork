@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-18T18:46:27.133Z",
-  "fileSetSHA256": "cee23d5922a69efc02fb985a3e5f9b557d886ba3f4c9a10d435e13bfde0f6d2c",
+  "createdAt": "2026-11-18T19:01:32.929Z",
+  "fileSetSHA256": "e97137ac705865cfe7baae830f25d7d6b6cd1b94e831e372e0132657ce7c4dc3",
   "files": [
     {
       "path": ".gitattributes",
@@ -249,7 +249,7 @@
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "b65edf87c8eb2bd5edea8943913803c8de22fe16802c73a7a2e4a9e2e08409d4"
+      "sha256": "221f9559260afa0ab90b4c7d164c44f79a6afa2388b1160e7e84664fff82c8e9"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -597,7 +597,7 @@
     },
     {
       "path": "docs/UPDATES.md",
-      "sha256": "a34ee76c27dd587237ff98dd1a797aa329ffdd2f3134123bd6f03d2e40526483"
+      "sha256": "e5a826f003fdac23fe809aa930f91a4080cb55f5263bbe2f16969d9f8369c01b"
     },
     {
       "path": "docs/USER_GUIDE.md",
