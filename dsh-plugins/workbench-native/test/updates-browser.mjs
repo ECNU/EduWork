@@ -16,6 +16,7 @@ assert.doesNotMatch(component,/from ['"]react/)
 let policy='stable',state='up_to_date',downloaded=0,scheduled=false,shell='wails'
 let content=null,softwareEnabled=true,nativeUI=false,nativeUpdater=false,automaticDownload=false
 let nativeDetails={},canToggle=false
+const migrationNotice={installerURL:'https://github.com/ecnu/EduWork/releases/tag/v0.4.13'}
 const actions=[]
 const server=createServer(async(request,response)=>{
  if(request.url==='/react.js'||request.url==='/react-dom.js') {
@@ -36,7 +37,7 @@ const server=createServer(async(request,response)=>{
   if(action==='test-complete')state='ready'
   if(action==='schedule-update')scheduled=true
   if(action==='install-update')state='applying'
-  response.setHeader('content-type','application/json');response.end(JSON.stringify({version:'0.3.5-dev.20260912.1',shell,phase:state,update:{nativeUI,nativeUpdater,...(canToggle?{canToggle:true,userEnabled:softwareEnabled}:{}),...(nativeUI||nativeUpdater?{automaticDownload,installOnQuit:automaticDownload&&state==='ready'}:{}),policies:['stable','development'],state,policy,enabled:softwareEnabled,latestVersion:'0.3.5',downloadedBytes:downloaded,totalBytes:1048576,installOnNextStart:scheduled,...nativeDetails},contentUpdate:content}));return
+  response.setHeader('content-type','application/json');response.end(JSON.stringify({version:'0.3.5-dev.20260912.1',shell,phase:state,update:{nativeUI,nativeUpdater,...(canToggle?{canToggle:true,userEnabled:softwareEnabled}:{}),...(nativeUI||nativeUpdater?{automaticDownload,installOnQuit:automaticDownload&&state==='ready'}:{}),policies:['stable','development'],state,policy,enabled:softwareEnabled,latestVersion:'0.3.5',downloadedBytes:downloaded,totalBytes:1048576,installOnNextStart:scheduled,...nativeDetails},contentUpdate:content,migrationNotice}));return
  }
  response.setHeader('content-type','text/html');response.end(`<html><meta charset="utf-8"><body style="font:14px system-ui;margin:40px;max-width:600px"><div id="root"></div><script src="/react.js"></script><script src="/react-dom.js"></script><script type="module">import {createUpdateController,UpdatePanel,UpdateFooter} from '/component.js';const controller=createUpdateController(async action=>(await fetch('/api/'+action)).json());ReactDOM.createRoot(document.querySelector('#root')).render(React.createElement(React.Fragment,null,React.createElement(UpdatePanel,{controller}),React.createElement(UpdateFooter,{controller})));</script></body></html>`)
 })
@@ -47,6 +48,8 @@ try {
  const url=`http://127.0.0.1:${server.address().port}`
  const evidence=join(root,'dist/update-layout-20260912');await mkdir(evidence,{recursive:true})
  await page.goto(url);await page.getByText('当前已是最新版本',{exact:true}).waitFor()
+ await page.getByText(/可迁移到标准安装版/).waitFor()
+ assert.equal(await page.getByRole('link',{name:'下载安装器'}).getAttribute('href'),migrationNotice.installerURL)
  assert.equal(await page.locator('select').count(),0)
  assert.equal(await page.getByText(/下载期间可以继续对话/).count(),0)
  const title=await page.getByText('自动更新',{exact:true}).boundingBox(),check=await page.getByRole('button',{name:'检查更新',exact:true}).boundingBox()

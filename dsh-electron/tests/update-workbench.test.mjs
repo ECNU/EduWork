@@ -24,6 +24,16 @@ test('workbench status is served by the shared observer without touching the coo
   assert.deepEqual(calls, ['observer.status'])
 })
 
+test('portable migration notice remains available in status independently of software update state', async () => {
+  const migrationNotice = { installerURL: 'https://example.test/releases/tag/v1.0.0' }
+  const coordinator = { action: async () => ({ shell: 'electron', update: { enabled: false }, migrationNotice }) }
+  const { handler } = fixture(coordinator)
+  const observer = createProductUpdateObserver({ getCoordinator: () => coordinator })
+  const migrationHandler = createWorkbenchUpdateHandler({ getCoordinator: () => coordinator, observer, runWorkbench: assert.fail })
+  assert.equal((await migrationHandler('status')).migrationNotice, migrationNotice)
+  observer.dispose()
+})
+
 test('diagnostics keeps one direct authoritative status read', async () => {
   const status = { update: { state: 'ready' } }, calls = []
   const coordinator = { action: async action => { calls.push(action); return status } }
