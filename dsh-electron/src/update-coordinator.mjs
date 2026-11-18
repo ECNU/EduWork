@@ -1,5 +1,5 @@
 // A shared surface; software and signed content retain separate transactions.
-export function updateCoordinator({software,content,version,onRestart,onPolicy,beforeInstall=async()=>true,migrationNotice}) {
+export function updateCoordinator({software,content,version,onRestart,onPolicy,beforeInstall=async()=>true,migrationNotice,deferInstallResponse=false}) {
   const jobs=new Set()
   let restarting=false
   const background=promise=>{jobs.add(promise);promise.catch(()=>{}).finally(()=>jobs.delete(promise))}
@@ -34,7 +34,13 @@ export function updateCoordinator({software,content,version,onRestart,onPolicy,b
       }
       if(action==='download-update'&&content.snapshot().state==='available')background(content.download())
       if(!software)throw Error('未配置软件更新')
-      if(action==='install-update'&&!await beforeInstall())return snapshot()
+      if(action==='install-update') {
+        if(!await beforeInstall())return snapshot()
+        if(deferInstallResponse) {
+          background(Promise.resolve().then(()=>software.action(action)))
+          return snapshot()
+        }
+      }
       const result=await software.action(action);return {...result,contentUpdate:content.snapshot()}
     },
     async close() {await content.close();await Promise.allSettled([...jobs]);await software?.close()},

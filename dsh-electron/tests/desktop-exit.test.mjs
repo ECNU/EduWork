@@ -25,6 +25,33 @@ test('installed update stops the Host before installer handoff without awaiting 
   assert.deepEqual(events, ['confirm', 'host stopped', 'quitAndInstall', 'update bridge closed'])
 })
 
+test('installed update RPC leaves Host admission before asynchronous shutdown waits for drain', { timeout: 500 }, async () => {
+  const pendingRequests = new Set(), admitted = Promise.withResolvers(), installation = Promise.withResolvers()
+  const lockAdmission = async () => {
+    await Promise.all(pendingRequests)
+    admitted.resolve()
+  }
+  const coordinator = updateCoordinator({ deferInstallResponse: true, content: { snapshot: () => ({}) },
+    beforeInstall: async () => true,
+    software: { async action(action) {
+      if (action === 'install-update') {
+        await lockAdmission()
+        installation.resolve()
+      }
+      return { phase: 'installing' }
+    } } })
+  const rpc = (async () => {
+    const request = Promise.withResolvers()
+    pendingRequests.add(request.promise)
+    try { return await coordinator.action('install-update') }
+    finally { pendingRequests.delete(request.promise); request.resolve() }
+  })()
+  const response = await Promise.race([rpc, new Promise((_, reject) => setTimeout(() => reject(Error('install RPC waited for Host admission drain')), 200))])
+  assert.equal(response.phase, 'installing')
+  await admitted.promise
+  await installation.promise
+})
+
 test('failed Host stop reports recovery and never hands off to the installer', async () => {
   const error = Error('Synthetic Host stop failure'), failures = []
   const exit = new DesktopExit({ confirm: assert.fail, close: assert.fail, relaunch: assert.fail, quit: assert.fail,

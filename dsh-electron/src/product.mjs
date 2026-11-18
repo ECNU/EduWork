@@ -362,6 +362,7 @@ async function prepareDesktop() {
         applyScheduled,onQuit:()=>desktopExit.handoff()})})
   softwareUpdates = software
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
+    deferInstallResponse:settings.dataLayout==='installed',
     migrationNotice: portableMigrationNoticeForBuild({ platform:process.platform, dataLayout:settings.dataLayout,
       distribution:settings.distribution, version:settings.productVersion, trustedUpdates }),
     beforeInstall:async()=>{
