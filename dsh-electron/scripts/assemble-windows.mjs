@@ -16,6 +16,7 @@ import { installDesktopConfig } from '../../scripts/install-desktop-config.mjs'
 import { desktopVersion } from '../../scripts/desktop-build-plan.mjs'
 import { pruneRuntimeFiles } from '../../scripts/lib/runtime-file-policy.mjs'
 import { pruneElectronLocales } from './electron-locales.mjs'
+import { loadUserConfig } from '../../dsh-host/user-config.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 
@@ -172,9 +173,10 @@ export async function assembleWindows({
     config.configurationOwnership = policy.ownership
   }
   config.updates = { defaultPolicy: updateDefaultPolicy }
-  if (identity.distribution === 'eduwork') {
-    config.updates.provider = 'github'
-    config.updates.repository = 'ecnu/EduWork'
+  const releaseConfigurationPath = join(product, 'resources/desktop/eduwork.jsonc')
+  const releaseUpdates = await isFile(releaseConfigurationPath) ? loadUserConfig(releaseConfigurationPath).updates : undefined
+  if (releaseUpdates?.provider === 'github') {
+    config.updates = { ...releaseUpdates, defaultPolicy: updateDefaultPolicy }
     config.updateChannel = 'github'
   }
   if (updateManifestURL && dataLayout === 'portable') {
