@@ -172,6 +172,7 @@ export function pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSou
         await runNode(join(coreRoot, 'dsh-electron/scripts/build-shell.mjs'), [
           '--pinned-dsh-source', '--upstream', workspace.resolvePath('upstream'),
           '--runtime', workspace.resolvePath('runtime'), '--host', workspace.resolvePath('host'),
+          '--desktop-tools', workspace.resolvePath('desktop-tools/apps/desktop'),
           '--output', workspace.resolvePath('shell'),
         ])
       },

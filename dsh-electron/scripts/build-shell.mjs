@@ -6,14 +6,18 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { adaptNativeDesktopSource } from './native-desktop-source.mjs'
 import { adaptHostExit } from './host-quit-adaptation.mjs'
-import { pinnedDshContract } from '../../scripts/pinned-dsh-contract.mjs'
+import { pinnedDshContract, pinnedDshDirectory } from '../../scripts/pinned-dsh-contract.mjs'
 
-const { values } = parseArgs({ options: { upstream: { type: 'string' }, host: { type: 'string' }, output: { type: 'string' }, runtime: { type: 'string' }, 'pinned-dsh-source': { type: 'boolean' } } })
+const { values } = parseArgs({ options: { upstream: { type: 'string' }, host: { type: 'string' }, output: { type: 'string' }, runtime: { type: 'string' }, 'desktop-tools': { type: 'string' }, 'pinned-dsh-source': { type: 'boolean' } } })
 if (!values['pinned-dsh-source']) throw new Error('The legacy Electron shell build is retired. Use --pinned-dsh-source with --runtime, or scripts/local-desktop-pipeline.mjs. See docs/BUILD.md.')
 if (!values.upstream || !values.host || !values.output) throw new Error('Use --upstream <pinned source> --host <prepared host> --output <new directory> --pinned-dsh-source --runtime <pinned npm Runtime>')
 const upstream = resolve(values.upstream), output = resolve(values.output), host = resolve(values.host)
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 if (!values.runtime) throw new Error('The native shell requires --runtime <pinned npm Runtime>')
+if (!values['desktop-tools']) throw new Error('The native shell requires --desktop-tools <prepared apps/desktop>')
+const desktopTools = resolve(values['desktop-tools'])
+const desktopToolsManifest = join(desktopTools, 'package.json')
+const desktopRequire = createRequire(desktopToolsManifest)
 const lock = pinnedDshContract
 const coreLock = lock
 const digest = data => createHash('sha256').update(data).digest('hex')
@@ -29,6 +33,13 @@ const source = async path => {
   return bytes
 }
 const files = Object.keys(inputs).filter(path => path !== 'apps/desktop/package.json')
+const manifest = JSON.parse(await source('apps/desktop/package.json'))
+const desktopLock = JSON.parse(await readFile(join(pinnedDshDirectory, 'desktop-probe/package-lock.json'), 'utf8'))
+const lockedUpdater = desktopLock.packages['node_modules/electron-updater']?.version
+const { version: installedUpdater } = desktopRequire('electron-updater/package.json')
+if (installedUpdater !== lockedUpdater || !desktopRequire('semver').satisfies(lockedUpdater, manifest.dependencies?.['electron-updater'])) {
+  throw new Error(`Locked electron-updater ${lockedUpdater} does not match the installed dependency and upstream range ${manifest.dependencies?.['electron-updater']}`)
+}
 await mkdir(output, { recursive: false })
 const rows = []
 for (const file of files) {
@@ -70,7 +81,6 @@ for (const name of ['parser.js', 'scanner.js', 'string-intern.js', 'package.json
   for (const name of ['desktop-main.mjs', 'automation-browser.mjs', 'sidebar-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 }
 await copyFile(join(host, 'LICENSE-DeepSeek'), join(output, 'LICENSE-DeepSeek'))
-const manifest = JSON.parse(await source('apps/desktop/package.json'))
 await writeFile(join(output, 'package.json'), JSON.stringify({ ...manifest, name: '@eduwork/desktop-electron', scripts: {}, devDependencies: {} }, null, 2))
 {
   const runtime = resolve(values.runtime)
@@ -78,7 +88,7 @@ await writeFile(join(output, 'package.json'), JSON.stringify({ ...manifest, name
   if (runtimeReceipt.dshCommit !== lock.commit || runtimeReceipt.dshVersion !== lock.packageVersion) throw new Error('Native shell compiler Runtime differs from the core lock')
   const runtimeRequire = createRequire(join(runtime, 'package.json'))
   const { build } = runtimeRequire('esbuild')
-  const common = { bundle: true, platform: 'node', target: 'es2024', nodePaths: [join(runtime, 'node_modules')], external: ['electron'], logLevel: 'warning' }
+  const common = { bundle: true, platform: 'node', target: 'es2024', nodePaths: [join(desktopTools, 'node_modules'), join(runtime, 'node_modules')], external: ['electron'], logLevel: 'warning' }
   await build({ ...common, entryPoints: [join(output, 'src/desktop-main.mjs')], outfile: join(output, 'lib/main.js'), format: 'esm', banner: { js: "import { createRequire as __eduworkRequire } from 'node:module'; const require = __eduworkRequire(import.meta.url);" } })
   await build({ ...common, entryPoints: [join(output, 'src/preload-app.ts')], outfile: join(output, 'lib/preload-app.cjs'), format: 'cjs' })
 }
@@ -132,6 +142,7 @@ async function collectNotice(name, from) {
   for (const dependency of Object.keys(manifest.dependencies ?? {})) await collectNotice(dependency, manifestPath)
 }
 for (const name of ['@deepseek-ai/dsh-client-shortcuts', '@deepseek-ai/dsh-atomic-write', 'ws']) await collectNotice(name, join(resolve(values.runtime), 'package.json'))
+for (const name of ['electron-updater', 'semver']) await collectNotice(name, desktopToolsManifest)
 await mkdir(join(output, 'third-party/jsonc-parser@3.3.1'), { recursive: true })
 await copyFile(join(repository, 'dsh-host', vendor, 'LICENSE.md'), join(output, 'third-party/jsonc-parser@3.3.1/LICENSE.md'))
 notices.push({ name: 'jsonc-parser', version: '3.3.1', license: 'MIT', source: 'dsh-host/vendor/jsonc-parser' })

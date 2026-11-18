@@ -12,10 +12,10 @@
 
 联网搜索、交互浏览器、Studio 导出和视频渲染都把 EduWork 自身的可执行文件当作 Chromium 启动，发行包不再另带浏览器。入口 [`desktop-main.mjs`](src/desktop-main.mjs) 在任何桌面模块运行前分流：带 `--remote-debugging-pipe`（Playwright），或同时带 `--remote-debugging-port` 与 `--enable-automation`（Remotion）时，进入[自动化浏览器](src/automation-browser.mjs)模式。这种进程不占单实例锁，不读写应用配置，只使用调用方给出的 `--user-data-dir`。主进程用窗口和会话分区实现浏览器级 CDP，页面命令经 `webContents.debugger` 转发；Playwright 走管道，Remotion 走只监听 127.0.0.1、路径带随机令牌的 WebSocket，不开启 Chromium 自身的调试端口。网页权限请求一律拒绝（剪贴板写入和全屏除外），不发送客户端证书，下载一律取消，User-Agent 与 Chrome 相同。只带 `--remote-debugging-port` 的启动仍是普通桌面程序，供下文的窗口验收使用。
 
-候选壳构建需要同一锁准备的源码、Host 和 npm Runtime；不再使用旧版桌面源码或共享编译缓存：
+候选壳构建需要同一锁准备的源码、Host、npm Runtime 和 `desktop-tools/apps/desktop`：
 
 ```powershell
-node dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream $Upstream --host $HostBuild --runtime $Runtime --output $ShellBuild
+node dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream $Upstream --host $HostBuild --runtime $Runtime --desktop-tools $DesktopTools --output $ShellBuild
 node dsh-electron/scripts/probe-native-desktop.mjs --shell $ShellBuild --runtime $Runtime --electron $ElectronExecutable --output $Evidence
 ```
 

@@ -14,10 +14,10 @@ Product adapters retain organization login, encrypted credentials, portable upda
 
 Search, the interactive browser, Studio exports and video rendering all launch the EduWork executable itself as Chromium; the release carries no separate browser. The [`desktop-main.mjs`](src/desktop-main.mjs) entry branches before any desktop module runs: `--remote-debugging-pipe` (Playwright), or `--remote-debugging-port` together with `--enable-automation` (Remotion), selects [automation browser](src/automation-browser.mjs) mode. That process takes no single-instance lock, reads or writes no application configuration and uses only the caller's `--user-data-dir`. The main process implements browser-level CDP with windows and session partitions and relays page commands through `webContents.debugger`. Playwright uses the pipe; Remotion uses a WebSocket that listens only on 127.0.0.1 behind a random path, and Chromium's own debugging port stays closed. Site permission requests are denied except clipboard writes and fullscreen, no client certificate is presented, downloads are cancelled, and the user agent matches Chrome. A launch with only `--remote-debugging-port` is still the ordinary desktop, used by the window acceptance below.
 
-The candidate shell requires source, Host and npm Runtime prepared from the same lock, without the old desktop source or a shared compiler cache:
+The candidate shell requires source, Host, npm Runtime and `desktop-tools/apps/desktop` prepared from the same lock:
 
 ```powershell
-node dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream $Upstream --host $HostBuild --runtime $Runtime --output $ShellBuild
+node dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream $Upstream --host $HostBuild --runtime $Runtime --desktop-tools $DesktopTools --output $ShellBuild
 node dsh-electron/scripts/probe-native-desktop.mjs --shell $ShellBuild --runtime $Runtime --electron $ElectronExecutable --output $Evidence
 ```
 
