@@ -146,7 +146,7 @@ GitHub 匿名请求额度按来源 IP 计算。客户端已缓存并限制检查
 
 开发包与公测包均写入 `RELEASE-MANIFEST.json`、逐文件清单和 `wails-host-v1` 启动契约；同一 ZIP 可用于全新安装、Electron 更新及合格 Go 过渡版迁移，不能投放到旧 0.2 更新入口。
 
-便携包支持期内，每个 Windows Release 同时附带同版本的便携包和安装器。安装版更新需要安装器、对应渠道的 `latest.yml` 或 `dev.yml` 和 `.blockmap`。正式版设为 GitHub Latest 时必须带齐安装版产物。支持期结束后继续发布安装版产物。
+当前 Windows 安装器及 `latest.yml` / `dev.yml` 仅由 CI 生成 artifact，尚未接入正式 Release；安装版用户因此暂时收不到软件更新。后续发布脚本接入后，便携包支持期内每个 Windows Release 才会同时附带同版本的便携包、安装器和安装更新元数据。届时安装版更新需要安装器、对应渠道的 `latest.yml` 或 `dev.yml` 和 `.blockmap`；支持期结束后仍继续发布安装版产物。
 
 便携版正式发行的附件包括桌面 ZIP 及 `.sha256`、`release-receipt.json`、已批准的 `RELEASE-NOTES.md`、`update-windows-amd64.json`、[便携自解压包 ZIP](PORTABLE-EXTRACTOR.md) 及其 `.sha256` 和 `.json` 回执，以及各[增量包](#增量更新)及其 `.sha256`。便携更新清单按同次 CI 的原始桌面 ZIP 尺寸、摘要和发行身份生成，并引用该 ZIP。解压器 ZIP 用于首次下载。发布器复核更新清单、回执和解压器内嵌 ZIP 的一致性，并校验每个上传文件的尺寸和摘要。应用内更新只发现已发布的 Release 附件，普通开发构建只保留 CI artifact。
 
