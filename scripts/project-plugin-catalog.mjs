@@ -26,7 +26,7 @@ export function validateCatalog(catalog, locks) {
     assert.ok(categories.includes(plugin.category), `Unknown category: ${plugin.category}`);
     assert.match(plugin.icon, /^[a-z-]+$/);
     assert.match(plugin.eyebrow, /^[A-Z &]+$/);
-    assert.match(plugin.docs, /^packages\/[a-z0-9-]+(?:\/[a-z0-9-]+)*$/);
+    assert.match(plugin.docs, /^(?:packages|dsh-plugins)\/[a-z0-9-]+(?:\/[a-z0-9-]+)*$/);
     for (const language of ['zh', 'en']) {
       for (const field of ['name', 'summary']) {
         assert.ok(typeof plugin[language]?.[field] === 'string' && plugin[language][field].trim(), `Missing ${language}.${field}: ${plugin.package}`);
