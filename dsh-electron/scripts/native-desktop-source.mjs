@@ -56,5 +56,9 @@ export ${source.slice(start, end)}
     replace("await inspection.catch((error: unknown) => {\n      console.warn('desktop quit: task inspection unavailable', error)",
       "await inspection.catch(() => {\n      console.warn('desktop quit: task inspection unavailable')")
   }
+  if (file === 'apps/desktop/src/updates/electron-updater/channel.ts') {
+    replace('updater.channel = channel', "updater.channel = channel === 'stable' ? 'latest' : 'dev'")
+    replace('updater.allowPrerelease = true', "updater.allowPrerelease = channel === 'nightly'")
+  }
   return source
 }
