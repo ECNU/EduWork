@@ -20,8 +20,9 @@ export function startInstalledUpdates({ app, resourcesPath, version, policy, onP
     const state = coordinator.state
     const mapped = { idle: 'idle', checking: 'checking', available: 'available', downloading: 'downloading',
       verifying: 'verifying', installing: 'applying', ready: 'ready', error: 'error' }[state.phase]
-    return { shell: 'electron', version, phase: state.phase, message: state.message,
+    return { shell: 'electron', version, phase: state.phase, message: state.message ?? `软件更新：${mapped ?? state.phase}`,
       update: { enabled: enabled(), state: mapped, policy, latestVersion: state.version, percent: state.percent,
+        downloadedBytes: state.downloadedBytes, totalBytes: state.totalBytes, canSchedule: false,
         failedOperation: state.failedOperation, error: state.phase === 'error' ? state.message : undefined } }
   }
   return {
@@ -36,6 +37,8 @@ export function startInstalledUpdates({ app, resourcesPath, version, policy, onP
         void downloadOperation.finally(() => { downloadOperation = undefined }).catch(() => {})
         await Promise.resolve()
         return status()
+      } else if (action === 'schedule-update') {
+        throw new Error('此安装版不支持预约软件更新')
       } else if (action === 'install-update') {
         await coordinator.install(coordinator.state.version)
       } else if (action === 'use-stable-updates' || action === 'use-development-updates') {

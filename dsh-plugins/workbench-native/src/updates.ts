@@ -101,7 +101,7 @@ export function UpdatePanel({controller}) {
    h('p',{role:'status',style:{margin:0,fontSize:12}},s.installOnQuit?`版本 ${s.latestVersion} 已下载并校验，将在退出应用时安装。`:s.installOnNextStart?`版本 ${s.latestVersion} 已校验，将在下次启动时安装。`:`版本 ${s.latestVersion} 已下载并校验。`),
    h('p',{style:note},'可继续使用当前版本。重启安装前，请先完成正在运行的任务。'),
    h('div',{style:{display:'flex',justifyContent:'flex-end',flexWrap:'wrap',gap:8,marginTop:10}},
-    !s.installOnQuit&&!s.installOnNextStart&&h('button',{type:'button',style:button,onClick:()=>controller.run('schedule-update')},'下次启动时安装'),
+    s.canSchedule!==false&&!s.installOnQuit&&!s.installOnNextStart&&h('button',{type:'button',style:button,onClick:()=>controller.run('schedule-update')},'下次启动时安装'),
     h('button',{type:'button',style:primary,onClick:()=>controller.run('install-update')},'立即重启更新'))),
   !busy&&(error||s?.error)&&h('p',{role:'alert',style:{...note,marginTop:12,color:'var(--dsw-alias-state-error-primary, #a82332)',overflowWrap:'anywhere'}},error||s.error),
   h(ContentPanel,{controller,content:c,working}),

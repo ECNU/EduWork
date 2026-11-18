@@ -36,7 +36,7 @@ test('installed download requests return immediately and close cancels the activ
     state = { phase: 'available', version: '1.1.0' }
     check() {}
     async download() {
-      this.state = { phase: 'downloading', version: '1.1.0', percent: 20 }
+      this.state = { phase: 'downloading', version: '1.1.0', percent: 20, downloadedBytes: 2048, totalBytes: 10240 }
       downloadStarted()
       await new Promise(resolve => { cancel = resolve })
       this.state = { phase: 'idle' }
@@ -51,10 +51,27 @@ test('installed download requests return immediately and close cancels the activ
   ])
   await started
   assert.equal(status.update.state, 'downloading')
-  assert.equal(status.update.downloadedBytes, undefined)
-  assert.equal(status.update.totalBytes, undefined)
+  assert.equal(status.update.downloadedBytes, 2048)
+  assert.equal(status.update.totalBytes, 10240)
   await Promise.race([
     backend.close(),
     new Promise((_, reject) => setTimeout(() => reject(Error('close waited for download')), 500)),
   ])
+})
+
+test('installed updates report scheduling as unsupported and reject the action', async t => {
+  const resourcesPath = await mkdtemp(join(tmpdir(), 'eduwork-installed-schedule-'))
+  t.after(() => rm(resourcesPath, { recursive: true, force: true }))
+  await writeFile(join(resourcesPath, 'app-update.yml'), 'provider: github\nowner: example\nrepo: product\n')
+  class Coordinator {
+    state = { phase: 'ready', version: '1.1.0' }
+    dispose() {}
+  }
+  const backend = startInstalledUpdates({ app: { isPackaged: true }, resourcesPath, version: '1.0.0',
+    policy: 'stable', Coordinator, stopBeforeInstall: assert.fail })
+  const status = await backend.action('status')
+  assert.equal(status.message, '软件更新：ready')
+  assert.equal(status.update.canSchedule, false)
+  await assert.rejects(backend.action('schedule-update'), /不支持预约/)
+  await backend.close()
 })
