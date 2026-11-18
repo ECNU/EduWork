@@ -2,7 +2,7 @@
 
 [发行与版本规则](RELEASE.md) · [发行边界](EDITIONS.md) · [配置示例](../config/desktop/examples/updates.jsonc)
 
-Windows 公版默认从 `ecnu/EduWork` 的 GitHub Releases 获取更新。机构可在配置文件中覆盖为静态更新源。企业登录与更新源相互独立，登录某个企业不会改变发行身份或更新渠道。
+Windows 公版默认从 `ecnu/EduWork` 的 GitHub Releases 获取更新。安装版使用 `electron-updater`，便携版继续使用 Go 更新器。机构可为便携版配置静态更新源。学校版安装包没有软件更新源。企业登录与发行身份、更新渠道相互独立。
 
 本文的来源适配与安装契约以 Windows 更新器为主。macOS 使用 Sparkle 和独立 appcast，公版同样从 GitHub 下载发行包，见 [macOS 应用更新](MACOS_UPDATES.md)。
 
@@ -12,22 +12,28 @@ Electron 还支持发行方授权的[配置与 Skills 独立更新](CONTENT_UPDA
 
 不必须。OSS、其他对象存储、CDN 或普通 HTTPS 静态文件服务器，都可以提供更新清单与安装包。客户端不调用阿里云管理 API，也不需要云账号；发行方在上传端管理写入权限即可。
 
-GitHub Releases 可以作为唯一发行来源，不要求同时购买 OSS。两种来源共用检查更新、左下角提示、下载进度、校验与重启安装；GitHub 通过 `provider` 和 `repository` 配置，不把发布网页当作静态 JSON 清单。
+GitHub Releases 可以同时提供公版安装器和便携包的更新。便携版的 GitHub 与静态源共用检查更新、左下角提示、下载进度、校验与重启安装流程。
 
 ## 当前支持到哪里
 
 | 场景 | 当前状态 |
 | --- | --- |
-| Windows Electron + 配置好的静态 HTTPS 更新源 | 已实现后台检查、下载/续传、进度、SHA-256 校验、立即或下次启动安装 |
-| Windows 公版用户配置留空 | 使用随包 GitHub 默认源；从旧 Go 迁入时优先保留原机构更新源 |
+| Windows 公版安装版 | 使用随包 GitHub 源，通过 `electron-updater` 检查、下载并安装更新。仅支持确认后立即安装 |
+| Windows 学校版安装版 | 未配置软件更新源，设置页显示不支持软件更新 |
+| Windows 便携版 + 静态 HTTPS 更新源 | 支持后台检查、下载及续传、进度、SHA-256 校验、立即或下次启动安装 |
+| Windows 公版便携版用户配置留空 | 使用随包 GitHub 默认源，从旧 Go 迁入时优先保留原机构更新源 |
 | ECNU 旧 Go → Go 过渡版 → Electron | 使用独立兼容清单与已验收的迁移包，不能混入公版入口 |
-| GitHub CI 创建 Release | 生成 ZIP、校验文件、回执、已确认的说明及更新清单；全部上传校验后才发布，不切换 OSS 指针 |
-| 直接从 GitHub 自动发现和安装 | 已实现 Windows 来源适配，共用现有下载与安装器；按用户所选渠道接收已发布公测版或开发版 |
-| 私有仓库、草稿、没有已发布版本 | 提示尚无可读取的版本；不内置 GitHub Token，不影响正常使用应用 |
-| 增量更新 | 公测版为前 3 个公测版提供增量包，匹配的安装只下载变化的文件；其余情况下载完整包，见[增量更新](#增量更新) |
+| 私有仓库、草稿、没有已发布版本 | 客户端只从公开的已发布版本获取更新 |
+| 增量更新 | 安装版使用 `.blockmap` 差分。便携版公测包为前 3 个公测版提供增量包。无法使用差分或增量包时下载完整包，见[增量更新](#增量更新) |
 | macOS 程序更新 | 已接入 Sparkle：按 appcast 检查、下载并验签，用户确认后安装与重启；旧包首次迁移和系统授权边界见 [Mac 更新](MACOS_UPDATES.md) |
 
-Windows 使用 `dsh-electron/src/portable-updates.mjs` 调用共用更新辅助程序，核心实现在 `dsh-desktop/internal/updater/`。GitHub 适配位于 `github.go`，不使用上游 DSH 的更新源，也不另建 `electron-updater` 安装路径。其他平台的下载页入口不等于支持 Windows 安装协议。
+## Windows 安装版更新
+
+公版装配时从发行配置读取 GitHub 仓库，将更新源写入 `resources/app-update.yml`。学校版安装包省略此文件。验收可使用 HTTPS 静态源，见[构建指南](BUILD.md)。
+
+稳定渠道使用 GitHub Latest Release 中的 `latest.yml`。开发渠道使用 `dev.yml`，GitHubProvider 按 `releases.atom` 的顺序选取第一个匹配的 `dev` 标签，既不按版本号重新排序，也不翻页。这个限制只影响开发渠道。两个渠道均禁止降级。
+
+用户确认安装后，桌面应用先停止 Host 和后台服务，随后交由安装器更新程序。安装版不提供「下次启动时安装」，新版启动失败时也不会自动回滚。
 
 ## GitHub 配置与默认值
 
@@ -35,7 +41,7 @@ Windows 使用 `dsh-electron/src/portable-updates.mjs` 调用共用更新辅助�
 
 macOS 的「自动下载，退出时安装」是开启软件更新后的附加选项。关闭该附加选项仍会检查新版本并提示，由用户决定下载；关闭「启用软件更新」才会停止软件更新检查。
 
-公版无需额外配置。要显式选择 GitHub，可在 `config/eduwork.jsonc` 中写入：
+以下来源配置、版本筛选和 JSON 清单适用于 Windows 便携版的 Go 更新器。公版便携包自带默认源，也可在 `config/eduwork.jsonc` 中显式选择 GitHub。
 
 ```json
 "updates": {
@@ -55,6 +61,10 @@ GitHub 的 `update-windows-amd64.json` 必须由 `scripts/github-update-manifest
 
 ## 增量更新
 
+Windows 安装版由 `electron-updater` 利用 `.blockmap` 和缓存的旧安装器做差分下载，差分不可用时下载完整安装器。
+
+以下 ZIP 增量包用于 Windows 便携版。
+
 公测版发布时，CI 为前 3 个公测版各生成一个增量包 `EduWork-<版本>-windows-x64-electron-from-<旧版本>.zip` 及其 `.sha256`，在 `update-windows-amd64.json` 的同一个 artifact 下以 `deltas` 列出。增量包与完整包结构相同，只含新的 `RELEASE-MANIFEST.json`、内容变化的文件、`config/` 等用户管理的目录，以及 Host 启动时改写的 venv 配置；条目从完整包原样复制。增量包超过完整包一半时不生成；开发版不生成。
 
 更新器按当前版本和本机 `RELEASE-MANIFEST.json` 的 SHA-256 选择增量包。下载完成后、应用仍在运行时，先核对要从安装目录复用的文件；没有对应条目、下载失败或本机程序文件被改过时，改下完整包。安装时只把“解压完整包”换成“解压增量包并复用安装目录中未变化的文件”，之后的逐文件校验、替换、启动自检和回滚与完整包相同。Electron 权限治理范围及 `resources/product/` 下的文件采用本地复制，其他文件在支持时使用硬链接；这不增加网络下载量。产品目录不与旧备份共享文件，避免新版启动后清理备份改变文件 ctime，误触发插件热重载。某个版本的增量安装失败过一次后，该版本改用完整包。
@@ -64,6 +74,8 @@ GitHub 的 `update-windows-amd64.json` 必须由 `scripts/github-update-manifest
 增量包由已安装版本的更新器安装，因此从支持增量的版本之后的下一个版本起生效；旧客户端忽略 `deltas`，照常下载完整包。静态更新源可在 artifact 中写同样的 `deltas`（每项含 `fromVersion`、`fromManifestSha256`、`fileName`、`bytes`、`sha256`、`url`、`sha256Url`），文件与完整包放在同一版本目录。
 
 ## 静态 HTTPS 更新源的现有要求
+
+以下清单和部署要求适用于便携版的 Go 更新器。
 
 1. **稳定且可直接读取的 HTTPS 地址。** 清单和文件 GET 不应要求网页登录、Cookie 或给用户分发上传密钥。当前配置入口不支持下载源的自定义认证头。现有初始 URL 不接受用户名、密码、查询参数和片段；临时签名 URL 不适合作为渠道配置。
 2. **按发行与路线分开目录。** 公版、ECNU、旧 Go、Go → Electron 各自使用独立的根路径。清单按 `stable` / `development` 和平台定位；公测只提供 `X.Y.Z`，开发渠道可提供 `X.Y.Z-dev.YYYYMMDD.N`。版本比较不降级。
@@ -102,7 +114,7 @@ eduwork/
 
 ## 开发包与公测包的默认渠道
 
-两种 Windows 装配脚本都接受 `-UpdateDefaultPolicy development|stable`。省略时，`X.Y.Z-dev.YYYYMMDD.N` 默认开发渠道，`X.Y.Z` 默认仅公测版。清单 URL 中的 `/stable/` 只定位更新源，不能反过来把开发包的默认偏好改成公测。
+以下为 Windows 便携包的默认渠道规则。两种 Windows 便携装配脚本都接受 `-UpdateDefaultPolicy development|stable`。省略时，`X.Y.Z-dev.YYYYMMDD.N` 默认开发渠道，`X.Y.Z` 默认仅公测版。清单 URL 中的 `/stable/` 只定位更新源，不能反过来把开发包的默认偏好改成公测。
 
 Go 的随包默认值记录在 `eduwork.desktop.json` 的 `updateDefaultPolicy`，并同时写入新装的 `config/update.bridge.json`。升级保留旧 `config/` 时，新程序仍使用本次装配的默认值，避免旧配置中的错误默认值继续生效。Electron 将默认值写在 `resources/app/eduwork.desktop.json` 的 `updates.defaultPolicy`；发行方也可在 `config/eduwork.jsonc` 配置该项。
 
@@ -111,6 +123,8 @@ Go 的随包默认值记录在 `eduwork.desktop.json` 的 `updateDefaultPolicy`�
 优先级为：**已有渠道记录 → 本次装配默认值**。因此开发渠道升级到较新的公测 Electron 后仍保留开发偏好；全新公测安装默认仅公测。静态源的开发渠道同时查询 development 与 stable，取更高版本；公测渠道只查询 stable。GitHub 按相同渠道语义筛选已发布的 Release 与 prerelease，所有来源均不降级。
 
 ## GitHub 与静态源的区别
+
+以下对照适用于 Windows 便携包。
 
 | 项目 | 静态 HTTPS / OSS | GitHub Releases 接入要求 |
 | --- | --- | --- |
@@ -132,17 +146,21 @@ GitHub 匿名请求额度按来源 IP 计算。客户端已缓存并限制检查
 
 开发包与公测包均写入 `RELEASE-MANIFEST.json`、逐文件清单和 `wails-host-v1` 启动契约；同一 ZIP 可用于全新安装、Electron 更新及合格 Go 过渡版迁移，不能投放到旧 0.2 更新入口。
 
-Windows 正式版 Release 的 Windows 产物包含八个文件：桌面 ZIP 及 `.sha256`、`release-receipt.json`、已批准的 `RELEASE-NOTES.md`、`update-windows-amd64.json`，以及[Windows 安装包 ZIP](PORTABLE-EXTRACTOR.md) 及其 `.sha256` 和 `.json` 回执；另有每个[增量包](#增量更新)及其 `.sha256`。更新清单由同次 CI 的原始桌面 ZIP 尺寸、摘要与发行身份生成，只引用原始 ZIP，解压器 ZIP 用于首次下载。发布器复核更新清单与回执一致、解压器内嵌同一个原始 ZIP，校验每个上传文件的尺寸与摘要后，才将草稿正式发布。普通开发构建仅保留为 CI artifact；经批准发布的预发布包可作为 GitHub Release 附件手动安装，当前不生成 Windows 自动更新清单。artifact 本身不会被客户端发现。
+便携包支持期内，每个 Windows Release 同时附带同版本的便携包和安装器。安装版更新需要安装器、对应渠道的 `latest.yml` 或 `dev.yml` 和 `.blockmap`。正式版设为 GitHub Latest 时必须带齐安装版产物。支持期结束后继续发布安装版产物。
+
+便携版正式发行的附件包括桌面 ZIP 及 `.sha256`、`release-receipt.json`、已批准的 `RELEASE-NOTES.md`、`update-windows-amd64.json`、[便携自解压包 ZIP](PORTABLE-EXTRACTOR.md) 及其 `.sha256` 和 `.json` 回执，以及各[增量包](#增量更新)及其 `.sha256`。便携更新清单按同次 CI 的原始桌面 ZIP 尺寸、摘要和发行身份生成，并引用该 ZIP。解压器 ZIP 用于首次下载。发布器复核更新清单、回执和解压器内嵌 ZIP 的一致性，并校验每个上传文件的尺寸和摘要。应用内更新只发现已发布的 Release 附件，普通开发构建只保留 CI artifact。
 
 机构版可按[首次启动获取机构配置](PUBLISHER_BOOTSTRAP.md)分发 CI 原包，无需本机重装配。若仍采用旧版静态配置装配，修改后的 ZIP 必须重新生成尺寸、摘要和包内清单，并与 GitHub 原包分别校验和发布。
 
 发行前用两个实际 CI 桌面版本验收下载、续传、安装、重启及配置/历史保留，再验证错误发行、错误架构、损坏包和不可读 Release 的提示。源码层的网络模拟与事务测试不能代替实际桌面验收；私有仓库阶段保持草稿，不通过公开仓库或内置读取令牌绕过这一限制。macOS 的原生更新、签名与系统授权验收按 [Mac 更新指南](MACOS_UPDATES.md)执行；不能仅凭程序启动成功认定升级通过。
 
-Windows 增量验收必须保留更新器自动打开的第一个进程，等更新器完成备份清理后，确认会话列表、输入框和设置可操作，并检查前端错误；随后再验收正常退出与第二次启动。健康标记通过不代表清理后界面仍可用，不能先关闭第一次进程、只验证第二次。首次修复升级也必须使用已发布旧包里的原更新器，覆盖旧硬链接清理行为。
+Windows 安装版需用两个实际安装器验收更新，记录差分下载或完整包回退，并确认更新后安装目录、卸载入口和个人数据正常。Windows 便携版增量验收必须保留更新器自动打开的第一个进程，等更新器完成备份清理后，确认会话列表、输入框和设置可操作，并检查前端错误；随后再验收正常退出与第二次启动。健康标记通过不代表清理后界面仍可用，不能先关闭第一次进程、只验证第二次。首次修复升级也必须使用已发布旧包里的原更新器，覆盖旧硬链接清理行为。
 
 发行说明由项目负责人确认。发布 CI 产物、装配机构配置和切换在线更新渠道分别执行，不能由一次源码提交隐式触发。
 
 ## 启动自检与失败恢复
+
+以下启动自检与回滚机制适用于 Go 更新器。
 
 旧版 → Go 过渡版、Go → Electron、Electron → Electron 是三个独立的验收入口。每一跳都要使用在线渠道实际提供的包；修正 Electron 的启动不能替代重新验收 Go 过渡包。冷启动测试须覆盖插件导入繁忙时的 stdin bootstrap 读取，避免已经收到的启动信息被定时器误判为缺失。
 
