@@ -282,17 +282,7 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 		}
 		for index := len(backedUp) - 1; index >= 0; index-- {
 			name := backedUp[index]
-			destination := filepath.Join(pending.InstallDir, name)
-			// A cross-volume backup can complete before removing the source and
-			// still fail while deleting it, leaving a partially deleted tree at
-			// the destination. The backup is complete, so clear the damaged path
-			// before restoring; a lock here is a recovery failure and must not
-			// lead to restarting the incomplete program.
-			if err := os.RemoveAll(destination); err != nil {
-				failures = append(failures, fmt.Errorf("clear damaged path %s: %w", name, err))
-				continue
-			}
-			if err := moveManagedPath(filepath.Join(backupDir, name), destination); err != nil {
+			if err := os.Rename(filepath.Join(backupDir, name), filepath.Join(pending.InstallDir, name)); err != nil {
 				failures = append(failures, fmt.Errorf("restore %s: %w", name, err))
 			}
 		}
@@ -308,14 +298,7 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 			if err := os.MkdirAll(filepath.Dir(backup), 0o700); err != nil {
 				return rollback(err)
 			}
-			if err := moveManagedPath(target, backup); err != nil {
-				var copied *sourceCleanupError
-				if errors.As(err, &copied) {
-					// The backup is complete even though deleting the source
-					// failed partway. Restore this root from that backup instead
-					// of assuming the original program is still intact.
-					backedUp = append(backedUp, name)
-				}
+			if err := os.Rename(target, backup); err != nil {
 				return rollback(fmt.Errorf("backup managed path %s: %w", name, err))
 			}
 			backedUp = append(backedUp, name)
@@ -368,11 +351,6 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 		return rollback(err)
 	}
 	_ = command.Process.Release()
-	// The installed files now answer for the new version. Keep the Windows
-	// uninstall registration in step without touching the uninstaller itself.
-	if err := updateInstalledRegistrationVersion(pending.InstallDir, pending.Version); err != nil {
-		fmt.Fprintln(os.Stderr, "update installation registration:", err)
-	}
 	_ = os.Remove(PendingFile(stateDir))
 	_ = os.Remove(pending.ZIPPath)
 	_ = os.Remove(rejectedDeltaFile(stateDir, pending.Version))
@@ -860,52 +838,6 @@ func moveOrCopy(source, target string) error {
 		return nil
 	}
 	return copyTree(source, target, false)
-}
-
-// moveManagedPath moves a managed program file or directory into or out of the
-// update transaction. Windows cannot rename across volumes; an independent
-// personal-data root puts the transaction on another volume, so fall back to a
-// complete copy followed by removing the source. Other rename errors (sharing,
-// permissions) are returned unchanged and never partially copy a live tree.
-func moveManagedPath(source, target string) error {
-	return moveManagedPathWithRename(source, target, os.Rename)
-}
-
-// sourceCleanupError reports that the cross-volume copy completed but removing
-// the source failed. The source may now be partially deleted; callers must
-// treat the completed copy as the recoverable original.
-type sourceCleanupError struct {
-	Err error
-}
-
-func (e *sourceCleanupError) Error() string { return e.Err.Error() }
-func (e *sourceCleanupError) Unwrap() error { return e.Err }
-
-func moveManagedPathWithRename(source, target string, rename func(string, string) error) error {
-	if _, err := os.Lstat(source); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-		return err
-	}
-	if _, err := os.Lstat(target); err == nil {
-		return fmt.Errorf("move target already exists: %s", target)
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-	if err := rename(source, target); err == nil {
-		return nil
-	} else if !isCrossDeviceError(err) {
-		return err
-	}
-	if err := copyTree(source, target, false); err != nil {
-		_ = os.RemoveAll(target)
-		return err
-	}
-	if err := os.RemoveAll(source); err != nil {
-		return &sourceCleanupError{Err: fmt.Errorf("remove source after copy: %w", err)}
-	}
-	return nil
 }
 
 func mergeReleaseData(source, target string) error {

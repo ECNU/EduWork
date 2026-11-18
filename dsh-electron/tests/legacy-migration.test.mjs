@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { mkdtemp, mkdir, writeFile, readFile, readdir, realpath, rename, rm, symlink } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, readdir, rename, rm, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { spawn } from 'node:child_process'
@@ -134,18 +134,6 @@ test('same-shell update acknowledges only its own health path and retains existi
  await writeMigrationHealth(launch,'ready');assert.equal(await readFile(f.health,'utf8'),'ok\n')
  await assert.rejects(readMigrationLaunch({...f,argv:['--update-health-file',join(f.root,'health.ok')]}))
  await assert.rejects(readMigrationLaunch({...f,settings:{...f.settings,productVersion:'9.0.0'},argv:['--update-health-file',f.health]}))
-})
-
-test('installed layouts acknowledge update health below the personal data root',async t=>{
- const f=await fixture(t),program=join(f.root,'program'),stateRoot=join(f.root,'installed-data')
- const transaction=join(stateRoot,'data/state/updates/transactions',f.settings.productVersion)
- await mkdir(transaction,{recursive:true});await mkdir(program,{recursive:true})
- const health=join(transaction,'health.ok')
- const launch=await readMigrationLaunch({root:program,stateRoot,settings:f.settings,argv:['--update-health-file',health]})
- assert.equal(launch.kind,'electron-update-v1')
- assert.equal(launch.healthFile,join(await realpath(transaction),'health.ok'))
- await writeMigrationHealth(launch,'ready');assert.equal(await readFile(health,'utf8'),'ok\n')
- await assert.rejects(readMigrationLaunch({root:program,settings:f.settings,argv:['--update-health-file',health]}),/outside this installation/)
 })
 
 test('the bridge handoff imports latest Wails sessions, not the old legacy snapshot',async t=>{

@@ -137,23 +137,3 @@ test('errors reported after the helper has launched remain fatal instead of bypa
   spawnProcess:(_file,_args,settings)=>spawn(process.execPath,[script],settings),
  }),/Invalid scheduled package/)
 })
-
-test('installed layouts keep updater state outside the program root', async t => {
-  const options = await fixture(t)
-  const stateRoot = await mkdtemp(join(tmpdir(), 'eduwork-updater-state-'))
-  t.after(() => rm(stateRoot, { recursive: true, force: true }))
-  const script = join(options.root, 'state-helper.mjs')
-  await writeFile(script, `import {createInterface} from 'node:readline';
-createInterface({input:process.stdin}).on('line',line=>{const {id}=JSON.parse(line);
-console.log(JSON.stringify({id,status:{enabled:true,state:'idle',update:{enabled:true,state:'idle',policy:'development'}}}));});`)
-  let args
-  const bridge = await startPortableUpdates({ ...options, stateRoot, applyScheduled: false,
-    spawnProcess: (_file, childArgs, settings) => { args = childArgs; return spawn(process.execPath, [script], settings) } })
-  const stateIndex = args.indexOf('--state')
-  assert.notEqual(stateIndex, -1)
-  assert.equal(args[stateIndex + 1], join(stateRoot, 'data/state'))
-  const edition = JSON.parse(await readFile(join(stateRoot, 'data/state/updates/electron-edition.json'), 'utf8'))
-  assert.equal(edition.enabled, true)
-  await assert.rejects(readFile(join(options.root, 'data/state/updates/electron-edition.json')), { code: 'ENOENT' })
-  await bridge.close()
-})

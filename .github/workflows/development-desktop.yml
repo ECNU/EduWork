@@ -24,20 +24,10 @@ on:
         required: false
         default: false
         type: boolean
-      windows_update_candidate:
-        description: 'Also build an isolated static update feed (ZIP + manifest) from the installed-layout candidate (artifact only; manual acceptance required)'
-        required: false
-        default: false
-        type: boolean
-      windows_update_base_url:
-        description: 'HTTPS base URL embedded in the update manifest for isolated acceptance'
-        required: false
-        default: 'https://localhost:18443'
-        type: string
 permissions:
   contents: read
 concurrency:
-  group: desktop-apps-${{ github.sha }}-${{ inputs.platform || 'both' }}-${{ inputs.windows_installed_candidate || false }}-${{ inputs.windows_installer_candidate || false }}-${{ inputs.windows_update_candidate || false }}
+  group: desktop-apps-${{ github.sha }}-${{ inputs.platform || 'both' }}-${{ inputs.windows_installed_candidate || false }}-${{ inputs.windows_installer_candidate || false }}
   cancel-in-progress: false
 jobs:
   version:
@@ -133,7 +123,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
       - name: Assemble Windows installed-layout candidate
-        if: matrix.script == 'windows' && (inputs.windows_installed_candidate || inputs.windows_installer_candidate || inputs.windows_update_candidate)
+        if: matrix.script == 'windows' && (inputs.windows_installed_candidate || inputs.windows_installer_candidate)
         shell: bash
         run: |
           node core/scripts/assemble-windows-installed-candidate.mjs \
@@ -189,10 +179,10 @@ jobs:
           compression-level: 0
           retention-days: 7
           if-no-files-found: error
-      - name: Test installer and update packaging contracts
-        if: matrix.script == 'windows' && (inputs.windows_installer_candidate || inputs.windows_update_candidate)
+      - name: Test installer packaging contracts
+        if: matrix.script == 'windows' && inputs.windows_installer_candidate
         shell: bash
-        run: node --test core/scripts/test/windows-installer.test.mjs core/scripts/test/windows-update-pack.test.mjs
+        run: node --test core/scripts/test/windows-installer.test.mjs
       - name: Install the locked electron-builder
         if: matrix.script == 'windows' && inputs.windows_installer_candidate
         shell: bash
@@ -217,25 +207,6 @@ jobs:
           path: |
             ${{ runner.temp }}/ew-installer/artifacts/*
             ${{ runner.temp }}/ew-installer/installer-candidate-receipt.json
-          retention-days: 7
-          if-no-files-found: error
-      - name: Assemble Windows update candidate
-        if: matrix.script == 'windows' && inputs.windows_update_candidate
-        shell: bash
-        run: |
-          node core/scripts/pack-windows-update.mjs \
-            --candidate "$RUNNER_TEMP/ew-installed/electron-candidate" \
-            --installed-receipt "$RUNNER_TEMP/ew-installed/installed-candidate-receipt.json" \
-            --output "$RUNNER_TEMP/ew-update" \
-            --base-url "${{ inputs.windows_update_base_url }}"
-      - name: Retain Windows update candidate
-        if: matrix.script == 'windows' && inputs.windows_update_candidate
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-update-candidate
-          path: |
-            ${{ runner.temp }}/ew-update/development/*
-            ${{ runner.temp }}/ew-update/update-candidate-receipt.json
           retention-days: 7
           if-no-files-found: error
   result:
