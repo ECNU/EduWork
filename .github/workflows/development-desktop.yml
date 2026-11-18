@@ -24,6 +24,11 @@ on:
         required: false
         default: false
         type: boolean
+      installed_update_url:
+        description: 'Optional HTTPS update source for installed-candidate acceptance; empty uses the public GitHub source'
+        required: false
+        default: ''
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -127,7 +132,8 @@ jobs:
         shell: bash
         run: |
           node core/scripts/assemble-windows-installed-candidate.mjs \
-            --workspace "$RUNNER_TEMP/ew-development" --output "$RUNNER_TEMP/ew-installed"
+            --workspace "$RUNNER_TEMP/ew-development" --output "$RUNNER_TEMP/ew-installed" \
+            --installed-update-url "${{ inputs.installed_update_url }}"
           cd "$RUNNER_TEMP"
           # Windows tar.exe cannot write ZIP (-a only selects compression and
           # silently produced a ustar tar named .zip); the built-in .NET writer

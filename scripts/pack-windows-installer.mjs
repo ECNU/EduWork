@@ -63,7 +63,8 @@ export function installerInclude(desktop) {
 
 export function installerProject({ desktop, release, electronVersion, artifactsDir, icon, includePath }) {
   requireMatch(/^\d+\.\d+\.\d+/.test(electronVersion ?? ''), 'Electron runtime version is invalid')
-  const publish = installedUpdateFeed(desktop.updates)
+  const feed = installedUpdateFeed(desktop.updates)
+  const publish = feed?.provider === 'generic' ? { provider: 'generic', url: feed.url } : feed
   return {
     packageJSON: {
       name: `eduwork-installer-${desktop.distribution}`,

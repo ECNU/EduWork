@@ -46,7 +46,7 @@ export async function installedCandidateReceipt(candidate, source) {
 }
 
 if (isMainModule(import.meta.url)) {
-  const { values } = parseArgs({ options: { workspace: { type: 'string' }, output: { type: 'string' } } })
+  const { values } = parseArgs({ options: { workspace: { type: 'string' }, output: { type: 'string' }, 'installed-update-url': { type: 'string' } } })
   if (!values.workspace || !values.output) throw new Error('Use --workspace <qualified-development-build> --output <new-directory>')
   const workspace = fullPath(values.workspace), output = fullPath(values.output)
   const source = await readJSON(join(workspace, 'publish/release-receipt.json'))
@@ -59,6 +59,7 @@ if (isMainModule(import.meta.url)) {
     product: join(workspace, 'product'), shellBuild: join(workspace, 'shell'),
     electronRuntime: join(workspace, 'electron/runtime'), node: inputs.node,
     output: candidate, version: source.version, dataLayout: 'installed',
+    installedUpdateURL: values['installed-update-url'] ?? '',
   })
   await writeJSON(join(output, 'installed-candidate-receipt.json'), await installedCandidateReceipt(candidate, source))
 }

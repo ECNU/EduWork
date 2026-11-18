@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { desktopAppPackage, installedUpdateFeed } from '../../dsh-electron/scripts/assemble-windows.mjs'
+import { desktopAppPackage, installedUpdateFeed, installedUpdateYAML } from '../../dsh-electron/scripts/assemble-windows.mjs'
 import { installerInclude, installerProject, packWindowsInstaller, verifyInstalledCandidate } from '../pack-windows-installer.mjs'
 
 const version = '0.4.13-dev.20261116.1'
@@ -23,6 +23,22 @@ test('installed update metadata uses the same GitHub repository as the installer
   const { config } = installerProject({ desktop: { ...desktop, updates }, release, electronVersion: '44.0.0' })
   assert.deepEqual(config.publish, installedUpdateFeed(updates))
   assert.equal(config.nsis.differentialPackage, true)
+})
+
+test('installed HTTPS acceptance source matches app-update.yml and installer publish metadata', () => {
+  assert.equal(installedUpdateFeed(undefined), null)
+  assert.equal(installedUpdateYAML(installedUpdateFeed({ provider: 'github', repository: 'ecnu/EduWork' })),
+    'provider: github\nowner: "ecnu"\nrepo: "EduWork"\n')
+  const updates = { provider: 'generic', url: 'https://localhost:18443' }
+  const feed = installedUpdateFeed(updates)
+  assert.deepEqual(feed, { provider: 'generic', url: 'https://localhost:18443' })
+  assert.equal(installedUpdateYAML(feed), 'provider: generic\nurl: "https://localhost:18443"\n')
+  const { config } = installerProject({ desktop: { ...desktop, updates }, release, electronVersion: '44.0.0' })
+  assert.deepEqual(config.publish, feed)
+  assert.equal(config.nsis.differentialPackage, true)
+  for (const url of ['http://localhost:18443', 'https://user:secret@example.test']) {
+    assert.throws(() => installedUpdateFeed({ provider: 'generic', url }), /HTTPS/)
+  }
 })
 
 test('installed app manifest carries the product version and keeps the DSH version', () => {

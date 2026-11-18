@@ -73,6 +73,11 @@ export function desktopAppPackage({ identity, version, dataLayout = 'portable' }
 }
 
 export function installedUpdateFeed(updates) {
+  if (updates?.provider === 'generic') {
+    const url = new URL(updates.url)
+    if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Installed generic update URL must be HTTPS')
+    return { provider: 'generic', url: url.href.replace(/\/$/, '') }
+  }
   if (updates?.provider !== 'github') return null
   if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(updates.repository ?? '')) {
     throw new Error('Installed GitHub update repository must be owner/repo')
@@ -82,6 +87,7 @@ export function installedUpdateFeed(updates) {
 }
 
 export function installedUpdateYAML(feed) {
+  if (feed.provider === 'generic') return `provider: generic\nurl: ${JSON.stringify(feed.url)}\n`
   return `provider: github\nowner: ${JSON.stringify(feed.owner)}\nrepo: ${JSON.stringify(feed.repo)}\n`
 }
 
@@ -93,12 +99,19 @@ export async function assembleWindows({
   version,
   node = process.execPath,
   updateManifestURL = '',
+  installedUpdateURL = '',
   updateDefaultPolicy = '',
   dataLayout = 'portable',
 } = {}) {
   if (!updateDefaultPolicy) updateDefaultPolicy = desktopVersion(version).channel
   if (!['stable', 'development'].includes(updateDefaultPolicy)) throw new Error('Update policy must be stable or development')
   if (!['portable', 'installed'].includes(dataLayout)) throw new Error('Data layout must be portable or installed')
+  if (installedUpdateURL) {
+    let url
+    try { url = new URL(installedUpdateURL) } catch { throw new Error('Installed update URL must be HTTPS') }
+    if (dataLayout !== 'installed' || url.protocol !== 'https:' || url.username || url.password) throw new Error('Installed update URL must be HTTPS and use the installed layout')
+    installedUpdateURL = url.href.replace(/\/$/, '')
+  }
   if (!await isFile(join(electronRuntime, 'electron.exe'))) {
     throw new Error('ElectronRuntime must point to the extracted runtime containing electron.exe, not its cache parent')
   }
@@ -172,9 +185,12 @@ export async function assembleWindows({
     config.updateChannel = 'disabled-candidate'
   }
   if (dataLayout === 'installed') {
-    const feed = config.sourceAlpha ? null : installedUpdateFeed(config.updates)
+    const feed = config.sourceAlpha ? null : installedUpdateURL
+      ? { provider: 'generic', url: installedUpdateURL }
+      : installedUpdateFeed(config.updates)
     config.dataLayout = 'installed'
-    if (!feed) config.updates = { provider: 'disabled', defaultPolicy: config.updates.defaultPolicy }
+    if (feed?.provider === 'generic') config.updates = { ...feed, defaultPolicy: config.updates.defaultPolicy }
+    else if (feed?.provider !== 'github') config.updates = { provider: 'disabled', defaultPolicy: config.updates.defaultPolicy }
     config.updateChannel = feed ? 'github' : 'disabled-candidate'
     if (feed) await writeText(join(output, 'resources/app-update.yml'), installedUpdateYAML(feed), { trailingNewline: false })
   }
@@ -236,6 +252,7 @@ if (isMainModule(import.meta.url)) {
       version: { type: 'string' },
       node: { type: 'string' },
       'update-manifest-url': { type: 'string' },
+      'installed-update-url': { type: 'string' },
       'update-default-policy': { type: 'string' },
       'data-layout': { type: 'string' },
     },
@@ -251,6 +268,7 @@ if (isMainModule(import.meta.url)) {
     version: values.version,
     node: values.node ?? process.execPath,
     updateManifestURL: values['update-manifest-url'] ?? '',
+    installedUpdateURL: values['installed-update-url'] ?? '',
     updateDefaultPolicy: values['update-default-policy'] ?? '',
     dataLayout: values['data-layout'] ?? 'portable',
   })
