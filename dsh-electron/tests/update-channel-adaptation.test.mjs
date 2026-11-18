@@ -20,3 +20,30 @@ test('Windows channel adaptation uses the release metadata names without permitt
     assert.deepEqual([updater.selected, updater.allowPrerelease, updater.allowDowngrade], [metadata, allowPrerelease, false])
   }
 })
+
+test('the upstream update coordinator passes a cancellation token to downloads and cancels it on dispose', async () => {
+  const file = 'apps/desktop/src/update-coordinator.ts'
+  const upstream = `import { gt, valid } from 'semver'
+class DesktopUpdateCoordinator {
+  private disposed = false
+  private downloadOperation: Promise<DesktopUpdateState> | undefined
+  private installOperation: Promise<DesktopUpdateState> | undefined
+  private readonly updater = { downloadUpdate: async () => {}, off: () => {} }
+  private readonly onProgress = () => {}
+  async download() {
+    this.installOperation ??= Promise.resolve().then(async () => {
+      await this.updater.downloadUpdate()
+      this.installOperation = undefined
+    })
+    return this.installOperation
+  }
+  dispose(): void {
+    this.disposed = true
+    this.updater.off('download-progress', this.onProgress)
+  }
+}`
+  const source = stripTypeScriptTypes(adaptNativeDesktopSource(file, upstream))
+  assert.match(source, /CancellationToken/)
+  assert.match(source, /downloadUpdate\(this\.downloadCancellation\)/)
+  assert.match(source, /this\.downloadCancellation\?\.cancel\(\)/)
+})

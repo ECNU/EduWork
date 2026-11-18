@@ -60,5 +60,11 @@ export ${source.slice(start, end)}
     replace('updater.channel = channel', "updater.channel = channel === 'stable' ? 'latest' : 'dev'")
     replace('updater.allowPrerelease = true', "updater.allowPrerelease = channel === 'nightly'")
   }
+  if (file === 'apps/desktop/src/update-coordinator.ts') {
+    replace("import { gt, valid } from 'semver'", "import { CancellationToken } from 'builder-util-runtime'\nimport { gt, valid } from 'semver'")
+    replace('  private installOperation: Promise<DesktopUpdateState> | undefined', '  private installOperation: Promise<DesktopUpdateState> | undefined\n  private downloadCancellation: CancellationToken | undefined')
+    replace('await this.updater.downloadUpdate()', 'this.downloadCancellation = new CancellationToken()\n        await this.updater.downloadUpdate(this.downloadCancellation)\n        this.downloadCancellation = undefined')
+    replace('    this.disposed = true\n    this.updater.off(\'download-progress\', this.onProgress)', '    this.disposed = true\n    this.downloadCancellation?.cancel()\n    this.updater.off(\'download-progress\', this.onProgress)')
+  }
   return source
 }

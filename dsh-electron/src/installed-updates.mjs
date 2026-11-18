@@ -15,13 +15,13 @@ export function startInstalledUpdates({ app, resourcesPath, version, policy, onP
     await stopBeforeInstall()
     return true
   }, undefined, enabled, () => version, undefined, policy === 'development' ? 'nightly' : 'stable')
+  let downloadOperation
   const status = () => {
     const state = coordinator.state
     const mapped = { idle: 'idle', checking: 'checking', available: 'available', downloading: 'downloading',
       verifying: 'verifying', installing: 'applying', ready: 'ready', error: 'error' }[state.phase]
     return { shell: 'electron', version, phase: state.phase, message: state.message,
       update: { enabled: enabled(), state: mapped, policy, latestVersion: state.version, percent: state.percent,
-        downloadedBytes: state.percent, totalBytes: state.percent === undefined ? undefined : 100,
         failedOperation: state.failedOperation, error: state.phase === 'error' ? state.message : undefined } }
   }
   return {
@@ -32,7 +32,10 @@ export function startInstalledUpdates({ app, resourcesPath, version, policy, onP
       else if (action === 'download-update') {
         const state = coordinator.state
         if (!state.version) throw new Error('尚无可下载的更新')
-        await coordinator.download(state.version)
+        downloadOperation = coordinator.download(state.version)
+        void downloadOperation.finally(() => { downloadOperation = undefined }).catch(() => {})
+        await Promise.resolve()
+        return status()
       } else if (action === 'install-update') {
         await coordinator.install(coordinator.state.version)
       } else if (action === 'use-stable-updates' || action === 'use-development-updates') {
@@ -42,6 +45,13 @@ export function startInstalledUpdates({ app, resourcesPath, version, policy, onP
       } else throw new Error('不支持此 Windows 安装版更新操作')
       return status()
     },
-    async close() { coordinator.dispose() },
+    async close() {
+      coordinator.dispose()
+      if (downloadOperation) {
+        let timer
+        await Promise.race([downloadOperation.catch(() => {}), new Promise(resolve => { timer = setTimeout(resolve, 2000) })])
+        clearTimeout(timer)
+      }
+    },
   }
 }
