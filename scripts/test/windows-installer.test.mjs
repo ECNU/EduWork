@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { desktopAppPackage, installedUpdateFeed, installedUpdateYAML } from '../../dsh-electron/scripts/assemble-windows.mjs'
+import { desktopAppPackage, installedUpdateCacheDirName, installedUpdateFeed, installedUpdateYAML } from '../../dsh-electron/scripts/assemble-windows.mjs'
 import { installerInclude, installerProject, packWindowsInstaller, verifyInstalledCandidate } from '../pack-windows-installer.mjs'
 
 const version = '0.4.13-dev.20261116.1'
@@ -20,8 +20,10 @@ test('installed update metadata uses the same GitHub repository as the installer
   assert.deepEqual(installedUpdateFeed(updates), { provider: 'github', owner: 'ecnu', repo: 'EduWork' })
   assert.equal(installedUpdateFeed({ provider: 'static', manifestURL: 'https://example.test/update.json' }), null)
   assert.throws(() => installedUpdateFeed({ provider: 'github', repository: 'bad/repo\npublisherName: override' }), /owner\/repo/)
-  const { config } = installerProject({ desktop: { ...desktop, updates }, release, electronVersion: '44.0.0' })
+  const project = installerProject({ desktop: { ...desktop, updates }, release, electronVersion: '44.0.0' })
+  const { config } = project
   assert.deepEqual(config.publish, { ...installedUpdateFeed(updates), channel: 'dev' })
+  assert.equal(project.packageJSON.name, installedUpdateCacheDirName(desktop.distribution))
   const stable = installerProject({ desktop: { ...desktop, updates }, release: { ...release, version: '0.4.13' }, electronVersion: '44.0.0' })
   assert.equal(stable.config.publish.channel, 'latest')
   assert.equal(config.nsis.differentialPackage, true)
@@ -29,12 +31,12 @@ test('installed update metadata uses the same GitHub repository as the installer
 
 test('installed HTTPS acceptance source matches app-update.yml and installer publish metadata', () => {
   assert.equal(installedUpdateFeed(undefined), null)
-  assert.equal(installedUpdateYAML(installedUpdateFeed({ provider: 'github', repository: 'ecnu/EduWork' })),
-    'provider: github\nowner: "ecnu"\nrepo: "EduWork"\n')
+  assert.equal(installedUpdateYAML(installedUpdateFeed({ provider: 'github', repository: 'ecnu/EduWork' }), desktop.distribution),
+    'provider: github\nowner: "ecnu"\nrepo: "EduWork"\nupdaterCacheDirName: "eduwork-installer-eduwork"\n')
   const updates = { provider: 'generic', url: 'https://localhost:18443' }
   const feed = installedUpdateFeed(updates)
   assert.deepEqual(feed, { provider: 'generic', url: 'https://localhost:18443' })
-  assert.equal(installedUpdateYAML(feed), 'provider: generic\nurl: "https://localhost:18443"\n')
+  assert.equal(installedUpdateYAML(feed, desktop.distribution), 'provider: generic\nurl: "https://localhost:18443"\nupdaterCacheDirName: "eduwork-installer-eduwork"\n')
   const { config } = installerProject({ desktop: { ...desktop, updates }, release, electronVersion: '44.0.0' })
   assert.deepEqual(config.publish, { ...feed, channel: 'dev' })
   assert.equal(config.nsis.differentialPackage, true)
@@ -148,7 +150,7 @@ test('installer packaging reads the version-specific channel artifact', async t 
     const updates = { provider: 'github', repository: 'ecnu/EduWork' }
     const candidateRelease = { ...release, version: releaseVersion }
     await writeFile(installedReceipt, JSON.stringify({ ...receipt, version: releaseVersion }))
-    await writeFile(join(resources, 'app-update.yml'), installedUpdateYAML(installedUpdateFeed(updates)))
+    await writeFile(join(resources, 'app-update.yml'), installedUpdateYAML(installedUpdateFeed(updates), desktop.distribution))
     await writeFile(join(resources, 'app/eduwork.desktop.json'), JSON.stringify({ ...desktop, updates,
       productVersion: releaseVersion, dataLayout: 'installed' }))
     await writeFile(join(resources, 'app/package.json'), JSON.stringify({ version: releaseVersion }))

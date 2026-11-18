@@ -86,9 +86,15 @@ export function installedUpdateFeed(updates) {
   return { provider: 'github', owner, repo }
 }
 
-export function installedUpdateYAML(feed) {
-  if (feed.provider === 'generic') return `provider: generic\nurl: ${JSON.stringify(feed.url)}\n`
-  return `provider: github\nowner: ${JSON.stringify(feed.owner)}\nrepo: ${JSON.stringify(feed.repo)}\n`
+export function installedUpdateCacheDirName(distribution) {
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(distribution ?? '')) throw new Error('Installed distribution identifier is invalid')
+  return `eduwork-installer-${distribution}`
+}
+
+export function installedUpdateYAML(feed, distribution) {
+  const cacheDirName = installedUpdateCacheDirName(distribution)
+  if (feed.provider === 'generic') return `provider: generic\nurl: ${JSON.stringify(feed.url)}\nupdaterCacheDirName: ${JSON.stringify(cacheDirName)}\n`
+  return `provider: github\nowner: ${JSON.stringify(feed.owner)}\nrepo: ${JSON.stringify(feed.repo)}\nupdaterCacheDirName: ${JSON.stringify(cacheDirName)}\n`
 }
 
 export async function assembleWindows({
@@ -192,7 +198,7 @@ export async function assembleWindows({
     if (feed?.provider === 'generic') config.updates = { ...feed, defaultPolicy: config.updates.defaultPolicy }
     else if (feed?.provider !== 'github') config.updates = { provider: 'disabled', defaultPolicy: config.updates.defaultPolicy }
     config.updateChannel = feed ? 'github' : 'disabled-candidate'
-    if (feed) await writeText(join(output, 'resources/app-update.yml'), installedUpdateYAML(feed), { trailingNewline: false })
+    if (feed) await writeText(join(output, 'resources/app-update.yml'), installedUpdateYAML(feed, identity.distribution), { trailingNewline: false })
   }
   await writeJSON(join(app, 'eduwork.desktop.json'), config)
 

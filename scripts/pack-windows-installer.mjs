@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
-import { installedUpdateFeed, installedUpdateYAML } from '../dsh-electron/scripts/assemble-windows.mjs'
+import { installedUpdateCacheDirName, installedUpdateFeed, installedUpdateYAML } from '../dsh-electron/scripts/assemble-windows.mjs'
 import { ensureDir, fullPath, isFile, isMainModule, pathExists, readJSON, runNode, writeJSON } from './lib/build-util.mjs'
 
 const EXECUTABLE = 'EduWork-Electron.exe'
@@ -68,7 +68,7 @@ export function installerProject({ desktop, release, electronVersion, artifactsD
   const publish = feed?.provider === 'generic' ? { provider: 'generic', url: feed.url, channel } : feed ? { ...feed, channel } : null
   return {
     packageJSON: {
-      name: `eduwork-installer-${desktop.distribution}`,
+      name: installedUpdateCacheDirName(desktop.distribution),
       productName: desktop.productName,
       version: release.version,
       description: 'EduWork desktop application',
@@ -131,7 +131,7 @@ export async function packWindowsInstaller({ candidate, output, installedReceipt
   const project = installerProject({ desktop, release, electronVersion, artifactsDir: artifacts, icon, includePath })
   const updateConfig = join(candidate, 'resources/app-update.yml')
   if (project.config.publish) {
-    requireMatch(await readFile(updateConfig, 'utf8') === installedUpdateYAML(project.config.publish), 'Packaged update source differs from installer configuration')
+    requireMatch(await readFile(updateConfig, 'utf8') === installedUpdateYAML(project.config.publish, desktop.distribution), 'Packaged update source differs from installer configuration')
   } else {
     requireMatch(!await pathExists(updateConfig), 'Installer without a publish source must not declare an update feed')
   }
