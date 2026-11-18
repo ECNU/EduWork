@@ -7,6 +7,7 @@ export class DesktopLifecycle {
   bridges = new Set()
   failures = []
   shutdown = undefined
+  hostStop = undefined
   check() { if (this.closing) throw new Error('Desktop is shutting down') }
   prepare(callback) {
     this.check()
@@ -17,6 +18,18 @@ export class DesktopLifecycle {
   }
   trackHost(host) { this.check(); this.hosts.add(host) }
   trackBridge(bridge) { this.bridges.add(bridge); this.check() }
+  stopHosts() {
+    if (this.hostStop) return this.hostStop
+    this.hostStop = this.stopHostsOnce()
+    return this.hostStop
+  }
+  async stopHostsOnce() {
+    while (this.preparations.size) await Promise.allSettled([...this.preparations])
+    const results = await Promise.allSettled([...this.hosts].map(async host => host.stop()))
+    const failures = results.filter(result => result.status === 'rejected').map(result => result.reason)
+    this.failures.push(...failures)
+    if (failures.length) throw new AggregateError(failures, 'Desktop Host could not be stopped')
+  }
   close() {
     if (this.shutdown) return this.shutdown
     this.closing = true
@@ -24,8 +37,7 @@ export class DesktopLifecycle {
       const collect = results => {
         for (const result of results) if (result.status === 'rejected') this.failures.push(result.reason)
       }
-      while (this.preparations.size) await Promise.allSettled([...this.preparations])
-      collect(await Promise.allSettled([...this.hosts].map(host => host.stop())))
+      try { await this.stopHosts() } catch {}
       collect(await Promise.allSettled([...this.bridges].map(bridge => bridge.close())))
     })()
     return this.shutdown

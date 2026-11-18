@@ -51,7 +51,8 @@ async function closeBackend() {
 trackHost({ stop: closeBackend })
 const quit = new DesktopQuitConfirmation({ locale, inspect: () => backend.host?.inspectQuit(),
   show: options => dialog.showMessageBox(options), focus: () => { if (process.platform === 'darwin') app.focus({ steal: true }) } })
-setDesktopQuitGuard(() => recoveryExit || sessionEnding ? Promise.resolve(true) : quit.confirm())
+setDesktopQuitGuard(() => recoveryExit || sessionEnding ? Promise.resolve(true) : quit.confirm(),
+  error => reportWindowFailure(error, 'host'))
 const recovery = new DesktopFatalRecovery({
   messages: () => locale().messages,
   show: options => dialog.showMessageBox(options),

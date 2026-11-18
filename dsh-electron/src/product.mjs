@@ -23,6 +23,7 @@ import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
 import { startPortableUpdates, editablePortableUpdateConfiguration, resolveUpdateConfiguration } from './portable-updates.mjs'
 import { startMacSparkleUpdates, editableMacUpdateConfiguration } from './mac-sparkle-updates.mjs'
+import { startInstalledUpdates } from './installed-updates.mjs'
 import { softwareUpdateControl, updatesWhenEnabled } from './software-update-control.mjs'
 import { workbenchAction } from './workbench-support.mjs'
 import { desktopLogger } from './desktop-log.mjs'
@@ -80,16 +81,14 @@ const relaunchDesktop = configureDesktopRelaunch(app, process.platform === 'win3
 // Ownership applies only to this shell, not a detached updater's next launch.
 delete process.env.EDUWORK_LAUNCHER_RESTART
 let confirmQuit = async () => true
+let reportUpdateStopFailure
 const desktopExit = new DesktopExit({
   confirm: () => confirmQuit(),
-  close: async () => {
-    await directoryPicker.close()
-    await stopDesktopServices()
-  },
+  close: () => stopDesktopForExit(),
   relaunch: () => relaunchDesktop(process.argv.slice(1), updateCompleted),
   quit: () => app.quit(), failed: error => desktopHostLog(`[desktop:quit] ${error.message}\n`),
 })
-export function setDesktopQuitGuard(guard) { confirmQuit = guard }
+export function setDesktopQuitGuard(guard, onUpdateStopFailure) { confirmQuit = guard; reportUpdateStopFailure = onUpdateStopFailure }
 export function restartDesktop(options) {
   return desktopExit.restart(options)
 }
@@ -108,8 +107,17 @@ export function cancelDesktopStartup() {
   startupCancelled = true
   contentUpdates?.close()
 }
-export async function stopDesktopServices() {
-  void contentUpdates?.close()
+async function stopDesktopForExit(options) {
+  await directoryPicker.close()
+  await stopDesktopServices(options)
+}
+export async function stopDesktopServices({ beforeInstall = false } = {}) {
+  const stoppingContent = contentUpdates?.close()
+  if (beforeInstall) {
+    await stoppingContent
+    await lifecycle.stopHosts()
+    return
+  }
   let serviceFailure
   try { productUpdateObserver.dispose() } catch (error) { serviceFailure = error }
   try { await lifecycle.close() } catch (error) { serviceFailure ??= error }
@@ -262,7 +270,7 @@ async function prepareDesktop() {
     if (startupCancelled) throw new Error('Desktop preparation was cancelled')
   }
   check()
-  migrationLaunch = await readMigrationLaunch({root:paths.root,stateRoot:paths.userRoot,settings,argv:process.argv})
+  migrationLaunch = settings.dataLayout === 'installed' ? null : await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
   check()
   const appearance = startupAppearance()
   if (appearance.dock) app.dock.setIcon(appearance.dock)
@@ -326,11 +334,17 @@ async function prepareDesktop() {
   }
   const software = await softwareUpdateControl({dataRoot:paths.updateDataRoot,version:settings.productVersion,
     policy:contentUpdates.policy,defaultEnabled:user.updates.provider!=='disabled',
-    supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32',onPolicy:saveUpdatePolicy,
+    supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32' && (settings.dataLayout!=='installed' || existsSync(join(process.resourcesPath,'app-update.yml'))),onPolicy:saveUpdatePolicy,
     start:({policy,applyScheduled})=>process.platform==='darwin'
       ? startMacSparkleUpdates({appPath:app.getAppPath(),version:settings.productVersion,enabled:true,
         feeds:effectiveUpdateDefaults.macFeeds,policy,onPolicy:saveUpdatePolicy})
-      : startPortableUpdates({root:paths.root,stateRoot:paths.userRoot,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
+      : settings.dataLayout==='installed'
+        ? import('./update-coordinator.ts').then(({ DesktopUpdateCoordinator }) => startInstalledUpdates({
+          app, resourcesPath:process.resourcesPath, version:settings.productVersion, policy, onPolicy:saveUpdatePolicy,
+          Coordinator:DesktopUpdateCoordinator,
+          stopBeforeInstall:()=>desktopExit.prepareInstaller(()=>stopDesktopForExit({beforeInstall:true}),reportUpdateStopFailure),
+        }))
+      : startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
         version:settings.productVersion,distribution:settings.distribution,applyScheduled,onQuit:()=>desktopExit.handoff()})})
   softwareUpdates = software
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,

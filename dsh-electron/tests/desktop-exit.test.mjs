@@ -2,6 +2,46 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { DesktopExit } from '../src/desktop-exit.mjs'
 import { updateCoordinator } from '../src/update-coordinator.mjs'
+import { DesktopLifecycle } from '../src/lifecycle.mjs'
+
+test('installed update stops the Host before installer handoff without awaiting its own queue', { timeout: 500 }, async () => {
+  const events = [], lifecycle = new DesktopLifecycle()
+  let operation, quitRequest
+  const exit = new DesktopExit({ confirm: assert.fail, close: () => lifecycle.close(), relaunch: assert.fail,
+    quit() {}, failed: assert.fail })
+  lifecycle.trackHost({ async stop() { events.push('host stopped') } })
+  lifecycle.trackBridge({ async close() { await operation; events.push('update bridge closed') } })
+  const coordinator = updateCoordinator({ beforeInstall: async () => { events.push('confirm'); return true },
+    content: { snapshot: () => ({}) }, software: { async action() {
+      await exit.prepareInstaller(() => lifecycle.stopHosts(), assert.fail)
+      assert.equal(exit.installerOwnsQuit, true)
+      events.push('quitAndInstall')
+      quitRequest = exit.request()
+      return {}
+    } } })
+  operation = coordinator.action('install-update')
+  await operation
+  await quitRequest
+  assert.deepEqual(events, ['confirm', 'host stopped', 'quitAndInstall', 'update bridge closed'])
+})
+
+test('failed Host stop reports recovery and never hands off to the installer', async () => {
+  const error = Error('Synthetic Host stop failure'), failures = []
+  const exit = new DesktopExit({ confirm: assert.fail, close: assert.fail, relaunch: assert.fail, quit: assert.fail,
+    failed: failure => failures.push(failure) })
+  const recoveries = []
+  const lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({ async stop() { throw error } })
+  const install = async () => {
+    await exit.prepareInstaller(() => lifecycle.stopHosts(), failure => recoveries.push(failure))
+    assert.fail('quitAndInstall must not run')
+  }
+  await assert.rejects(install(), { errors: [error] })
+  assert.deepEqual(recoveries, [exit.failure])
+  assert.deepEqual(failures, [exit.failure])
+  assert.equal(exit.installerOwnsQuit, false)
+  assert.equal(exit.complete, false)
+})
 
 test('immediate teardown defers the final quit beyond the native event microtasks', async () => {
   let closed, quit = false
