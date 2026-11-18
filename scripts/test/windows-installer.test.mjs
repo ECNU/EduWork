@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { desktopAppPackage, installedUpdateFeed, installedUpdateYAML } from '../../dsh-electron/scripts/assemble-windows.mjs'
@@ -21,7 +21,9 @@ test('installed update metadata uses the same GitHub repository as the installer
   assert.equal(installedUpdateFeed({ provider: 'static', manifestURL: 'https://example.test/update.json' }), null)
   assert.throws(() => installedUpdateFeed({ provider: 'github', repository: 'bad/repo\npublisherName: override' }), /owner\/repo/)
   const { config } = installerProject({ desktop: { ...desktop, updates }, release, electronVersion: '44.0.0' })
-  assert.deepEqual(config.publish, installedUpdateFeed(updates))
+  assert.deepEqual(config.publish, { ...installedUpdateFeed(updates), channel: 'dev' })
+  const stable = installerProject({ desktop: { ...desktop, updates }, release: { ...release, version: '0.4.13' }, electronVersion: '44.0.0' })
+  assert.equal(stable.config.publish.channel, 'latest')
   assert.equal(config.nsis.differentialPackage, true)
 })
 
@@ -34,7 +36,7 @@ test('installed HTTPS acceptance source matches app-update.yml and installer pub
   assert.deepEqual(feed, { provider: 'generic', url: 'https://localhost:18443' })
   assert.equal(installedUpdateYAML(feed), 'provider: generic\nurl: "https://localhost:18443"\n')
   const { config } = installerProject({ desktop: { ...desktop, updates }, release, electronVersion: '44.0.0' })
-  assert.deepEqual(config.publish, feed)
+  assert.deepEqual(config.publish, { ...feed, channel: 'dev' })
   assert.equal(config.nsis.differentialPackage, true)
   for (const url of ['http://localhost:18443', 'https://user:secret@example.test']) {
     assert.throws(() => installedUpdateFeed({ provider: 'generic', url }), /HTTPS/)
@@ -116,4 +118,46 @@ test('installer packaging requires a receipt and never reuses an output director
   t.after(() => rm(root, { recursive: true, force: true }))
   await assert.rejects(packWindowsInstaller({ candidate: root, output: join(root, 'out'), installedReceipt: '', electronBuilderCli: 'x', icon: 'x' }), /receipt is required/)
   await assert.rejects(packWindowsInstaller({ candidate: root, output: root, installedReceipt: 'receipt.json', electronBuilderCli: 'x', icon: 'x' }), /must be a new directory/)
+})
+
+test('installer packaging reads the version-specific channel artifact', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-installer-channel-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const candidate = join(root, 'candidate'), resources = join(candidate, 'resources'), app = join(resources, 'app')
+  await mkdir(app, { recursive: true })
+  await writeFile(join(candidate, 'EduWork-Electron.exe'), 'candidate')
+  await writeFile(join(candidate, 'version'), '44.0.0\n')
+  const icon = join(root, 'icon.ico'), installedReceipt = join(root, 'installed-receipt.json')
+  const electronBuilderCli = join(root, 'mock-electron-builder.mjs')
+  await writeFile(icon, 'icon')
+  await writeFile(electronBuilderCli, `
+    import { mkdir, readFile, writeFile } from 'node:fs/promises'
+    import { basename, join } from 'node:path'
+    const args=process.argv.slice(2), staging=args[args.indexOf('--projectDir')+1]
+    const config=JSON.parse(await readFile(args[args.indexOf('--config')+1],'utf8'))
+    const pkg=JSON.parse(await readFile(join(staging,'package.json'),'utf8'))
+    const artifacts=config.directories.output
+    await mkdir(artifacts,{recursive:true})
+    const installer=\`${'${pkg.productName}'}-Setup-\${pkg.version}-x64.exe\`
+    await writeFile(join(artifacts,installer),'installer')
+    await writeFile(join(artifacts,\`${'${config.publish.channel}'}\`.concat('.yml')),'channel')
+    await writeFile(join(artifacts,installer+'.blockmap'),'blockmap')
+  `)
+
+  for (const [releaseVersion, channel] of [['0.4.13-dev.20261116.1', 'dev'], ['0.4.13', 'latest']]) {
+    const updates = { provider: 'github', repository: 'ecnu/EduWork' }
+    const candidateRelease = { ...release, version: releaseVersion }
+    await writeFile(installedReceipt, JSON.stringify({ ...receipt, version: releaseVersion }))
+    await writeFile(join(resources, 'app-update.yml'), installedUpdateYAML(installedUpdateFeed(updates)))
+    await writeFile(join(resources, 'app/eduwork.desktop.json'), JSON.stringify({ ...desktop, updates,
+      productVersion: releaseVersion, dataLayout: 'installed' }))
+    await writeFile(join(resources, 'app/package.json'), JSON.stringify({ version: releaseVersion }))
+    await writeFile(join(candidate, 'release.json'), JSON.stringify(candidateRelease))
+    const output = join(root, channel)
+    const result = await packWindowsInstaller({ candidate, output, installedReceipt, electronBuilderCli, icon })
+    assert.deepEqual(result.updateArtifacts.map(item => item.file), [
+      `${channel}.yml`, `EduWork-Setup-${releaseVersion}-x64.exe.blockmap`,
+    ])
+    for (const artifact of result.updateArtifacts) assert.ok((await readFile(join(output, 'artifacts', artifact.file))).length > 0)
+  }
 })

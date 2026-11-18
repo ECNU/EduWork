@@ -64,7 +64,8 @@ export function installerInclude(desktop) {
 export function installerProject({ desktop, release, electronVersion, artifactsDir, icon, includePath }) {
   requireMatch(/^\d+\.\d+\.\d+/.test(electronVersion ?? ''), 'Electron runtime version is invalid')
   const feed = installedUpdateFeed(desktop.updates)
-  const publish = feed?.provider === 'generic' ? { provider: 'generic', url: feed.url } : feed
+  const channel = release.version.includes('-dev.') ? 'dev' : 'latest'
+  const publish = feed?.provider === 'generic' ? { provider: 'generic', url: feed.url, channel } : feed ? { ...feed, channel } : null
   return {
     packageJSON: {
       name: `eduwork-installer-${desktop.distribution}`,
@@ -150,8 +151,7 @@ export async function packWindowsInstaller({ candidate, output, installedReceipt
   await writeFile(`${artifact}.sha256`, `${sha256} *${expected}\n`)
   const updateArtifacts = []
   if (project.config.publish) {
-    const channel = release.version.includes('-dev.') ? 'dev' : 'latest'
-    for (const file of [`${channel}.yml`, `${expected}.blockmap`]) {
+    for (const file of [`${project.config.publish.channel}.yml`, `${expected}.blockmap`]) {
       const contents = await readFile(join(artifacts, file))
       requireMatch(contents.length > 0, `Installer update artifact is empty: ${file}`)
       updateArtifacts.push({ file, bytes: contents.length, sha256: createHash('sha256').update(contents).digest('hex') })
