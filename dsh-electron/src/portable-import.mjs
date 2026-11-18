@@ -174,7 +174,6 @@ export async function buildCopyPlan(source, target) {
   for (const rel of ['configuration/state.json', 'configuration/eduwork.previous.jsonc', 'state/update-preferences.json', 'state/update-channel-040.json', 'state/software-update-preferences.json']) {
     if (await exists(join(dataDir, rel))) await addTree(dataDir, 'data', rel)
   }
-  if (await exists(join(dataDir, 'state/updates'))) await addTree(dataDir, 'data', 'state/updates')
   const moves = await planWorkspaceMoves({ registry: await readRegistry(source), source, target })
   for (const move of moves) {
     const real = await canonical(move.oldPath)

@@ -49,6 +49,7 @@ async function fixture() {
   await put('config/eduwork.jsonc', '{\n  "schemaVersion": 1\n}\n')
   await put('data/configuration/state.json', '{"initialized":true}')
   await put('data/state/update-preferences.json', '{"automaticUpdates":false}')
+  await put('data/state/update-channel-040.json', '{}')
   await put('data/state/software-update-preferences.json', '{"schemaVersion":1,"enabled":false}\n')
   await put('data/state/updates/transactions/0.4.13/health.ok', 'ok\n')
   await put('sample-workspace-internal/README.md', '# internal workspace\n')
@@ -84,6 +85,8 @@ test('projectKey matches the runtime encoding observed in the shipped sample', (
 test('normal import copies the allowlist, remaps the internal workspace and never touches the source', async () => {
   const { base, source, target, internalPath, externalPath } = await fixture()
   try {
+    const pendingUpdate = 'data/state/updates/pending-update.json'
+    await writeFile(join(source, pendingUpdate), JSON.stringify({ installDir: source }))
     const before = await treeSnapshot(source)
     const progress = []
     const receipt = await run({ sourceRoot: source, targetRoot: target, onProgress: update => progress.push(update) })
@@ -98,7 +101,10 @@ test('normal import copies the allowlist, remaps the internal workspace and neve
     assert.equal(await read('data/eduwork-electron/browser/credentials.encrypted'), 'v10-encrypted-bytes')
     assert.equal(await read('config/eduwork.jsonc'), '{\n  "schemaVersion": 1\n}\n')
     assert.equal(await read('data/state/update-preferences.json'), '{"automaticUpdates":false}')
+    assert.equal(await read('data/state/update-channel-040.json'), '{}')
     assert.equal(await read('data/state/software-update-preferences.json'), '{"schemaVersion":1,"enabled":false}\n')
+    await assert.rejects(lstat(join(target, pendingUpdate)), { code: 'ENOENT' })
+    await assert.rejects(lstat(join(target, 'data/state/updates')), { code: 'ENOENT' })
     assert.equal(await read('data/configuration/state.json'), '{"initialized":true}')
     assert.equal(await read('workspaces/sample-workspace-internal/README.md'), '# internal workspace\n')
     for (const absent of ['data/eduwork-electron/dsh/logs', 'data/eduwork-electron/dsh/profiles/desktop-017/cordis.yml', 'data/eduwork-electron/dsh/profiles/desktop-017/pnpm-lock.yaml', 'data/eduwork-electron/browser/Cache', 'data/eduwork-electron/browser/GPUCache']) {
