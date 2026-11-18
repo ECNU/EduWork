@@ -7,6 +7,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import { JobId, type JobSpec } from '@deepseek-ai/dsh-jobs'
 import { LiteratureError, type BibtexResult, type FulltextResult, type LiteratureRecord, type LiteratureSearchResult } from '@eduwork/dsh-literature/core'
 import * as tool from '../../src/tool/index.ts'
+import { executeTool } from './execute.ts'
 
 const signal = new AbortController().signal
 
@@ -90,7 +91,7 @@ function text(result: { content: { type: string; text?: string }[] }): string {
 
 let counter = 0
 async function execute(ctx: Context, name: string, args: unknown, execAgent: Agent = agent()) {
-  return ctx.tools.execute({ signal, callId: `lit-${++counter}`, name, arguments: args, agent: execAgent })
+  return executeTool(ctx, { signal, callId: `lit-${++counter}`, name, arguments: args, agent: execAgent })
 }
 
 describe('dsh-tool-literature', () => {
@@ -356,7 +357,7 @@ describe('dsh-tool-literature', () => {
       { resolve: async () => ({ displayPath: '/ws/x' }), writeText: async () => ({ operation: 'create' }) },
       { getProvider: () => ({ name: 'spawn' }), start: async () => settledRun({ pdfUrl: null }) },
     )
-    const result = await ctx.tools.execute({
+    const result = await executeTool(ctx, {
       signal,
       callId: `lit-${++counter}`,
       name: 'literature_fulltext',
@@ -427,7 +428,7 @@ describe('dsh-tool-literature', () => {
       undefined,
       { start: vi.fn(() => JobId('literature-fulltext-1')) },
     )
-    const result = await ctx.tools.execute({
+    const result = await executeTool(ctx, {
       signal,
       callId: `lit-${++counter}`,
       name: 'literature_fulltext',

@@ -29,7 +29,9 @@ export class ReminderDelivery {
         events: [{ id: 'reminder', label: '日历提醒', level: 'info', requiresAction: false, actions: ['open'] }],
         onAction: ({ target }) => {
           const receipt = this.receipts.get(target.reminderId)
-          return this.active && receipt && !receipt.read && this.calendar.isSourceVisible(receipt.ref.source) ? target : false
+          if (!this.active || !receipt || receipt.read || !this.calendar.isSourceVisible(receipt.ref.source)) return false
+          if (!this.calendar.snapshot().events.some(event => event.uid === receipt.ref.uid && event.source === receipt.ref.source)) return false
+          return { reminderId: receipt.id, ref: { source: receipt.ref.source, uid: receipt.ref.uid } }
         },
       })
       this.notifications = handle
@@ -99,14 +101,16 @@ export class ReminderDelivery {
     })
   }
   inbox() {
-    const items = [...this.receipts.entries()].map(([, { nativeSent, ...receipt }]) => receipt)
+    const items = [...this.receipts.entries()]
+      .filter(([, receipt]) => this.calendar.isSourceVisible(receipt.ref.source))
+      .map(([, { nativeSent, ...receipt }]) => receipt)
       .sort((a, b) => b.deliveredAt.localeCompare(a.deliveredAt) || a.id.localeCompare(b.id))
     return { channel: this.channel, unread: items.filter(item => !item.read).length, items: items.slice(0, 100) }
   }
   ack(id) {
     return this.enqueue(async () => {
       const receipt = this.receipts.get(id)
-      if (!receipt) return { updated: false }
+      if (!receipt || !this.calendar.isSourceVisible(receipt.ref.source)) return { updated: false }
       await this.receipts.put(id, { ...receipt, read: true })
       this.notifications?.withdraw(id)
       this.calendar.invalidate({ domain: 'calendar_reminders' })

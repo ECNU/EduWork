@@ -45,6 +45,21 @@ export function inspectArchive(bytes, selected, expectedVersion) {
     assert.equal(typeof entry, 'string', 'Review new conditional exports before publishing')
     assert.ok(files.has(entry.replace(/^\.\//, '')), `Missing packed export ${entry}`)
   }
+  const calendarSkills = {
+    'dsh-calendar': 'calendar-management',
+    'dsh-calendar-subscriptions': 'calendar-subscriptions',
+    'dsh-academic-calendar': 'academic-calendar',
+  }
+  if (calendarSkills[selected.id]) {
+    assert.ok(!manifest.private, 'Calendar package must be publishable')
+    for (const file of ['LICENSE', 'lib/index.js', 'lib/tools.js', `skills/${calendarSkills[selected.id]}/SKILL.md`]) {
+      assert.ok(files.has(file), `Missing calendar package file ${file}`)
+    }
+    if (selected.id === 'dsh-academic-calendar') {
+      assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml')
+      assert.ok(files.has('cordis.patch.yml'), 'Missing calendar bundle registration')
+    }
+  }
   if (selected.id === 'dsh-decision') {
     assert.ok(!manifest.private, 'Decision plugin archive must be publishable')
     assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', 'Missing decision plugin bundle')

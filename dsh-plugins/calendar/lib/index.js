@@ -16,11 +16,13 @@
 // descriptors point at.
 import { Service } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
-import { buildIcs, parseIcs } from './ics.js'
-import { SCHEMA_VERSION, seriesInstants, normalizeEvent, assertOrderedRecord, EventPatchSchema, patchEvent } from './model.js'
+import { buildIcs, eventForExport, parseIcs } from './ics.js'
+import { SCHEMA_VERSION, seriesInstants, normalizeEvent, assertOrderedRecord, EventPatchSchema, mergeRemarks, patchEvent } from './model.js'
+import { eventKey } from './keys.js'
 import { PersonalStore } from './personal.js'
 import { CalendarStore } from './store.js'
 import { SourceRegistry } from './sources.js'
+import { AnnotationRegistry } from './annotations.js'
 import { reminderPlan, bindReminderScheduler } from './reminders.js'
 import { ReminderDelivery } from './reminder-delivery.js'
 import { applySourceInput } from './typert-schemas.js'
@@ -59,7 +61,8 @@ export class CalendarService extends TypertRemoteService {
       const report = await this.store.applySource(applySourceInput.parse(batch), guard)
       if (guard.isCurrent()) await this.rememberSources()
       return report
-    }, () => this.invalidate())
+    }, () => this.invalidate(), (source, guard) => this.store.deleteCalendar(source, guard))
+    this.annotations = new AnnotationRegistry(() => this.invalidate())
     ctx.effect(() => async () => {
       this.lifetime.abort()
       this.reminderBinding?.dispose()
@@ -82,6 +85,21 @@ export class CalendarService extends TypertRemoteService {
 
   sourceStatuses() { return this.sources.statuses() }
 
+  /** Host-only: a data plugin supplies week labels and range bands for views. */
+  registerAnnotations(provider) { return this.annotations.register(provider) }
+
+  /** Week labels and range bands covering one range, merged from all providers. */
+  async annotationsFor(range) { return await this.annotations.annotationsFor(range) }
+
+  annotationChoices() { return this.annotations.choices() }
+
+  async selectAnnotations(input) {
+    const { group, id } = input
+    this.annotations.select(group, id)
+    await this.personal.domain.table('view_preferences').put(group, { group, provider: id })
+    return this.annotationChoices()
+  }
+
   /** Relative rules use the current occurrence time; fixed rules retain their own time. */
   reminderPlan(range) { return reminderPlan(this, range) }
 
@@ -99,6 +117,9 @@ export class CalendarService extends TypertRemoteService {
   async [Service.init]() {
     await this.store.open()
     await this.personal.open()
+    for (const [, preference] of this.personal.domain.table('view_preferences').entries()) {
+      this.annotations.selections.set(preference.group, preference.provider)
+    }
     for (const event of this.store.snapshot().events) await this.personal.rememberSource(event, true)
     this.reminderDelivery = new ReminderDelivery(this, this.ctx)
     await this.reminderDelivery.open()
@@ -176,13 +197,22 @@ export class CalendarService extends TypertRemoteService {
 
   /**
    * Export the records as calendar text.
-   * @param options - `{ name? }`, the calendar name written as `X-WR-CALNAME`.
+   * @param options - `name` sets `X-WR-CALNAME`. `includeRemarks` opts into exporting personal remarks.
    * @returns `{ text }`.
    */
   exportIcs(options = {}) {
-    const snapshot = this.snapshot()
+    const includeRemarks = options.includeRemarks === true
+    const remarks = new Map()
+    if (includeRemarks) for (const annotation of this.personal.list('source')) {
+      if (!annotation.remark) continue
+      const key = eventKey(annotation)
+      if (!remarks.has(key)) remarks.set(key, new Map())
+      remarks.get(key).set(annotation.originalStart, annotation.remark)
+    }
+    const events = this.snapshot().events.map(event =>
+      eventForExport(event, includeRemarks ? remarks.get(eventKey(event)) ?? new Map() : undefined))
     return {
-      text: buildIcs(snapshot, { name: options.name ?? '我的日历' }),
+      text: buildIcs({ events }, { name: options.name ?? '我的日历' }),
     }
   }
 
@@ -225,14 +255,21 @@ export class CalendarService extends TypertRemoteService {
       const existing = this.store.getEvent(input.uid, input.source)
       if (!existing) throw new Error(`event_not_found: ${input.uid}`)
       const eventPatch = { ...patch }
-      const privateRemark = existing.source !== 'manual' && patch.description !== undefined
-      if (privateRemark) delete eventPatch.description
+      const ref = { source: existing.source, uid: existing.uid }
+      const isManual = existing.source === 'manual'
+      const remark = input.remark ?? (isManual ? undefined : patch.description)
+      if (isManual && input.remark !== undefined) eventPatch.description = input.remark || null
+      if (!isManual) delete eventPatch.description
       // Validate all event changes before persisting either layer. A remark-only
       // edit never writes the source event, even when a sync is running.
       const record = patchEvent(existing, eventPatch)
+      if (isManual && input.remark !== undefined) await this.personal.consolidateRemark(ref, async legacy => {
+        const description = mergeRemarks(existing.description, legacy)
+        if (description !== (existing.description ?? '')) await this.store.commit({ ...existing, description })
+      })
       if (Object.keys(eventPatch).length) await this.store.commit(record)
-      if (privateRemark) await this.personal.patch({ source: existing.source, uid: existing.uid }, {
-        remark: { text: patch.description ?? '' },
+      if (!isManual && remark !== undefined) await this.personal.patch(ref, {
+        remark: { text: remark ?? '' },
       })
       return record
     })
@@ -578,7 +615,12 @@ Remote('sourceStatuses')(CalendarService.prototype.sourceStatuses, {
   addInitializer(initializer) { remoteInitializers.push(initializer) },
 })
 
-for (const name of ['reminders', 'ackReminder']) Remote(name)(CalendarService.prototype[name], {
+Remote('annotationsFor')(CalendarService.prototype.annotationsFor, {
+  kind: 'method', name: 'annotationsFor', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
+
+for (const name of ['reminders', 'ackReminder', 'annotationChoices', 'selectAnnotations']) Remote(name)(CalendarService.prototype[name], {
   kind: 'method', name, static: false, private: false,
   addInitializer(initializer) { remoteInitializers.push(initializer) },
 })

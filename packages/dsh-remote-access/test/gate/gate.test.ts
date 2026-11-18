@@ -7,7 +7,7 @@ import { descriptors } from '../../src/typert.ts'
 const refused = new Set(Object.values(REFUSED).flat())
 
 test('every endpoint and route of an assembled product is classified on purpose', async () => {
-  for (const file of ['dsh-0.2.1-rc.2-web.json', 'eduwork-0.4.6-desktop.json']) {
+  for (const file of ['dsh-0.2.1-rc.2-web.json', 'dsh-0.2.2-rc.2-web.json', 'eduwork-0.4.6-desktop.json']) {
     const product = JSON.parse(await readFile(new URL(file, import.meta.url), 'utf8')) as { endpoints: string[]; routes: string[] }
     const unclassified = [...product.endpoints, ...product.routes]
       .filter(name => !allowed.endpoints.includes(name) && !allowed.routes.includes(name) && !refused.has(name))
@@ -42,6 +42,40 @@ test('API requests are judged by method and exact path', () => {
   }
 })
 
+test('rc.2 session and task UI remains accessible without administering the Host', () => {
+  for (const endpoint of ['web/listProviders', 'subagents/interruptByUser',
+    'session/events', 'session/observeEvent', 'session/observeProjections', 'session/observeState', 'session/state', 'session/wait',
+    'toolResults/watch', 'workspaceFiles/search', 'agentTeams/setEnabled',
+    'schedule/create', 'schedule/deleteInactive', 'schedule/deliveryLimits', 'schedule/edit', 'schedule/run', 'schedule/view',
+    'account/getNotifications', 'account/getNotificationContent', 'account/reportNotificationEvent']) {
+    assert.ok(allowsApiRequest('POST', `/api/${endpoint}`), endpoint)
+    assert.ok(!allowsApiRequest('GET', `/api/${endpoint}`), endpoint)
+  }
+  for (const endpoint of ['mcpManager/restart', 'mcpManager/probe', 'mcpManager/watch',
+    'account/login', 'account/logout', 'credentials/set', 'terminal/create', 'terminal/watch',
+    'pluginManager/listVersions', 'pluginManager/readBundleDetail', 'pluginManager/updateBundle']) {
+    assert.ok(!allowsApiRequest('POST', `/api/${endpoint}`), endpoint)
+  }
+  assert.ok(allowsApiRequest('GET', '/api/session.markdown'))
+  assert.ok(allowsApiRequest('HEAD', '/api/session.markdown'))
+  assert.ok(!allowsApiRequest('POST', '/api/session.markdown'))
+  assert.ok(!allowsApiRequest('GET', '/api/plugin-manager/detail-file'))
+})
+
+test('Office preview accepts the rc.2 service name without granting other Kit operations', () => {
+  for (const service of ['officeToPdf', 'officeKit']) {
+    for (const method of ['generation', 'render']) {
+      assert.ok(allowsEndpoint(`${service}/${method}`))
+      assert.ok(allowsApiRequest('POST', `/api/${service}/${method}`))
+      assert.ok(!allowsApiRequest('GET', `/api/${service}/${method}`))
+    }
+  }
+  for (const method of ['convert', 'recalculate', 'dispose', 'renderImages', 'outputDirectory']) {
+    assert.ok(!allowsEndpoint(`officeKit/${method}`))
+    assert.ok(!allowsApiRequest('POST', `/api/officeKit/${method}`))
+  }
+})
+
 test('a device may acknowledge the preview notice and change no other setting', () => {
   const ops = (path: string[], value: unknown = '2026-09-28.1') => [{ op: 'set', path, value }]
   const acknowledge = { ns: 'ui-settings-general', ops: ops(['welcomeNoticeVersion']), expectedRevision: 3 }
@@ -59,4 +93,20 @@ test('a device may acknowledge the preview notice and change no other setting', 
   assert.ok(!allowsApiCall('GET', '/api/settings/mutate', acknowledge))
   assert.ok(!allowsApiCall('POST', '/api/settings/update', acknowledge))
   assert.ok(!allowsApiCall('POST', '/api/settings/mutate/', acknowledge))
+})
+
+test('reasoning translation admits only the two official RPCs and cannot change provider preferences', () => {
+  for (const endpoint of ['cotTranslation/limits', 'cotTranslation/translate']) {
+    assert.ok(allowsEndpoint(endpoint), endpoint)
+    assert.ok(allowsApiRequest('POST', `/api/${endpoint}`), endpoint)
+    assert.ok(!allowsApiRequest('GET', `/api/${endpoint}`))
+    assert.ok(!allowsApiRequest('POST', `/api/${endpoint}/`))
+  }
+  for (const endpoint of ['cotTranslation/configure', 'cotTranslation/setProvider', 'cotTranslation/unknown', 'translator/translate']) {
+    assert.ok(!allowsEndpoint(endpoint), endpoint)
+    assert.ok(!allowsApiRequest('POST', `/api/${endpoint}`), endpoint)
+  }
+  assert.ok(!allowsApiCall('POST', '/api/settings/mutate', {
+    ns: 'cotTranslation', ops: [{ op: 'set', path: ['provider'], value: 'deepseek' }],
+  }))
 })

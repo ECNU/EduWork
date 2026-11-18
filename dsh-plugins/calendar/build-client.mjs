@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { copyFileTo, copyTree, ensureDir, fullPath, isFile, isMainModule, pathExists, removeTree } from '../../scripts/lib/build-util.mjs'
 import { linkDirectory, parseBuilderArgs, runLockedTsdown } from '../../scripts/lib/client-build.mjs'
 import { normalizeGeneratedClient } from '../../scripts/normalize-generated-client.mjs'
+import { calendarClientLicenseBanner, installCalendarClientDependencies } from './client-dependencies.mjs'
 
 export async function buildClient({ upstream, output, runtimePackages } = {}) {
   if (!upstream || !output || !runtimePackages) throw new Error('Use --upstream <workspace> --output <lib> --runtime-packages <verified-runtime/node_modules>')
@@ -25,6 +26,13 @@ export async function buildClient({ upstream, output, runtimePackages } = {}) {
     if (!await isFile(join(dependencies, 'zod/package.json'))) throw new Error('The selected runtime must provide zod')
     await ensureDir(join(stage, 'node_modules'))
     await linkDirectory(join(stage, 'node_modules/zod'), join(dependencies, 'zod'))
+    const buildDeps = join(stage, 'build-deps')
+    await ensureDir(buildDeps)
+    for (const name of ['package.json', 'package-lock.json']) {
+      await copyFileTo(join(scriptRoot, 'build-deps', name), join(buildDeps, name))
+    }
+    await installCalendarClientDependencies(buildDeps)
+    await linkDirectory(join(stage, 'node_modules/fullcalendar'), join(buildDeps, 'node_modules/fullcalendar'))
     for (const name of ['src', 'lib']) {
       await copyTree(join(scriptRoot, name), join(stage, name))
     }
@@ -37,13 +45,17 @@ export async function buildClient({ upstream, output, runtimePackages } = {}) {
     for (const entry of await readdir(join(stage, 'lib'), { withFileTypes: true })) {
       if (!entry.isFile() || !entry.name.endsWith('.js')) continue
       const content = (await readFile(join(stage, 'lib', entry.name), 'utf8'))
+        .replace(/^([ \t]*\/\/#region \\0calendar-css:)[^\r\n]*[\\/]src[\\/]([^\\/\r\n]+\.css\.js)$/gm, '$1src/$2')
         .replace(/^\/\/# sourceMappingURL=.*$/gm, '')
         .replace(/[ \t]+(?=\r?$)/gm, '')
-      await writeFile(join(target, entry.name), content.replace(/[\r\n]+$/, '') + '\n')
+      const banner = entry.name === 'client.js' ? await calendarClientLicenseBanner(buildDeps) : ''
+      await writeFile(join(target, entry.name), banner + content.replace(/[\r\n]+$/, '') + '\n')
     }
   } finally {
-    const zodLink = join(stage, 'node_modules/zod')
-    if (await pathExists(zodLink)) await removeTree(zodLink)
+    for (const name of ['zod', 'fullcalendar']) {
+      const link = join(stage, 'node_modules', name)
+      if (await pathExists(link)) await removeTree(link)
+    }
     await removeTree(stage)
   }
 

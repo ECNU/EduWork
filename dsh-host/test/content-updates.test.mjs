@@ -11,6 +11,51 @@ import { createContentUpdate } from '../../scripts/create-content-update.mjs'
 import { writeBundledSkillsManifest } from '../../scripts/write-bundled-skills-manifest.mjs'
 import { desktopPaths } from '../../dsh-electron/src/desktop-paths.mjs'
 
+test('academic calendars follow signed configuration trials, revisions and offline restarts', async t => {
+  const f = await fixture(t)
+  const calendar = { schemaVersion: 2, academicYear: 'test-year', revision: 1,
+    terms: [{ id: 'spring', name: 'Spring', firstDay: '2027-03-01', lastDay: '2027-03-07',
+      phases: [{ kind: 'teaching', name: 'Teaching', firstDay: '2027-03-01', lastDay: '2027-03-07' }] }] }
+  const planFile = join(f.root, 'calendar-plan.json'), keyFile = join(f.root, 'key.pem')
+  await writeFile(keyFile, f.keys.privateKey.export({type: 'pkcs8', format: 'pem'}))
+  await writeFile(join(f.root, 'config.json'), JSON.stringify({features: {visionFallback: true}}))
+  await writeFile(join(f.root, 'year.json'), JSON.stringify(calendar))
+  const plan = { channel: 'development', revision: 1, requires,
+    configuration: { path: 'config.json', revision: 1, academicCalendars: ['year.json'] } }
+  await writeFile(planFile, JSON.stringify(plan))
+  const output = join(f.root, 'release')
+  const manifest = await createContentUpdate({config: f.configPath, planFile, keyFile, output})
+  const envelope = await readFile(join(output, 'development/latest.json'))
+  f.responses.set(f.source.baseURL + '/development/latest.json', envelope)
+  f.responses.set(manifest.bundle.url, await readFile(join(output, 'bundles', new URL(manifest.bundle.url).pathname.split('/').at(-1))))
+  let manager = await f.open()
+  await manager.check()
+  assert.equal((await manager.download()).state, 'ready')
+  const applied = await manager.prepare()
+  assert.deepEqual(JSON.parse(await readFile(applied.academicCalendarsFile)), [calendar])
+  await manager.ready()
+  f.responses.clear()
+  await writeFile(applied.academicCalendarsFile, 'stale file')
+  manager = await f.open()
+  assert.deepEqual(JSON.parse(await readFile((await manager.prepare()).academicCalendarsFile)), [calendar])
+  assert.equal(f.requests.length, 2)
+
+  const updated = {...calendar, revision: 2, breaks: [{id: 'vacation', name: 'Vacation', firstDay: '2027-03-08', lastDay: '2027-03-12'}]}
+  const changed = f.release(2, {configuration: 2}, undefined, {academicCalendars: [updated]})
+  await manager.importOffline(offlineBytes(changed))
+  assert.deepEqual(JSON.parse(await readFile((await manager.prepare()).academicCalendarsFile)), [updated])
+  await manager.rollback(Error('trial failed'))
+  assert.deepEqual(JSON.parse(await readFile((await manager.prepare()).academicCalendarsFile)), [calendar])
+  const replacement = f.release(2, {configuration: 2}, undefined, {academicCalendars: [calendar]})
+  await assert.rejects(manager.importOffline(offlineBytes(replacement), {retryFailed: true}), /不能替换/)
+  for (const [item, error] of [
+    [f.release(3), /遗漏/],
+    [f.release(3, undefined, undefined, { academicCalendars: [{...updated, revision: 1}] }), /修订号/],
+    [f.release(3, undefined, undefined, { academicCalendars: [calendar, calendar] }), /每学年/],
+    [f.release(3, undefined, undefined, { academicCalendars: [{...calendar, terms: []}] }), /缺少学期/],
+  ]) await assert.rejects(manager.importOffline(offlineBytes(item)), error)
+})
+
 const version='0.3.6-dev.20260916.1'
 const requires={minClient:version,dsh:'0.1.5-rc.2',capabilities:['package:@eduwork/dsh-oidc']}
 const skill=(body='---\nname: example\ndescription: Example skill\n---\nUse the installed tools.')=>{
@@ -79,6 +124,39 @@ test('signed configuration delivers child defaults independently and preserves l
   manager=await f.open();await manager.prepare();await manager.ready()
   assert.equal(loadUserConfig(f.configPath).features.maxActiveSubagents,5)
   assert.ok(manager.snapshot().configurationConflicts.includes('features.maxActiveSubagents'))
+})
+
+test('a failed startup rolls a prepared content trial back to the previous configuration', async t => {
+  const f=await fixture(t)
+  f.release(1,{configuration:1})
+  let manager=await f.open();await manager.check();await manager.download()
+  manager=await f.open()
+  const prepared=await manager.prepare()
+  assert.equal(prepared.configurationRevision,1)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,true,'the prepared trial is visible before Host startup')
+  const trial=manager.state.trial
+  assert.ok(trial,'the content journal records the trial')
+  assert.equal(await manager.rollback(Error('Synthetic startup failure')),true)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,false,'rollback restores the previous configuration')
+  const journal=JSON.parse(await readFile(manager.statePath,'utf8'))
+  assert.equal(journal.trial,null)
+  assert.equal(journal.pending,null)
+  assert.deepEqual(journal.rejected,[trial])
+  assert.equal(journal.active.configuration,undefined)
+})
+
+test('a ready content trial is already committed when a later startup failure is reported', async t => {
+  const f=await fixture(t)
+  f.release(1,{configuration:1})
+  let manager=await f.open();await manager.check();await manager.download()
+  manager=await f.open()
+  await manager.prepare()
+  await manager.ready()
+  assert.equal(manager.state.trial,null,'ready commits the trial before advertising success')
+  assert.equal(await manager.rollback(Error('Synthetic renderer failure during desktop ready')),false)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,true)
+  const journal=JSON.parse(await readFile(manager.statePath,'utf8'))
+  assert.equal(journal.active.configuration,manager.selected.configuration)
 })
 async function moveFixture(f) {
   const destination=join(f.directory,'Moved app with spaces')
@@ -473,4 +551,60 @@ test('signed configuration sets and moves the organization relay for remote acce
   await manager.check();await manager.download()
   manager=await f.open();await manager.prepare();await manager.ready()
   assert.equal(loadUserConfig(f.configPath).remoteAccess.relay,'https://relay.example.test/')
+})
+
+test('a first-run Host failure retains explicit retry and records the first cause',async t=>{
+  const f=await fixture(t)
+  f.release(1)
+  let manager=await f.open();await manager.check();await manager.download()
+  manager=await f.open();await manager.prepare()
+  assert.equal(await manager.rollback(new Error('Host exited: plugin failed')),true)
+  assert.equal(manager.state.rejected.length,1)
+  const later=await f.open();await later.prepare()
+  assert.equal((await later.check({repair:true})).state,'error')
+  assert.match(later.snapshot().message,/首次失败原因：Host exited: plugin failed/)
+  assert.equal((await later.check({repair:true,retryFailed:true})).state,'available')
+  await later.download()
+  const retried=await f.open()
+  assert.equal((await retried.prepare()).configurationRevision,1)
+  await retried.rollback(new Error('Synthetic second failure'))
+  assert.match((await retried.check()).message,/首次失败原因：Host exited: plugin failed/)
+})
+
+test('a rejected update reports the original Host failure on later checks',async t=>{
+  const f=await fixture(t)
+  f.release(1)
+  let manager=await f.open();await manager.check();await manager.download()
+  manager=await f.open();await manager.prepare();await manager.ready()
+  f.release(2);await manager.check();await manager.download()
+  const trial=await f.open();await trial.prepare()
+  assert.equal(await trial.rollback(new Error('Host exited: plugin failed')),true)
+  const later=await f.open();await later.prepare()
+  const status=await later.check({repair:true})
+  assert.equal(status.state,'error')
+  assert.match(status.message,/未通过启动检查.*首次失败原因：Host exited: plugin failed/)
+  assert.equal((await later.check({repair:true,retryFailed:true})).state,'available')
+})
+
+test('network failures name their cause instead of "fetch failed"',async()=>{
+  const { networkErrorMessage }=await import('../content-updates.mjs')
+  const failed=code=>new TypeError('fetch failed',{cause:Object.assign(new Error(code),{code})})
+  assert.match(networkErrorMessage(failed('ENOTFOUND')),/DNS.*（ENOTFOUND）/)
+  assert.match(networkErrorMessage(failed('UNABLE_TO_VERIFY_LEAF_SIGNATURE')),/证书/)
+  assert.match(networkErrorMessage(failed('ECONNRESET')),/拒绝或中断/)
+  assert.match(networkErrorMessage(Object.assign(new Error('timeout'),{name:'TimeoutError'})),/超时.*（TIMEOUT）/)
+  assert.match(networkErrorMessage(new TypeError('fetch failed')),/^暂时无法连接配置服务/)
+  assert.equal(networkErrorMessage(new Error('内容签名无效')),'内容签名无效')
+})
+
+test('persisted rejection reasons redact credentials and remain bounded',async t=>{
+  const f=await fixture(t)
+  f.release(1)
+  let manager=await f.open();await manager.check();await manager.download()
+  manager=await f.open();await manager.prepare()
+  await manager.rollback(new Error('Authorization: Bearer test-token '+ 'x'.repeat(4000)))
+  const later=await f.open();await later.prepare()
+  assert.doesNotMatch(later.state.rejection.reason,/test-token/)
+  assert.ok(later.state.rejection.reason.length<=2000)
+  assert.match(later.state.rejection.reason,/REDACTED/)
 })

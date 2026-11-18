@@ -19,6 +19,12 @@ Content can be downloaded separately. Downloading available software also starts
 
 Configuration updates write the single active `config/eduwork.jsonc`, retaining one `data/configuration/eduwork.previous.jsonc` backup. Untouched defaults update while local edits, additions and deletions survive; conflicts are shown in Settings. Remote content cannot change sources, public keys, product branding or desktop preferences. See [configuration](CONFIGURATION_EN.md).
 
+## Publishing academic calendars with configuration
+
+Set `configuration.academicCalendars` in the publishing plan to a complete list of year JSON files relative to the plan, for example `["calendar/2026-2027.json", "calendar/2027-2028.json"]`. The first entry is the default for users without a saved selection. Use academic calendar schemaVersion 2 and a positive dataset revision. Increment the year's revision for corrections, and increment both the configuration and overall release revisions whenever the list or its contents change. Include only the years offered to the client, within the existing signed manifest size limit.
+
+On startup, desktops with configuration updates enabled materialize a UTF-8 JSON array from the verified snapshot and pass its path to calendar plugins via `EDUWORK_ACADEMIC_CALENDARS_FILE`. Without calendar configuration the plugin uses its offline baseline. Older clients continue to consume the same release's ordinary configuration.
+
 ## Source configuration
 
 Add to the base `config/eduwork.jsonc`; replace the public-key placeholder before deployment:

@@ -31,8 +31,8 @@ test('independent plugins accept every declared peer supplied by the selected Ho
   const require=createRequire(join(runtime,'package.json'))
   const {satisfies}=require('semver')
   let checked=0
-  for(const entry of packages){
-    const manifest=JSON.parse(await readFile(join(root,entry.directory,'package.json'),'utf8'))
+  for(const {directory} of packages){
+    const manifest=JSON.parse(await readFile(join(root,directory,'package.json'),'utf8'))
     for(const [name,range] of Object.entries(manifest.peerDependencies??{})){
       const hostPackage=await readFile(join(runtime,'node_modules',name,'package.json'),'utf8').then(JSON.parse).catch(error=>{
         if(error.code==='ENOENT')return undefined

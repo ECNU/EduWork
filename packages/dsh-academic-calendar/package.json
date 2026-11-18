@@ -1,0 +1,48 @@
+{
+  "name": "@eduwork/dsh-academic-calendar",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./model": "./lib/model.js",
+    "./timetable": "./lib/timetable.js",
+    "./tools": "./lib/tools.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/**/*.js",
+    "skills/**/*",
+    "examples/*.json",
+    "README.md",
+    "README_EN.md",
+    "cordis.patch.yml",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.2 <4.1.0 || 4.1.0",
+    "@deepseek-ai/dsh-storage-domain": ">=0.1.5-rc.1 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2 || 0.2.2-rc.1 || 0.2.2-rc.3",
+    "@deepseek-ai/dsh-tools": ">=0.1.5-rc.1 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2 || 0.2.2-rc.1 || 0.2.2-rc.3",
+    "@deepseek-ai/dsh-permission-presets": ">=0.1.5-rc.1 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2 || 0.2.2-rc.1 || 0.2.2-rc.3",
+    "@eduwork/dsh-calendar": ">=0.1.0-dev <0.2.0",
+    "@eduwork/dsh-calendar-subscriptions": ">=0.1.0-dev <0.2.0",
+    "zod": "^4.4.3"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ECNU/EduWork.git",
+    "directory": "packages/dsh-academic-calendar"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --test ../../dsh-plugins/calendar/test/academic.test.mjs"
+  }
+}

@@ -73,6 +73,16 @@
     "en": {"name":"Mail assistant","summary":"Connect your mailbox, read mail over IMAP and send through SMTP with authorization, bringing communication into your workflow."}
   },
   {
+    "package": "@eduwork/dsh-calendar",
+    "companions": ["@eduwork/dsh-calendar-subscriptions", "@eduwork/dsh-academic-calendar"],
+    "category": "desktop",
+    "icon": "book",
+    "eyebrow": "CALENDAR & SCHEDULE",
+    "docs": "dsh-plugins/calendar",
+    "zh": {"name":"日历与日程","summary":"用月历、周历管理本地日程、备注与提醒，支持 ICS 导入导出、订阅更新和对话操作；机构接入校历后可查看学年与教学周。"},
+    "en": {"name":"Calendar & schedule","summary":"Manage local events, remarks and reminders in month and week views, with ICS import/export, subscriptions and conversation tools. Institution calendars add academic-year and teaching-week context."}
+  },
+  {
     "package": "@eduwork/dsh-desktop-pet",
     "category": "desktop",
     "icon": "pet",

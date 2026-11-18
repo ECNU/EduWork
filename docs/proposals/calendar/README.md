@@ -111,7 +111,7 @@
 | `start` | string | 是 | `DTSTART` | 本地时间 `YYYY-MM-DDTHH:mm`，或日期 `YYYY-MM-DD` |
 | `end` | string | 否 | `DTEND` | 全天包含结束当天；计时结束必须晚于开始，起止格式须一致 |
 | `location` | string | 否 | `LOCATION` | 教室等地点 |
-| `description` | string | 否 | `DESCRIPTION` | 日程自身的备注，会随 ICS 导出；不是私人笔记 |
+| `description` | string | 否 | `DESCRIPTION` | 来源说明或自建日程备注。来源说明默认导出，自建日程备注需主动选择 |
 | `recurrence` | object | 否 | `RRULE` | 见[重复规则边界](#重复规则边界) |
 | `exceptions` | string[] | 否 | `EXDATE` | 被取消的实例 |
 | `source` | string | 否 | — | 来源命名空间，缺省为 `manual`；不同来源可使用相同 `uid` |

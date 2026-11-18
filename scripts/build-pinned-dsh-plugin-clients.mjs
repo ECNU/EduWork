@@ -4,8 +4,7 @@ import { readFile, mkdir, writeFile, cp, copyFile, readdir } from 'node:fs/promi
 import { join, resolve, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { adaptNativeWebSearchUI } from './native-web-search-ui.mjs'
-import { usePinnedBrowser } from './pinned-browser.mjs'
+import { pinnedDistribution } from './pinned-distribution.mjs'
 import { adaptNativePresetUI } from './native-preset-ui.mjs'
 import { adaptNativeFileReferenceUI } from './native-file-reference-ui.mjs'
 import { releaseIdentity } from '../dsh-host/release-policy.mjs'
@@ -13,7 +12,8 @@ import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
 import { pinnedDshDirectory, verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
 import { readPublishedPackageLocks, verifyPublishedPackageInputs } from './published-package-inputs.mjs'
-import { verifyPluginNotificationConsumers, withPluginNotifications } from './plugin-notification-contract.mjs'
+import { verifyPluginNotificationConsumers } from './plugin-notification-contract.mjs'
+import { calendarClientLicenseBanner, installCalendarClientDependencies } from '../dsh-plugins/calendar/client-dependencies.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' }, version: { type: 'string' } } })
 if (!values.runtime || !values.dependencies || !values.report || !values.output) throw new Error('Use --runtime <candidate> --dependencies <isolated dependencies> --output <new directory> --report <path>')
@@ -42,10 +42,10 @@ for (const folder of ['dsh-plugins', 'config/distributions']) {
     filter: path => !relative(sourceRepository, path).split(/[\\/]/).some(part => ['node_modules', '.git', 'test', 'tests', '.research'].includes(part)),
   })
 }
-const { build } = require('esbuild')
+const { build, transform } = require('esbuild')
 // Every independently published plugin goes through its own npm release workflow.
 const distributionPath = join(repository, 'config/distributions/generic.json')
-const distribution = withPluginNotifications(usePinnedBrowser(JSON.parse(await readFile(distributionPath, 'utf8'))))
+const distribution = pinnedDistribution(JSON.parse(await readFile(distributionPath, 'utf8')))
 // This page uses 0.2.1 native plugin management; do not add it to the legacy
 // distribution that is still used by the old-runtime validation lane.
 distribution.plugins.push({ root: 'core', source: 'dsh-plugins/client-ui-extensions', id: 'eduwork-ui-extensions', name: '@eduwork/dsh-client-ui-extensions' })
@@ -88,8 +88,12 @@ async function prepareCandidateManifests(directory) {
 await prepareCandidateManifests(join(repository, 'dsh-plugins'))
 const clients = []
 clients.push(['dsh-plugins/client-ui-extensions', 'src/client.js'])
-for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts', 'calendar', 'notifications', 'browser-upstream']) {
-  clients.push([`dsh-plugins/${folder}`, ['workbench-native', 'calendar', 'notifications', 'browser-upstream'].includes(folder) ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
+clients.push(['dsh-plugins/user-guide', 'src/client.ts'])
+if (distribution.plugins.some(plugin => plugin.root === 'core' && plugin.source === 'dsh-plugins/calendar')) {
+  clients.push(['dsh-plugins/calendar', 'src/client.ts'])
+}
+for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts', 'notifications', 'browser-upstream']) {
+  clients.push([`dsh-plugins/${folder}`, ['workbench-native', 'notifications', 'browser-upstream'].includes(folder) ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
 }
 const localAliases = { ...sharedAliases }
 for (const folder of ['skill-manager-native', 'skill-settings-native', 'component-inventory-native', 'plugin-manager-native', 'artifact-preview-native']) {
@@ -103,10 +107,14 @@ for (const [folder, entry] of clients) {
   const root = join(repository, folder)
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
   await mkdir(join(root, 'lib'), { recursive: true })
+  const calendarBuildDeps = folder === 'dsh-plugins/calendar' ? join(root, 'build-deps') : undefined
+  if (calendarBuildDeps) await installCalendarClientDependencies(calendarBuildDeps)
+  const licenseBanner = calendarBuildDeps ? await calendarClientLicenseBanner(calendarBuildDeps) : ''
   const result = await build({
     absWorkingDir: root, entryPoints: [entry], outfile: 'lib/client.js', bundle: true,
     platform: 'browser', format: 'cjs', target: 'es2022', jsx: 'automatic', minify: true, metafile: true,
-    nodePaths: [join(runtime, 'node_modules'), join(dependencies, 'node_modules')],
+    nodePaths: [join(runtime, 'node_modules'), join(dependencies, 'node_modules'), ...(calendarBuildDeps ? [join(calendarBuildDeps, 'node_modules')] : [])],
+    loader: calendarBuildDeps ? { '.css': 'text' } : undefined,
     external: ['react', 'react/*', 'react-dom', 'react-dom/*', '@deepseek-ai/cordis', '@deepseek-ai/dsh-client-store', '@deepseek-ai/dsh-client-ui-slots', '@deepseek-ai/dsh-client-ui-primitives', '@deepseek-ai/dsh-client-ui-dockkit'],
     define: { 'process.env.NODE_ENV': '"production"', __EDUWORK_PINNED_DSH__: 'true' },
     alias: localAliases,
@@ -122,7 +130,7 @@ for (const [folder, entry] of clients) {
           export default ${JSON.stringify(classes)};` }
       })
     } }],
-    banner: { js: `window.__ModuleLoader__.load({ id: ${JSON.stringify(manifest.name)}, factory: (require) => { var module = { exports: {} }; var exports = module.exports;` },
+    banner: { js: `${licenseBanner}window.__ModuleLoader__.load({ id: ${JSON.stringify(manifest.name)}, factory: (require) => { var module = { exports: {} }; var exports = module.exports;` },
     footer: { js: `const original = module.exports; return { ...original, async apply(...args) { try { return await original.apply(...args); } catch (error) { console.error(${JSON.stringify(manifest.name)}, error?.stack || String(error)); throw error; } } }; } });` },
   })
   report.packages.push({ name: manifest.name, output: join(root, 'lib/client.js'), inputs: Object.keys(result.metafile.inputs).length })
@@ -134,7 +142,6 @@ for (const [folder, upstream] of [
   ['client-ui-conversation-brand', 'ui-conversation'],
   ['client-ui-agent-preset-product', 'ui-agent-preset'],
   ['client-ui-skill-live', 'ui-skill'],
-  ['client-ui-web-search-product', 'ui-settings-web-search'],
 ]) {
   const root = join(repository, 'dsh-plugins', folder)
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
@@ -144,6 +151,11 @@ for (const [folder, upstream] of [
   if (sourceManifest.version !== runtimeReceipt.dshVersion) throw new Error(`Unqualified client: ${upstreamName}`)
   let client = await readFile(join(upstreamRoot, 'lib/client.js'), 'utf8')
   if (!client.includes(upstreamName)) throw new Error(`Client identity is missing: ${upstreamName}`)
+  // rc.2 publishes compact client bundles. Normalize only the three existing
+  // product derivatives before applying their reviewed presentation changes.
+  // The installed upstream packages and independent npm plugins stay intact.
+  client = (await transform(client, { loader: 'js', target: 'es2022', minify: false,
+    supported: { 'template-literal': false }, charset: 'utf8', legalComments: 'inline' })).code
   client = client.replaceAll(upstreamName, manifest.name)
   const replaceOnce = (from, to) => {
     if (client.split(from).length !== 2) throw new Error(`Candidate UI anchor changed: ${upstreamName}: ${from}`)
@@ -160,7 +172,6 @@ for (const [folder, upstream] of [
   if (upstream === 'ui-skill') {
     replaceOnce('ctx.on("connection/reset", clearAll);', 'ctx.on("connection/reset", clearAll);\nctx.remote.$on("settings/document-updated", clearAll);')
   }
-  if (upstream === 'ui-settings-web-search') client = adaptNativeWebSearchUI(client)
   if (upstream === 'ui-agent-preset') client = adaptNativePresetUI(client)
   await mkdir(join(root, 'lib'), { recursive: true })
   await writeFile(join(root, 'lib/client.js'), client)

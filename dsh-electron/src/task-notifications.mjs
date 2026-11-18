@@ -108,7 +108,21 @@ export class TaskNotifications {
       }
     }
     const revision = JSON.stringify([body.preferences, [...this.items.values()], this.running, this.acknowledged])
-    if (revision !== this.revision) { this.revision = revision; this.changed() }
+    if (revision !== this.revision) {
+      this.revision = revision
+      const sessions = new Set()
+      let pluginCount = 0, newAttention = false
+      if (body.preferences.enabled) {
+        for (const item of this.items.values()) {
+          if (item.kind === 'plugin') pluginCount++
+          else if (body.preferences[category(item)]) sessions.add(item.sessionId)
+          else continue
+          const previous = prior.get(item.key)
+          if (!previous || previous.alert !== item.alert) newAttention = true
+        }
+      }
+      this.changed({ count: sessions.size + pluginCount, notify: newAttention && !this.foreground() })
+    }
     return { seen, delivery: this.delivery, pluginNotifications: 1 }
   }
   activate(key) { if (!this.items.has(key)) return; this.openKey = key; this.show() }

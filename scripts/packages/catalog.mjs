@@ -15,6 +15,9 @@ export const packages = [
   { id: 'dsh-knowledge-studio', name: '@eduwork/dsh-knowledge-studio', directory: 'packages/dsh-knowledge-studio', group: 'dsh-knowledge-studio' },
   { id: 'dsh-artifact-services', name: '@eduwork/dsh-artifact-services', directory: 'packages/dsh-knowledge-studio/packages/artifact-services', group: 'dsh-knowledge-studio' },
   { id: 'dsh-remote-access', name: '@eduwork/dsh-remote-access', directory: 'packages/dsh-remote-access', group: 'dsh-remote-access' },
+  { id: 'dsh-calendar', name: '@eduwork/dsh-calendar', directory: 'dsh-plugins/calendar', group: 'dsh-calendar' },
+  { id: 'dsh-calendar-subscriptions', name: '@eduwork/dsh-calendar-subscriptions', directory: 'dsh-plugins/calendar-subscriptions', group: 'dsh-calendar-subscriptions' },
+  { id: 'dsh-academic-calendar', name: '@eduwork/dsh-academic-calendar', directory: 'packages/dsh-academic-calendar', group: 'dsh-academic-calendar' },
   { id: 'dsh-verymath', name: '@eduwork/dsh-verymath', directory: 'packages/dsh-verymath', group: 'dsh-verymath' },
 ]
 export const groups = [...new Set(packages.map(p => p.group))]
@@ -34,9 +37,16 @@ export function changedGroups(files) {
     // Both package checks install this Runtime to exercise their mounted plugins.
     if (/^third_party\/dsh\/[^/]+\/npm-runtime\//.test(file)) {
       result.add('dsh-side-chat')
+      result.add('dsh-calendar')
+      result.add('dsh-calendar-subscriptions')
+      result.add('dsh-academic-calendar')
       result.add('dsh-decision')
     }
-    for (const group of groups) if (file.startsWith(`packages/${group}/`)) result.add(group)
+    for (const entry of packages) if (file.startsWith(entry.directory + '/')) result.add(entry.group)
+    if (file.startsWith('dsh-plugins/calendar/')) {
+      result.add('dsh-calendar-subscriptions')
+      result.add('dsh-academic-calendar')
+    }
     // Side chat consumes the annotation selection service when both are enabled.
     if (file.startsWith('packages/dsh-annotation/')) result.add('dsh-side-chat')
   }
@@ -44,6 +54,10 @@ export function changedGroups(files) {
 }
 const sourceDocumentation = /^(?:AGENTS|CONTRIBUTING|README(?:_EN)?|RELEASE-CHECKLIST(?:_EN)?)\.md$/
 const productRoots = /^(?:assets|config|dsh-desktop|dsh-electron|dsh-host|dsh-plugins|dsh-presets|dsh-skills|scripts|tests|third_party)\//
+const productWorkflowFiles = new Set([
+  '.github/workflows/validate-local-web.yml',
+  '.github/workflows/validate-pinned-dsh-source.yml',
+])
 
 export function selectProductChecks(files, { receiptOnly = false, full = false, reason = '' } = {}) {
   const buildInputs = [], integrationInputs = [], unknown = []
@@ -51,6 +65,13 @@ export function selectProductChecks(files, { receiptOnly = false, full = false, 
     if (sourceDocumentation.test(file) || /^(?:docs|website|updates)\//.test(file)) continue
     if (file === 'source-receipt.json' && receiptOnly) continue
     if (packages.some(entry => file.startsWith(`${entry.directory}/`))) {
+      // The desktop configuration host consumes this model directly; both desktop
+      // checks also exercise the calendar plugin sources in an assembled Runtime.
+      if (file.startsWith('dsh-plugins/calendar') || file === 'packages/dsh-academic-calendar/lib/model.js') {
+        buildInputs.push(file)
+        integrationInputs.push(file)
+        continue
+      }
       // Windows native assets are prepared from this source catalog before npm assembly.
       if (file === 'packages/dsh-knowledge-studio/packages/artifact-services/lib/transcription-components.js') buildInputs.push(file)
       // These integration checks read the checkout, rather than the installed npm package.
@@ -61,7 +82,7 @@ export function selectProductChecks(files, { receiptOnly = false, full = false, 
     }
     buildInputs.push(file)
     integrationInputs.push(file)
-    if (!productRoots.test(file) && file !== 'source-receipt.json'
+    if (!productRoots.test(file) && !productWorkflowFiles.has(file) && file !== 'source-receipt.json'
       && !['LICENSE', 'LICENSE-MIT', 'LICENSING.md', 'THIRD_PARTY_NOTICES.md'].includes(file)) unknown.push(file)
   }
   const allPackages = full || unknown.length > 0 || files.some(file => ['scripts/ci-changes.mjs', 'scripts/ci-result.mjs', 'tests/ci-changes.test.mjs'].includes(file))

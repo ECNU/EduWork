@@ -95,6 +95,9 @@ export const pluginConfigurationFields = {
   ...group('dsh-mail-assistant', {
     readEnabled: ['允许读取邮件；设置中的个人选择优先。', false, true],
     sendEnabled: ['允许发送邮件；仍遵守会话权限规则。', false, true],
+    notifyEnabled: ['启用新邮件提醒；需同时允许读取邮件，检查不会改变邮件已读状态。', false, true],
+    notifyIntervalSeconds: ['新邮件检查间隔，单位为秒，范围 30–3600。', 120, true],
+    notifyExcerptChars: ['通知正文摘录的最大字符数，范围 0–400；0 表示仅显示发件人与主题。', 160, true],
     email: ['邮箱地址；密码在设置中保存，不写入本文件。', '', true],
     username: ['登录用户名；空字符串使用邮箱地址。', '', true],
     fromName: ['发件人显示名称。', '', true],

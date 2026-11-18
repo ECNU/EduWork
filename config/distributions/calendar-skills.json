@@ -1,0 +1,20 @@
+[
+  {
+    "name": "calendar-management",
+    "sourcePackage": "@eduwork/dsh-calendar",
+    "sourcePath": "skills/calendar-management",
+    "defaultEnabled": true
+  },
+  {
+    "name": "calendar-subscriptions",
+    "sourcePackage": "@eduwork/dsh-calendar-subscriptions",
+    "sourcePath": "skills/calendar-subscriptions",
+    "defaultEnabled": true
+  },
+  {
+    "name": "academic-calendar",
+    "sourcePackage": "@eduwork/dsh-academic-calendar",
+    "sourcePath": "skills/academic-calendar",
+    "defaultEnabled": true
+  }
+]
