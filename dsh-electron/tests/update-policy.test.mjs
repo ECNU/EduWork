@@ -1,9 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {portableUpdateEdition,resolveUpdateConfiguration,editablePortableUpdateConfiguration,portableStartupUpdateConfiguration} from '../src/portable-updates.mjs'
+import {installedUpdateFeed} from '../scripts/assemble-windows.mjs'
 
 test('installed generic feed from assembly bypasses the portable updater configuration',()=>{
- const assembled={provider:'generic',url:'https://updates.example.test'}
+ const assembled=installedUpdateFeed({provider:'generic',url:'https://updates.example.test'})
  assert.equal(portableStartupUpdateConfiguration({platform:'win32',dataLayout:'installed',updates:assembled}),undefined)
  assert.throws(()=>editablePortableUpdateConfiguration({updates:assembled,version:'0.4.13'}),/更新源类型/)
 })
