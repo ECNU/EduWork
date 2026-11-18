@@ -54,8 +54,6 @@ export function editablePortableUpdateConfiguration({defaults={},updates={},prio
 export async function startPortableUpdates({root,updates={},defaults={},version,distribution,onQuit,enabled=true,applyScheduled=true,platform=process.platform,spawnProcess=spawn}) {
  // Callers may omit this backend entirely without touching pending installs.
  // The shared software-update controller owns the user's persisted choice.
- // Installed layouts keep state outside the program directory; portable
- // layouts use the program root for both.
  if(platform!=='win32'||!enabled)return null
  const state=join(root,'data/state/updates')
  const prior=await readFile(join(root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
