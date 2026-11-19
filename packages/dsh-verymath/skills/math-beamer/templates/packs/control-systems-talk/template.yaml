@@ -1,0 +1,18 @@
+name: control-systems-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+description: Template for mathematical control, systems theory, stability, and feedback design talks.
+best_for:
+  - control theory
+  - stability
+  - controllability
+  - feedback design
+source_checks:
+  - state input output model
+  - controller class
+  - stability notion
+  - robustness margin
+when_not_to_use:
+  - Use dynamical-systems-talk when there is no controller, input, or observation structure.
+requires: [beamer, amsmath, amssymb, booktabs]

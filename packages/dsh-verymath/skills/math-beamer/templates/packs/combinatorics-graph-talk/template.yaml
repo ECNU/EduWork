@@ -1,0 +1,18 @@
+name: combinatorics-graph-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+description: Template for extremal, probabilistic, enumerative, additive, and graph-theoretic talks.
+best_for:
+  - combinatorics
+  - graph theory
+  - extremal methods
+  - random graphs
+source_checks:
+  - object conventions
+  - extremal parameter
+  - finite or asymptotic regime
+  - random model
+when_not_to_use:
+  - Use probability-statistics-talk when the central object is an estimator or stochastic process.
+requires: [beamer, amsmath, amssymb, tikz]

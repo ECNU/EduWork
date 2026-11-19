@@ -1,0 +1,19 @@
+name: analysis-core-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+description: Core analysis template for real, complex, functional, harmonic, and operator-theoretic talks.
+best_for:
+  - real analysis
+  - complex analysis
+  - functional analysis
+  - harmonic analysis
+  - operator theory
+source_checks:
+  - spaces and norms
+  - convergence mode
+  - constants and hypotheses
+  - counterexample status
+when_not_to_use:
+  - Use pde-analysis-talk for boundary value problems or evolution equations.
+requires: [beamer, amsmath, amssymb]

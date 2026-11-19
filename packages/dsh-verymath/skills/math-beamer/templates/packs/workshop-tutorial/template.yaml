@@ -1,0 +1,9 @@
+name: workshop-tutorial
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - workshop
+  - tutorial
+  - long-form lecture
+requires: [beamer, amsmath, amssymb]

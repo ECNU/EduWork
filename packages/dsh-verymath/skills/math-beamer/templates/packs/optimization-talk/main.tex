@@ -1,0 +1,58 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Frankfurt}
+\usecolortheme{beaver}
+\usepackage{amsmath,amssymb,booktabs}
+
+\title{Optimization Model And Algorithm}
+\author{Speaker}
+\date{\today}
+
+\begin{document}
+\begin{frame}\titlepage\end{frame}
+\begin{frame}{Outline}\tableofcontents\end{frame}
+
+\section{Model}
+\begin{frame}{Optimization Problem}
+  \[
+    \min_{x \in \mathcal{X}} f(x) + g(Ax)
+  \]
+  \begin{itemize}
+    \item Variables and feasible set.
+    \item Convexity, smoothness, or constraint assumptions.
+    \item Data dimensions and source.
+  \end{itemize}
+\end{frame}
+
+\section{Algorithm}
+\begin{frame}{Algorithmic Template}
+  \begin{enumerate}
+    \item Initialize \(x^0\), parameters, and stopping rule.
+    \item Compute search/update direction.
+    \item Project or solve subproblem.
+    \item Check residuals and objective decrease.
+  \end{enumerate}
+\end{frame}
+
+\section{Theory}
+\begin{frame}{Convergence Statement}
+  \begin{theorem}
+    Under the stated assumptions, the iterates satisfy the claimed convergence
+    property or rate.
+  \end{theorem}
+  \begin{block}{Do not omit}
+    Tolerances, boundedness, rank, Lipschitz, or constraint qualifications.
+  \end{block}
+\end{frame}
+
+\section{Experiments}
+\begin{frame}{Numerical Comparison}
+  \begin{tabular}{lrrr}
+    \toprule
+    Method & Objective & Residual & Time \\
+    \midrule
+    Baseline & -- & -- & -- \\
+    Proposed & -- & -- & -- \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+\end{document}

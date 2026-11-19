@@ -1,0 +1,18 @@
+name: logic-foundations-category-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+description: Template for mathematical logic, foundations, type theory, and category-theoretic talks.
+best_for:
+  - logic
+  - foundations
+  - category theory
+  - formal systems
+source_checks:
+  - formal system
+  - semantics
+  - universe or size convention
+  - functor direction
+when_not_to_use:
+  - Use lean-formalization workflows when the main deliverable is checked Lean code.
+requires: [beamer, amsmath, amssymb, tikz]

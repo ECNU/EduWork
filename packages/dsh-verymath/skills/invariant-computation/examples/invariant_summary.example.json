@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "object": {
+    "source": "Known-answer fixture: the boundary of a 2-simplex.",
+    "representation": "The maximal simplices are [0, 1], [1, 2], and [0, 2], with all faces included."
+  },
+  "invariant": {
+    "requested": "Betti numbers over Q",
+    "computed": "Betti numbers in degrees 0 and 1",
+    "value": {
+      "0": 1,
+      "1": 1
+    },
+    "result_quality": "exact"
+  },
+  "coefficient_ring_or_field": "Q",
+  "conventions": [
+    "unreduced homology",
+    "degrees not listed are zero"
+  ],
+  "backend": {
+    "route": "finite_complexes",
+    "name": "documented exact chain-complex reduction",
+    "version_evidence": "known-answer schema fixture version 1"
+  },
+  "command_or_code_path": "not applicable: format-only known-answer fixture",
+  "validation_checks": [
+    {
+      "name": "simplicial closure",
+      "kind": "structural",
+      "status": "passed",
+      "evidence": "All vertices of the three edges are included."
+    },
+    {
+      "name": "boundary-map ranks",
+      "kind": "invariant_cross_check",
+      "status": "passed",
+      "evidence": "Over Q, rank d_1 = 2 and rank d_2 = 0, so b_0 = 3 - 2 = 1 and b_1 = (3 - 2) - 0 = 1."
+    },
+    {
+      "name": "Euler characteristic",
+      "kind": "invariant_cross_check",
+      "status": "passed",
+      "evidence": "3 vertices - 3 edges = 0 = b_0 - b_1 = 1 - 1."
+    }
+  ],
+  "remaining_uncertainty": [],
+  "next_repair_route": null,
+  "classification_caveat": "Betti numbers alone do not classify finite simplicial complexes up to homotopy equivalence.",
+  "fixture_note": "This file demonstrates the result shape and is not evidence from a computation run."
+}

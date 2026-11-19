@@ -1,0 +1,9 @@
+name: course-lecture-zh
+language: zh
+engine: xelatex
+aspect_ratio: "16:9"
+best_for:
+  - Chinese course lecture
+  - worked examples
+  - exercises and recap
+requires: [ctexbeamer, amsmath, amssymb]

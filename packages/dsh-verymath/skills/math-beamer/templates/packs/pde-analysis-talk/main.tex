@@ -1,0 +1,49 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Copenhagen}
+\usepackage{amsmath,amssymb}
+
+\title{Analysis And PDE Talk}
+\author{Speaker}
+\date{\today}
+
+\begin{document}
+\begin{frame}\titlepage\end{frame}
+
+\begin{frame}{Problem And Function Spaces}
+  \[
+    \partial_t u - \Delta u = f
+    \quad \text{on } \Omega \times (0,T).
+  \]
+  \begin{itemize}
+    \item Domain and boundary conditions.
+    \item Initial data and forcing.
+    \item Function spaces and norms.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{A Priori Estimate}
+  \begin{theorem}
+    Under the stated regularity assumptions,
+    \[
+      \|u\|_{X} \le C\left(\|u_0\|_{Y}+\|f\|_{Z}\right).
+    \]
+  \end{theorem}
+  \begin{itemize}
+    \item Source: theorem, proposition, or lecture note section.
+    \item Status: proved estimate, conjectural bound, or model calculation.
+    \item Ledger: record spaces \(X,Y,Z\), boundary conditions, and constants.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Proof Ingredients}
+  \begin{enumerate}
+    \item Energy identity or weak formulation.
+    \item Compactness, fixed point, or monotonicity argument.
+    \item Passage to the limit.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Sharpness And Open Issues}
+  State which assumptions are technical and which are essential.
+\end{frame}
+\end{document}

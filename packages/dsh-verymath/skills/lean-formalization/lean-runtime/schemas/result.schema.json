@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI4Math Lean Agent Result",
+  "type": "object",
+  "properties": {
+    "ok": {"type": "boolean"},
+    "status": {"type": "string"},
+    "agent_mode": {"type": "string"},
+    "backend": {"type": "string"},
+    "task_type": {"type": "string"},
+    "cwd": {"type": "string"},
+    "target": {"type": "string"},
+    "project_root": {"type": ["string", "null"]},
+    "target_project_root": {"type": ["string", "null"]},
+    "workspace_project_root": {"type": ["string", "null"]},
+    "workspace_path": {"type": ["string", "null"]},
+    "workspace_mode": {"type": "string"},
+    "toolchain": {"type": ["string", "null"]},
+    "mathlib_revision": {"type": ["string", "null"]},
+    "configuration_status": {"type": "string"},
+    "missing_config": {"type": "array", "items": {"type": "string"}},
+    "required_inputs": {"type": "array", "items": {"type": "string"}},
+    "numina_workflow": {"type": "array", "items": {"type": "string"}},
+    "direct_workflow": {"type": "array", "items": {"type": "string"}},
+    "changed_files": {"type": "array", "items": {"type": "string"}},
+    "errors": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+    "warnings": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+    "minimal_failure": {"type": "object", "additionalProperties": true},
+    "recommended_next_action": {"type": "string"}
+  },
+  "required": ["ok", "status"],
+  "additionalProperties": true
+}

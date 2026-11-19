@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI4Math Lean Agent Config",
+  "type": "object",
+  "properties": {
+    "lean": {"type": "object", "additionalProperties": true},
+    "agent": {"type": "object", "additionalProperties": true},
+    "policy": {"type": "object", "additionalProperties": true},
+    "numina": {"type": "object", "additionalProperties": true}
+  },
+  "additionalProperties": false
+}
