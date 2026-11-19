@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-19T14:57:56.448Z",
-  "fileSetSHA256": "fcb67dc8101d77037a4dabbc86b74bc5ecd344ab4339037820188ad7f54ba0c3",
+  "createdAt": "2026-11-19T15:03:53.375Z",
+  "fileSetSHA256": "ddfaf41ceb67961851bfce79bf30ab333a3d4b094b46646a64450f89ac7b007e",
   "files": [
     {
       "path": ".gitattributes",
@@ -3901,7 +3901,7 @@
     },
     {
       "path": "packages/dsh-auto-approval/CHANGELOG.md",
-      "sha256": "9aa4d95eead7b041d98371e6986c7eade6055c23e7f13444ebc1d9de8d817200"
+      "sha256": "8f7a8780a5dacce0caa5a6a450d125c5463c2d7371eb8b844cb85d4112e26981"
     },
     {
       "path": "packages/dsh-auto-approval/cordis.patch.yml",
@@ -3921,11 +3921,11 @@
     },
     {
       "path": "packages/dsh-auto-approval/README_EN.md",
-      "sha256": "d3caad2b5e6f9bd198e03fc7fe53604702a7e32aa887339604fcc47b853a7e78"
+      "sha256": "faf0035e1a1141889c18ac7179083b2693f743f056472bb270b262a528699ecc"
     },
     {
       "path": "packages/dsh-auto-approval/README.md",
-      "sha256": "7a872328e5dad0d72062364022fd325fd4c34f62f45c477dd7a0b8d25f2f11c5"
+      "sha256": "7df8ec15aecde818e78ed30a6320c77502a62d76107c64f1f9cddb3cb8ec3f89"
     },
     {
       "path": "packages/dsh-auto-approval/scripts/build.mjs",
