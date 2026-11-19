@@ -9,7 +9,7 @@
 - 文件工具 write、edit、apply_patch 的越界申请也审查：按效果相同的命令或补丁展示，列出每个文件的真实路径和状态；改本次会话之前就有的文件，要模型判断用户要求过才放行。
 - 用户在提问卡上的回答算作用户的消息。
 - 写入 `~/Library/LaunchAgents` 的登录启动项算改软件配置。
-- 未登录机构账号或没有 Key 时，记录里写明原因，不算失败，不暂停审查。
+- 未登录机构账号、没有 Key 或无法确认文件是否存在时，交给用户，记录里写明原因，不算失败，不暂停审查。
 - Initial release: under a dedicated permission preset, review bash/pwsh sandbox escalation requests with fixed rules and a SystemOne-compatible decision model, allowing once what the user would agree to and asking the user otherwise.
 - Time-limited review (10 seconds by default), one retry for network errors, 429 and 5xx, and a 5-minute pause after 3 failures in a row in a session; supports API keys, optional OIDC and unauthenticated services; disabled by default.
 - Each reviewed request leaves a notice in the trajectory with the outcome and score; the conversation model learns only whether it was allowed automatically or the user was asked.
@@ -17,4 +17,4 @@
 - Escalations from the file tools write, edit and apply_patch are reviewed too, shown as the command or patch with the same effect, with each file's real path and state; a change to a file that was there before the session is allowed only when the model judges it requested.
 - Answers on question cards count as user messages.
 - Writing login items to `~/Library/LaunchAgents` counts as changing software configuration.
-- Without organization sign-in or a key, the notice gives the reason, and it is not counted as a failure towards a pause.
+- Without organization sign-in or a key, or when it cannot be told whether a target file exists, the request goes to the user, the notice gives the reason, and it is not counted as a failure towards a pause.

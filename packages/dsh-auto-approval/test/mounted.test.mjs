@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, realpath, symlink, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, realpath, symlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { isAbsolute, join, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -406,6 +406,26 @@ test('file tools are reviewed as the command they amount to, with each file they
   assert.match(mounted.logs.at(-1)[1], /^review failed/)
   assert.equal(await mount({ ...base, baseURL }).escalate({ file_path: 'a.md', content: 'x' }, { name: 'write' }), 'rejected')
   assert.equal(bodies.length, asked)
+})
+
+test('a file that may be there but cannot be checked goes to the user, and does not pause the review', { skip: process.platform === 'win32' && 'Windows has no POSIX permission bits' }, async t => {
+  const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
+  const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
+  await mkdir(root, { recursive: true })
+  const locked = await mkdtemp(join(root, 'locked-'))
+  await writeFile(join(locked, 'a.md'), 'there')
+  await chmod(locked, 0)
+  t.after(() => chmod(locked, 0o755))
+  const fs = { resolve: async path => ({ displayPath: path, targetKey: join(locked, path) }) }
+  const mounted = mount({ ...base, baseURL }, { services: { fs } })
+  // More requests than a pause takes: each one says why.
+  for (let i = 0; i < 4; i++) {
+    const exec = await mounted.start({ file_path: 'a.md', content: 'x' }, { name: 'write' })
+    assert.equal(await mounted.ask(exec, { fallback: 'unavailable' }), 'unavailable')
+    assert.equal((await mounted.post(exec)).additionalContexts[0].source.summary, '交给用户确认（无法确认文件是否存在）')
+  }
+  assert.equal(bodies.length, 0)
+  assert.match(mounted.logs.at(-1)[1], /^review not started, asking the user: Cannot tell whether a target file exists: EACCES$/)
 })
 
 test('one retry for 5xx; failures, malformed answers and timeouts ask the user; three in a row pause the review', async t => {

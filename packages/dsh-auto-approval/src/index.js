@@ -110,10 +110,15 @@ export function apply(ctx, raw = {}) {
   }
 
   // Where a file tool's path leads, as the file system it writes through resolves it: against the session's directory
-  // and through links, with the real path even for a file that does not exist yet.
+  // and through links, with the real path even for a file that does not exist yet. Only a missing file is new; any
+  // other error leaves open whether one is there.
   async function target(path, cwd, signal) {
     const { displayPath, targetKey } = await ctx.get('fs').resolve(path, { cwd, signal })
-    return { display: displayPath, real: targetKey, exists: await lstat(targetKey).then(() => true, () => false) }
+    const exists = await lstat(targetKey).then(() => true, error => {
+      if (error.code === 'ENOENT') return false
+      throw new Unready(`Cannot tell whether a target file exists: ${error.code}`, '无法确认文件是否存在')
+    })
+    return { display: displayPath, real: targetKey, exists }
   }
 
   async function review(req, call, command, signal) {
@@ -209,8 +214,8 @@ export function apply(ctx, raw = {}) {
   }, { prepend: true })
 }
 
-// Not signed in, or no key: nothing was asked of the service, and the user has something to do, so the notice says what.
-// It is not counted towards a pause, which would show its own reason instead and outlast the sign-in.
+// Not signed in, no key, or a file whose state is unknown: nothing was asked of the service, and the notice says why.
+// It is not counted towards a pause, which would show its own reason instead and outlast the cause.
 class Unready extends Error {
   constructor(message, reason) {
     super(message)
