@@ -275,6 +275,10 @@ test('a rejection the plugin did not review holds back automatic approval too', 
   assert.equal(await other.ask({ name: 'run_code', callId: 'program-1' }), 'rejected')
   assert.equal(await other.escalate('cp a.csv ~/Downloads/', user), 'unavailable')
   assert.equal(bodies.length, 0)
+  // A rejection that comes after its request was withdrawn answers nothing.
+  const late = mount({ ...base, baseURL }, { events })
+  assert.equal(await late.ask({ name: 'run_code', callId: 'program-2' }, { signal: AbortSignal.abort() }), 'rejected')
+  assert.equal(await late.escalate('cp a.csv ~/Downloads/'), 'allowed-once')
 })
 
 test('the directory read that ends a review is within its time limit and its failure count', async t => {

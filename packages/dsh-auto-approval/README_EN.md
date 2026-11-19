@@ -8,7 +8,7 @@ The plugin uses DSH's native approval, tool and configuration mechanisms, with n
 
 ## How requests are reviewed
 
-A review happens only when all of these hold: the session uses the preset named in the plugin configuration (`auto-approval` by default); the request comes from `bash`, `pwsh` or the file tools `write`, `edit` and `apply_patch`; the call carries `sandbox_permissions`, asking to leave the current sandbox; and no other tool policy (such as hooks) asked to confirm the call with the user. Approvals for other tools such as MCP, calls another policy asks the user about, and sessions under other presets are not affected.
+A review happens only when all of these hold: the session uses the preset named in the plugin configuration (`auto-approval` by default); the request comes from `bash`, `pwsh` or the file tools `write`, `edit` and `apply_patch`; the call carries `sandbox_permissions`, asking to leave the current sandbox; and no other tool policy (such as hooks) asked to confirm the call with the user. Approvals for other tools such as MCP, calls another policy asks the user about, and sessions under other presets go through DSH's approval as usual, without review; when one of them is rejected, later requests still go to the user (see below).
 
 The plugin turns the request into a state for the decision model, with these fields in order: system, workspace (where the sandbox allows writes: the directory the session started in), current directory (where the command actually runs), files created in this session, the assistant message the user replied to, the user's recent messages, the stated justification, earlier commands, risk flag and the pending command. When a bash command just runs one local script file (such as `bash scripts/deploy.sh prod`, `python3 tools/sync.py` or `./run.sh --all`), the script content is added.
 
@@ -22,7 +22,7 @@ Fixed rules flag operations that the user must have asked for: pushing and publi
 - Without a rule hit, two questions are asked in parallel, whether the user would agree and how serious a mistake would be; the request is allowed when their mean (the probability of agreement averaged with 1 − severity) is at least 0.5.
 - When a file tool changes a file that was there before this session, the score is the lower of that mean and the probability of agreement: the change is allowed only when the user asked for it and it is easy to undo. However small, a change the model judges unrequested goes to the user. When it cannot be told whether a file exists (for example, its directory cannot be entered), the request goes to the user without a review.
 
-An approval covers this one request only and is not remembered. After the user rejects a request on the confirmation card, whether the plugin reviewed it or not, the session's escalations are not reviewed and go straight to the user until the user writes again; one still under review at the rejection is not allowed either.
+An approval covers this one request only and is not remembered. After a request in the session is rejected (by the user on the confirmation card or by a client directly, whether the plugin reviewed it or not; a rejection that comes after the request was withdrawn does not count), the session's escalations are not reviewed and go straight to the user until the user writes again; one still under review at the rejection is not allowed either.
 
 ## Installation and configuration
 

@@ -42,8 +42,9 @@ export function apply(ctx, raw = {}) {
   // was there, so it does not count.
   const created = new WeakMap()
   const failures = new Map()
-  // The user's last rejection in each session, reviewed or not, with their last message then: until they write again,
-  // requests are theirs to answer. Each rejection is a new record, so a review can tell whether one came while it ran.
+  // The last rejection in each session, of a request reviewed or not, with the user's last message then: until they
+  // write again, requests are theirs to answer. Each rejection is a new record, so a review can tell whether one came
+  // while it ran.
   const declined = new WeakMap()
   const lastRequest = session => session.snapshotEvents().findLast(({ type, data }) => type === 'user/message' && data.source?.kind === 'user')?.seq
   const refused = session => declined.has(session) && declined.get(session).request === lastRequest(session)
@@ -154,12 +155,13 @@ export function apply(ctx, raw = {}) {
   }
 
   // Ahead of the client's answerer: approve what the review allows, hand everything else to the user unchanged, and note
-  // what they reject.
+  // what they reject. An answer that comes after the request was withdrawn answers nothing: DSH has already returned
+  // `cancelled` for it, and the user may have written since.
   ctx.on('approval/request', async (req, next) => {
     const session = req.agent?.session
     const user = async () => {
       const outcome = await next()
-      if (outcome === 'rejected' && session) declined.set(session, { request: lastRequest(session) })
+      if (outcome === 'rejected' && session && !req.signal?.aborted) declined.set(session, { request: lastRequest(session) })
       return outcome
     }
     const entry = inFlight.get(session)?.get(req.callId)
