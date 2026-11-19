@@ -13,6 +13,7 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 | `@eduwork/dsh-academic-calendar` | [教学日历与校历数据接口](../packages/dsh-academic-calendar/README.md) | `packages/dsh-academic-calendar` |
 | `@eduwork/dsh-external-agents` | [外部智能体连接 / External agent connections](../packages/dsh-external-agents/README.md) | `packages/dsh-external-agents` |
 | `@eduwork/dsh-decision` | [SystemOne 决策工具与技能](../packages/dsh-decision/README.md) | `packages/dsh-decision` |
+| `@eduwork/dsh-auto-approval` | [命令自动审批](../packages/dsh-auto-approval/README.md) | `packages/dsh-auto-approval` |
 | `@eduwork/dsh-annotation` | [选段引用与批注](../packages/dsh-annotation/README.md) | `packages/dsh-annotation` |
 | `@eduwork/dsh-side-chat` | [侧边聊天与选区提问](../packages/dsh-side-chat/README.md) | `packages/dsh-side-chat` |
 | `@eduwork/dsh-desktop-pet` | [桌面宠物与宿主要求](../packages/dsh-desktop-pet/README.md) | `packages/dsh-desktop-pet` |
@@ -31,6 +32,8 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 ## 兼容声明与构建锁
 
 决策插件使用 DSH 原生 bundle、工具和技能，从已发布的 npm 原包预装。决策服务默认关闭；支持显式 API Key、可选 OIDC 和免鉴权服务配置，配置完成后启用。包检查使用锁定的 rc.3 Runtime（`EDUWORK_DECISION_RUNTIME`），测试不请求真实模型。
+
+命令自动审批插件通过决策插件的公开 `./core` 导出请求决策服务，默认关闭，尚未加入桌面装配；启用还需要在权限插件配置中加入对应预设。包检查使用锁定的 DSH `0.2.2-rc.3` Runtime（`EDUWORK_AUTO_APPROVAL_RUNTIME`）跑真实审批流程，测试不请求真实模型。
 
 `peerDependencies` 表示插件支持的宿主 API 范围；开发依赖、`package-lock.json` 和产品组件锁记录一次构建的确切输入，两者分别维护。对已验证兼容的同一 API 系列，peer 应使用有上下界的版本范围，避免逐个追加 rc 版本。范围需要检查预发布版本的匹配语义，并在支持范围内验证实际插件加载与工具调用；不能仅因版本号相邻就假定兼容，也不使用 `*` 跳过边界。
 
@@ -53,7 +56,7 @@ node scripts/packages/manage.mjs pack dsh-oidc
 
 Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 Python 3.12+ 的独立环境，执行 `python -m pip install -r packages/dsh-knowledge-studio/packages/artifact-services/python/requirements.txt`，并将 `DSH_OFFICE_PYTHON` 环境变量设为该 Python 解释器的绝对路径。CI 会自动完成这一步；无需安装浏览器或登录任何企业服务。
 
-自动检查只运行受影响的开发根。共享服务变更会连带检查 Studio；仅修改包根目录的 README 或 AGENTS.md 时，只检查入口与链接；包内 Skill、协议文档和图片仍执行该包的检查与打包。UI、真实服务登录、邮件、Office 与音视频全流程，按实际行为改动在本地做专项验收。普通 CI 不下载浏览器、不调用真实模型、不发布 npm 或桌面 Release。
+自动检查只运行受影响的开发根，在 Linux 上运行；`dsh-auto-approval` 要处理宿主机的路径，同时在 Windows 上检查。共享服务变更会连带检查 Studio；仅修改包根目录的 README 或 AGENTS.md 时，只检查入口与链接；包内 Skill、协议文档和图片仍执行该包的检查与打包。UI、真实服务登录、邮件、Office 与音视频全流程，按实际行为改动在本地做专项验收。普通 CI 不下载浏览器、不调用真实模型、不发布 npm 或桌面 Release。
 
 ## 审批提示的多语言
 

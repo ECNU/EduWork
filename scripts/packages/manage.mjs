@@ -27,6 +27,7 @@ if (action === 'list') {
     const scripts = {
       'dsh-external-agents': ['check'],
       'dsh-decision': ['check'],
+      'dsh-auto-approval': ['check'],
       'dsh-calendar': ['test'],
       'dsh-calendar-subscriptions': ['test'],
       'dsh-academic-calendar': ['test'],

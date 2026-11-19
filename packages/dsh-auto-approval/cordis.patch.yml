@@ -1,0 +1,5 @@
+- insert:
+    - id: auto-approval
+      name: '@eduwork/dsh-auto-approval'
+      config:
+        enabled: false

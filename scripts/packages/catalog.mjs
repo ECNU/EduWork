@@ -5,6 +5,7 @@ export const repository = 'ECNU/EduWork'
 export const packages = [
   { id: 'dsh-external-agents', name: '@eduwork/dsh-external-agents', directory: 'packages/dsh-external-agents', group: 'dsh-external-agents' },
   { id: 'dsh-decision', name: '@eduwork/dsh-decision', directory: 'packages/dsh-decision', group: 'dsh-decision' },
+  { id: 'dsh-auto-approval', name: '@eduwork/dsh-auto-approval', directory: 'packages/dsh-auto-approval', group: 'dsh-auto-approval' },
   { id: 'dsh-annotation', name: '@eduwork/dsh-annotation', directory: 'packages/dsh-annotation', group: 'dsh-annotation' },
   { id: 'dsh-side-chat', name: '@eduwork/dsh-side-chat', directory: 'packages/dsh-side-chat', group: 'dsh-side-chat' },
   { id: 'dsh-desktop-pet', name: '@eduwork/dsh-desktop-pet', directory: 'packages/dsh-desktop-pet', group: 'dsh-desktop-pet' },
@@ -20,6 +21,8 @@ export const packages = [
   { id: 'dsh-academic-calendar', name: '@eduwork/dsh-academic-calendar', directory: 'packages/dsh-academic-calendar', group: 'dsh-academic-calendar' },
 ]
 export const groups = [...new Set(packages.map(p => p.group))]
+// Also checked on Windows: these plugins handle the host's own paths, which differ there.
+export const windowsGroups = ['dsh-auto-approval']
 export function selectPackage(id) {
   const selected = packages.find(p => p.id === id)
   if (!selected) throw new Error(`Unknown package: ${id}. Choose ${packages.map(p => p.id).join(', ')}`)
@@ -33,13 +36,14 @@ export function changedGroups(files) {
     if (file.startsWith('scripts/packages/') || file === 'tests/package-maintenance.test.mjs' || /^\.github\/workflows\/packages(?:-release)?\.yml$/.test(file)) {
       groups.forEach(group => result.add(group))
     }
-    // Both package checks install this Runtime to exercise their mounted plugins.
+    // These package checks install this Runtime to exercise their mounted plugins.
     if (/^third_party\/dsh\/[^/]+\/npm-runtime\//.test(file)) {
       result.add('dsh-side-chat')
       result.add('dsh-calendar')
       result.add('dsh-calendar-subscriptions')
       result.add('dsh-academic-calendar')
       result.add('dsh-decision')
+      result.add('dsh-auto-approval')
     }
     for (const entry of packages) if (file.startsWith(entry.directory + '/')) result.add(entry.group)
     if (file.startsWith('dsh-plugins/calendar/')) {
@@ -90,6 +94,8 @@ export function selectProductChecks(files, { receiptOnly = false, full = false, 
     build: full || buildInputs.length > 0,
     integration: full || integrationInputs.length > 0,
     groups: selectedGroups,
+    // The npm package check matrix: one job per group and runner.
+    checks: selectedGroups.flatMap(group => ['ubuntu-latest', ...windowsGroups.includes(group) ? ['windows-latest'] : []].map(os => ({ package: group, os }))),
     packages: selectedGroups.length > 0,
     reasons: {
       build: full ? [reason] : buildInputs.length ? buildInputs : ['No product assembly inputs changed'],
