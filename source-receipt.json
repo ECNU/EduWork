@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-19T19:37:21.895Z",
-  "fileSetSHA256": "5f5db508fa76c7f3c9b23ac56e2a01617efc512800abd967f08f9a41b04c98df",
+  "createdAt": "2026-11-19T19:37:23.278Z",
+  "fileSetSHA256": "a9800244b8b1eef0e97e5d483ebf1b332e89303e8faec05aa7ed4d5bc867748f",
   "files": [
     {
       "path": ".gitattributes",
@@ -7969,7 +7969,7 @@
     },
     {
       "path": "scripts/lib/windows-stages.mjs",
-      "sha256": "5db01b188f7d779022c4768f2bba6eb33517be8e5b3a2fc1ca84216469744028"
+      "sha256": "98beb68f13c9509ac1b1aeefeab3f71fc0af6ed36583bb1fd536b6c9b8e64c35"
     },
     {
       "path": "scripts/lib/zip.mjs",

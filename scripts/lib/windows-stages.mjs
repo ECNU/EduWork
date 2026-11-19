@@ -314,7 +314,7 @@ async function buildAndAcceptPublicInstaller({ workspace, coreRoot }) {
   }
   const { version, sourceIdentity } = workspace.parameters
   const root = workspace.resolvePath('installer')
-  const candidate = join(root, 'installed-candidate')
+  const candidate = join(root, 'electron-candidate')
   const output = join(root, 'package')
   const inputs = await readJSON(workspace.resolvePath('inputs/inputs.json'))
   const identity = await readJSON(workspace.resolvePath('product/assembly.json'))
