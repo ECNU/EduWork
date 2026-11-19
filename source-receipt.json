@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-19T14:46:36.528Z",
-  "fileSetSHA256": "afeee0a1d52c3c8bd6a7365122ebe7b87081ee2a345dbad2a5038a580d478bfd",
+  "createdAt": "2026-11-19T14:57:56.448Z",
+  "fileSetSHA256": "fcb67dc8101d77037a4dabbc86b74bc5ecd344ab4339037820188ad7f54ba0c3",
   "files": [
     {
       "path": ".gitattributes",
@@ -3901,7 +3901,7 @@
     },
     {
       "path": "packages/dsh-auto-approval/CHANGELOG.md",
-      "sha256": "a67e04698b4e36f0aa97363e31c082e5f4432ac96c74a24b332db18c3718ef1c"
+      "sha256": "9aa4d95eead7b041d98371e6986c7eade6055c23e7f13444ebc1d9de8d817200"
     },
     {
       "path": "packages/dsh-auto-approval/cordis.patch.yml",
@@ -3921,11 +3921,11 @@
     },
     {
       "path": "packages/dsh-auto-approval/README_EN.md",
-      "sha256": "cbd8d149b0354777e9fcf6d0efbb83d324357f55737a199d0120ccf952fa5f71"
+      "sha256": "d3caad2b5e6f9bd198e03fc7fe53604702a7e32aa887339604fcc47b853a7e78"
     },
     {
       "path": "packages/dsh-auto-approval/README.md",
-      "sha256": "2c4bbc4501e505ef46501370f77c5040e54c48da8a64a4c34522907c3a2a2ff5"
+      "sha256": "7a872328e5dad0d72062364022fd325fd4c34f62f45c477dd7a0b8d25f2f11c5"
     },
     {
       "path": "packages/dsh-auto-approval/scripts/build.mjs",
@@ -3933,7 +3933,7 @@
     },
     {
       "path": "packages/dsh-auto-approval/src/index.js",
-      "sha256": "fdf62858c0585ce7df5479cc28cd3ec1e2c21e59b8354166566366ae52d55536"
+      "sha256": "5d7f249f56af3a8a3fd89c362eb67d80f0e8dc72ebae5c891f83d89e3f825b0f"
     },
     {
       "path": "packages/dsh-auto-approval/src/questions.js",
@@ -3949,7 +3949,7 @@
     },
     {
       "path": "packages/dsh-auto-approval/test/mounted.test.mjs",
-      "sha256": "33f7b93c8595d026eb2da57ffb475354d7b1161df26f1da24fb3d6f833da7107"
+      "sha256": "302d259ecfe61be5f72bb361b54e10333398d9be9ae48de0d29721ee770104d8"
     },
     {
       "path": "packages/dsh-auto-approval/test/review.test.mjs",
