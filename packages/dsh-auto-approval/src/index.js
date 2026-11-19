@@ -110,14 +110,13 @@ export function apply(ctx, raw = {}) {
   }
 
   // Where a file tool's path leads, as the file system it writes through resolves it: against the session's directory
-  // and through links, with the real path even for a file that does not exist yet. Only a missing file is new; any
-  // other error leaves open whether one is there.
+  // and through links, with the real path even for a file that does not exist yet. Only a missing file is new; when
+  // the path cannot be resolved or checked, for example behind a directory this process cannot enter, a file may be
+  // there.
   async function target(path, cwd, signal) {
-    const { displayPath, targetKey } = await ctx.get('fs').resolve(path, { cwd, signal })
-    const exists = await lstat(targetKey).then(() => true, error => {
-      if (error.code === 'ENOENT') return false
-      throw new Unready(`Cannot tell whether a target file exists: ${error.code}`, '无法确认文件是否存在')
-    })
+    const unknown = error => { throw new Unready(`Cannot tell whether a target file exists: ${error.code}`, '无法确认文件是否存在') }
+    const { displayPath, targetKey } = await ctx.get('fs').resolve(path, { cwd, signal }).catch(unknown)
+    const exists = await lstat(targetKey).then(() => true, error => error.code === 'ENOENT' ? false : unknown(error))
     return { display: displayPath, real: targetKey, exists }
   }
 

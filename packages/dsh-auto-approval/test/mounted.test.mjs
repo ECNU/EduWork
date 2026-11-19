@@ -408,7 +408,10 @@ test('file tools are reviewed as the command they amount to, with each file they
   assert.equal(bodies.length, asked)
 })
 
-test('a file that may be there but cannot be checked goes to the user, and does not pause the review', { skip: process.platform === 'win32' && 'Windows has no POSIX permission bits' }, async t => {
+// Windows has no POSIX permission bits, and root is not bound by them.
+const lockable = { skip: (process.platform === 'win32' || process.getuid() === 0) && 'directory permissions do not bind this process' }
+
+test('a file that may be there but cannot be checked goes to the user, and does not pause the review', lockable, async t => {
   const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
   const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
   await mkdir(root, { recursive: true })

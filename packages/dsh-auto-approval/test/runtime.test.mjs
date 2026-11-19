@@ -2,7 +2,8 @@
 // and approval service run it, and the plugin answers before the client's answerer.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, realpath } from 'node:fs/promises'
+import { chmodSync, mkdirSync, writeFileSync } from 'node:fs'
+import { chmod, mkdir, mkdtemp, readFile, realpath } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { basename, join } from 'node:path'
@@ -175,6 +176,21 @@ test('real Runtime: a file tool escalation is reviewed with the file it writes, 
   assert.deepEqual(state.目标文件, [`${join(await realpath(join(outside, '..')), basename(outside), 'report.md')}：还不存在，会新建`])
   assert.equal(await readFile(join(outside, 'report.md'), 'utf8'), '# Report\n')
   assert.deepEqual(result.notices.map(({ data }) => data.source.summary), ['已自动放行（分数 0.900）'])
+})
+
+// Windows has no POSIX permission bits, and root is not bound by them.
+const lockable = (process.platform === 'win32' || process.getuid() === 0) && 'directory permissions do not bind this process'
+
+test('real Runtime: a file behind a directory the Host cannot enter goes to the user without a review', { ...runtime, skip: runtime.skip || lockable }, async t => {
+  const result = await run(t, { auto: 0.9, escalation: home => {
+    const locked = `${home}-locked`
+    mkdirSync(locked); writeFileSync(join(locked, 'report.md'), 'there'); chmodSync(locked, 0)
+    t.after(() => chmod(locked, 0o755))
+    return call('call-1', 'write', { file_path: join(locked, 'report.md'), content: '# Report\n', sandbox_permissions: 'danger-full-access', justification: 'Replace the report' })
+  } })
+  assert.deepEqual(result.userAnswers, ['call-1'])
+  assert.equal(result.bodies.length, 0)
+  assert.deepEqual(result.notices.map(({ data }) => data.source.summary), ['交给用户确认（无法确认文件是否存在）'])
 })
 
 test('real Runtime: the user\'s answer on a question card is read as their reply to it', runtime, async t => {
