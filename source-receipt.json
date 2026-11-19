@@ -5,7 +5,7 @@
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-16T11:24:22.868Z",
-  "fileSetSHA256": "4cee309f393a54fd79375a4456750ff9af33c46c1cf6fde7fbe4117780a41bbb",
+  "fileSetSHA256": "b69306ece449a75f8e697b80407fcffb5116b1c781dd0a51c69d37422096e419",
   "files": [
     {
       "path": ".gitattributes",
@@ -1169,7 +1169,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-linux.mjs",
-      "sha256": "aa3f692d2ff9b0d2649cd57c2552539390f0bd9e465beffc24a185451c1b3984"
+      "sha256": "eae2e4243d637d827474b72a11fdfe2a6fc808ec95a899dd123485b89fea2ea3"
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.mjs",
@@ -1217,7 +1217,7 @@
     },
     {
       "path": "dsh-electron/scripts/prepare-electron.mjs",
-      "sha256": "d094c24b90b6203c2e5893ca975707334bd71ac8916ee911d9127329741079fa"
+      "sha256": "6570bc8673f11a0dee6615750846c9274004e6a754c34525afaa340b64f23a6b"
     },
     {
       "path": "dsh-electron/scripts/prepare-electron.ps1",
@@ -7561,7 +7561,7 @@
     },
     {
       "path": "scripts/assemble-pinned-dsh-source-product.mjs",
-      "sha256": "3d6de0810c1cef9c4dd247a0729dbdfb89aebb84c623da4e7be5b633d9fce444"
+      "sha256": "81bd0b8edd15e3028e93f9b9e8afc8ca38e45daa5e5eb702ab2fa25fe8843fd3"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
@@ -7577,7 +7577,7 @@
     },
     {
       "path": "scripts/build-pinned-dsh-plugin-clients.mjs",
-      "sha256": "879cc06d4dc48e30a12f7470138af7ba1a5049eb339c248f837f7cf4e63cbbc4"
+      "sha256": "e0238c276101eb15183d0e2b3aa749449af8291e84a9c9276a817186118db2ab"
     },
     {
       "path": "scripts/build-pipeline-diagram.mjs",
@@ -7605,7 +7605,7 @@
     },
     {
       "path": "scripts/ci-eduwork-linux-release.mjs",
-      "sha256": "dd4ade9888989d6beb46b1c188e9f6b94d83fd0376439ef0ecff2e73e7434ff6"
+      "sha256": "8f51ff25bc07639de1b5cf2f0eaee19dbcbfa8a07bae48733c3564989f37ea53"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.mjs",
@@ -7745,7 +7745,7 @@
     },
     {
       "path": "scripts/lib/linux-stages.mjs",
-      "sha256": "49a46ed3ea911765279788c4890dc8677ec8db14f4e5d20b1e5f215e78a6e345"
+      "sha256": "aabb119d384422b85e8a21f02ec2e6a0e5edfbdc92d15dc4637624f439bf3572"
     },
     {
       "path": "scripts/lib/local-install.mjs",
@@ -7889,7 +7889,7 @@
     },
     {
       "path": "scripts/package-linux-appimage.mjs",
-      "sha256": "dae67028364377c0069fce5f51490e72ec3029aab49955e741d0554ba058cad3"
+      "sha256": "381fb7bd3c133b179168b607a610fbf258f9e8e1a119585b770245005c794929"
     },
     {
       "path": "scripts/package-macos-external-config.mjs",

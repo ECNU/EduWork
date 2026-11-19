@@ -27,7 +27,7 @@ export async function prepareElectron({ upstream, output } = {}) {
   await ensureDir(output)
   const archive = join(output, archiveName)
   if (!await pathExists(archive)) {
-    await download(`https://github.com/electron/electron/releases/download/v${manifest.version}/${archiveName}`, archive)
+    await download(`https://github.com/electron/electron/releases/download/v${manifest.version}/${archiveName}`, archive, { sha256: expected, retries: 6 })
   }
   if (await sha256File(archive) !== expected) throw new Error('Electron archive checksum mismatch')
   const runtime = join(output, 'runtime')

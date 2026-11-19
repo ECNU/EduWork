@@ -20,7 +20,14 @@ if (!values.runtime || !values.dependencies || !values.report || !values.output)
 const sourceRepository = fileURLToPath(new URL('../', import.meta.url))
 const repository = resolve(values.output)
 const pathFromSource = relative(sourceRepository, repository)
-if (!pathFromSource.startsWith('..' + sep) && !/^[A-Za-z]:/.test(pathFromSource)) throw new Error('Qualification output must stay outside the source checkout')
+// Qualification trees are disposable build products. Keep the historical
+// protection against writing into source directories, while allowing the
+// project-local `dist/` workspace used by desktop builds.
+const generatedRoot = resolve(sourceRepository, 'dist')
+const pathFromGenerated = relative(generatedRoot, repository)
+const outsideSource = pathFromSource.startsWith('..' + sep) || /^[A-Za-z]:/.test(pathFromSource)
+const insideGenerated = pathFromGenerated !== '' && !pathFromGenerated.startsWith('..' + sep) && !/^[A-Za-z]:/.test(pathFromGenerated)
+if (!outsideSource && !insideGenerated) throw new Error('Qualification output must stay outside the source checkout or inside dist/')
 const runtime = resolve(values.runtime), dependencies = resolve(values.dependencies)
 const require = createRequire(join(runtime, 'package.json'))
 const runtimeReceipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))

@@ -3,7 +3,6 @@
 // the caller to keep CI and local builds on the same verified binary.
 import { chmod, mkdtemp, rm } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
-import { tmpdir } from 'node:os'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import {
@@ -37,14 +36,19 @@ async function resolveTools(toolPath, cacheRoot, runtimePath = '') {
   return { tool: toolPath, runtime: runtimeTarget }
 }
 
-export async function packageLinuxAppImage({ candidate, output, appimagetool = '', appimageRuntime = '', cacheRoot = '' } = {}) {
+export async function packageLinuxAppImage({ candidate, output, appimagetool = '', appimageRuntime = '', cacheRoot = '', stagingRoot = '' } = {}) {
   if (process.platform !== 'linux' || process.arch !== 'x64') throw new Error('AppImage packaging requires a Linux x64 host')
   candidate = fullPath(candidate)
   if (!await isFile(join(candidate, 'eduwork.bin')) || !await isFile(join(candidate, 'resources/app/eduwork.desktop.json'))) {
     throw new Error('Candidate is not an assembled Linux Electron directory')
   }
   const release = await readJSON(join(candidate, 'release.json'))
-  const appDir = await mkdtemp(join(tmpdir(), 'eduwork-appdir-'))
+  // Keep the staging tree beside the candidate so local builds do not fill a
+  // small system temporary filesystem. AppImage tooling receives the same
+  // directory through TMPDIR for any internal scratch files.
+  const staging = fullPath(stagingRoot || join(dirname(candidate), '.appimage-staging'))
+  await ensureDir(staging)
+  const appDir = await mkdtemp(join(staging, 'eduwork-appdir-'))
   try {
     await copyTree(candidate, join(appDir, 'usr/lib/eduwork'), { skipLinks: true })
     const payload = join(appDir, 'usr/lib/eduwork')
@@ -61,7 +65,7 @@ export async function packageLinuxAppImage({ candidate, output, appimagetool = '
     output = fullPath(output || join(dirname(candidate), `${product}-${version}-linux-x86_64.AppImage`))
     if (await pathExists(output)) throw new Error(`AppImage output already exists: ${output}`)
     const tools = await resolveTools(appimagetool, cacheRoot, appimageRuntime)
-    await run(tools.tool, ['--appimage-extract-and-run', appDir, output], { env: { ARCH: 'x86_64', RUNTIME: tools.runtime } })
+    await run(tools.tool, ['--appimage-extract-and-run', appDir, output], { env: { ARCH: 'x86_64', RUNTIME: tools.runtime, TMPDIR: staging } })
     const info = await statEntry(output)
     if (!info?.isFile() || info.size < 1) throw new Error('appimagetool did not produce an AppImage')
     await chmod(output, 0o755)
@@ -75,9 +79,9 @@ export async function packageLinuxAppImage({ candidate, output, appimagetool = '
 
 if (isMainModule(import.meta.url)) {
   const { values } = parseArgs({ options: {
-    candidate: { type: 'string' }, output: { type: 'string' }, appimagetool: { type: 'string' }, 'cache-root': { type: 'string' },
+    candidate: { type: 'string' }, output: { type: 'string' }, appimagetool: { type: 'string' }, 'cache-root': { type: 'string' }, 'staging-root': { type: 'string' },
   } })
   if (!values.candidate) throw new Error('Use --candidate <assembled Linux directory> [--output <AppImage>] [--appimagetool <path>]')
-  const result = await packageLinuxAppImage({ candidate: values.candidate, output: values.output, appimagetool: values.appimagetool, cacheRoot: values['cache-root'] })
+  const result = await packageLinuxAppImage({ candidate: values.candidate, output: values.output, appimagetool: values.appimagetool, cacheRoot: values['cache-root'], stagingRoot: values['staging-root'] })
   console.log(JSON.stringify(result, null, 2))
 }

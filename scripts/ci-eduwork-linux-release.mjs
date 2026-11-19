@@ -2,7 +2,7 @@
 // the Windows and macOS candidates. Publication remains a separate future step.
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
-import { ensureDir, fullPath, isMainModule, readJSON, writeJSON } from './lib/build-util.mjs'
+import { ensureDir, fullPath, isMainModule, readJSON, setCacheRoot, writeJSON } from './lib/build-util.mjs'
 import { Workspace, maxParallelism, runStages } from './lib/stage-runner.mjs'
 import { pinnedSourceStages } from './lib/pinned-source-stages.mjs'
 import { linuxStages } from './lib/linux-stages.mjs'
@@ -14,6 +14,7 @@ export async function ciEduworkLinuxRelease({ coreRoot, editionRoot, distributio
   const plan = await desktopBuildPlan({ core: coreRoot, edition: editionRoot, version, includeLegacyValidation: false })
   if (development && !desktopVersion(version).prerelease) throw new Error('Development artifacts require a prerelease version')
   const sourceIdentity = await desktopSourceIdentity({ coreRoot, editionRoot })
+  if (cacheRoot) setCacheRoot(cacheRoot)
   const name = coreRoot === editionRoot ? 'EduWork' : 'EduWork-ECNU'
   const parameters = { arch: 'x64', kind: 'eduwork-linux-release', version, edition: name, distributionConfig, development, verifySnapshot, recipe, sourceIdentity, coreRoot: fullPath(coreRoot), editionRoot: fullPath(editionRoot), cacheRoot }
   const receiptBase = { schemaVersion: 1, kind: 'eduwork-linux-release', version, edition: name, platform: 'linux-x86_64', shell: 'electron', validationProfile: 'appimage-assembly-v1', sourceSnapshotVerified: verifySnapshot, recipe, sourceIdentity, automaticUpdates: false, coreCommit: sourceIdentity.core.commit, editionCommit: sourceIdentity.edition.commit }

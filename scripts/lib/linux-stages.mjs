@@ -22,7 +22,7 @@ export function linuxStages({ coreRoot, receiptBase }) {
         const inputs = await readJSON(workspace.resolvePath('inputs/inputs.json'))
         const candidate = workspace.resolvePath('desktop/candidate')
         await assembleLinux({ product: workspace.resolvePath('product'), shellBuild: workspace.resolvePath('shell'), electronRuntime: workspace.resolvePath('electron/runtime'), output: candidate, version: workspace.parameters.version, node: inputs.node })
-        const packaged = await packageLinuxAppImage({ candidate, output: workspace.resolvePath(`desktop/${workspace.parameters.edition}-${workspace.parameters.version}-linux-x86_64.AppImage`), cacheRoot: workspace.parameters.cacheRoot })
+        const packaged = await packageLinuxAppImage({ candidate, output: workspace.resolvePath(`desktop/${workspace.parameters.edition}-${workspace.parameters.version}-linux-x86_64.AppImage`), cacheRoot: workspace.parameters.cacheRoot, stagingRoot: workspace.resolvePath('appimage-staging') })
         await writeJSON(workspace.resolvePath('desktop/package.json'), packaged)
       },
     }),

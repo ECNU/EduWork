@@ -39,7 +39,9 @@ export async function assembleLinux({ product, shellBuild, electronRuntime, outp
   if (identity.dshCommit !== receipt.dshCommit) throw new Error('Electron and product DSH versions differ')
   const nodeVersion = (await capture(node, ['--version'])).trim()
   assertPreparedNode(nodeVersion, receipt.host.nodeVersion)
-  const nodeLicense = join(dirname(node), 'LICENSE')
+  // Official Node archives place LICENSE beside `bin/`, next to the
+  // executable's parent directory.
+  const nodeLicense = join(dirname(dirname(node)), 'LICENSE')
   if (!await isFile(nodeLicense)) throw new Error('Use the extracted official Node distribution, including its LICENSE')
 
   await copyTree(electronRuntime, output, payloadFilters)
