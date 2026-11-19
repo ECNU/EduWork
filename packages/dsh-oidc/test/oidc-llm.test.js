@@ -29,12 +29,13 @@ const jwt = claims => {
 async function fixture(t, mode = 'oidc', metadataChanges = {}, provider, authChanges = {}) {
   const raw = profileRaw(mode)
   const profile = normalizeEnterpriseProfile({ ...raw, auth: { ...raw.auth, ...authChanges }, ...(provider === undefined ? {} : { provider }) }), records = new Map(), calls = [], routes = []
-  const controls = { user: 'alice', expiresIn: 1800, omitID: false, refreshID: false, refreshFailure: undefined, claim: {}, omitIssuer: false, scope: undefined, quotaGate: undefined, models: [{ id: 'model-a', type: 'llm' }] }
+  const controls = { user: 'alice', expiresIn: 1800, omitID: false, refreshID: false, refreshFailure: undefined, rejectRefreshScope: false, claim: {}, omitIssuer: false, scope: undefined, quotaGate: undefined, models: [{ id: 'model-a', type: 'llm' }] }
   let authorization, callbackResult, serial = 0
+  const authorizations = []
   const ctx = { credentials: { resolve: async ref => records.has(ref) ? { value: records.get(ref) } : undefined,
     set: async (ref, value) => { records.set(ref, value) }, unset: async ref => { records.delete(ref) } }, logger: { warn() {} }, effect() {} }
   const backend = new GatewayDesktopBackend(ctx, new Map([[profile.id, profile]]), {}, {
-    openExternal: async url => { authorization = new URL(url) },
+    openExternal: async url => { authorization = new URL(url); authorizations.push(authorization) },
     updateProvider: profile => { routes.push(enterpriseProviderConfig(new Map([[profile.id, profile]]))) },
     fetch: async (url, init = {}) => {
       calls.push({ url, ...init })
@@ -46,6 +47,7 @@ async function fixture(t, mode = 'oidc', metadataChanges = {}, provider, authCha
         assert.equal(init.body.get('resource'), base)
         const refresh = init.body.get('grant_type') === 'refresh_token'
         if (refresh && controls.refreshFailure) return json(controls.refreshFailure.body, controls.refreshFailure.status)
+        if (refresh && controls.rejectRefreshScope && init.body.get('scope') !== null) return json({ error: 'invalid_request' }, 400)
         if (!refresh) {
           assert.equal(init.body.get('redirect_uri'), authorization.searchParams.get('redirect_uri'))
           assert.equal(createHash('sha256').update(init.body.get('code_verifier')).digest('base64url'), authorization.searchParams.get('code_challenge'))
@@ -85,7 +87,29 @@ async function fixture(t, mode = 'oidc', metadataChanges = {}, provider, authCha
     callbackResult = { status: response.status, html: await response.text(), headers: response.headers }
     return backend.loginStatus(started.loginID)
   }
-  return { profile, backend, records, calls, routes, controls, login, get authorization() { return authorization }, get callbackResult() { return callbackResult } }
+  const waitFor = async predicate => {
+    const deadline = Date.now() + 5000
+    while (Date.now() < deadline) {
+      const value = predicate()
+      if (value) return value
+      await new Promise(resolve => setTimeout(resolve, 5))
+    }
+    throw new Error('synthetic browser did not receive the expected request')
+  }
+  /** Answers the silent authorization as the issuer's own session would: a consentless code, or a denial. */
+  const answerSilent = async ({ error: denied, user, claim } = {}) => {
+    const target = await waitFor(() => authorizations.findLast(url => url.searchParams.get('prompt') === 'none'))
+    if (user !== undefined) controls.user = user
+    if (claim) Object.assign(controls.claim, claim)
+    const callback = new URL(target.searchParams.get('redirect_uri'))
+    callback.searchParams.set('state', target.searchParams.get('state'))
+    if (!controls.omitIssuer) callback.searchParams.set('iss', base)
+    if (denied) callback.searchParams.set('error', denied)
+    else callback.searchParams.set('code', 'synthetic-code')
+    const response = await fetch(callback, { headers: { 'accept-language': 'zh-CN' } })
+    return { status: response.status, authorization: target }
+  }
+  return { profile, backend, records, calls, routes, controls, login, authorizations, answerSilent, get authorization() { return authorization }, get callbackResult() { return callbackResult } }
 }
 
 test('mixed purposes register only LLMs while retaining specialist catalogs, media and account authorization', async t => {
@@ -132,6 +156,22 @@ test('OIDC draft honors short token lifetimes without immediately refreshing the
   assert.notEqual(after.value, before.accessToken)
   for (let i = 0; i < 3; i++) assert.equal((await f.backend.resolveGatewayCredential(f.profile.id)).value, after.value)
   assert.equal(f.calls.filter(call => call.body?.get?.('grant_type') === 'refresh_token').length, 1)
+})
+
+test('a strict issuer rejecting the scope on refresh is retried without it', async t => {
+  const f = await fixture(t)
+  f.controls.expiresIn = 120
+  await f.login()
+  let now = Date.now()
+  f.backend.now = () => now
+  f.controls.rejectRefreshScope = true
+  now += 61_000
+  const credential = await f.backend.resolveGatewayCredential('draft')
+  const refreshes = f.calls.filter(call => call.body?.get?.('grant_type') === 'refresh_token')
+  assert.equal(refreshes.length, 2)
+  assert.equal(refreshes[0].body.get('scope'), 'openid profile offline_access llm:models:read llm:invoke')
+  assert.equal(refreshes[1].body.get('scope'), null)
+  assert.match(credential.value, /^synthetic-access-/)
 })
 
 test('OIDC draft service POST recovers a 401 with a rotated Access Token', async t => {
@@ -343,7 +383,13 @@ test('identity tokens are the verified ones, renewed by a refresh before they la
   assert.equal((await f.backend.identityToken('draft')).token, first.token)
   assert.equal(f.calls.filter(c => c.body?.get?.('grant_type') === 'refresh_token').length, 1)
   now += 6 * 60 * 1000
+  // At expiry the issuer still renews nothing, so one silent sign-in is tried before giving up.
+  const lapsed = f.backend.identityToken('draft').then(value => ({ value }), error => ({ error }))
+  await f.answerSilent({ error: 'login_required' })
+  assert.equal((await lapsed).error.code, 'oidc_identity_token_unavailable')
+  // The denial cools down, so an immediate retry cannot reopen the browser.
   await assert.rejects(f.backend.identityToken('draft'), { code: 'oidc_identity_token_unavailable' })
+  assert.equal(f.authorizations.filter(url => url.searchParams.get('prompt') === 'none').length, 1)
   f.controls.refreshID = true
   f.controls.claim = { exp: Math.floor(now / 1000) + 3600 }
   const renewed = await f.backend.identityToken('draft')
@@ -353,8 +399,61 @@ test('identity tokens are the verified ones, renewed by a refresh before they la
   await assert.rejects(f.backend.identityToken('draft'), { code: 'oidc_login_required' })
 })
 
-test('a failed refresh withholds the identity token; only a rejected grant ends the sign-in', async t => {
+test('an ID Token the issuer did not renew is recovered by one silent authorization', async t => {
   const f = await fixture(t)
+  await f.login()
+  const original = await f.backend.loadSession(f.profile)
+  let now = Date.now()
+  f.backend.now = () => now
+  now += 31 * 60 * 1000
+  f.controls.claim = { exp: Math.floor(now / 1000) + 3600 }
+  const pending = f.backend.identityToken('draft')
+  const answer = await f.answerSilent()
+  const renewed = await pending
+  assert.equal(answer.status, 204)
+  assert.equal(answer.authorization.searchParams.get('prompt'), 'none')
+  const claims = JSON.parse(Buffer.from(renewed.token.split('.')[1], 'base64url'))
+  assert.equal(claims.sub, 'alice')
+  assert.equal(renewed.expiresAt, claims.exp)
+  const session = await f.backend.loadSession(f.profile)
+  assert.equal(session.identity.sub, 'alice')
+  assert.notEqual(session.contextID, original.contextID)
+  assert.equal(f.calls.filter(call => call.body?.get?.('grant_type') === 'refresh_token').length, 1)
+})
+
+test('concurrent identity requests share one silent authorization', async t => {
+  const f = await fixture(t)
+  await f.login()
+  let now = Date.now()
+  f.backend.now = () => now
+  now += 31 * 60 * 1000
+  f.controls.claim = { exp: Math.floor(now / 1000) + 3600 }
+  const first = f.backend.identityToken('draft').then(value => ({ value }), error => ({ error }))
+  const second = f.backend.identityToken('draft').then(value => ({ value }), error => ({ error }))
+  await f.answerSilent()
+  const [a, b] = await Promise.all([first, second])
+  assert.equal(a.error, undefined)
+  assert.equal(b.error, undefined)
+  assert.deepEqual(a.value, b.value)
+  assert.equal(f.authorizations.filter(url => url.searchParams.get('prompt') === 'none').length, 1)
+  assert.equal(f.calls.filter(call => call.body?.get?.('grant_type') === 'refresh_token').length, 1)
+})
+
+test('a silent renewal cannot switch the signed-in identity', async t => {
+  const f = await fixture(t)
+  await f.login()
+  let now = Date.now()
+  f.backend.now = () => now
+  now += 31 * 60 * 1000
+  f.controls.claim = { sub: 'bob', exp: Math.floor(now / 1000) + 3600 }
+  const pending = f.backend.identityToken('draft').then(value => ({ value }), error => ({ error }))
+  await f.answerSilent({ user: 'bob' })
+  assert.equal((await pending).error.code, 'oidc_identity_token_unavailable')
+  const session = await f.backend.loadSession(f.profile)
+  assert.equal(session.identity.sub, 'alice')
+})
+
+test('a failed refresh withholds the identity token; only a rejected grant ends the sign-in', async t => {  const f = await fixture(t)
   await f.login()
   let now = Date.now()
   f.backend.now = () => now
