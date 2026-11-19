@@ -1,8 +1,8 @@
 {
   "repository": "ECNU/EduWork",
   "url": "https://github.com/ECNU/EduWork",
-  "fetchedAt": "2026-10-25T16:36:55.694Z",
-  "stars": 237,
+  "fetchedAt": "2026-11-18T20:41:18.978Z",
+  "stars": 381,
   "history": [
     {
       "date": "2026-09-14",
@@ -170,29 +170,125 @@
     },
     {
       "date": "2026-10-25",
-      "stars": 237
+      "stars": 241
+    },
+    {
+      "date": "2026-10-26",
+      "stars": 247
+    },
+    {
+      "date": "2026-10-27",
+      "stars": 250
+    },
+    {
+      "date": "2026-10-28",
+      "stars": 255
+    },
+    {
+      "date": "2026-10-29",
+      "stars": 261
+    },
+    {
+      "date": "2026-10-30",
+      "stars": 263
+    },
+    {
+      "date": "2026-10-31",
+      "stars": 268
+    },
+    {
+      "date": "2026-11-01",
+      "stars": 273
+    },
+    {
+      "date": "2026-11-02",
+      "stars": 281
+    },
+    {
+      "date": "2026-11-03",
+      "stars": 285
+    },
+    {
+      "date": "2026-11-04",
+      "stars": 292
+    },
+    {
+      "date": "2026-11-05",
+      "stars": 298
+    },
+    {
+      "date": "2026-11-06",
+      "stars": 306
+    },
+    {
+      "date": "2026-11-07",
+      "stars": 315
+    },
+    {
+      "date": "2026-11-08",
+      "stars": 325
+    },
+    {
+      "date": "2026-11-09",
+      "stars": 332
+    },
+    {
+      "date": "2026-11-10",
+      "stars": 337
+    },
+    {
+      "date": "2026-11-11",
+      "stars": 345
+    },
+    {
+      "date": "2026-11-12",
+      "stars": 352
+    },
+    {
+      "date": "2026-11-13",
+      "stars": 354
+    },
+    {
+      "date": "2026-11-14",
+      "stars": 360
+    },
+    {
+      "date": "2026-11-15",
+      "stars": 366
+    },
+    {
+      "date": "2026-11-16",
+      "stars": 374
+    },
+    {
+      "date": "2026-11-17",
+      "stars": 379
+    },
+    {
+      "date": "2026-11-18",
+      "stars": 381
     }
   ],
   "historyNote": "按 GitHub 提供的每日 Star 统计累计，可能与当前 Star 总数存在差异。",
   "release": {
-    "tag": "v0.4.9",
-    "url": "https://github.com/ECNU/EduWork/releases/tag/v0.4.9",
-    "publishedAt": "2026-10-25T16:36:35Z",
+    "tag": "v0.4.14",
+    "url": "https://github.com/ECNU/EduWork/releases/tag/v0.4.14",
+    "publishedAt": "2026-11-18T05:42:12Z",
     "assets": [
       {
-        "name": "EduWork-0.4.9-windows-x64-setup.zip",
-        "url": "https://github.com/ECNU/EduWork/releases/download/v0.4.9/EduWork-0.4.9-windows-x64-setup.zip",
-        "size": 468706221
+        "name": "EduWork-0.4.14-windows-x64-setup.zip",
+        "url": "https://github.com/ECNU/EduWork/releases/download/v0.4.14/EduWork-0.4.14-windows-x64-setup.zip",
+        "size": 634524799
       },
       {
-        "name": "EduWork-0.4.9-macos-arm64-electron.dmg",
-        "url": "https://github.com/ECNU/EduWork/releases/download/v0.4.9/EduWork-0.4.9-macos-arm64-electron.dmg",
-        "size": 458629483
+        "name": "EduWork-0.4.14-macos-arm64-electron.dmg",
+        "url": "https://github.com/ECNU/EduWork/releases/download/v0.4.14/EduWork-0.4.14-macos-arm64-electron.dmg",
+        "size": 608712514
       },
       {
-        "name": "EduWork-0.4.9-macos-x64-electron.dmg",
-        "url": "https://github.com/ECNU/EduWork/releases/download/v0.4.9/EduWork-0.4.9-macos-x64-electron.dmg",
-        "size": 479465646
+        "name": "EduWork-0.4.14-macos-x64-electron.dmg",
+        "url": "https://github.com/ECNU/EduWork/releases/download/v0.4.14/EduWork-0.4.14-macos-x64-electron.dmg",
+        "size": 641558219
       }
     ]
   }

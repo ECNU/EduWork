@@ -69,8 +69,8 @@
     "icon": "mail",
     "eyebrow": "CONNECTED TOOLS",
     "docs": "packages/dsh-mail",
-    "zh": {"name":"邮件助手","summary":"连接自己的邮箱，通过 IMAP 读取邮件，经授权通过 SMTP 发送，结合任务处理日常沟通。"},
-    "en": {"name":"Mail assistant","summary":"Connect your mailbox, read mail over IMAP and send through SMTP with authorization, bringing communication into your workflow."}
+    "zh": {"name":"邮件助手","summary":"通过 IMAP 查信、经授权用 SMTP 发信。可在设置中开启新邮件提醒，查看发件人、主题和正文片段，不改变邮件已读状态。"},
+    "en": {"name":"Mail assistant","summary":"Search mail over IMAP and send via SMTP with authorization. Turn on new-mail reminders to see the sender, subject and a short excerpt without marking messages as read."}
   },
   {
     "package": "@eduwork/dsh-calendar",
@@ -79,8 +79,8 @@
     "icon": "book",
     "eyebrow": "CALENDAR & SCHEDULE",
     "docs": "dsh-plugins/calendar",
-    "zh": {"name":"日历与日程","summary":"用月历、周历管理本地日程、备注与提醒，支持 ICS 导入导出、订阅更新和对话操作；机构接入校历后可查看学年与教学周。"},
-    "en": {"name":"Calendar & schedule","summary":"Manage local events, remarks and reminders in month and week views, with ICS import/export, subscriptions and conversation tools. Institution calendars add academic-year and teaching-week context."}
+    "zh": {"name":"日历与日程","summary":"在月历或周历安排日程、设置重复与提醒，也可在对话中添加日程。支持 ICS 导入、导出和订阅；接入机构校历后可查看教学周和学年总览。"},
+    "en": {"name":"Calendar & schedule","summary":"Plan events, recurrences and reminders in month or week view, or add an event in chat. Import, export or subscribe to ICS calendars. Connecting an institutional calendar adds teaching weeks and an academic-year overview."}
   },
   {
     "package": "@eduwork/dsh-desktop-pet",
@@ -88,8 +88,8 @@
     "icon": "pet",
     "eyebrow": "DESKTOP COMPANION",
     "docs": "packages/dsh-desktop-pet",
-    "zh": {"name":"桌面宠物","summary":"用可选形象展示任务与通知状态，在设置中开启。独立 npm 插件，需要 EduWork 桌面桥接。"},
-    "en": {"name":"Desktop pet","summary":"Show task and notification status through a choice of companions. Enable it in settings; this npm plugin requires the EduWork desktop bridge."}
+    "zh": {"name":"桌面宠物","summary":"让桌宠提示任务状态和插件通知，例如新邮件。在设置中开启桌宠、选择形象；邮件提醒在邮件助手中单独开启。"},
+    "en": {"name":"Desktop pet","summary":"Choose a companion in Settings to see task updates and plugin notifications on your desktop. To show new mail, also enable reminders in the mail assistant."}
   },
   {
     "package": "@eduwork/dsh-external-agents",
@@ -106,7 +106,7 @@
     "icon": "remote",
     "eyebrow": "CONTINUE FROM ANYWHERE",
     "docs": "packages/dsh-remote-access",
-    "zh": {"name":"远程访问","summary":"配对后从其他终端的浏览器继续本机会话、处理授权。在设置中配置自己的中继或发行版提供的机构接入，测试连接后开启。"},
-    "en": {"name":"Remote access","summary":"Pair another device to continue local sessions and handle approvals in its browser. Configure your own relay or a distribution-provided organization connection in settings, test it and enable access."}
+    "zh": {"name":"远程访问","summary":"通过中继配对手机或另一台电脑，在浏览器里继续本机会话、处理审批。公版需先配置并测试中继；机构发行版可预设中继和账号登录。"},
+    "en": {"name":"Remote access","summary":"Pair a phone or another computer to continue a desktop conversation and handle approvals in its browser. Configure and test a relay first; institutional editions can provide a relay and account sign-in."}
   }
 ]
