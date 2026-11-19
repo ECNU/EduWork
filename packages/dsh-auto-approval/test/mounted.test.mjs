@@ -130,17 +130,19 @@ test('low scores, other presets, other tools and overlong commands go to the use
 test('a call the other policies ask about, a subagent call and calls in flight under one ID go to the user', async t => {
   const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
   const mounted = mount({ ...base, baseURL })
-  assert.equal(await mounted.escalate('git push origin main', { policy: 'ask' }), 'rejected')
+  // The user is away: a rejection would hold back the reviews after it.
+  const user = { fallback: 'unavailable' }
+  assert.equal(await mounted.escalate('git push origin main', { policy: 'ask', ...user }), 'unavailable')
   assert.equal(await mount({ ...base, baseURL }, { origin: 'subagent' }).escalate('git push origin main'), 'rejected')
   // A call another policy asks about is not answered with the command of an earlier call under its ID.
   const a = await mounted.start('cp a.csv ~/Downloads/', { callId: 'call_0' })
   const b = await mounted.start('git push origin main', { callId: 'call_0', policy: 'ask' })
-  assert.equal(await mounted.ask(b), 'rejected')
+  assert.equal(await mounted.ask(b, user), 'unavailable')
   // Neither is reviewed until all calls under the ID have finished, including one that starts in between.
   mounted.finish(b)
-  assert.equal(await mounted.ask(a), 'rejected')
+  assert.equal(await mounted.ask(a, user), 'unavailable')
   const c = await mounted.start('cp c.csv ~/Downloads/', { callId: 'call_0' })
-  assert.equal(await mounted.ask(c), 'rejected')
+  assert.equal(await mounted.ask(c, user), 'unavailable')
   assert.equal(bodies.length, 0)
   mounted.finish(a)
   mounted.finish(c)
@@ -243,13 +245,36 @@ test('a request still under review when the user rejects another goes to the use
     await rejection
     return answer(body, 0.9, 0.1)
   })
-  const mounted = mount({ ...base, baseURL }, { events: [{ type: 'user/message', seq: 1, data: { source: { kind: 'user' }, content: [{ type: 'text', text: '推送并导出报告' }] } }] })
+  const request = (seq, text) => ({ type: 'user/message', seq, data: { source: { kind: 'user' }, content: [{ type: 'text', text }] } })
+  const events = [request(1, '推送并导出报告')]
+  const mounted = mount({ ...base, baseURL }, { events })
   const push = await mounted.start('git push origin main'), copy = await mounted.start('cp a.csv ~/Downloads/')
   const pending = mounted.ask(copy, { fallback: 'unavailable' })
   assert.equal(await mounted.ask(push), 'rejected')
+  // Even once the user writes again, the review scored before then does not approve.
+  events.push(request(2, '报告也先不导出'))
   rejected()
   assert.equal(await pending, 'unavailable')
   assert.equal((await mounted.post(copy)).additionalContexts[0].source.summary, '交给用户确认（审查期间情况有变）')
+  assert.equal(await mounted.escalate('cp b.csv ~/Downloads/'), 'allowed-once')
+})
+
+test('a rejection the plugin did not review holds back automatic approval too', async t => {
+  const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
+  const events = [{ type: 'user/message', seq: 1, data: { source: { kind: 'user' }, content: [{ type: 'text', text: '导出报告' }] } }]
+  const user = { fallback: 'unavailable' }
+  // Rejected under another preset, then the session switches to this one.
+  const switched = mount({ ...base, baseURL }, { preset: 'workspace-write', events })
+  assert.equal(await switched.escalate('cp a.csv ~/Downloads/'), 'rejected')
+  switched.presets.set('auto-approval')
+  const retry = await switched.start('cp a.csv ~/Downloads/')
+  assert.equal(await switched.ask(retry, user), 'unavailable')
+  assert.equal((await switched.post(retry)).additionalContexts[0].source.summary, '交给用户确认（用户拒绝过，未审查）')
+  // A tool the plugin does not review, such as a program's own escalation.
+  const other = mount({ ...base, baseURL }, { events })
+  assert.equal(await other.ask({ name: 'run_code', callId: 'program-1' }), 'rejected')
+  assert.equal(await other.escalate('cp a.csv ~/Downloads/', user), 'unavailable')
+  assert.equal(bodies.length, 0)
 })
 
 test('the directory read that ends a review is within its time limit and its failure count', async t => {

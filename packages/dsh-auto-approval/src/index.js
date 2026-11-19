@@ -42,11 +42,11 @@ export function apply(ctx, raw = {}) {
   // was there, so it does not count.
   const created = new WeakMap()
   const failures = new Map()
-  // Sessions where the user rejected an escalation, with their last message then: until they write again, nothing is
-  // approved automatically, not even a request already under review.
+  // The user's last rejection in each session, reviewed or not, with their last message then: until they write again,
+  // requests are theirs to answer. Each rejection is a new record, so a review can tell whether one came while it ran.
   const declined = new WeakMap()
   const lastRequest = session => session.snapshotEvents().findLast(({ type, data }) => type === 'user/message' && data.source?.kind === 'user')?.seq
-  const refused = session => declined.has(session) && declined.get(session) === lastRequest(session)
+  const refused = session => declined.has(session) && declined.get(session).request === lastRequest(session)
 
   ctx.on('tools/pre-execute', async (exec, next) => {
     const session = exec.agent?.session
@@ -153,12 +153,18 @@ export function apply(ctx, raw = {}) {
     return { flagged, moved, ...result }
   }
 
-  // Ahead of the client's answerer: approve what the review allows, hand everything else to the user unchanged.
+  // Ahead of the client's answerer: approve what the review allows, hand everything else to the user unchanged, and note
+  // what they reject.
   ctx.on('approval/request', async (req, next) => {
-    const entry = inFlight.get(req.agent?.session)?.get(req.callId)
+    const session = req.agent?.session
+    const user = async () => {
+      const outcome = await next()
+      if (outcome === 'rejected' && session) declined.set(session, { request: lastRequest(session) })
+      return outcome
+    }
+    const entry = inFlight.get(session)?.get(req.callId)
     const call = entry?.ambiguous ? undefined : entry?.call
-    if (!call || call.name !== req.toolName || ctx.permissionPresets.current(req.agent.session) !== preset) return next()
-    const { session } = req.agent
+    if (!call || call.name !== req.toolName || ctx.permissionPresets.current(session) !== preset) return user()
     // Each request reviewed under the preset leaves a notice: the trajectory shows its text and, under its source, a
     // summary with the outcome and score; the model reads only who decided, not the score, which it could otherwise
     // write its justifications to.
@@ -170,15 +176,14 @@ export function apply(ctx, raw = {}) {
       const text = `<system-reminder>\n${approved ? '自动审批放行了这次越界申请，没有询问用户' : '自动审批没有放行这次越界申请，已交给用户确认'}（${req.toolName}）。这条是运行环境的记录，不是用户发的消息。\n</system-reminder>`
       entry.notice = { token, message: createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'auto-approval', form: 'notice', summary } }) }
     }
-    const ask = async reason => {
+    const ask = reason => {
       notice(false, `交给用户确认（${reason}）`)
-      const outcome = await next()
-      if (outcome === 'rejected') declined.set(session, lastRequest(session))
-      return outcome
+      return user()
     }
     const command = SHELLS.has(call.name) ? call.arguments.command : fileCommand(call.name, call.arguments)
     if (command.length > COMMAND_CHARS) return ask('命令过长，未审查')
     if (refused(session)) return ask('用户拒绝过，未审查')
+    const rejection = declined.get(session)
     const id = session.id
     if (failures.get(id)?.until > Date.now()) return ask('连续失败，暂停审查')
     const started = performance.now()
@@ -189,7 +194,7 @@ export function apply(ctx, raw = {}) {
       failures.delete(id)
       // During the review the session's directory may have gone, another call with this ID may have started, the user
       // may have rejected another request, the session may have left the preset, or the request may have been withdrawn.
-      const approved = result.approved && !result.moved && !entry.ambiguous && !refused(session)
+      const approved = result.approved && !result.moved && !entry.ambiguous && declined.get(session) === rejection
         && ctx.permissionPresets.current(session) === preset && !signal.aborted
       log.info(`${call.name} ${approved ? 'approved' : 'asked the user'} (${result.flagged ? 'rule hit' : 'score'} ${result.score.toFixed(3)}, ${Math.round(performance.now() - started)} ms)`)
       const score = `${result.flagged ? '命中规则，' : ''}分数 ${result.score.toFixed(3)}`

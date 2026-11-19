@@ -22,7 +22,7 @@ Fixed rules flag operations that the user must have asked for: pushing and publi
 - Without a rule hit, two questions are asked in parallel, whether the user would agree and how serious a mistake would be; the request is allowed when their mean (the probability of agreement averaged with 1 − severity) is at least 0.5.
 - When a file tool changes a file that was there before this session, the score is the lower of that mean and the probability of agreement: the change is allowed only when the user asked for it and it is easy to undo. However small, a change the model judges unrequested goes to the user. When it cannot be told whether a file exists (for example, its directory cannot be entered), the request goes to the user without a review.
 
-An approval covers this one request only and is not remembered. After the user rejects an escalation on the confirmation card, the session's escalations are not reviewed and go straight to the user until the user writes again; one still under review then is not allowed either.
+An approval covers this one request only and is not remembered. After the user rejects a request on the confirmation card, whether the plugin reviewed it or not, the session's escalations are not reviewed and go straight to the user until the user writes again; one still under review at the rejection is not allowed either.
 
 ## Installation and configuration
 
