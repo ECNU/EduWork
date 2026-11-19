@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
-import { installedUpdateCacheDirName, installedUpdateFeed, installedUpdateYAML } from '../dsh-electron/scripts/assemble-windows.mjs'
+import { installedUpdateCacheDirName, installedUpdateFeed, installedUpdateYAML, installerPackageName } from '../dsh-electron/scripts/assemble-windows.mjs'
 import { ensureDir, fullPath, isFile, isMainModule, pathExists, readJSON, runNode, writeJSON } from './lib/build-util.mjs'
 
 const EXECUTABLE = 'EduWork-Electron.exe'
@@ -38,6 +38,10 @@ export function verifyInstalledCandidate({ desktop, release, receipt, appPackage
 export function installerInclude(desktop) {
   requireMatch(/^[a-z0-9][a-z0-9-]*$/.test(desktop.distribution ?? ''), 'Distribution identifier is invalid')
   return [
+    `!if "\${APP_INSTALLER_STORE_FILE}" S!= "${installedUpdateCacheDirName(desktop.distribution)}\\installer.exe"`,
+    '  !error "NSIS installer cache path differs from the EduWork updater cache path"',
+    '!endif',
+    '',
     '; EduWork per-user install directory. customInit runs after the default',
     '; per-user path is computed and before any page or extraction uses it.',
     '!macro customInit',
@@ -68,7 +72,7 @@ export function installerProject({ desktop, release, electronVersion, artifactsD
   const publish = feed?.provider === 'generic' ? { provider: 'generic', url: feed.url, channel } : feed ? { ...feed, channel } : null
   return {
     packageJSON: {
-      name: installedUpdateCacheDirName(desktop.distribution),
+      name: installerPackageName(desktop.distribution),
       productName: desktop.productName,
       version: release.version,
       description: 'EduWork desktop application',

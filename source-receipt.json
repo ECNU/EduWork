@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-18T19:01:32.929Z",
-  "fileSetSHA256": "3623df3cd97029fa213c169d6c37bb0776a314ec21fec073b9c986d323e38606",
+  "createdAt": "2026-11-19T06:39:10.524Z",
+  "fileSetSHA256": "901933de4aeabef5117bec8691811bea4c6ae7c00a6e7ed135d7db674d80306d",
   "files": [
     {
       "path": ".gitattributes",
@@ -1173,7 +1173,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.mjs",
-      "sha256": "07226c32ba14fa4a68f32cfff154a2939afa647388ad9a650304d3be04b5a226"
+      "sha256": "b2e8f07ce81f92a9a8b7ca57e6383ddf7d4f3d7c6838903ff7c5957d97909e98"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
@@ -7921,7 +7921,7 @@
     },
     {
       "path": "scripts/pack-windows-installer.mjs",
-      "sha256": "dfae1e3a79731e11efc179201bef028cc27a367d1f37be0d482901d8fb449cec"
+      "sha256": "4ce6995c4963fbd913c5d598a3a4b0a821e7547ab22c770460a5bb7e547086e7"
     },
     {
       "path": "scripts/pack-windows-release.mjs",
@@ -8277,7 +8277,7 @@
     },
     {
       "path": "scripts/test/windows-installer.test.mjs",
-      "sha256": "80ccaa43a3dbd0f965caf94cfa0c63e6196eda2cf36e3243ad8808fdad247fe6"
+      "sha256": "81570a929ff0e0edd21ce02b0a15b095b996561430940eabf501057c932e0982"
     },
     {
       "path": "scripts/test/windows-update-delta.test.mjs",

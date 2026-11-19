@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { desktopAppPackage, installedUpdateCacheDirName, installedUpdateFeed, installedUpdateYAML } from '../../dsh-electron/scripts/assemble-windows.mjs'
+import { desktopAppPackage, installedUpdateFeed, installedUpdateYAML } from '../../dsh-electron/scripts/assemble-windows.mjs'
 import { installerInclude, installerProject, packWindowsInstaller, verifyInstalledCandidate } from '../pack-windows-installer.mjs'
 
 const version = '0.4.13-dev.20261116.1'
@@ -23,7 +23,9 @@ test('installed update metadata uses the same GitHub repository as the installer
   const project = installerProject({ desktop: { ...desktop, updates }, release, electronVersion: '44.0.0' })
   const { config } = project
   assert.deepEqual(config.publish, { ...installedUpdateFeed(updates), channel: 'dev' })
-  assert.equal(project.packageJSON.name, installedUpdateCacheDirName(desktop.distribution))
+  assert.equal(project.packageJSON.name, 'eduwork-installer-eduwork')
+  assert.equal(installedUpdateYAML(installedUpdateFeed(updates), desktop.distribution),
+    'provider: github\nowner: "ecnu"\nrepo: "EduWork"\nupdaterCacheDirName: "eduwork-installer-eduwork-updater"\n')
   const stable = installerProject({ desktop: { ...desktop, updates }, release: { ...release, version: '0.4.13' }, electronVersion: '44.0.0' })
   assert.equal(stable.config.publish.channel, 'latest')
   assert.equal(config.nsis.differentialPackage, true)
@@ -31,12 +33,10 @@ test('installed update metadata uses the same GitHub repository as the installer
 
 test('installed HTTPS acceptance source matches app-update.yml and installer publish metadata', () => {
   assert.equal(installedUpdateFeed(undefined), null)
-  assert.equal(installedUpdateYAML(installedUpdateFeed({ provider: 'github', repository: 'ecnu/EduWork' }), desktop.distribution),
-    'provider: github\nowner: "ecnu"\nrepo: "EduWork"\nupdaterCacheDirName: "eduwork-installer-eduwork"\n')
   const updates = { provider: 'generic', url: 'https://localhost:18443' }
   const feed = installedUpdateFeed(updates)
   assert.deepEqual(feed, { provider: 'generic', url: 'https://localhost:18443' })
-  assert.equal(installedUpdateYAML(feed, desktop.distribution), 'provider: generic\nurl: "https://localhost:18443"\nupdaterCacheDirName: "eduwork-installer-eduwork"\n')
+  assert.equal(installedUpdateYAML(feed, desktop.distribution), 'provider: generic\nurl: "https://localhost:18443"\nupdaterCacheDirName: "eduwork-installer-eduwork-updater"\n')
   const { config } = installerProject({ desktop: { ...desktop, updates }, release, electronVersion: '44.0.0' })
   assert.deepEqual(config.publish, { ...feed, channel: 'dev' })
   assert.equal(config.nsis.differentialPackage, true)
@@ -89,6 +89,14 @@ test('NSIS include pins the per-user program directory per distribution', () => 
   assert.match(include, /StrCpy \$INSTDIR "\$LOCALAPPDATA\\Programs\\EduWork\\eduwork"/)
   assert.match(include, /!macro customInstall/)
   assert.match(include, /WriteRegStr SHELL_CONTEXT "\$\{UNINSTALL_REGISTRY_KEY\}" InstallLocation "\$INSTDIR"/)
+})
+
+test('NSIS include checks the installer cache path per distribution', () => {
+  assert.ok(installerInclude({ distribution: 'test-edition' }).includes([
+    '!if "${APP_INSTALLER_STORE_FILE}" S!= "eduwork-installer-test-edition-updater\\installer.exe"',
+    '  !error "NSIS installer cache path differs from the EduWork updater cache path"',
+    '!endif',
+  ].join('\n')))
 })
 
 test('installer project fixes per-user, no-elevation and data-preserving behavior', () => {

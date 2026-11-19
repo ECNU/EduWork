@@ -87,9 +87,13 @@ export function installedUpdateFeed(updates) {
   return { provider: 'github', owner, repo }
 }
 
-export function installedUpdateCacheDirName(distribution) {
+export function installerPackageName(distribution) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(distribution ?? '')) throw new Error('Installed distribution identifier is invalid')
   return `eduwork-installer-${distribution}`
+}
+
+export function installedUpdateCacheDirName(distribution) {
+  return `${installerPackageName(distribution)}-updater`
 }
 
 export function installedUpdateYAML(feed, distribution) {
