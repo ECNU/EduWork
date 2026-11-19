@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![License: MulanPSL-2.0](https://img.shields.io/badge/license-MulanPSL--2.0-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#安装与使用)
+[![License: MulanPSL-2.0](https://img.shields.io/badge/license-MulanPSL--2.0-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.2-rc.3](https://img.shields.io/badge/DSH-0.2.2--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#安装与使用)
 
 **简体中文** | [English](README_EN.md)
 
@@ -26,7 +26,7 @@ DSH 提供 Agent 运行时与插件体系；EduWork 复用上游的会话、工�
 
 ## 随包插件
 
-下面的插件随公版客户端预装，无需逐个安装。点击名称查看使用方法、服务要求与兼容范围。
+以下插件随公版安装。批注、侧聊、文献、邮件、远程访问和外部智能体可在左侧 **插件 → EduWork 扩展** 中单独启停；关闭插件会保留配置和数据。点击插件名称查看使用方法。
 
 <a id="knowledge-studio"></a>
 
@@ -40,11 +40,11 @@ DSH 提供 Agent 运行时与插件体系；EduWork 复用上游的会话、工�
 | [决策工具](packages/dsh-decision/README.md) | 通过 SystemOne 服务按标签分类、判断条件概率或按量表评分，配套决策技能；配置服务地址、模型和认证后启用。 |
 | [文献检索](packages/dsh-literature/README.md) | 检索 DBLP、arXiv 文献，获取 BibTeX 与可用全文，把研究资料接入后续任务。 |
 | [本地记忆](packages/dsh-memory/README.md) | 管理本地记忆、检索历史对话，让后续任务接得上已有背景。记忆在本机管理。 |
-| [邮件助手](packages/dsh-mail/README.md) | 连接自己的邮箱，通过 IMAP 读取邮件，经授权通过 SMTP 发送，结合任务处理日常沟通。 |
-| [日历与日程](dsh-plugins/calendar/README.md) | 用月历、周历管理本地日程、备注与提醒，支持 ICS 导入导出、订阅更新和对话操作；机构接入校历后可查看学年与教学周。 |
-| [桌面宠物](packages/dsh-desktop-pet/README.md) | 用可选形象展示任务与通知状态，在设置中开启。独立 npm 插件，需要 EduWork 桌面桥接。 |
+| [邮件助手](packages/dsh-mail/README.md) | 通过 IMAP 查信、经授权用 SMTP 发信。可在设置中开启新邮件提醒，查看发件人、主题和正文片段，不改变邮件已读状态。 |
+| [日历与日程](dsh-plugins/calendar/README.md) | 在月历或周历安排日程、设置重复与提醒，也可在对话中添加日程。支持 ICS 导入、导出和订阅；接入机构校历后可查看教学周和学年总览。 |
+| [桌面宠物](packages/dsh-desktop-pet/README.md) | 让桌宠提示任务状态和插件通知，例如新邮件。在设置中开启桌宠、选择形象；邮件提醒在邮件助手中单独开启。 |
 | [外部智能体](packages/dsh-external-agents/README.md) | 连接本机 Codex、Cursor 或其他 ACP 智能体，在对话中委派任务。默认关闭，可在插件页启用并配置连接。 |
-| [远程访问](packages/dsh-remote-access/README.md) | 配对后从其他终端的浏览器继续本机会话、处理授权。在设置中配置自己的中继或发行版提供的机构接入，测试连接后开启。 |
+| [远程访问](packages/dsh-remote-access/README.md) | 通过中继配对手机或另一台电脑，在浏览器里继续本机会话、处理审批。公版需先配置并测试中继；机构发行版可预设中继和账号登录。 |
 <!-- END GENERATED PLUGINS -->
 
 插件也以独立 npm 包维护，可按各自兼容范围供其他 DSH 应用复用。外部模型、邮箱和媒体服务需自行配置；公版不附带模型额度或私人凭据。
@@ -80,9 +80,11 @@ Release 中的 Source code 是源码，不是桌面安装包。从源码运行�
 
 ### 3. 开始工作
 
-选择本机工作区，放入资料，选择模型并描述目标。例如：**“根据这些资料生成一份学习指南，再制作配套测验。”** 也可打开右侧 Studio，选择成果类型开始创作。生成后直接预览文件，或对回复选段批注、继续追问。
+选一个本机文件夹作为工作区，把讲义放进去，试着问：**“根据这份讲义生成一份学习指南，再出五道自测题。”** 可以在右侧 Studio 预览成果，选中回复中的一段添加批注，或开侧聊单独追问。需要查阅网页时，可让 Agent 在当前对话的侧栏浏览器中查看页面、点击或填写表单，沿用会话的审批设置。
 
-关闭窗口后默认收起到托盘；彻底退出请用托盘或应用菜单。软件更新可在设置中开关，更新保留历史数据与配置。详见 [Windows 更新说明](docs/UPDATES.md)和 [macOS 更新说明](docs/MACOS_UPDATES.md)。
+首次启动有新手引导。以后想再看快速入门，从 **应用 → 使用教程** 打开即可（macOS 在系统菜单栏的应用菜单里）；随包教程可离线阅读。
+
+关闭窗口后默认收起到托盘；彻底退出请用托盘或应用菜单。在设置中开启软件更新后，客户端会定期检查所选渠道，电脑唤醒或恢复联网时也会补查；更新保留历史数据和配置。详见 [Windows 更新说明](docs/UPDATES.md)和 [macOS 更新说明](docs/MACOS_UPDATES.md)。
 
 <a id="学校与企业接入"></a>
 <a id="开放企业接入"></a>

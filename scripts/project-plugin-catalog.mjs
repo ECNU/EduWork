@@ -36,8 +36,10 @@ export function validateCatalog(catalog, locks) {
   return catalog;
 }
 
-export async function loadPluginCatalog() {
-  const plan = await desktopBuildPlan({ core: projectRoot, version: '0.0.0' });
+export const readPublicPlan = () => desktopBuildPlan({ core: projectRoot, version: '0.0.0' });
+
+export async function loadPluginCatalog(plan) {
+  plan ??= await readPublicPlan();
   const [catalog, locks] = await Promise.all([
     readFile(join(projectRoot, 'docs/plugin-catalog.json'), 'utf8').then(JSON.parse),
     readPublishedPackageLocks(plan.candidate),

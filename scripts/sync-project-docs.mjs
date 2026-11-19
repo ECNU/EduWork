@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { projectRoot, loadPluginCatalog, renderPluginTable, renderPluginCards } from './project-plugin-catalog.mjs';
+import { projectRoot, readPublicPlan, loadPluginCatalog, renderPluginTable, renderPluginCards } from './project-plugin-catalog.mjs';
 
 export function replacePluginBlock(source, generated) {
   const start = '<!-- BEGIN GENERATED PLUGINS -->', end = '<!-- END GENERATED PLUGINS -->';
@@ -15,7 +15,10 @@ export function replacePluginBlock(source, generated) {
 }
 
 export async function syncProjectDocs({ check = false } = {}) {
-  const catalog = await loadPluginCatalog();
+  const plan = await readPublicPlan();
+  const catalog = await loadPluginCatalog(plan);
+  const version = plan.dshVersion;
+  const badge = `[![DSH: ${version}](https://img.shields.io/badge/DSH-${version.replaceAll('-', '--')}-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v${version})`;
   const targets = [
     ['README.md', renderPluginTable(catalog, 'zh')],
     ['README_EN.md', renderPluginTable(catalog, 'en')],
@@ -24,13 +27,18 @@ export async function syncProjectDocs({ check = false } = {}) {
   const stale = [];
   for (const [path, generated] of targets) {
     const file = join(projectRoot, path), source = await readFile(file, 'utf8');
-    const next = replacePluginBlock(source, generated);
+    let next = replacePluginBlock(source, generated);
+    if (path.endsWith('.md')) {
+      const dshBadge = /\[!\[DSH: [^\]]+\]\([^)]+\)\]\([^)]+\)/g;
+      assert.equal([...next.matchAll(dshBadge)].length, 1, `Expected one DSH badge in ${path}`);
+      next = next.replace(dshBadge, badge);
+    }
     if (source !== next) {
       if (check) stale.push(path);
       else await writeFile(file, next);
     }
   }
-  assert.equal(stale.length, 0, `Outdated plugin introductions: ${stale.join(', ')}. Run node scripts/sync-project-docs.mjs`);
+  assert.equal(stale.length, 0, `Outdated project documentation: ${stale.join(', ')}. Run node scripts/sync-project-docs.mjs`);
   return { plugins: catalog.length, files: targets.map(([path]) => path), check };
 }
 
