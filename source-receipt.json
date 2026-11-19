@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-19T14:29:15.304Z",
-  "fileSetSHA256": "f3df0bc46cc4c7985ce2e277a0537bca0d5ec9d54800b682dbf2e3e936770801",
+  "createdAt": "2026-11-19T14:46:36.528Z",
+  "fileSetSHA256": "afeee0a1d52c3c8bd6a7365122ebe7b87081ee2a345dbad2a5038a580d478bfd",
   "files": [
     {
       "path": ".gitattributes",
@@ -3901,7 +3901,7 @@
     },
     {
       "path": "packages/dsh-auto-approval/CHANGELOG.md",
-      "sha256": "2706d50eda6d49004d909ea9515ad37db9ea504630cc17158b1e907db052640f"
+      "sha256": "a67e04698b4e36f0aa97363e31c082e5f4432ac96c74a24b332db18c3718ef1c"
     },
     {
       "path": "packages/dsh-auto-approval/cordis.patch.yml",
@@ -3921,11 +3921,11 @@
     },
     {
       "path": "packages/dsh-auto-approval/README_EN.md",
-      "sha256": "583c56f79df661e1e00c2e0d96d58fe273c2020ecc74d587c8ba176ef2fd8b76"
+      "sha256": "cbd8d149b0354777e9fcf6d0efbb83d324357f55737a199d0120ccf952fa5f71"
     },
     {
       "path": "packages/dsh-auto-approval/README.md",
-      "sha256": "98ef47605b8569f096ea3f8db55b9c7369568d84160e2d6b6c77b1518cb00704"
+      "sha256": "2c4bbc4501e505ef46501370f77c5040e54c48da8a64a4c34522907c3a2a2ff5"
     },
     {
       "path": "packages/dsh-auto-approval/scripts/build.mjs",
@@ -3933,7 +3933,7 @@
     },
     {
       "path": "packages/dsh-auto-approval/src/index.js",
-      "sha256": "3ce485f61bb2ca1f153c8b2b394bcf5a498d1339b46e98c9aa7e0bf02a649056"
+      "sha256": "fdf62858c0585ce7df5479cc28cd3ec1e2c21e59b8354166566366ae52d55536"
     },
     {
       "path": "packages/dsh-auto-approval/src/questions.js",
@@ -3949,7 +3949,7 @@
     },
     {
       "path": "packages/dsh-auto-approval/test/mounted.test.mjs",
-      "sha256": "d50bf4160c7f1b715e93c7e4a46c1b41f4350471909f0fec61fad5194fd2223c"
+      "sha256": "33f7b93c8595d026eb2da57ffb475354d7b1161df26f1da24fb3d6f833da7107"
     },
     {
       "path": "packages/dsh-auto-approval/test/review.test.mjs",
@@ -3965,7 +3965,7 @@
     },
     {
       "path": "packages/dsh-auto-approval/test/runtime.test.mjs",
-      "sha256": "1cd6cac846025dd15d821227d6bd3c542647c58676dd313edea8e992091d5d3d"
+      "sha256": "01a4ba79b38afe5ea34ca578f1faa6ba27e7e9a9b9787acb658713fd3ce64c0c"
     },
     {
       "path": "packages/dsh-decision/.gitignore",
