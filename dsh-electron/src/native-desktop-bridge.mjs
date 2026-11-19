@@ -211,7 +211,7 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     locale: () => brandDesktopLocale(locale, app.getName()),
     async probeUserGuide() {
       if (waitForHost) await waitForHost()
-      const response = await getHost()?.fetch(new Request(`app://app${USER_GUIDE_ROUTE}/`, { method: 'HEAD' })).catch(() => null)
+      const response = await getHost()?.fetch(new Request(`dsh-app://app${USER_GUIDE_ROUTE}/`, { method: 'HEAD' })).catch(() => null)
       const available = response?.ok === true
       if (available !== userGuide) { userGuide = available; refreshMenu() }
       return available

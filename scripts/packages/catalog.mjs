@@ -16,6 +16,9 @@ export const packages = [
   { id: 'dsh-knowledge-studio', name: '@eduwork/dsh-knowledge-studio', directory: 'packages/dsh-knowledge-studio', group: 'dsh-knowledge-studio' },
   { id: 'dsh-artifact-services', name: '@eduwork/dsh-artifact-services', directory: 'packages/dsh-knowledge-studio/packages/artifact-services', group: 'dsh-knowledge-studio' },
   { id: 'dsh-remote-access', name: '@eduwork/dsh-remote-access', directory: 'packages/dsh-remote-access', group: 'dsh-remote-access' },
+  { id: 'dsh-calendar', name: '@eduwork/dsh-calendar', directory: 'dsh-plugins/calendar', group: 'dsh-calendar' },
+  { id: 'dsh-calendar-subscriptions', name: '@eduwork/dsh-calendar-subscriptions', directory: 'dsh-plugins/calendar-subscriptions', group: 'dsh-calendar-subscriptions' },
+  { id: 'dsh-academic-calendar', name: '@eduwork/dsh-academic-calendar', directory: 'packages/dsh-academic-calendar', group: 'dsh-academic-calendar' },
 ]
 export const groups = [...new Set(packages.map(p => p.group))]
 // Also checked on Windows: these plugins handle the host's own paths, which differ there.
@@ -36,10 +39,17 @@ export function changedGroups(files) {
     // These package checks install this Runtime to exercise their mounted plugins.
     if (/^third_party\/dsh\/[^/]+\/npm-runtime\//.test(file)) {
       result.add('dsh-side-chat')
+      result.add('dsh-calendar')
+      result.add('dsh-calendar-subscriptions')
+      result.add('dsh-academic-calendar')
       result.add('dsh-decision')
       result.add('dsh-auto-approval')
     }
-    for (const group of groups) if (file.startsWith(`packages/${group}/`)) result.add(group)
+    for (const entry of packages) if (file.startsWith(entry.directory + '/')) result.add(entry.group)
+    if (file.startsWith('dsh-plugins/calendar/')) {
+      result.add('dsh-calendar-subscriptions')
+      result.add('dsh-academic-calendar')
+    }
     // Side chat consumes the annotation selection service when both are enabled.
     if (file.startsWith('packages/dsh-annotation/')) result.add('dsh-side-chat')
   }
@@ -58,6 +68,13 @@ export function selectProductChecks(files, { receiptOnly = false, full = false, 
     if (sourceDocumentation.test(file) || /^(?:docs|website|updates)\//.test(file)) continue
     if (file === 'source-receipt.json' && receiptOnly) continue
     if (packages.some(entry => file.startsWith(`${entry.directory}/`))) {
+      // The desktop configuration host consumes this model directly; both desktop
+      // checks also exercise the calendar plugin sources in an assembled Runtime.
+      if (file.startsWith('dsh-plugins/calendar') || file === 'packages/dsh-academic-calendar/lib/model.js') {
+        buildInputs.push(file)
+        integrationInputs.push(file)
+        continue
+      }
       // Windows native assets are prepared from this source catalog before npm assembly.
       if (file === 'packages/dsh-knowledge-studio/packages/artifact-services/lib/transcription-components.js') buildInputs.push(file)
       // These integration checks read the checkout, rather than the installed npm package.

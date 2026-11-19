@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-A local calendar and schedule manager. The calendar opens in month view and keeps the focused date when switching to week view. Both use the same events and private notes. With a school calendar selected, the academic-year overview links each phase to its month. This plugin is in development.
+A local calendar and schedule manager. The calendar opens in month view and keeps the focused date when switching to week view. Both use the same events and private notes. With a school calendar selected, the academic-year overview links each phase to its month. The public desktop edition bundles this plugin starting with 0.4.14. Academic calendar data is supplied by the distribution.
 
 ## Features
 

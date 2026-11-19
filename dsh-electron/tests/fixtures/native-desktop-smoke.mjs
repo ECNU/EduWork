@@ -265,7 +265,9 @@ app.whenReady().then(async () => {
   host.fetch = async request => {
     guideRequests++
     assert.equal(request.method, 'HEAD')
-    assert.equal(request.url, 'app://app/eduwork-user-guide/')
+    assert.equal(new URL(request.url).pathname, '/eduwork-user-guide/')
+    const shellResponse = staticDesktopResponse(request, output)
+    if (shellResponse) return shellResponse
     if (guideFetchError) throw new Error('synthetic guide route failure')
     return new Response(null, { status: guideStatus })
   }

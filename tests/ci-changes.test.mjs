@@ -70,7 +70,7 @@ test('Web and DSH workflows keep product checks and select only affected npm pac
   }
   assert.deepEqual(selectProductChecks([web, dsh, 'packages/dsh-decision/src/core.js']).groups, ['dsh-decision'])
   assert.deepEqual(selectProductChecks([web, dsh, 'third_party/dsh/candidate-v0.2.2-rc.1/npm-runtime/package-lock.json']).groups,
-    ['dsh-decision', 'dsh-auto-approval', 'dsh-side-chat'])
+    ['dsh-decision', 'dsh-auto-approval', 'dsh-side-chat', 'dsh-calendar', 'dsh-calendar-subscriptions', 'dsh-academic-calendar'])
   assert.deepEqual(selectProductChecks([web, dsh, '.github/workflows/new-check.yml']).groups, groups)
 })
 
@@ -90,9 +90,10 @@ test('direct source integration dependencies and mixed changes retain their chec
   assert.equal(nativeCatalog.integration, true)
   assert.deepEqual(nativeCatalog.groups, ['dsh-knowledge-studio'])
   const runtime = selectProductChecks(['third_party/dsh/candidate-v0.2.2-rc.1/npm-runtime/package-lock.json'])
-  assert.deepEqual(runtime.groups, ['dsh-decision', 'dsh-auto-approval', 'dsh-side-chat'])
+  assert.deepEqual(runtime.groups, ['dsh-decision', 'dsh-auto-approval', 'dsh-side-chat', 'dsh-calendar', 'dsh-calendar-subscriptions', 'dsh-academic-calendar'])
   assert.deepEqual(runtime.checks, [{ package: 'dsh-decision', os: 'ubuntu-latest' }, { package: 'dsh-auto-approval', os: 'ubuntu-latest' },
-    { package: 'dsh-auto-approval', os: 'windows-latest' }, { package: 'dsh-side-chat', os: 'ubuntu-latest' }])
+    { package: 'dsh-auto-approval', os: 'windows-latest' }, { package: 'dsh-side-chat', os: 'ubuntu-latest' }, { package: 'dsh-calendar', os: 'ubuntu-latest' },
+    { package: 'dsh-calendar-subscriptions', os: 'ubuntu-latest' }, { package: 'dsh-academic-calendar', os: 'ubuntu-latest' }])
   assert.equal(runtime.build, true)
   assert.equal(runtime.integration, true)
   const mixed = selectProductChecks(['README.md', 'packages/dsh-annotation/src/index.js', 'third_party/npm-015-rc1/dsh-oidc/LOCK.json'])

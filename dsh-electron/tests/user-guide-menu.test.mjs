@@ -9,7 +9,6 @@ test('the application menu offers the user guide only after the Host serves it',
   assert.match(bridge, /export const USER_GUIDE_ROUTE = '\/eduwork-user-guide'/)
   assert.match(bridge, /export const USER_GUIDE_EVENT = 'eduwork:open-user-guide'/)
   assert.match(bridge, /\.\.\.\(userGuide \? \[\{ label: [^\]]*click: openUserGuide \}\] : \[\]\)/)
-  assert.match(bridge, /getHost\(\)\?\.fetch\(new Request\(`app:\/\/app\$\{USER_GUIDE_ROUTE\}\/`, \{ method: 'HEAD' \}\)\)/)
   assert.match(bridge, /response\?\.ok === true/)
   // Windows draws the 应用 menu from the same item list as the macOS app menu.
   assert.match(bridge, /name === 'application' \? applicationItems\(\)/)

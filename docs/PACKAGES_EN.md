@@ -6,6 +6,9 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 
 | npm package | Source and documentation | Installation root |
 | --- | --- | --- |
+| `@eduwork/dsh-calendar` | [Calendar and schedule](../dsh-plugins/calendar/README_EN.md) | `dsh-plugins/calendar` |
+| `@eduwork/dsh-calendar-subscriptions` | [Calendar subscriptions](../dsh-plugins/calendar-subscriptions/README_EN.md) | `dsh-plugins/calendar-subscriptions` |
+| `@eduwork/dsh-academic-calendar` | [Academic calendar and data providers](../packages/dsh-academic-calendar/README_EN.md) | `packages/dsh-academic-calendar` |
 | `@eduwork/dsh-external-agents` | [外部智能体连接 / External agent connections](../packages/dsh-external-agents/README_EN.md) | `packages/dsh-external-agents` |
 | `@eduwork/dsh-decision` | [SystemOne decision tool and skill](../packages/dsh-decision/README_EN.md) | `packages/dsh-decision` |
 | `@eduwork/dsh-auto-approval` | [Command auto-approval](../packages/dsh-auto-approval/README_EN.md) | `packages/dsh-auto-approval` |

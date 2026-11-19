@@ -52,7 +52,8 @@ export class AnnotationRegistry {
   }
 
   selected(group) {
-    if (this.selections.has(group)) return this.selections.get(group)
+    const saved = this.selections.get(group)
+    if (saved === null || this.providers.get(saved)?.selectionGroup === group) return saved
     return [...this.providers.values()].find(provider => provider.selectionGroup === group)?.id ?? null
   }
 

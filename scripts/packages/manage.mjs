@@ -21,13 +21,16 @@ if (action === 'list') {
   console.log(JSON.stringify(selection, null, 2))
 } else if (['install', 'check', 'pack'].includes(action)) {
   const selected = selectPackage(id)
-  const cwd = join(root, 'packages', selected.group)
+  const cwd = join(root, selectPackage(selected.group).directory)
   if (action === 'install') npm(['ci'], { cwd, stdio: 'inherit' })
   if (action === 'check') {
     const scripts = {
       'dsh-external-agents': ['check'],
       'dsh-decision': ['check'],
       'dsh-auto-approval': ['check'],
+      'dsh-calendar': ['test'],
+      'dsh-calendar-subscriptions': ['test'],
+      'dsh-academic-calendar': ['test'],
       'dsh-annotation': ['check'],
       'dsh-side-chat': ['check'],
       'dsh-desktop-pet': ['check'],

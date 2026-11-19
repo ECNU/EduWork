@@ -192,6 +192,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   const environment = {
     DSH_HOME: home, DSH_TELEMETRY_DISABLED: '1',
     DSH_BUNDLED_SKILL_DIR: managedContent.skillRoot ?? join(product, 'skills'),
+    EDUWORK_ACADEMIC_CALENDARS_FILE: managedContent.academicCalendarsFile ?? '',
     ...native ? {} : await prepareProductPresets({ product, home }),
     EDUWORK_PRODUCT_ROOT: product, EDUWORK_DESKTOP_SHELL: shell,
     DSH_MEDIA_NODE_ENV: join(product, 'd'),

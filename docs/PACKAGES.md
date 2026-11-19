@@ -8,6 +8,9 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 
 | npm 包 | 源码与说明 | 开发安装根目录 |
 | --- | --- | --- |
+| `@eduwork/dsh-calendar` | [通用日历与日程](../dsh-plugins/calendar/README.md) | `dsh-plugins/calendar` |
+| `@eduwork/dsh-calendar-subscriptions` | [日历订阅](../dsh-plugins/calendar-subscriptions/README.md) | `dsh-plugins/calendar-subscriptions` |
+| `@eduwork/dsh-academic-calendar` | [教学日历与校历数据接口](../packages/dsh-academic-calendar/README.md) | `packages/dsh-academic-calendar` |
 | `@eduwork/dsh-external-agents` | [外部智能体连接 / External agent connections](../packages/dsh-external-agents/README.md) | `packages/dsh-external-agents` |
 | `@eduwork/dsh-decision` | [SystemOne 决策工具与技能](../packages/dsh-decision/README.md) | `packages/dsh-decision` |
 | `@eduwork/dsh-auto-approval` | [命令自动审批](../packages/dsh-auto-approval/README.md) | `packages/dsh-auto-approval` |
