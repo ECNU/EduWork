@@ -5,7 +5,7 @@
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-19T15:03:53.375Z",
-  "fileSetSHA256": "ddfaf41ceb67961851bfce79bf30ab333a3d4b094b46646a64450f89ac7b007e",
+  "fileSetSHA256": "8c92617f74fc327a358c5b8ef761b9f63859006736abafaf432e243865d9ae36",
   "files": [
     {
       "path": ".gitattributes",
@@ -1209,7 +1209,7 @@
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
-      "sha256": "cd051a1d0c25d08653a5f71aeaab6a549420a0f4d6659b260f8102858a00ecf5"
+      "sha256": "853dcda8e538485fc2f1209c680b254f1e55efb29bbd271f5dc2943f9da63b64"
     },
     {
       "path": "dsh-electron/scripts/pack-migration-release.ps1",
@@ -1553,7 +1553,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "49e1aef9b084bb82359943ff2c07bc01e818fa216835504741d58ed8d96e773b"
+      "sha256": "8825c51271665fa1fcfa97a89d3a435afb8386d7d35c5697ce4ed570b9409572"
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.html",
