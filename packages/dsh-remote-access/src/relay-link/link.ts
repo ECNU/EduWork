@@ -10,6 +10,7 @@
  * and is tried again with backoff; one that brings no later expiry is not
  * tried again.
  */
+import { AsyncLocalStorage } from 'node:async_hooks'
 import type { SocketLike } from '../protocol/channel.ts'
 import { Close } from '../protocol/close-codes.ts'
 import { PROTOCOL } from '../protocol/constants.ts'
@@ -48,6 +49,21 @@ export interface RelayLinkOptions {
   readonly renewAfterMs?: number
 }
 
+/**
+ * A WebSocket whose events run in the async context it was opened in. Node's
+ * WebSocket may take over an idle connection of the global fetch pool, and its
+ * events then run in the context of the request that opened that connection:
+ * with the relay on the model gateway's origin, a model call's, whose
+ * authorization would carry over into everything a device asks for.
+ */
+class HostSocket extends WebSocket {
+  readonly #run = AsyncLocalStorage.snapshot()
+
+  override dispatchEvent(event: Event): boolean {
+    return this.#run(() => super.dispatchEvent(event))
+  }
+}
+
 export class RelayLink {
   readonly #options: RelayLinkOptions & Required<Pick<RelayLinkOptions, 'pingMs' | 'pongMs' | 'backoffMs' | 'renewBeforeMs' | 'renewAfterMs'>>
   #control: WebSocket | undefined
@@ -81,7 +97,7 @@ export class RelayLink {
 
   #connect(): void {
     if (this.#retiring === undefined) this.#options.onState({ state: 'connecting' })
-    const control = new WebSocket(this.#url(RELAY_PATHS.host))
+    const control = new HostSocket(this.#url(RELAY_PATHS.host))
     this.#control = control
     let expiresAt: number | undefined
     control.addEventListener('message', ({ data }) => {
@@ -153,7 +169,7 @@ export class RelayLink {
   }
 
   #open(id: string): void {
-    const socket = new WebSocket(this.#url(RELAY_PATHS.accept))
+    const socket = new HostSocket(this.#url(RELAY_PATHS.accept))
     socket.addEventListener('open', () => {
       socket.send(JSON.stringify({ t: 'accept', id }))
       this.#options.accept(socket)

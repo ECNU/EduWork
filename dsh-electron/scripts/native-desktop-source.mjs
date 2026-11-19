@@ -32,6 +32,15 @@ export ${source.slice(start, end)}
     replace(navigation, '')
   }
   if (file.endsWith('/preload-app.ts')) {
+    // The settings UI registers its channel picker only when this bridge is
+    // exposed. EduWork manages channels in its own software update panel.
+    replace('function createProductApi(): DshDesktopProductApi {', `function createProductApi() {
+  const api = createUpstreamProductApi()
+  const { channels: _upstreamChannels, ...updates } = api.updates
+  return { ...api, updates }
+}
+
+function createUpstreamProductApi(): DshDesktopProductApi {`)
     replace("import { PLATFORM_IPC } from './platform-ipc.ts'\n", '')
     replace("import { installMandatoryUpdateOverlay } from './preload-mandatory-overlay.ts'\n", '')
     replace("  if (process.platform === 'win32') installMandatoryUpdateOverlay()\n", '')

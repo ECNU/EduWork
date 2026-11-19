@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-19T08:35:48.739Z",
-  "fileSetSHA256": "fcb6016b174d1428602ebeffc6f9c73de6403e35059c25c6a11b4ad17c5766fa",
+  "createdAt": "2026-11-19T19:20:29.733Z",
+  "fileSetSHA256": "4380fd97609d9dbd4ea5f4815ccfb5d93ba304f3e4d95da54968e9b948076375",
   "files": [
     {
       "path": ".gitattributes",
@@ -33,11 +33,11 @@
     },
     {
       "path": ".github/workflows/packages-release.yml",
-      "sha256": "8db15fa0aabafc10d04c856c34b6bf23befa748b01db838c65e220a00343d06b"
+      "sha256": "682bb6a2d037ccb67dd7ca11bce17e266507cee223d70e28c3bdf57d8fe30161"
     },
     {
       "path": ".github/workflows/packages.yml",
-      "sha256": "4e1873fd808e7d5940b770ee696a1ee49fc5f5598b70dba30b4acdad3f74681b"
+      "sha256": "29c78138644986748c3daae0723b017ee1dbacab1724b3810c1ccd8c2887bee7"
     },
     {
       "path": ".github/workflows/publish-desktop-candidate.yml",
@@ -417,11 +417,11 @@
     },
     {
       "path": "docs/PACKAGES_EN.md",
-      "sha256": "e413667c4726815fc46f438af5a2e774465aaf980f2ccf3880374b50b628a681"
+      "sha256": "5d47c97509c361bcc206f8e04210b1498dfbdb8902fd1eef4a14a72b43de07f4"
     },
     {
       "path": "docs/PACKAGES.md",
-      "sha256": "046bbf5b8cb9cc5a2a124b67dc588a8b71ab9ca906715d7d59b00338aaff554a"
+      "sha256": "57880ef764461d34c01d6b407d9b154979bf0f8f4db4ad47324cb33371230200"
     },
     {
       "path": "docs/PLUGIN_NOTIFICATIONS.md",
@@ -1209,7 +1209,7 @@
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
-      "sha256": "f8ca64d54ddc4e5e41b6fa688cbda1c8c62abe064e1398eaa008776d4f0f516d"
+      "sha256": "818b0f4ec37905bbba0658e7a0b0db7fafd669e4d64dbaacdd8b7892fcf05ce1"
     },
     {
       "path": "dsh-electron/scripts/pack-migration-release.ps1",
@@ -1577,7 +1577,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "49e1aef9b084bb82359943ff2c07bc01e818fa216835504741d58ed8d96e773b"
+      "sha256": "8825c51271665fa1fcfa97a89d3a435afb8386d7d35c5697ce4ed570b9409572"
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.html",
@@ -3942,6 +3942,78 @@
     {
       "path": "packages/dsh-annotation/test/sent.test.mjs",
       "sha256": "69c6a85664ad261281557b919c16f2e1c898926047ab93c12c140fa805b878c9"
+    },
+    {
+      "path": "packages/dsh-auto-approval/.gitignore",
+      "sha256": "676b91f455a7988044510489387fab13294b310b164fae41301ac730692497b8"
+    },
+    {
+      "path": "packages/dsh-auto-approval/CHANGELOG.md",
+      "sha256": "8f7a8780a5dacce0caa5a6a450d125c5463c2d7371eb8b844cb85d4112e26981"
+    },
+    {
+      "path": "packages/dsh-auto-approval/cordis.patch.yml",
+      "sha256": "35456b64e823b9c10009b1b024235be4721b86f1c8587ae190e334b22b9520c2"
+    },
+    {
+      "path": "packages/dsh-auto-approval/LICENSE",
+      "sha256": "eb7a1d713eb919b146787629e22e4c975cb701f529a65d4d7e0fcd417558bf1c"
+    },
+    {
+      "path": "packages/dsh-auto-approval/package-lock.json",
+      "sha256": "4a90a81dd02b0f2ed161c7725dc56e44cf76ef337df8c703be20859e5dcb94c2"
+    },
+    {
+      "path": "packages/dsh-auto-approval/package.json",
+      "sha256": "10a6013f556e713fe1ca5e98340041f59ed76323399a694179c0d2fba296ec09"
+    },
+    {
+      "path": "packages/dsh-auto-approval/README_EN.md",
+      "sha256": "faf0035e1a1141889c18ac7179083b2693f743f056472bb270b262a528699ecc"
+    },
+    {
+      "path": "packages/dsh-auto-approval/README.md",
+      "sha256": "7df8ec15aecde818e78ed30a6320c77502a62d76107c64f1f9cddb3cb8ec3f89"
+    },
+    {
+      "path": "packages/dsh-auto-approval/scripts/build.mjs",
+      "sha256": "b0a98b2088dfa3053f9661e6fe2c0c34f8cd86ec39a055660a52aad10b8c0108"
+    },
+    {
+      "path": "packages/dsh-auto-approval/src/index.js",
+      "sha256": "5d7f249f56af3a8a3fd89c362eb67d80f0e8dc72ebae5c891f83d89e3f825b0f"
+    },
+    {
+      "path": "packages/dsh-auto-approval/src/questions.js",
+      "sha256": "a8b817d5a8e5ef45b06b05c65ce0b1927dfc1b858272e03ba143608f8b64e900"
+    },
+    {
+      "path": "packages/dsh-auto-approval/src/review.js",
+      "sha256": "107c924443d29a8f31701c36e0f4d1c84e71901327ce7fd564154508244821cd"
+    },
+    {
+      "path": "packages/dsh-auto-approval/src/rules.js",
+      "sha256": "7855745b8f042bd263b9cd6b24b9f3fe5c5fbd8cc2585059118da15535094625"
+    },
+    {
+      "path": "packages/dsh-auto-approval/test/mounted.test.mjs",
+      "sha256": "302d259ecfe61be5f72bb361b54e10333398d9be9ae48de0d29721ee770104d8"
+    },
+    {
+      "path": "packages/dsh-auto-approval/test/review.test.mjs",
+      "sha256": "6f4814c18e8cd4fff288a07775335ed29902f841eba255c5f7bf3c0db6228bc0"
+    },
+    {
+      "path": "packages/dsh-auto-approval/test/rules.test.mjs",
+      "sha256": "f2a82fdabc40f27c2f322f097b7b51c954ae6326b49a08e05b2238ddefed886f"
+    },
+    {
+      "path": "packages/dsh-auto-approval/test/runtime-resolver.mjs",
+      "sha256": "f127f11b474a1d06c98117f5123a7c86fc25c929c834ad0cc317c18518b322e5"
+    },
+    {
+      "path": "packages/dsh-auto-approval/test/runtime.test.mjs",
+      "sha256": "01a4ba79b38afe5ea34ca578f1faa6ba27e7e9a9b9787acb658713fd3ce64c0c"
     },
     {
       "path": "packages/dsh-decision/.gitignore",
@@ -7153,7 +7225,7 @@
     },
     {
       "path": "packages/dsh-remote-access/CHANGELOG.md",
-      "sha256": "c43fefa537f05a1dbccdb4b0e8d9b6b6fdaee5c283773c925d74b6f9aef1eef5"
+      "sha256": "74e7ac83ae0c851c08ac33ae6b7323fc25e3ffd1d23f8f3d27b08f84a77f8dbc"
     },
     {
       "path": "packages/dsh-remote-access/cordis.patch.yml",
@@ -7329,7 +7401,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/relay-link/link.ts",
-      "sha256": "124e0320a81ceb07d57bf180f61116e38f6e532e1b2e976b16f6fcc022b2a60b"
+      "sha256": "965fcd8d9fb0ce1d4e8c41ecdaf1da24761f6e5166bd0c4b1af089dce8a41169"
     },
     {
       "path": "packages/dsh-remote-access/src/relay/id-token.ts",
@@ -7473,7 +7545,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/relay-link.test.ts",
-      "sha256": "9c2b7499791cc8dd9b562190ef2c86946e5e4c6f02d0e25bc8386b866a1eef4f"
+      "sha256": "134f8a53416f077ce0065c0d5a7d8ca9e04a2b71cf8ad95af305e26bd170395a"
     },
     {
       "path": "packages/dsh-remote-access/test/relay/id-token.test.ts",
@@ -7701,7 +7773,7 @@
     },
     {
       "path": "scripts/ci-changes.mjs",
-      "sha256": "f9a4524e62bf01917cd7810b2f3e7a2f11c3d2f4dccf2cff411c3d441ed58dd7"
+      "sha256": "992a30cae9279ecb31bfe173ccdc9f0e3a8108c3e616a98be0920258e272ed2d"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.mjs",
@@ -7993,15 +8065,15 @@
     },
     {
       "path": "scripts/packages/archive.mjs",
-      "sha256": "d84cd131e257fa8b9f70013e438ffe5334455fc8efb62eda8e17ebdabc3a1ce8"
+      "sha256": "110fb1b7b19baf600fd146c78ce66c6960137e2ed319512e2c789e9125e57ef6"
     },
     {
       "path": "scripts/packages/catalog.mjs",
-      "sha256": "92cf08d2853d6f4bde35c677f70b0b64a72edd6f77db7e2801f550e6b70ddcaf"
+      "sha256": "2597617d4240b33d38415e27d1515910938ecd2896e8f4f794ef30deb8528a95"
     },
     {
       "path": "scripts/packages/manage.mjs",
-      "sha256": "3c74b2438003700d3ec4b5c68e126167366b3af1dcf64ae6becc43863da71f65"
+      "sha256": "82b9431e230e85a5f47bbcf36822b2c7bbb0e9089842d632a3eeca3328dfc5e7"
     },
     {
       "path": "scripts/packages/npm.mjs",
@@ -8385,7 +8457,7 @@
     },
     {
       "path": "tests/ci-changes.test.mjs",
-      "sha256": "299849c6143a078fb7ab50f53ede7289b4dd71a7aa516d0f68a416958caba299"
+      "sha256": "09cf45dac216d2d02ec9ced736b951162746623198079ea20e15d01ee3f1605b"
     },
     {
       "path": "tests/desktop-build-plan.test.mjs",
@@ -8529,7 +8601,7 @@
     },
     {
       "path": "tests/package-maintenance.test.mjs",
-      "sha256": "ee00241c27a217a1af899fdfa9eb8ba3eb5375d09f609deb7beb31bf38f99bac"
+      "sha256": "f5ace6c6a1459675c655ee9865d737b2d9bd4c075c7e03332c77a7a0244c3f60"
     },
     {
       "path": "tests/parallel-sets.test.mjs",
