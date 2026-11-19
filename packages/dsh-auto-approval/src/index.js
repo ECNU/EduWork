@@ -42,10 +42,11 @@ export function apply(ctx, raw = {}) {
   // was there, so it does not count.
   const created = new WeakMap()
   const failures = new Map()
-  // Sessions where the user rejected an escalation, with their last message then: until they write again, a retry is
-  // theirs to answer.
+  // Sessions where the user rejected an escalation, with their last message then: until they write again, nothing is
+  // approved automatically, not even a request already under review.
   const declined = new WeakMap()
   const lastRequest = session => session.snapshotEvents().findLast(({ type, data }) => type === 'user/message' && data.source?.kind === 'user')?.seq
+  const refused = session => declined.has(session) && declined.get(session) === lastRequest(session)
 
   ctx.on('tools/pre-execute', async (exec, next) => {
     const session = exec.agent?.session
@@ -173,7 +174,7 @@ export function apply(ctx, raw = {}) {
     }
     const command = SHELLS.has(call.name) ? call.arguments.command : fileCommand(call.name, call.arguments)
     if (command.length > COMMAND_CHARS) return ask('命令过长，未审查')
-    if (declined.has(session) && declined.get(session) === lastRequest(session)) return ask('用户拒绝过，未审查')
+    if (refused(session)) return ask('用户拒绝过，未审查')
     const id = session.id
     if (failures.get(id)?.until > Date.now()) return ask('连续失败，暂停审查')
     const started = performance.now()
@@ -182,10 +183,10 @@ export function apply(ctx, raw = {}) {
       // The race also ends a review that waits on a stalled Host service (credentials, sign-in, files).
       const result = await Promise.race([review(req, call, command, signal), aborted(signal)])
       failures.delete(id)
-      // During the review the session's directory may have gone, another call with this ID may have started, the
-      // session may have left the preset, or the request may have been withdrawn.
-      const approved = result.approved && !result.moved && !entry.ambiguous && ctx.permissionPresets.current(session) === preset
-        && !signal.aborted
+      // During the review the session's directory may have gone, another call with this ID may have started, the user
+      // may have rejected another request, the session may have left the preset, or the request may have been withdrawn.
+      const approved = result.approved && !result.moved && !entry.ambiguous && !refused(session)
+        && ctx.permissionPresets.current(session) === preset && !signal.aborted
       log.info(`${call.name} ${approved ? 'approved' : 'asked the user'} (${result.flagged ? 'rule hit' : 'score'} ${result.score.toFixed(3)}, ${Math.round(performance.now() - started)} ms)`)
       const score = `${result.flagged ? '命中规则，' : ''}分数 ${result.score.toFixed(3)}`
       if (approved) {

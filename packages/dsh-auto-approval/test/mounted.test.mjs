@@ -235,6 +235,23 @@ test('after the user rejects an escalation, retries go to the user until they wr
   assert.equal(bodies.length, 2)
 })
 
+test('a request still under review when the user rejects another goes to the user too', async t => {
+  // The second request's answers come only after the user has rejected the first.
+  const { promise: rejection, resolve: rejected } = Promise.withResolvers()
+  const { baseURL } = await service(t, async body => {
+    if (body.state.待执行的命令.startsWith('git push')) return answer(body, 0.6, 0.1)
+    await rejection
+    return answer(body, 0.9, 0.1)
+  })
+  const mounted = mount({ ...base, baseURL }, { events: [{ type: 'user/message', seq: 1, data: { source: { kind: 'user' }, content: [{ type: 'text', text: '推送并导出报告' }] } }] })
+  const push = await mounted.start('git push origin main'), copy = await mounted.start('cp a.csv ~/Downloads/')
+  const pending = mounted.ask(copy, { fallback: 'unavailable' })
+  assert.equal(await mounted.ask(push), 'rejected')
+  rejected()
+  assert.equal(await pending, 'unavailable')
+  assert.equal((await mounted.post(copy)).additionalContexts[0].source.summary, '交给用户确认（审查期间情况有变）')
+})
+
 test('the directory read that ends a review is within its time limit and its failure count', async t => {
   const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
   // The first read starts the review, the second ends it.
