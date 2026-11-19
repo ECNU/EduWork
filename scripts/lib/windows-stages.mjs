@@ -370,13 +370,11 @@ async function buildAndAcceptPublicInstaller({ workspace, coreRoot }) {
       ...process.env, APPDATA: appData, LOCALAPPDATA: appData,
       EDUWORK_DESKTOP_TEST_DATA_ROOT: data, EDUWORK_CONFIG_FILE: config,
     } })
-  } finally {
-    if (await pathExists(installDir)) {
-      if (!await isFile(uninstall)) throw new Error('Installed desktop is missing its uninstaller')
-      await runSilentInstaller(uninstall)
-      if (await pathExists(installDir)) throw new Error('Silent uninstall left the program directory behind')
-    }
+  } catch (error) {
+    await uninstallDesktop(installDir, uninstall).catch(cleanup => console.error('Uninstall after failed installer acceptance also failed:', cleanup))
+    throw error
   }
+  await uninstallDesktop(installDir, uninstall)
 
   const channel = version.includes('-dev.') ? 'dev' : 'latest'
   const fileIdentity = file => ({ name: file.file, bytes: file.bytes, sha256: file.sha256 })
@@ -386,6 +384,13 @@ async function buildAndAcceptPublicInstaller({ workspace, coreRoot }) {
     channelFile: fileIdentity(packed.updateArtifacts.find(file => file.file === `${channel}.yml`)),
     blockMap: fileIdentity(packed.updateArtifacts.find(file => file.file === `${packed.artifact.file}.blockmap`)),
   })
+}
+
+async function uninstallDesktop(installDir, uninstall) {
+  if (!await pathExists(installDir)) return
+  if (!await isFile(uninstall)) throw new Error('Installed desktop is missing its uninstaller')
+  await runSilentInstaller(uninstall)
+  if (await pathExists(installDir)) throw new Error('Silent uninstall left the program directory behind')
 }
 
 async function runSilentInstaller(executable) {
