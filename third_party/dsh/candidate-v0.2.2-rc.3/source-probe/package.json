@@ -70,7 +70,10 @@
     "@eduwork/dsh-external-agents": "0.1.1",
     "@deepseek-ai/dsh-subagent-codex": "0.2.2-rc.3",
     "@deepseek-ai/dsh-subagent-acp": "0.2.2-rc.3",
-    "zod": "4.6.6"
+    "zod": "4.6.6",
+    "@eduwork/dsh-calendar": "0.1.0",
+    "@eduwork/dsh-calendar-subscriptions": "0.1.0",
+    "@eduwork/dsh-academic-calendar": "0.1.0"
   },
   "private": true,
   "optionalDependencies": {
