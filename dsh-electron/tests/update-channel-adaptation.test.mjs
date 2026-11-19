@@ -26,7 +26,7 @@ test('Windows channel adaptation uses the release metadata names without permitt
   }
 })
 
-test('the locked upstream coordinator cancels its active download token on dispose', async () => {
+test('the locked upstream coordinator shows install progress and cancels its active download token on dispose', async () => {
   const file = 'apps/desktop/src/update-coordinator.ts'
   const upstream = execFileSync('git', ['-C', upstreamRoot, 'show', `38a6a5c965aa99ab525161efb7cc5cf1fe62fced:${file}`])
   const lock = JSON.parse(await readFile(new URL('../upstream-inputs-pinned-source.json', import.meta.url), 'utf8'))
@@ -34,6 +34,10 @@ test('the locked upstream coordinator cancels its active download token on dispo
   const original = upstream.toString('utf8')
   assert.match(original, /downloadUpdate\(this\.cancellation\)/)
   const source = adaptNativeDesktopSource(file, original)
+  assert.match(source, /this\.updater\.quitAndInstall\(false, true\)/)
+  assert.doesNotMatch(source, /this\.updater\.quitAndInstall\(true, true\)/)
+  assert.throws(() => adaptNativeDesktopSource(file, original.replace('quitAndInstall(true, true)', 'quitAndInstall(true, false)')),
+    /Native desktop anchor changed in .*: .*quitAndInstall/)
   assert.match(source, /await this\.updater\.downloadUpdate\(this\.cancellation\)/)
   assert.match(source, /downloadedBytes: progress\.transferred, totalBytes: progress\.total/)
   const methodBody = value => {

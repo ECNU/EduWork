@@ -66,6 +66,8 @@ export ${source.slice(start, end)}
   if (file === 'apps/desktop/src/update-coordinator.ts') {
     replace('this.setState({ phase: percent >= 100 ? \'verifying\' : \'downloading\', ...this.target(), percent })', 'this.setState({ phase: percent >= 100 ? \'verifying\' : \'downloading\', ...this.target(), percent, downloadedBytes: progress.transferred, totalBytes: progress.total })')
     replace('    this.disposed = true\n    this.updater.off(\'download-progress\', this.onProgress)', '    this.disposed = true\n    this.cancellation?.cancel()\n    this.updater.off(\'download-progress\', this.onProgress)')
+    // Non-silent mode keeps NSIS installation progress visible.
+    replace('this.updater.quitAndInstall(true, true)', 'this.updater.quitAndInstall(false, true)')
   }
   return source
 }

@@ -5,7 +5,7 @@
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-19T08:35:48.739Z",
-  "fileSetSHA256": "e614b4c93e81c14d42d9b5dd7a3e79783ff11a8755d54ecebd212d449e33a485",
+  "fileSetSHA256": "fcb6016b174d1428602ebeffc6f9c73de6403e35059c25c6a11b4ad17c5766fa",
   "files": [
     {
       "path": ".gitattributes",
@@ -1209,7 +1209,7 @@
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
-      "sha256": "139729c87e68b28cfa884e37cbebefa9327ccd74ac7f2ea3a2fef6dcb29dcbcb"
+      "sha256": "f8ca64d54ddc4e5e41b6fa688cbda1c8c62abe064e1398eaa008776d4f0f516d"
     },
     {
       "path": "dsh-electron/scripts/pack-migration-release.ps1",
@@ -1725,7 +1725,7 @@
     },
     {
       "path": "dsh-electron/tests/update-channel-adaptation.test.mjs",
-      "sha256": "0184aabe651e180e9db60a030b320fe894430d800b8d059112999df0419e3cf1"
+      "sha256": "b47f6e8df1e5cf9fdea706ff15d07ddde6415a45398f45222bec8148a00c54fb"
     },
     {
       "path": "dsh-electron/tests/update-channel-migration.test.mjs",
@@ -7973,7 +7973,7 @@
     },
     {
       "path": "scripts/pack-windows-installer.mjs",
-      "sha256": "4ce6995c4963fbd913c5d598a3a4b0a821e7547ab22c770460a5bb7e547086e7"
+      "sha256": "06c9196904694c2e5392b5a157a9d2c5478a63e6c878e077366174e335e43eb9"
     },
     {
       "path": "scripts/pack-windows-release.mjs",
@@ -8333,7 +8333,7 @@
     },
     {
       "path": "scripts/test/windows-installer.test.mjs",
-      "sha256": "81570a929ff0e0edd21ce02b0a15b095b996561430940eabf501057c932e0982"
+      "sha256": "7e358d82bd17507e95bbebf277a6789526fdbbf5d0b66b6db579a1ed8a9b4a75"
     },
     {
       "path": "scripts/test/windows-update-delta.test.mjs",

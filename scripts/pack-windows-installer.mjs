@@ -62,6 +62,20 @@ export function installerInclude(desktop) {
     '  WriteRegStr SHELL_CONTEXT "${UNINSTALL_REGISTRY_KEY}" InstallLocation "$INSTDIR"',
     '!macroend',
     '',
+    '; Updated assisted installs must skip the finish page before relaunching.',
+    '!macro customFinishPage',
+    '  Function RelaunchAfterUpdate',
+    '    ${if} ${isUpdated}',
+    '    ${andIf} ${isForceRun}',
+    '      HideWindow',
+    `      Exec '"$appExe" --updated'`,
+    '      Abort',
+    '    ${endif}',
+    '  FunctionEnd',
+    '  !define MUI_PAGE_CUSTOMFUNCTION_PRE RelaunchAfterUpdate',
+    '  !insertmacro MUI_PAGE_FINISH',
+    '!macroend',
+    '',
   ].join('\n')
 }
 

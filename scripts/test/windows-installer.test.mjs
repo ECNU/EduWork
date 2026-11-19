@@ -99,6 +99,16 @@ test('NSIS include checks the installer cache path per distribution', () => {
   ].join('\n')))
 })
 
+test('NSIS finish page relaunches a forced update but leaves manual installation unchanged', () => {
+  const include = installerInclude(desktop)
+  const finishPage = include.match(/!macro customFinishPage\n([\s\S]*?)\n!macroend/)?.[1] ?? ''
+  assert.match(finishPage, /\$\{if\} \$\{isUpdated\}\s+\$\{andIf\} \$\{isForceRun\}\s+HideWindow\s+Exec '"\$appExe" --updated'\s+Abort\s+\$\{endif\}/)
+  assert.match(finishPage, /!define MUI_PAGE_CUSTOMFUNCTION_PRE (\w+)\n\s+!insertmacro MUI_PAGE_FINISH/)
+  const [, callback] = finishPage.match(/!define MUI_PAGE_CUSTOMFUNCTION_PRE (\w+)/)
+  assert.ok(finishPage.includes(`Function ${callback}\n`))
+  assert.doesNotMatch(finishPage, /MUI_FINISHPAGE_RUN/)
+})
+
 test('installer project fixes per-user, no-elevation and data-preserving behavior', () => {
   const project = installerProject({ desktop, release, electronVersion: '44.0.0', artifactsDir: 'C:/out/artifacts', icon: 'C:/icon.ico', includePath: 'C:/out/installer.nsh' })
   assert.equal(project.packageJSON.version, version)
@@ -114,6 +124,7 @@ test('installer project fixes per-user, no-elevation and data-preserving behavio
   assert.equal(project.config.nsis.allowToChangeInstallationDirectory, false)
   assert.equal(project.config.nsis.createDesktopShortcut, false)
   assert.equal(project.config.nsis.createStartMenuShortcut, true)
+  assert.equal(project.config.nsis.runAfterFinish, false)
   assert.equal(project.config.nsis.uninstallDisplayName, 'EduWork')
   assert.equal(project.config.nsis.deleteAppDataOnUninstall, false)
   assert.equal(project.config.nsis.differentialPackage, false)
