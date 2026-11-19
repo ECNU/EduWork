@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-19T19:20:29.733Z",
-  "fileSetSHA256": "4380fd97609d9dbd4ea5f4815ccfb5d93ba304f3e4d95da54968e9b948076375",
+  "createdAt": "2026-11-19T19:37:20.535Z",
+  "fileSetSHA256": "4f5d700f8a72b43275e0470f4762eccfa14ede8a2795dd45d559f693cf13d75d",
   "files": [
     {
       "path": ".gitattributes",
@@ -29,7 +29,7 @@
     },
     {
       "path": ".github/workflows/development-desktop.yml",
-      "sha256": "79b5315779d028ce8e4679a3784b6e8dca1b4e809d472b16a9f619a8259c2950"
+      "sha256": "9b35f5198d890b03c503dfa4389f85be67a2b4652fc07f167161528863d4dd82"
     },
     {
       "path": ".github/workflows/packages-release.yml",
@@ -45,7 +45,7 @@
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
-      "sha256": "285c58412b5fae0a7ca3659d46fda37fa4fb9adc6ee92da38261e347b2a336d1"
+      "sha256": "044a8eb7b2f993e879ba165e6713021c8e029e31d524f85b3160357bcd343aa1"
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "871ad1258d01924df9813b955e8ec990d58ff20027960cefb812c67b4daee1c8"
+      "sha256": "1d3539ffebb5c107c7a5dea69eaa6d1be472c87449ae554b285f8a9d099056f7"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -237,23 +237,23 @@
     },
     {
       "path": "docs/assets/build-pipeline-windows.json",
-      "sha256": "fa0bc48941c0a375b4bb2f8ab09579339c194c501c988b8b216d0a1ac245f056"
+      "sha256": "fad928420e92079cb3027e94977f1aab7276ada45a2c2cd41ff1eb5117b797d6"
     },
     {
       "path": "docs/assets/build-pipeline.drawio",
-      "sha256": "6509a97463986933033bec8142b1c3f8d88e344924453b2d605e88593bc1902f"
+      "sha256": "334e25928410599e13b607ca91f1f3f469f385f84d18d7c856859b4651e44abf"
     },
     {
       "path": "docs/assets/build-pipeline.mmd",
-      "sha256": "851a924f024e3949070e0587073872ecc5c1fa0209e7fea7c9af86a34ff4f923"
+      "sha256": "bafa596aa03bbabf682838469e164cf2109b8c966abbc0d57ba6023830e9a57d"
     },
     {
       "path": "docs/assets/build-pipeline.svg",
-      "sha256": "0d24eea9ca618cc91b0d1f5332d458391505e9aed8fffc541cc7d15390a38682"
+      "sha256": "53bfcefd3eac8ed4c6576176e6f0df1da9f35a98e62b3e699d5dcb140b749102"
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "221f9559260afa0ab90b4c7d164c44f79a6afa2388b1160e7e84664fff82c8e9"
+      "sha256": "b9c165c593e7559f876c8dc2f72d6692290b70144dd1626dc6b659c9c3d851cb"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -497,7 +497,7 @@
     },
     {
       "path": "docs/RELEASE.md",
-      "sha256": "b36ed793f5559fd3652b45b8767a88532f088395f983e224da54fb243a9dabe0"
+      "sha256": "b56fea442821ffa173659b7247b35ded904c379219676407e92feccd3ba50f2a"
     },
     {
       "path": "docs/releases/0.3.5.md",
@@ -605,7 +605,7 @@
     },
     {
       "path": "docs/UPDATES.md",
-      "sha256": "e5a826f003fdac23fe809aa930f91a4080cb55f5263bbe2f16969d9f8369c01b"
+      "sha256": "814c1248a56fe1fe49d25bbf8ccc96b16a47e4be53cca31b17d02803b77b833d"
     },
     {
       "path": "docs/USER_GUIDE.md",
@@ -1017,7 +1017,7 @@
     },
     {
       "path": "dsh-desktop/internal/updater/github_test.go",
-      "sha256": "4e258ca18288bc6e4ca895683a2cab6314c4e3928093bd84a4fc7caac6d07019"
+      "sha256": "90cddad232d092d02d1012ea1458b3283286eca88ac7e6755401a1a8f7a4dcdb"
     },
     {
       "path": "dsh-desktop/internal/updater/github.go",
@@ -7753,7 +7753,7 @@
     },
     {
       "path": "scripts/build-pipeline-diagram.mjs",
-      "sha256": "bcc18ae1926b01e73e56e70b43335ba08ceb1937eef2ddc6e3b11d3368bcfc70"
+      "sha256": "38134a8fda136db0b7a338b190bf46895cec36917d79f7ae4f2164e38eebce06"
     },
     {
       "path": "scripts/check-bundled-configuration.mjs",
@@ -7860,6 +7860,14 @@
       "sha256": "cf95217b3202d1d01248109b8601d8e9b34a671c75725691f5fec7252b7df01a"
     },
     {
+      "path": "scripts/electron-builder/package-lock.json",
+      "sha256": "26057f05d8c17df1a25ba0af4b8711bf2cbc5c48f46557695145fb6f820e95f6"
+    },
+    {
+      "path": "scripts/electron-builder/package.json",
+      "sha256": "55d3cb9a21780d6c89b7f52c6231a13dd4219eeb2e34803a5d382ead22bb4f33"
+    },
+    {
       "path": "scripts/github-update-manifest.mjs",
       "sha256": "21e0edcccb45e606bbf184ffc98af49b87c1de065897a8e61402c194a7d42581"
     },
@@ -7961,7 +7969,7 @@
     },
     {
       "path": "scripts/lib/windows-stages.mjs",
-      "sha256": "56229a1e5f8e326545f0a39d567c9feaadaed68328dec4216120e4990e1a2adc"
+      "sha256": "9054fef36d26cb0fd183964ba4e581d17e6b7514a1f6f60d15f053bc26a13399"
     },
     {
       "path": "scripts/lib/zip.mjs",
@@ -8045,7 +8053,7 @@
     },
     {
       "path": "scripts/pack-windows-installer.mjs",
-      "sha256": "06c9196904694c2e5392b5a157a9d2c5478a63e6c878e077366174e335e43eb9"
+      "sha256": "c6ecda3b12a5aa7de2af0c63a7754abf75041133b2fb96c7217802ea8e8d3706"
     },
     {
       "path": "scripts/pack-windows-release.mjs",
@@ -8265,11 +8273,11 @@
     },
     {
       "path": "scripts/publish-desktop-candidate.mjs",
-      "sha256": "79dfefa96803bc5b9d22a02d48e2cd3c44a86796343e7ea710273681b745f44b"
+      "sha256": "7e3744200a0373d34368b03ff22a1cb7c4f142b0d81e516efc7ae857ddd370b1"
     },
     {
       "path": "scripts/publish-windows-release.mjs",
-      "sha256": "b30c1d11fb6432c971ba20e6d45d5773152bc1e9851c8564a5b090b76cdacc09"
+      "sha256": "6cce015c0c16bc5b56c51f5cf15a1ac0752ab381136656867028b7d6e31c4bd4"
     },
     {
       "path": "scripts/published-package-inputs.mjs",
@@ -8405,7 +8413,7 @@
     },
     {
       "path": "scripts/test/windows-installer.test.mjs",
-      "sha256": "7e358d82bd17507e95bbebf277a6789526fdbbf5d0b66b6db579a1ed8a9b4a75"
+      "sha256": "bd72e2063037fa5f6e1dafa503c70ee13e45a8efba54a9f6547a9edcc61a2719"
     },
     {
       "path": "scripts/test/windows-update-delta.test.mjs",
@@ -8449,7 +8457,7 @@
     },
     {
       "path": "tests/build-pipeline-diagram.test.mjs",
-      "sha256": "dc74c67fa0eef81ce252a0df0eaa9bbbb0ad0d9db2027be5acbf626a3cd930a2"
+      "sha256": "9507f330b99937e711842a69fb80b93a867d12a55473afa5571ba51d72b8ccae"
     },
     {
       "path": "tests/build-script-entry.test.mjs",
@@ -8469,7 +8477,7 @@
     },
     {
       "path": "tests/desktop-candidate-publication.test.mjs",
-      "sha256": "2958be15eb721b7722950a4ac3c1b50f120f2c3ff99c0830ead5ceca299d2b8a"
+      "sha256": "9d9046639e56ee5399646e5861fa9d36ed05a2b2033a475f1022587f6791e08b"
     },
     {
       "path": "tests/desktop-enterprise-ui-acceptance.mjs",
@@ -8541,7 +8549,7 @@
     },
     {
       "path": "tests/eduwork-windows-release.test.mjs",
-      "sha256": "71f19f62ccbd03f5e9c276eafaa3f2951d73c1b9187f85e50e2c945ae0aad7bb"
+      "sha256": "40f19c68e843838071f59c64cc180bf61fd3bc13c3f3bce088e46d90d20f8420"
     },
     {
       "path": "tests/fixtures/audit-stack-probe.mjs",

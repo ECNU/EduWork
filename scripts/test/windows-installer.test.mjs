@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -144,6 +145,7 @@ test('installer packaging requires a receipt and never reuses an output director
 test('installer packaging reads the version-specific channel artifact', async t => {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-installer-channel-'))
   t.after(() => rm(root, { recursive: true, force: true }))
+  t.after(() => delete process.env.INSTALLER_METADATA)
   const candidate = join(root, 'candidate'), resources = join(candidate, 'resources'), app = join(resources, 'app')
   await mkdir(app, { recursive: true })
   await writeFile(join(candidate, 'EduWork-Electron.exe'), 'candidate')
@@ -153,7 +155,7 @@ test('installer packaging reads the version-specific channel artifact', async t 
   await writeFile(icon, 'icon')
   await writeFile(electronBuilderCli, `
     import { mkdir, readFile, writeFile } from 'node:fs/promises'
-    import { basename, join } from 'node:path'
+    import { join } from 'node:path'
     const args=process.argv.slice(2), staging=args[args.indexOf('--projectDir')+1]
     const config=JSON.parse(await readFile(args[args.indexOf('--config')+1],'utf8'))
     const pkg=JSON.parse(await readFile(join(staging,'package.json'),'utf8'))
@@ -161,7 +163,14 @@ test('installer packaging reads the version-specific channel artifact', async t 
     await mkdir(artifacts,{recursive:true})
     const installer=\`${'${pkg.productName}'}-Setup-\${pkg.version}-x64.exe\`
     await writeFile(join(artifacts,installer),'installer')
-    await writeFile(join(artifacts,\`${'${config.publish.channel}'}\`.concat('.yml')),'channel')
+    const metadata=JSON.parse(process.env.INSTALLER_METADATA)
+    const info=[
+      'version: '+metadata.version, 'files:',
+      '  - url: '+metadata.files[0].url, '    sha512: '+metadata.files[0].sha512,
+      '    size: '+metadata.files[0].size, 'path: '+metadata.path,
+      'sha512: '+metadata.sha512, "releaseDate: '2026-11-20T00:00:00.000Z'",
+    ].join('\\n')+'\\n'
+    await writeFile(join(artifacts,\`${'${config.publish.channel}'}\`.concat('.yml')),info)
     await writeFile(join(artifacts,installer+'.blockmap'),'blockmap')
   `)
 
@@ -175,10 +184,24 @@ test('installer packaging reads the version-specific channel artifact', async t 
     await writeFile(join(resources, 'app/package.json'), JSON.stringify({ version: releaseVersion }))
     await writeFile(join(candidate, 'release.json'), JSON.stringify(candidateRelease))
     const output = join(root, channel)
+    const installerName = `EduWork-Setup-${releaseVersion}-x64.exe`
+    const installerSHA512 = createHash('sha512').update('installer').digest('base64')
+    process.env.INSTALLER_METADATA = JSON.stringify({ version: releaseVersion, files: [{ url: installerName, sha512: installerSHA512, size: 9 }], path: installerName, sha512: installerSHA512, releaseDate: '2026-11-20T00:00:00.000Z' })
     const result = await packWindowsInstaller({ candidate, output, installedReceipt, electronBuilderCli, icon })
     assert.deepEqual(result.updateArtifacts.map(item => item.file), [
       `${channel}.yml`, `EduWork-Setup-${releaseVersion}-x64.exe.blockmap`,
     ])
     for (const artifact of result.updateArtifacts) assert.ok((await readFile(join(output, 'artifacts', artifact.file))).length > 0)
+  }
+  const invalidInstaller = 'EduWork-Setup-0.4.13-x64.exe'
+  const invalidSHA512 = createHash('sha512').update('installer').digest('base64')
+  const metadata = { version: '0.4.13', files: [{ url: invalidInstaller, sha512: invalidSHA512, size: 9 }], path: invalidInstaller, sha512: invalidSHA512 }
+  for (const [kind, invalid, message] of [
+    ['version', { ...metadata, version: '0.4.12' }, /differs from/],
+    ['sha512', { ...metadata, sha512: 'wrong' }, /differs from/],
+    ['size', { ...metadata, files: [{ ...metadata.files[0], size: 10 }] }, /does not identify/],
+  ]) {
+    process.env.INSTALLER_METADATA = JSON.stringify(invalid)
+    await assert.rejects(packWindowsInstaller({ candidate, output: join(root, `invalid-${kind}`), installedReceipt, electronBuilderCli, icon }), message)
   }
 })

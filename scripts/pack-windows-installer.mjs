@@ -3,13 +3,17 @@
 // already complete, so this step only wraps it in NSIS and must not repack or
 // rename anything inside it.
 import { createHash } from 'node:crypto'
+import { createRequire } from 'node:module'
 import { readFile, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { installedUpdateCacheDirName, installedUpdateFeed, installedUpdateYAML, installerPackageName } from '../dsh-electron/scripts/assemble-windows.mjs'
 import { ensureDir, fullPath, isFile, isMainModule, pathExists, readJSON, runNode, writeJSON } from './lib/build-util.mjs'
 
 const EXECUTABLE = 'EduWork-Electron.exe'
+const BUILDER_ROOT = join(dirname(fileURLToPath(import.meta.url)), 'electron-builder')
+const requireBuilder = createRequire(join(BUILDER_ROOT, 'package.json'))
 
 function requireMatch(condition, message) {
   if (!condition) throw new Error(message)
@@ -169,8 +173,17 @@ export async function packWindowsInstaller({ candidate, output, installedReceipt
   await writeFile(`${artifact}.sha256`, `${sha256} *${expected}\n`)
   const updateArtifacts = []
   if (project.config.publish) {
-    for (const file of [`${project.config.publish.channel}.yml`, `${expected}.blockmap`]) {
-      const contents = await readFile(join(artifacts, file))
+    const channelFile = `${project.config.publish.channel}.yml`
+    const channelBytes = await readFile(join(artifacts, channelFile))
+    const metadata = requireBuilder('js-yaml').load(channelBytes.toString('utf8'))
+    const digest = createHash('sha512').update(bytes).digest('base64')
+    requireMatch(metadata?.version === release.version && metadata.path === expected && metadata.sha512 === digest,
+      'Installer update metadata differs from the packaged installer')
+    requireMatch(Array.isArray(metadata.files) && metadata.files.length === 1
+      && metadata.files[0]?.url === expected && metadata.files[0].sha512 === digest && metadata.files[0].size === bytes.length,
+      'Installer channel file does not identify the packaged installer')
+    for (const file of [channelFile, `${expected}.blockmap`]) {
+      const contents = file === channelFile ? channelBytes : await readFile(join(artifacts, file))
       requireMatch(contents.length > 0, `Installer update artifact is empty: ${file}`)
       updateArtifacts.push({ file, bytes: contents.length, sha256: createHash('sha256').update(contents).digest('hex') })
     }

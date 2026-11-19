@@ -81,6 +81,7 @@ test('publication requires Actions, main and approved notes before any network m
   await assert.rejects(publishCandidate({}), /GitHub Actions/)
   await assert.rejects(publishCandidate({GITHUB_ACTIONS: 'true', GITHUB_REF: 'refs/heads/topic'}), /reviewed main/)
   await assert.rejects(publishCandidate({GITHUB_ACTIONS: 'true', GITHUB_REF: 'refs/heads/main', RELEASE_NOTES_APPROVED: 'false'}), /approved/)
+  await assert.rejects(publishCandidate({GITHUB_ACTIONS: 'true', GITHUB_REF: 'refs/heads/main', RELEASE_NOTES_APPROVED: 'true', RELEASE_NOTES: 'docs/releases/0.4.4.md', PUBLISH_RELEASE: 'false', SOURCE_RUN_ID: '1', GITHUB_REPOSITORY: 'ECNU/EduWork', RELEASE_PRODUCT: 'EduWork', RELEASE_VERSION: '0.4.4', BUILD_MODE: 'ps1'}), /requires Node/)
   assert.throws(() => assetNames('../escape', context.version, 'windows'))
   assert.throws(() => assetNames('EduWork', '../../escape', 'windows'))
 })
@@ -157,8 +158,18 @@ test('stable macOS publishes exactly the delta updates its receipt verifies', as
   await assert.rejects(validatedNodeNpmFiles(data.directory, data.context), /Unexpected macOS files/)
 })
 test('Windows candidates add each delta update with its SHA-256 sidecar', () => {
-  assert.deepEqual(nodeNpmAssetNames('EduWork', '0.4.4', 'windows', ['0.4.3']).slice(-2),
+  assert.deepEqual(nodeNpmAssetNames('EduWork', '0.4.4', 'windows', ['0.4.3']).slice(8, 10),
     ['EduWork-0.4.4-windows-x64-electron-from-0.4.3.zip', 'EduWork-0.4.4-windows-x64-electron-from-0.4.3.zip.sha256'])
+})
+test('only public Windows Node candidates include the installer trio', () => {
+  for (const [version, channel] of [['0.4.4', 'latest'], ['0.4.4-dev.20261120.1', 'dev'], ['0.4.4-rc.1', 'latest']]) {
+    const installer = `EduWork-Setup-${version}-x64.exe`
+    const names = nodeNpmAssetNames('EduWork', version, 'windows')
+    assert.equal(names.length, 11)
+    assert.deepEqual(names.slice(8), [installer, `${channel}.yml`, `${installer}.blockmap`])
+    assert.equal(nodeNpmAssetNames('EduWork-ECNU', version, 'windows').length, 8)
+    assert.equal(nodeNpmAssetNames('EduWork', version, 'macos').length, 6)
+  }
 })
 test('macOS without delta updates keeps the fixed release files', async t => {
   const data = await macosNodeFixture([])

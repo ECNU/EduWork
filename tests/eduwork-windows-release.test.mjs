@@ -14,7 +14,15 @@ import {installProductHost} from '../dsh-host/install-product-host.mjs'
 import {windowsDeltaName} from '../scripts/windows-update-delta.mjs'
 import {ZipWriter} from '../scripts/lib/zip.mjs'
 const context={repository:'ECNU/EduWork',version:'0.3.0',commit:'a'.repeat(40)}
-const receipt={schemaVersion:1,kind:'eduwork-windows-release',validationProfile:'ci-build-launch-and-extract-v2',automaticUpdates:true,passed:true,version:'0.3.0',edition:'EduWork',shell:'electron',platform:'windows-x64',coreCommit:'d'.repeat(40),editionCommit:context.commit,checks:Object.fromEntries(['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor','updateContract'].map(key=>[key,'passed'])),asset:{name:'EduWork-0.3.0-windows-x64-electron.zip',bytes:1024,sha256:'b'.repeat(64)}}
+const receipt={schemaVersion:1,kind:'eduwork-windows-release',validationProfile:'ci-build-launch-and-extract-v2',automaticUpdates:true,passed:true,version:'0.3.0',edition:'EduWork',shell:'electron',platform:'windows-x64',coreCommit:'d'.repeat(40),editionCommit:context.commit,checks:Object.fromEntries(['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor','updateContract','installerInstall','installerLaunch'].map(key=>[key,'passed'])),asset:{name:'EduWork-0.3.0-windows-x64-electron.zip',bytes:1024,sha256:'b'.repeat(64)},windowsInstaller:installerFixture('0.3.0').identity}
+function installerFixture(version) {
+ const digest=bytes=>createHash('sha256').update(bytes).digest('hex')
+ const installer=`EduWork-Setup-${version}-x64.exe`
+ const channel=version.includes('-dev.')?'dev':'latest'
+ const files=Object.fromEntries([[installer,Buffer.from('Synthetic installer')],[`${channel}.yml`,Buffer.from('Synthetic channel')],[`${installer}.blockmap`,Buffer.from('Synthetic blockmap')]])
+ const identity=Object.fromEntries(Object.entries(files).map(([name,bytes])=>[name,{name,bytes:bytes.length,sha256:digest(bytes)}]))
+ return {identity:{channel,asset:identity[installer],channelFile:identity[`${channel}.yml`],blockMap:identity[`${installer}.blockmap`]},files}
+}
 function extractorFiles(edition,version) {return {asset:{name:`${edition}-${version}-windows-x64-setup.zip`,bytes:2048,sha256:'e'.repeat(64)},receipt:{name:`${edition}-${version}-windows-x64-setup.zip.json`,bytes:512,sha256:'f'.repeat(64)}}}
 receipt.portableExtractor=extractorFiles('EduWork',receipt.version)
 receipt.releaseNotes={approved:true,sha256:'c'.repeat(64)}
@@ -80,6 +88,7 @@ test('Windows publish stage keeps institution artifacts without inventing an ECN
    await json('inputs/inputs.json',{})
    await json('gui/acceptance-checks.json',{asset,portableExtractorAssets:extractor})
    for(const filename of [extractor.asset.name,`${extractor.asset.name}.sha256`,extractor.receipt.name]) await file(`gui/extractor-publish/${filename}`,'Synthetic extractor evidence')
+   if(name==='EduWork'&&!development){const installer=installerFixture(version);await json('installer/receipt.json',installer.identity);for(const [filename,bytes] of Object.entries(installer.files))await file(`installer/package/artifacts/${filename}`,bytes)}
    await file('RELEASE-NOTES.md','Synthetic approved release notes')
    const workspace={parameters:{name,version,development,releaseNotesFile:'RELEASE-NOTES.md',editionRoot:root,recipe,deltaBases:[]},resolvePath:path=>join(root,path)}
    const receiptBase={schemaVersion:1,kind:development?'eduwork-windows-development':'eduwork-windows-release',edition:name,version,shell:'electron',platform:'windows-x64'}
@@ -93,6 +102,7 @@ test('Windows publish stage keeps institution artifacts without inventing an ECN
    const published=JSON.parse(await readFile(join(root,'publish/release-receipt.json'),'utf8'))
    assert.equal(published.distribution,distribution)
    assert.deepEqual(published.asset,asset)
+   assert.equal(published.checks.installerInstall==='passed',name==='EduWork'&&!development)
    if(expectedManifest){
     const manifest=JSON.parse(await readFile(join(root,'publish/update-windows-amd64.json'),'utf8'))
     assert.equal(manifest.artifacts[0].url,`https://github.com/ecnu/${name}/releases/download/v${version}/${asset.name}`)
@@ -132,6 +142,9 @@ test('Windows publish stage publishes delta updates in the receipt and the updat
  await file('gui/acceptance-checks.json',JSON.stringify({asset,portableExtractorAssets:extractor}))
  for(const filename of [extractor.asset.name,`${extractor.asset.name}.sha256`,extractor.receipt.name])await file(`gui/extractor-publish/${filename}`,'Synthetic extractor evidence')
  await file('RELEASE-NOTES.md','Synthetic approved release notes')
+ const installer=installerFixture('0.4.4')
+ await file('installer/receipt.json',JSON.stringify(installer.identity))
+ for(const [filename,bytes] of Object.entries(installer.files))await file(`installer/package/artifacts/${filename}`,bytes)
  const workspace={parameters:{name:'EduWork',version:'0.4.4',development:false,releaseNotesFile:'RELEASE-NOTES.md',editionRoot:root,recipe:'pinned-source',deltaBases:[join(root,'bases/EduWork-0.4.3-windows-x64-electron.zip')]},resolvePath:path=>join(root,path)}
  const receiptBase={schemaVersion:1,kind:'eduwork-windows-release',edition:'EduWork',version:'0.4.4',shell:'electron',platform:'windows-x64'}
  await windowsStages({coreRoot:fileURLToPath(new URL('..',import.meta.url)),receiptBase,recipe:'pinned-source'}).find(stage=>stage.name==='publish').run(workspace)
@@ -170,14 +183,14 @@ test('source releases generate upgrade manifests for subsequent stable versions 
 
 test('approved development releases publish only to the development channel and never become latest stable',()=>{
  const version='0.3.6-dev.20260914.3'
- const row={...receipt,version,distribution:'eduwork',asset:{...receipt.asset,name:`EduWork-${version}-windows-x64-electron.zip`},portableExtractor:extractorFiles('EduWork',version)}
+ const row={...structuredClone(receipt),version,distribution:'eduwork',asset:{...receipt.asset,name:`EduWork-${version}-windows-x64-electron.zip`},portableExtractor:extractorFiles('EduWork',version),windowsInstaller:installerFixture(version).identity}
  assert.equal(validateReceipt(row,{...context,version}),'EduWork')
  assert.equal(githubUpdateManifest(row,context.repository).channel,'development')
  assert.deepEqual(releasePublication('EduWork',version),{name:`EduWork ${version}`,prerelease:true,make_latest:'false'})
  assert.equal(releasePublication('EduWork','0.3.6').prerelease,false)
  assert.equal(releasePublication('EduWork','0.3.6').make_latest,'true')
  for (const candidate of ['0.3.6-alpha.1', '0.3.6-beta.2', '0.3.6-rc.1']) {
-  const prerelease = {...row, version: candidate, asset: {...row.asset, name: `EduWork-${candidate}-windows-x64-electron.zip`}}
+  const prerelease = {...row, version: candidate, asset: {...row.asset, name: `EduWork-${candidate}-windows-x64-electron.zip`},windowsInstaller:installerFixture(candidate).identity}
   assert.equal(githubUpdateManifest(prerelease, context.repository).channel, 'development')
   assert.equal(releasePublication('EduWork', candidate).prerelease, true)
  }
@@ -189,7 +202,7 @@ test('release publisher requires approved notes and rejects a Go artifact',()=>{
 })
 
 test('GitHub update manifest binds repository, edition, version, platform and ZIP hash',()=>{
- const row={...receipt,distribution:'eduwork'}
+ const row={...structuredClone(receipt),distribution:'eduwork'}
  const manifest=githubUpdateManifest(row,'ecnu/EduWork')
  assert.deepEqual(githubUpdateManifest(row,'ECNU/EduWork'),manifest)
  assert.equal(manifest.distribution,'eduwork')
@@ -203,6 +216,11 @@ test('GitHub update manifest binds repository, edition, version, platform and ZI
 })
 test('release publisher rejects wrong edition, commit, development versions and partial tests',()=>{
   for (const [row,ctx] of [[receipt,{...context,repository:'ECNU/EduWork-ECNU'}],[receipt,{...context,version:'0.3.0-dev.1'}],[{...receipt,editionCommit:'c'.repeat(40)},context],[{...receipt,checks:{...receipt.checks,desktopLaunch:'skipped'}},context],[{...receipt,passed:false},context],[{...receipt,asset:{...receipt.asset,name:'../../secret.zip'}},context]]) assert.throws(()=>validateReceipt(row,ctx))
+  assert.throws(()=>validateReceipt({...receipt,windowsInstaller:undefined},context),/required only/)
+  assert.throws(()=>validateReceipt({...receipt,windowsInstaller:{...receipt.windowsInstaller,channelFile:{...receipt.windowsInstaller.channelFile,name:'dev.yml'}}},context),/Invalid Windows installer asset/)
+  assert.throws(()=>validateReceipt({...receipt,checks:{...receipt.checks,installerLaunch:'skipped'}},context),/installer acceptance/)
+  const school={...receipt,edition:'EduWork-ECNU',asset:{...receipt.asset,name:'EduWork-ECNU-0.3.0-windows-x64-electron.zip'},portableExtractor:extractorFiles('EduWork-ECNU',receipt.version)}
+  assert.throws(()=>validateReceipt(school,{...context,repository:'ECNU/EduWork-ECNU'}),/required only/)
 })
 
 test('portable extractor is mandatory and must bind the same clean core and payload',()=>{
@@ -217,6 +235,7 @@ async function publicationFixture(t,edition='EduWork',deltas=[]) {
  t.after(()=>rm(root,{recursive:true,force:true}))
  const ctx={...context,repository:'ECNU/'+edition}
  const row=structuredClone(receipt);row.edition=edition;row.distribution=edition==='EduWork'?'eduwork':'eduwork-chatecnu'
+ if(edition!=='EduWork') delete row.windowsInstaller
  const digest=bytes=>createHash('sha256').update(bytes).digest('hex')
  const archive=Buffer.from('Synthetic update ZIP; not an application'),unpack=Buffer.from('Synthetic extraction ZIP; not an executable'),notes='Synthetic approved release notes'
  row.asset={name:`${edition}-${row.version}-windows-x64-electron.zip`,bytes:archive.length,sha256:digest(archive)}
@@ -228,6 +247,12 @@ async function publicationFixture(t,edition='EduWork',deltas=[]) {
  const childBytes=JSON.stringify(child)
  row.portableExtractor.receipt.bytes=Buffer.byteLength(childBytes);row.portableExtractor.receipt.sha256=digest(childBytes)
  const files={[row.asset.name]:archive,[row.asset.name+'.sha256']:`${row.asset.sha256}  ${row.asset.name}\n`,'RELEASE-NOTES.md':notes,'release-receipt.json':JSON.stringify(row),'update-windows-amd64.json':githubUpdateManifestBytes(row,ctx.repository),[row.portableExtractor.asset.name]:unpack,[row.portableExtractor.asset.name+'.sha256']:`${row.portableExtractor.asset.sha256}  ${row.portableExtractor.asset.name}\n`,[row.portableExtractor.receipt.name]:childBytes}
+ if(edition==='EduWork') {
+  const installer=installerFixture(row.version)
+  row.windowsInstaller=installer.identity
+  for(const [name,bytes] of Object.entries(installer.files)) files[name]=bytes
+  files['release-receipt.json']=JSON.stringify(row)
+ }
  deltas.forEach(({bytes},index)=>{const delta=row.deltas[index];files[delta.name]=bytes;files[delta.name+'.sha256']=`${delta.sha256}  ${delta.name}\n`})
  for(const [name,value] of Object.entries(files))await writeFile(join(root,name),value)
  return {root,ctx,row}
@@ -236,7 +261,7 @@ test('publication validates eight files for both editions while the updater keep
  for(const edition of ['EduWork','EduWork-ECNU']){
   const {root,ctx,row}=await publicationFixture(t,edition)
   const result=await validatedReleaseFiles(root,ctx)
-  assert.equal(result.files.length,8)
+  assert.equal(result.files.length,edition==='EduWork'?11:8)
   assert.equal(githubUpdateManifest(row,ctx.repository).artifacts.length,1)
   assert.equal(githubUpdateManifest(row,ctx.repository).artifacts[0].fileName,row.asset.name)
  }
@@ -244,7 +269,7 @@ test('publication validates eight files for both editions while the updater keep
 test('publication verifies every delta update and its sidecar before upload',async t=>{
  const deltas=[{from:'0.2.8',bytes:Buffer.from('Synthetic delta from 0.2.8')},{from:'0.2.9',bytes:Buffer.from('Synthetic delta from 0.2.9')}]
  const {root,ctx,row}=await publicationFixture(t,'EduWork',deltas)
- assert.equal((await validatedReleaseFiles(root,ctx)).files.length,12)
+ assert.equal((await validatedReleaseFiles(root,ctx)).files.length,15)
  assert.deepEqual(githubUpdateManifest(row,ctx.repository).artifacts[0].deltas.map(delta=>delta.fileName),row.deltas.map(delta=>delta.name))
  const mutations=[
   async({root,row})=>writeFile(join(root,row.deltas[1].name),'changed'),
@@ -263,4 +288,22 @@ test('publication rejects missing, modified, unrecorded or mismatched extractor 
   async({root})=>writeFile(join(root,'unexpected.txt'),'not approved')
  ]
  for(const mutate of mutations){const fixture=await publicationFixture(t);await mutate(fixture);await assert.rejects(()=>validatedReleaseFiles(fixture.root,fixture.ctx))}
+})
+test('publication rejects missing or modified installer update assets before upload',async t=>{
+ for(const key of ['asset','channelFile','blockMap']){
+  const fixture=await publicationFixture(t)
+  await rm(join(fixture.root,fixture.row.windowsInstaller[key].name))
+  await assert.rejects(()=>validatedReleaseFiles(fixture.root,fixture.ctx),/Unexpected files/)
+ }
+ for(const mutate of [
+  async({root,row})=>writeFile(join(root,row.windowsInstaller.asset.name),'changed'),
+  async({root,row})=>writeFile(join(root,row.windowsInstaller.blockMap.name),'changed'),
+ ]){
+  const fixture=await publicationFixture(t)
+  await mutate(fixture)
+  await assert.rejects(()=>validatedReleaseFiles(fixture.root,fixture.ctx),/differs from its build receipt/)
+ }
+ const school=await publicationFixture(t,'EduWork-ECNU')
+ await writeFile(join(school.root,'latest.yml'),'unexpected installer metadata')
+ await assert.rejects(()=>validatedReleaseFiles(school.root,school.ctx),/Unexpected files/)
 })

@@ -187,16 +187,16 @@ jobs:
           compression-level: 0
           retention-days: 7
           if-no-files-found: error
-      - name: Test installer packaging contracts
-        if: matrix.script == 'windows' && inputs.windows_installer_candidate
-        shell: bash
-        run: node --test core/scripts/test/windows-installer.test.mjs
       - name: Install the locked electron-builder
         if: matrix.script == 'windows' && inputs.windows_installer_candidate
         shell: bash
         run: |
-          npm install --no-save --no-audit --no-fund --loglevel=error \
-            --prefix "$RUNNER_TEMP/eb-tool" electron-builder@26.17.0
+          npm ci --ignore-scripts --no-audit --no-fund --prefix core/scripts/electron-builder
+          node core/scripts/electron-builder/node_modules/electron-builder/cli.js --version
+      - name: Test installer packaging contracts
+        if: matrix.script == 'windows' && inputs.windows_installer_candidate
+        shell: bash
+        run: node --test core/scripts/test/windows-installer.test.mjs
       - name: Assemble Windows installer candidate
         if: matrix.script == 'windows' && inputs.windows_installer_candidate
         shell: bash
@@ -205,7 +205,7 @@ jobs:
             --candidate "$RUNNER_TEMP/ew-installed/electron-candidate" \
             --installed-receipt "$RUNNER_TEMP/ew-installed/installed-candidate-receipt.json" \
             --output "$RUNNER_TEMP/ew-installer" \
-            --electron-builder-cli "$RUNNER_TEMP/eb-tool/node_modules/electron-builder/cli.js" \
+            --electron-builder-cli "$GITHUB_WORKSPACE/core/scripts/electron-builder/node_modules/electron-builder/cli.js" \
             --icon "$GITHUB_WORKSPACE/core/assets/eduwork/icon.ico"
       - name: Retain Windows installer candidate
         if: matrix.script == 'windows' && inputs.windows_installer_candidate

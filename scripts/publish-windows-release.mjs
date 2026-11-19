@@ -26,10 +26,23 @@ export function validateReceipt(receipt, {repository, version, commit}) {
   const unpackName=`${edition}-${version}-windows-x64-setup.zip`
   validateFileIdentity(receipt.portableExtractor?.asset,unpackName)
   validateFileIdentity(receipt.portableExtractor?.receipt,unpackName+'.json')
+  const publicWindows = edition === 'EduWork'
+  if (publicWindows !== (receipt.windowsInstaller !== undefined)) throw Error('Windows installer is required only for the public release')
+  if (publicWindows) {
+    const installer = `EduWork-Setup-${version}-x64.exe`
+    const channel = version.includes('-dev.') ? 'dev' : 'latest'
+    if (receipt.windowsInstaller?.channel !== channel) throw Error('Invalid Windows installer channel')
+    for (const [file, name] of [
+      [receipt.windowsInstaller?.asset, installer],
+      [receipt.windowsInstaller?.channelFile, `${channel}.yml`],
+      [receipt.windowsInstaller?.blockMap, `${installer}.blockmap`],
+    ]) validateFileIdentity(file, name, 'Windows installer asset')
+    if (receipt.checks?.installerInstall !== 'passed' || receipt.checks?.installerLaunch !== 'passed') throw Error('Windows installer acceptance did not pass')
+  }
   return edition
 }
-function validateFileIdentity(file,name) {
-  if(file?.name!==name || !/^[a-f0-9]{64}$/.test(file?.sha256??'') || !Number.isSafeInteger(file?.bytes) || file.bytes<1)throw Error('Invalid portable extractor asset: '+name)
+function validateFileIdentity(file,name,label='portable extractor asset') {
+  if(file?.name!==name || !/^[a-f0-9]{64}$/.test(file?.sha256??'') || !Number.isSafeInteger(file?.bytes) || file.bytes<1)throw Error('Invalid '+label+': '+name)
 }
 export function validateExtractorReceipt(extractor,receipt) {
   const distribution={'EduWork':'eduwork','EduWork-ECNU':'eduwork-chatecnu'}[receipt.edition]
@@ -56,6 +69,8 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
   const unpack=receipt.portableExtractor
   const deltas = receipt.deltas ?? []
   const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',updateManifestName,unpack.asset.name,unpack.asset.name+'.sha256',unpack.receipt.name,...deltas.flatMap(delta=>[delta.name,delta.name+'.sha256'])]
+  const installerFiles = receipt.windowsInstaller ? [receipt.windowsInstaller.asset, receipt.windowsInstaller.channelFile, receipt.windowsInstaller.blockMap] : []
+  expected.push(...installerFiles.map(file => file.name))
   const actual=await readdir(root)
   if (actual.length!==expected.length || expected.some(name=>!actual.includes(name))) throw Error('Unexpected files in release artifact')
   const files=[]
@@ -78,6 +93,10 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
     const file=files[setup+3+2*index]
     if(delta.name!==windowsDeltaName(edition,version,delta.from) || file.bytes!==delta.bytes || file.sha256!==delta.sha256)throw Error('Delta update differs from the validated build: '+delta.name)
     if((await readFile(files[setup+4+2*index].path,'utf8')).trim()!==`${delta.sha256}  ${delta.name}`)throw Error('Delta update SHA256 sidecar differs: '+delta.name)
+  }
+  for (const expectedFile of installerFiles) {
+    const file = files.find(candidate => candidate.name === expectedFile.name)
+    if (file.bytes !== expectedFile.bytes || file.sha256 !== expectedFile.sha256) throw Error('Windows installer asset differs from its build receipt: ' + expectedFile.name)
   }
   return {receipt,edition,files}
 }

@@ -17,7 +17,7 @@ import { createServer } from 'node:net'
 import { basename, join } from 'node:path'
 import {
   copyFileTo, copyTree, ensureDir, isFile, isWindows, pathExists, readJSON, run,
-  runNode, sha256File, sleep, statEntry, writeJSON,
+  runBundledCli, runNode, sha256File, sleep, statEntry, writeJSON,
 } from './build-util.mjs'
 import { stage } from './stage-runner.mjs'
 import { desktopBuildRecipe } from '../desktop-build-plan.mjs'
@@ -133,9 +133,21 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source' 
       },
     }),
     stage({
+      name: 'installer',
+      description: 'Build and accept public Windows installer',
+      requires: ['accept'],
+      outputs: ['installer'],
+      inputs: workspace => ({ version: workspace.parameters.version, edition: workspace.parameters.edition, development: workspace.parameters.development }),
+      run: async workspace => {
+        await ensureDir(workspace.resolvePath('installer'))
+        if (workspace.parameters.edition !== 'EduWork' || workspace.parameters.development) return
+        await buildAndAcceptPublicInstaller({ workspace, coreRoot })
+      },
+    }),
+    stage({
       name: 'publish',
       description: 'Release ZIP, delta updates, receipt and update manifest',
-      requires: ['accept'],
+      requires: ['accept', 'installer'],
       outputs: ['publish'],
       inputs: async (workspace) => ({ deltaBases: await Promise.all(workspace.parameters.deltaBases.map(sha256File)) }),
       run: async (workspace) => {
@@ -207,12 +219,41 @@ async function acceptWindows({ workspace, coreRoot }) {
     })
   }
 
-  const port = await freeLoopbackPort()
-  const stdoutLog = createWriteStream(join(gui, 'app.stdout.log'))
-  const stderrLog = createWriteStream(join(gui, 'app.stderr.log'))
   const environment = { ...process.env, EDUWORK_DESKTOP_TEST_DATA_ROOT: join(gui, 'data') }
   if (verifyPublisherBootstrap) delete environment.EDUWORK_CONFIG_FILE
   else environment.EDUWORK_CONFIG_FILE = config
+  await smokeWindowsDesktop({ desktop, gui, coreRoot, environment })
+  if (edition === 'EduWork') {
+    await runNode(join(coreRoot, 'scripts/verify-generic-first-launch.mjs'), [frozenProduct, config])
+  }
+
+  const checks = {
+    desktopLaunch: 'passed',
+    archiveManifest: 'passed',
+    ...(workspace.parameters.forUpdate ? { updateContract: 'passed' } : {}),
+    nativeRuntimes: 'passed',
+    ...(portableExtractor ? { portableExtractor: 'passed' } : {}),
+    asset: { name: basename(archive), bytes: (await statEntry(archive)).size, sha256: await sha256File(archive) },
+    ...(portableExtractor ? { portableExtractorAssets: portableExtractor } : {}),
+  }
+  await runNode(join(coreRoot, 'scripts/verify-media-template.mjs'), [frozenProduct])
+  checks.mediaTemplate = 'passed'
+  checks.sourceSnapshot = workspace.parameters.verifySnapshot ? 'passed' : 'not-run-working-tree'
+  if (verifyPublisherBootstrap) {
+    const started = await readJSON(join(gui, 'data/logs/desktop-start.json'))
+    const descriptor = await readJSON(join(frozenProduct, 'resources/desktop/publisher-bootstrap.json'))
+    verifyPublisherFirstLaunch(descriptor, started)
+    checks.publisherFirstLaunch = 'passed'
+  }
+  await writeJSON(join(gui, 'acceptance-checks.json'), checks)
+  return checks
+}
+
+async function smokeWindowsDesktop({ desktop, gui, coreRoot, environment }) {
+  const frozenProduct = join(desktop, 'resources/product')
+  const port = await freeLoopbackPort()
+  const stdoutLog = createWriteStream(join(gui, 'app.stdout.log'))
+  const stderrLog = createWriteStream(join(gui, 'app.stderr.log'))
   const appProcess = spawn(join(desktop, 'EduWork-Electron.exe'), [
     `--remote-debugging-port=${port}`, `--remote-debugging-address=127.0.0.1`,
   ], {
@@ -265,30 +306,92 @@ async function acceptWindows({ workspace, coreRoot }) {
     throw new Error('Desktop teardown reported a pipe failure')
   }
   if (!(await readJSON(join(gui, 'result.json'))).passed) throw new Error('Desktop GUI acceptance failed')
-  if (edition === 'EduWork') {
-    await runNode(join(coreRoot, 'scripts/verify-generic-first-launch.mjs'), [frozenProduct, config])
+}
+
+async function buildAndAcceptPublicInstaller({ workspace, coreRoot }) {
+  if (process.env.GITHUB_ACTIONS !== 'true' || process.env.RUNNER_ENVIRONMENT !== 'github-hosted') {
+    throw new Error('Public installer acceptance requires a GitHub-hosted Windows runner')
+  }
+  const { version, sourceIdentity } = workspace.parameters
+  const root = workspace.resolvePath('installer')
+  const candidate = join(root, 'installed-candidate')
+  const output = join(root, 'package')
+  const inputs = await readJSON(workspace.resolvePath('inputs/inputs.json'))
+  const identity = await readJSON(workspace.resolvePath('product/assembly.json'))
+  if (identity.distribution !== 'eduwork') throw new Error('Public installer requires the eduwork distribution')
+  await assembleWindows({
+    product: workspace.resolvePath('product'), shellBuild: workspace.resolvePath('shell'),
+    electronRuntime: workspace.resolvePath('electron/runtime'), node: inputs.node,
+    output: candidate, version, dataLayout: 'installed',
+  })
+  const installedDesktop = await readJSON(join(candidate, 'resources/app/eduwork.desktop.json'))
+  const feed = installedDesktop.updates
+  if (feed?.provider !== 'github' || feed.repository?.toLowerCase() !== 'ecnu/eduwork') throw new Error('Public Windows installer requires the public GitHub update source')
+  const installedReceipt = join(root, 'installed-candidate-receipt.json')
+  await writeJSON(installedReceipt, {
+    schemaVersion: 1, kind: 'eduwork-windows-installed-candidate', version,
+    coreCommit: sourceIdentity.core.commit, distribution: identity.distribution,
+    checks: { installedAssembly: 'passed' },
+  })
+  const builderRoot = join(coreRoot, 'scripts/electron-builder')
+  await runBundledCli('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: builderRoot })
+  const builder = join(builderRoot, 'node_modules/electron-builder/cli.js')
+  const builderVersion = await runNode(builder, ['--version'], { capture: true })
+  if (builderVersion.stdout !== '26.17.0') throw new Error('electron-builder version differs from its lockfile')
+  if ((await readJSON(join(builderRoot, 'node_modules/js-yaml/package.json'))).version !== '4.3.2') throw new Error('js-yaml version differs from its lockfile')
+  const { packWindowsInstaller } = await import('../pack-windows-installer.mjs')
+  const packed = await packWindowsInstaller({ candidate, output, installedReceipt, electronBuilderCli: builder,
+    icon: join(coreRoot, 'assets/eduwork/icon.ico') })
+
+  const localAppData = process.env.LOCALAPPDATA
+  if (!localAppData) throw new Error('LOCALAPPDATA is required for Windows installer acceptance')
+  const installDir = join(localAppData, 'Programs/EduWork/eduwork')
+  if (await pathExists(installDir)) throw new Error('Public installer acceptance requires an empty default install directory')
+  const executable = join(output, 'artifacts', packed.artifact.file)
+  const uninstall = join(installDir, 'Uninstall EduWork-Electron.exe')
+  try {
+    await runSilentInstaller(executable)
+    if (!await isFile(join(installDir, 'EduWork-Electron.exe'))) throw new Error('Silent per-user installation did not produce the desktop executable')
+    const installedPackage = await readJSON(join(installDir, 'resources/app/package.json'))
+    if (installedPackage.version !== version) throw new Error('Installed package version differs from the release')
+    const updatePath = 'resources/app-update.yml'
+    if (await sha256File(join(installDir, updatePath)) !== await sha256File(join(candidate, updatePath))) {
+      throw new Error('Installed update source differs from the accepted candidate')
+    }
+    const gui = join(root, 'acceptance')
+    const data = join(gui, 'data')
+    const appData = join(gui, 'app-data')
+    const config = join(gui, 'config/eduwork.jsonc')
+    await ensureDir(data)
+    await ensureDir(appData)
+    await copyFileTo(join(installDir, 'config/eduwork.jsonc'), config)
+    await writeJSON(join(data, 'acceptance.json'), { firstRunComplete: true })
+    await smokeWindowsDesktop({ desktop: installDir, gui, coreRoot, environment: {
+      ...process.env, APPDATA: appData, LOCALAPPDATA: appData,
+      EDUWORK_DESKTOP_TEST_DATA_ROOT: data, EDUWORK_CONFIG_FILE: config,
+    } })
+  } finally {
+    if (await pathExists(installDir)) {
+      if (!await isFile(uninstall)) throw new Error('Installed desktop is missing its uninstaller')
+      await runSilentInstaller(uninstall)
+      if (await pathExists(installDir)) throw new Error('Silent uninstall left the program directory behind')
+    }
   }
 
-  const checks = {
-    desktopLaunch: 'passed',
-    archiveManifest: 'passed',
-    ...(workspace.parameters.forUpdate ? { updateContract: 'passed' } : {}),
-    nativeRuntimes: 'passed',
-    ...(portableExtractor ? { portableExtractor: 'passed' } : {}),
-    asset: { name: basename(archive), bytes: (await statEntry(archive)).size, sha256: await sha256File(archive) },
-    ...(portableExtractor ? { portableExtractorAssets: portableExtractor } : {}),
-  }
-  await runNode(join(coreRoot, 'scripts/verify-media-template.mjs'), [frozenProduct])
-  checks.mediaTemplate = 'passed'
-  checks.sourceSnapshot = workspace.parameters.verifySnapshot ? 'passed' : 'not-run-working-tree'
-  if (verifyPublisherBootstrap) {
-    const started = await readJSON(join(gui, 'data/logs/desktop-start.json'))
-    const descriptor = await readJSON(join(frozenProduct, 'resources/desktop/publisher-bootstrap.json'))
-    verifyPublisherFirstLaunch(descriptor, started)
-    checks.publisherFirstLaunch = 'passed'
-  }
-  await writeJSON(join(gui, 'acceptance-checks.json'), checks)
-  return checks
+  const channel = version.includes('-dev.') ? 'dev' : 'latest'
+  const fileIdentity = file => ({ name: file.file, bytes: file.bytes, sha256: file.sha256 })
+  await writeJSON(join(root, 'receipt.json'), {
+    channel,
+    asset: fileIdentity(packed.artifact),
+    channelFile: fileIdentity(packed.updateArtifacts.find(file => file.file === `${channel}.yml`)),
+    blockMap: fileIdentity(packed.updateArtifacts.find(file => file.file === `${packed.artifact.file}.blockmap`)),
+  })
+}
+
+async function runSilentInstaller(executable) {
+  await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+    `$process = Start-Process -FilePath $env:EDUWORK_ACCEPTANCE_INSTALLER -ArgumentList @('/S', '/currentuser') -Wait -PassThru -ErrorAction Stop; exit $process.ExitCode`,
+  ], { env: { EDUWORK_ACCEPTANCE_INSTALLER: executable } })
 }
 
 /** Copy the shipped ZIP and delta updates, write the receipt and generate the update manifest. */
@@ -315,6 +418,14 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
     }
   }
 
+  const installerReceipt = name === 'EduWork' && !development
+    ? await readJSON(workspace.resolvePath('installer/receipt.json')) : null
+  if (installerReceipt) {
+    for (const file of [installerReceipt.asset, installerReceipt.channelFile, installerReceipt.blockMap]) {
+      await copyFileTo(join(workspace.resolvePath('installer/package/artifacts'), file.name), join(publish, file.name))
+    }
+  }
+
   const receipt = {
     ...receiptBase,
     distribution: identity.distribution,
@@ -327,10 +438,11 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
       asrSHA256: inputs.asrSHA256,
       modelSHA256: inputs.modelSHA256,
     },
-    checks: { sourceAndDependencies: 'passed', ...checks, asset: undefined, portableExtractorAssets: undefined },
+    checks: { sourceAndDependencies: 'passed', ...checks, ...(installerReceipt ? { installerInstall: 'passed', installerLaunch: 'passed' } : {}), asset: undefined, portableExtractorAssets: undefined },
     asset: checks.asset,
     deltas,
     ...(!development ? { portableExtractor: checks.portableExtractorAssets } : {}),
+    ...(installerReceipt ? { windowsInstaller: installerReceipt } : {}),
     passed: true,
   }
   delete receipt.checks.asset
