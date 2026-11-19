@@ -47,8 +47,8 @@
   <section class="hero wrap" aria-labelledby="hero-title">
     <div class="hero-main"><div class="repo-label"><span class="dot"></span><span>ECNU / EduWork</span><span class="repo-label-divider">/</span><span>Mulan PSL v2</span></div>
       <h1 id="hero-title">面向教育场景的<br><span>开源 Agent 工作台</span></h1>
-      <p class="hero-description">基于 DeepSeek Harness，为教学、科研与办公组织可复用的插件、技能和桌面环境。让个人能用，也让学校与机构容易接入、共同改进。</p>
-      <div class="hero-actions"><a class="button primary" href="https://github.com/ECNU/EduWork" target="_blank" rel="noopener noreferrer"><svg><use href="#github"/></svg> 在 GitHub 参与项目</a><a class="button" href="https://github.com/ECNU/EduWork#详细文档" target="_blank" rel="noopener noreferrer">阅读文档 <svg><use href="#arrow"/></svg></a></div>
+      <p class="hero-description">在自己的电脑上读文献、做课件、安排日程。EduWork 基于 DeepSeek Harness，可以连接你已有的模型服务，也能接入学校或机构账号。</p>
+      <div class="hero-actions"><a class="button primary" href="https://github.com/ECNU/EduWork" target="_blank" rel="noopener noreferrer"><svg><use href="#github"/></svg> 在 GitHub 参与项目</a><a class="button" href="https://github.com/ECNU/EduWork#安装与使用" target="_blank" rel="noopener noreferrer">安装与快速上手 <svg><use href="#arrow"/></svg></a></div>
       <div class="clone-line"><span aria-hidden="true">$</span><code>git clone https://github.com/ECNU/EduWork.git</code><button id="copy-command" aria-label="复制 Git 克隆命令"><svg><use href="#copy"/></svg></button></div><span class="copy-status" id="copy-status" role="status"></span>
       <p class="hero-foot">Windows x64 / macOS Apple Silicon &amp; Intel <span>·</span> 通用能力共享，机构服务按需扩展</p>
     </div>
@@ -66,14 +66,14 @@
     <a href="https://github.com/ECNU/EduWork/stargazers" target="_blank" rel="noopener noreferrer"><span><svg><use href="#star"/></svg> GitHub Stars</span><strong data-stat="stars">—</strong><small>每一份关注，都让项目走得更远</small></a>
     <a href="https://github.com/ECNU/EduWork/releases/latest" target="_blank" rel="noopener noreferrer"><span><svg><use href="#box"/></svg> Latest release</span><strong class="version" data-stat="release">—</strong><small>查看稳定版与更新记录 <span aria-hidden="true">↗</span></small></a>
   </section>
-<section class="section wrap" id="project" aria-labelledby="project-title"><div class="section-label"><span>01 / THE PROJECT</span><span>基于 DSH，共建教育场景</span></div><div class="section-heading"><h2 id="project-title">在同一基础上，<br>建设可复用的教育能力。</h2><p>DSH 提供 Agent 运行时与插件基础。<br>EduWork 把机构接入、资料创作与教育技能组合起来，<br>形成可直接使用、也可继续扩展的桌面发行版。</p></div>
-    <div class="project-principles"><article><span>01</span><h3>持续复用上游</h3><p>会话、工具、浏览器与文件能力优先跟随 DSH，把精力放在教育工作需要的扩展。</p></article><article><span>02</span><h3>公共能力独立维护</h3><p>机构登录、Studio、记忆等以插件组织，按兼容范围供其他 DSH 应用复用。</p></article><article><span>03</span><h3>机构服务按需接入</h3><p>用配置连接模型，用插件接入业务。共享通用改进，保留各自的服务与品牌。</p></article></div>
+<section class="section wrap" id="project" aria-labelledby="project-title"><div class="section-label"><span>01 / THE PROJECT</span><span>基于 DSH，共建教育场景</span></div><div class="section-heading"><h2 id="project-title">备课、读文献，<br>安排下一周。</h2><p>从一个本机工作区开始：<br>围绕自己的资料创作，<br>把后续安排和提醒也放在手边。</p></div>
+    <div class="project-principles"><article><span>01</span><h3>从讲义到课件</h3><p>把讲义放进工作区，用 Studio 生成演示或测验；选中回复中的一段加批注，或开侧聊追问，不打断主会话。</p></article><article><span>02</span><h3>安排一周的教学</h3><p>在月历里排好每周重复的活动，或订阅已有日历。学校接入校历后，还能从学年总览找到教学周、考试和假期。</p></article><article><span>03</span><h3>离开工作台也能跟进</h3><p>应用在后台时，Windows 任务栏和 Mac Dock 会显示待处理通知数。配置中继并配对手机后，也能从手机浏览器继续本机会话。</p></article></div>
     <div class="product-showcase"><div class="showcase-bar"><span><span class="dot"></span> INSIDE EDUWORK</span><div class="showcase-tabs" role="tablist" aria-label="产品界面"><button role="tab" id="tab-workspace" aria-selected="true" aria-controls="showcase-panel" data-view="workspace">对话工作区</button><button role="tab" id="tab-studio" aria-selected="false" aria-controls="showcase-panel" tabindex="-1" data-view="studio">Knowledge Studio</button><button role="tab" id="tab-models" aria-selected="false" aria-controls="showcase-panel" tabindex="-1" data-view="models">机构模型接入</button></div></div><div id="showcase-panel" role="tabpanel" aria-labelledby="tab-workspace"><button class="screenshot-button" id="showcase-zoom" aria-label="放大当前产品截图"><img id="showcase-image" src="./assets/screenshots/workspace.png" alt="EduWork 公版对话工作区与网页成果预览" width="1600" height="852" loading="lazy"><span><svg><use href="#expand"/></svg> 查看大图</span></button><div class="showcase-caption"><strong id="showcase-title">对话、工具与成果，在同一个工作区。</strong><p id="showcase-description">复用 DSH 的 Agent 能力，围绕本机资料开展任务，预览结果并继续完善。</p><a id="showcase-doc" href="https://github.com/ECNU/EduWork/blob/main/docs/USER_GUIDE.md" target="_blank" rel="noopener noreferrer">查看文档 <svg><use href="#external"/></svg></a></div></div></div>
   </section>
 
   <section class="ecosystem-section" id="ecosystem" aria-labelledby="ecosystem-title"><div class="wrap section"><div class="section-label"><span>02 / PLUGIN ECOSYSTEM</span><a href="https://github.com/ECNU/EduWork/blob/main/docs/PACKAGES.md" target="_blank" rel="noopener noreferrer">插件包维护文档 <svg><use href="#external"/></svg></a></div><div class="section-heading"><h2 id="ecosystem-title">随发行版提供，<br>也为独立复用而构建。</h2><p>插件提供能力，技能组织方法。<br>按自己的工作需求组合，也欢迎把新的能力贡献回来。</p></div>
 <!-- BEGIN GENERATED PLUGINS -->
-<div class="plugin-filter" role="group" aria-label="筛选插件"><button aria-pressed="true" data-filter="all">全部插件 <span>11</span></button><button aria-pressed="false" data-filter="institution">机构接入</button><button aria-pressed="false" data-filter="knowledge">知识与内容</button><button aria-pressed="false" data-filter="desktop">桌面扩展</button></div>
+<div class="plugin-filter" role="group" aria-label="筛选插件"><button aria-pressed="true" data-filter="all">全部插件 <span>12</span></button><button aria-pressed="false" data-filter="institution">机构接入</button><button aria-pressed="false" data-filter="knowledge">知识与内容</button><button aria-pressed="false" data-filter="desktop">桌面扩展</button></div>
       <div class="plugin-grid">
         <article class="plugin-card" data-category="institution" data-package="@eduwork/dsh-oidc">
           <div class="plugin-card-top"><svg aria-hidden="true"><use href="#key"/></svg><span>IDENTITY &amp; MODELS</span></div>
@@ -120,13 +120,19 @@
         <article class="plugin-card" data-category="desktop" data-package="@eduwork/dsh-mail">
           <div class="plugin-card-top"><svg aria-hidden="true"><use href="#mail"/></svg><span>CONNECTED TOOLS</span></div>
           <h3 data-en="Mail assistant">邮件助手</h3><code>@eduwork/dsh-mail</code>
-          <p data-en="Connect your mailbox, read mail over IMAP and send through SMTP with authorization, bringing communication into your workflow.">连接自己的邮箱，通过 IMAP 读取邮件，经授权通过 SMTP 发送，结合任务处理日常沟通。</p>
+          <p data-en="Search mail over IMAP and send via SMTP with authorization. Turn on new-mail reminders to see the sender, subject and a short excerpt without marking messages as read.">通过 IMAP 查信、经授权用 SMTP 发信。可在设置中开启新邮件提醒，查看发件人、主题和正文片段，不改变邮件已读状态。</p>
           <div><a href="https://github.com/ECNU/EduWork/blob/main/packages/dsh-mail/README.md" data-href-en="https://github.com/ECNU/EduWork/blob/main/packages/dsh-mail/README_EN.md" target="_blank" rel="noopener noreferrer">文档与源码 <svg aria-hidden="true"><use href="#arrow"/></svg></a><a href="https://www.npmjs.com/package/@eduwork/dsh-mail" target="_blank" rel="noopener noreferrer" aria-label="npm: @eduwork/dsh-mail">npm ↗</a></div>
+        </article>
+        <article class="plugin-card" data-category="desktop" data-package="@eduwork/dsh-calendar">
+          <div class="plugin-card-top"><svg aria-hidden="true"><use href="#book"/></svg><span>CALENDAR &amp; SCHEDULE</span></div>
+          <h3 data-en="Calendar &amp; schedule">日历与日程</h3><code>@eduwork/dsh-calendar</code>
+          <p data-en="Plan events, recurrences and reminders in month or week view, or add an event in chat. Import, export or subscribe to ICS calendars. Connecting an institutional calendar adds teaching weeks and an academic-year overview.">在月历或周历安排日程、设置重复与提醒，也可在对话中添加日程。支持 ICS 导入、导出和订阅；接入机构校历后可查看教学周和学年总览。</p>
+          <div><a href="https://github.com/ECNU/EduWork/blob/main/dsh-plugins/calendar/README.md" data-href-en="https://github.com/ECNU/EduWork/blob/main/dsh-plugins/calendar/README_EN.md" target="_blank" rel="noopener noreferrer">文档与源码 <svg aria-hidden="true"><use href="#arrow"/></svg></a><a href="https://www.npmjs.com/package/@eduwork/dsh-calendar" target="_blank" rel="noopener noreferrer" aria-label="npm: @eduwork/dsh-calendar">npm ↗</a></div>
         </article>
         <article class="plugin-card" data-category="desktop" data-package="@eduwork/dsh-desktop-pet">
           <div class="plugin-card-top"><svg aria-hidden="true"><use href="#pet"/></svg><span>DESKTOP COMPANION</span></div>
           <h3 data-en="Desktop pet">桌面宠物</h3><code>@eduwork/dsh-desktop-pet</code>
-          <p data-en="Show task and notification status through a choice of companions. Enable it in settings; this npm plugin requires the EduWork desktop bridge.">用可选形象展示任务与通知状态，在设置中开启。独立 npm 插件，需要 EduWork 桌面桥接。</p>
+          <p data-en="Choose a companion in Settings to see task updates and plugin notifications on your desktop. To show new mail, also enable reminders in the mail assistant.">让桌宠提示任务状态和插件通知，例如新邮件。在设置中开启桌宠、选择形象；邮件提醒在邮件助手中单独开启。</p>
           <div><a href="https://github.com/ECNU/EduWork/blob/main/packages/dsh-desktop-pet/README.md" data-href-en="https://github.com/ECNU/EduWork/blob/main/packages/dsh-desktop-pet/README_EN.md" target="_blank" rel="noopener noreferrer">文档与源码 <svg aria-hidden="true"><use href="#arrow"/></svg></a><a href="https://www.npmjs.com/package/@eduwork/dsh-desktop-pet" target="_blank" rel="noopener noreferrer" aria-label="npm: @eduwork/dsh-desktop-pet">npm ↗</a></div>
         </article>
         <article class="plugin-card" data-category="desktop" data-package="@eduwork/dsh-external-agents">
@@ -138,10 +144,10 @@
         <article class="plugin-card" data-category="desktop" data-package="@eduwork/dsh-remote-access">
           <div class="plugin-card-top"><svg aria-hidden="true"><use href="#remote"/></svg><span>CONTINUE FROM ANYWHERE</span></div>
           <h3 data-en="Remote access">远程访问</h3><code>@eduwork/dsh-remote-access</code>
-          <p data-en="Pair another device to continue local sessions and handle approvals in its browser. Configure your own relay or a distribution-provided organization connection in settings, test it and enable access.">配对后从其他终端的浏览器继续本机会话、处理授权。在设置中配置自己的中继或发行版提供的机构接入，测试连接后开启。</p>
+          <p data-en="Pair a phone or another computer to continue a desktop conversation and handle approvals in its browser. Configure and test a relay first; institutional editions can provide a relay and account sign-in.">通过中继配对手机或另一台电脑，在浏览器里继续本机会话、处理审批。公版需先配置并测试中继；机构发行版可预设中继和账号登录。</p>
           <div><a href="https://github.com/ECNU/EduWork/blob/main/packages/dsh-remote-access/README.md" data-href-en="https://github.com/ECNU/EduWork/blob/main/packages/dsh-remote-access/README_EN.md" target="_blank" rel="noopener noreferrer">文档与源码 <svg aria-hidden="true"><use href="#arrow"/></svg></a><a href="https://www.npmjs.com/package/@eduwork/dsh-remote-access" target="_blank" rel="noopener noreferrer" aria-label="npm: @eduwork/dsh-remote-access">npm ↗</a></div>
         </article>
-      </div><p class="plugin-count" id="plugin-count" role="status">展示 11 个插件 · 具体运行条件与兼容范围见各插件文档</p>
+      </div><p class="plugin-count" id="plugin-count" role="status">展示 12 个插件 · 具体运行条件与兼容范围见各插件文档</p>
 <!-- END GENERATED PLUGINS -->
 <div class="contribute-plugin"><span>发现了好用的技能或 DSH 插件？</span><a href="https://github.com/ECNU/EduWork/issues/126" target="_blank" rel="noopener noreferrer">推荐 Skills <svg><use href="#external"/></svg></a><a href="https://github.com/ECNU/EduWork/issues/127" target="_blank" rel="noopener noreferrer">推荐 DSH 插件 <svg><use href="#external"/></svg></a></div>
   </div></section>

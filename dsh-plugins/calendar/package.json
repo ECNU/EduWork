@@ -1,7 +1,6 @@
 {
   "name": "@eduwork/dsh-calendar",
-  "version": "0.1.0-dev",
-  "private": true,
+  "version": "0.1.0",
   "license": "MulanPSL-2.0 AND MIT",
   "description": "Local calendar and schedule panel for the EduWork workbench",
   "type": "module",
@@ -19,7 +18,10 @@
     "lib/**/*.js",
     "skills/**/*",
     "README.md",
-    "README_EN.md"
+    "README_EN.md",
+    "LICENSE",
+    "LICENSE-MIT",
+    "LICENSING.md"
   ],
   "scripts": {
     "build:client": "node ./build-client.mjs",
@@ -64,5 +66,13 @@
     "@deepseek-ai/dsh-typert-protocol": ">=0.1.5-rc.1 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2 || 0.2.2-rc.1 || 0.2.2-rc.3",
     "react": "^18.2.0",
     "zod": "^4.4.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ECNU/EduWork.git",
+    "directory": "dsh-plugins/calendar"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

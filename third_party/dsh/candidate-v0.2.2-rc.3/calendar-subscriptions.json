@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "name": "@eduwork/dsh-calendar-subscriptions",
+  "version": "0.1.0",
+  "repository": "https://github.com/ECNU/EduWork",
+  "commit": "7aac11309b7036c5de41254c4e890c5a00926568",
+  "publicationStatus": "published",
+  "tarballSHA256": "c6828c864ccfffb3167e25d006579d55bef2a6f5ae122989e72faacce6cf275c",
+  "npm": {
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-calendar-subscriptions/-/dsh-calendar-subscriptions-0.1.0.tgz",
+    "integrity": "sha512-cYlO1BrCeLEmTQkNs1aF+6Btztj0hL1aUSj45r82sV4VkrdGsIY/4oAdlwNHxioMBuB0iAXeFfTdlY5nUAABxw==",
+    "shasum": "d415bdd49cf7d7440e9da9a12b8f4889ac6feb77"
+  }
+}

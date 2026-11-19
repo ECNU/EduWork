@@ -1,7 +1,6 @@
 {
   "name": "@eduwork/dsh-academic-calendar",
-  "version": "0.1.0-dev",
-  "private": true,
+  "version": "0.1.0",
   "type": "module",
   "license": "MIT",
   "main": "lib/index.js",
@@ -18,7 +17,8 @@
     "examples/*.json",
     "README.md",
     "README_EN.md",
-    "cordis.patch.yml"
+    "cordis.patch.yml",
+    "LICENSE"
   ],
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.2 <4.1.0 || 4.1.0",
@@ -33,5 +33,16 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ECNU/EduWork.git",
+    "directory": "packages/dsh-academic-calendar"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --test ../../dsh-plugins/calendar/test/academic.test.mjs"
   }
 }

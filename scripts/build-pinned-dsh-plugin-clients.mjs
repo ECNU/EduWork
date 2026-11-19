@@ -4,7 +4,7 @@ import { readFile, mkdir, writeFile, cp, copyFile, readdir } from 'node:fs/promi
 import { join, resolve, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { usePinnedBrowser } from './pinned-browser.mjs'
+import { pinnedDistribution } from './pinned-distribution.mjs'
 import { adaptNativePresetUI } from './native-preset-ui.mjs'
 import { adaptNativeFileReferenceUI } from './native-file-reference-ui.mjs'
 import { releaseIdentity } from '../dsh-host/release-policy.mjs'
@@ -12,7 +12,7 @@ import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
 import { pinnedDshDirectory, verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
 import { readPublishedPackageLocks, verifyPublishedPackageInputs } from './published-package-inputs.mjs'
-import { verifyPluginNotificationConsumers, withPluginNotifications } from './plugin-notification-contract.mjs'
+import { verifyPluginNotificationConsumers } from './plugin-notification-contract.mjs'
 import { calendarClientLicenseBanner, installCalendarClientDependencies } from '../dsh-plugins/calendar/client-dependencies.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' }, version: { type: 'string' } } })
@@ -45,7 +45,7 @@ for (const folder of ['dsh-plugins', 'config/distributions']) {
 const { build, transform } = require('esbuild')
 // Every independently published plugin goes through its own npm release workflow.
 const distributionPath = join(repository, 'config/distributions/generic.json')
-const distribution = withPluginNotifications(usePinnedBrowser(JSON.parse(await readFile(distributionPath, 'utf8'))))
+const distribution = pinnedDistribution(JSON.parse(await readFile(distributionPath, 'utf8')))
 // This page uses 0.2.1 native plugin management; do not add it to the legacy
 // distribution that is still used by the old-runtime validation lane.
 distribution.plugins.push({ root: 'core', source: 'dsh-plugins/client-ui-extensions', id: 'eduwork-ui-extensions', name: '@eduwork/dsh-client-ui-extensions' })
