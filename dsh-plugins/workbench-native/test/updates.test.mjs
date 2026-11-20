@@ -91,3 +91,66 @@ for (const outcome of ['ready', 'error']) {
     assert.equal(controller.getSnapshot().open, false)
   })
 }
+
+test('unreadable verification status allows dismissal and recovers without unlocking update actions', async t => {
+  const timeouts = t.mock.timers
+  timeouts.enable({ apis: ['setTimeout'] })
+  const window = new EventTarget(), document = { body: {} }
+  const React = { createElement: (type, props, ...children) => ({ type, props, children }) }
+  const { createUpdateController, UpdatePanel, UpdateFooter } = loadUpdates(React,
+    effect => { const clear = effect(); if (clear) t.after(clear) }, (_, snapshot) => snapshot(), node => node, window, document)
+  let reachable = true, state = 'verifying'
+  const actions = []
+  const controller = createUpdateController(async action => {
+    actions.push(action)
+    if (!reachable) throw Error('后台连接已断开')
+    return { shell: 'electron', update: { state, enabled: true, canToggle: true, latestVersion: '1.1.0' } }
+  })
+  t.after(() => controller.dispose())
+  await nextTurn()
+  controller.open()
+  reachable = false
+  timeouts.tick(350)
+  await nextTurn()
+  timeouts.tick(350)
+  await nextTurn()
+  assert.equal(actions.length, 2, 'stale verification must not keep polling every 350 ms')
+  timeouts.tick(2150)
+  await nextTurn()
+  assert.equal(actions.length, 3)
+
+  const panel = UpdatePanel({ controller })
+  assert.ok(find(panel, node => node.props?.role === 'alert' && node.children.includes('无法读取更新状态：后台连接已断开')))
+  assert.equal(find(panel, node => node.props?.role === 'progressbar'), undefined)
+  assert.equal(find(panel, node => node.props?.type === 'checkbox').props.disabled, true)
+  const channel = find(panel, node => node.props?.role === 'radio' && node.children.includes('开发版'))
+  assert.equal(channel.props['aria-disabled'], true)
+  await channel.props.onClick()
+  assert.equal(find(panel, node => node.children?.includes('立即重启更新')), undefined)
+
+  const footer = UpdateFooter({ controller })
+  const close = find(footer, node => node.props?.['aria-label'] === '关闭更新面板')
+  assert.equal(close.props.disabled, false)
+  close.props.onClick()
+  assert.equal(controller.getSnapshot().open, false)
+  controller.open()
+  window.dispatchEvent(Object.assign(new Event('keydown'), { key: 'Escape' }))
+  assert.equal(controller.getSnapshot().open, false)
+  controller.open()
+  const backdrop = find(footer, node => node.props?.onMouseDown)
+  backdrop.props.onMouseDown({ target: backdrop, currentTarget: backdrop })
+  assert.equal(controller.getSnapshot().open, false)
+  assert.deepEqual(actions, ['status', 'status', 'status'])
+
+  reachable = true
+  await find(panel, node => node.children?.includes('重试读取状态')).props.onClick()
+  assert.equal(actions.at(-1), 'status')
+  assert.equal(find(UpdatePanel({ controller }), node => node.props?.role === 'alert'), undefined)
+  controller.open()
+  controller.close()
+  assert.equal(controller.getSnapshot().open, true, 'reconnection restores the verified lock')
+  state = 'ready'
+  timeouts.tick(2500)
+  await nextTurn()
+  assert.ok(find(UpdatePanel({ controller }), node => node.children?.includes('立即重启更新')))
+})
