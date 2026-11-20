@@ -62,4 +62,6 @@ When a configuration protocol changes, the bundled descriptor may declare `migra
 
 The client verifies the old effective configuration, switches to the new source and requires a compatible signed configuration before starting the Host. Revisions are independent per source. Failed downloads can be retried; failed startup trials use the content transaction rollback. Local changes and additional organization entries survive. There is still one editable `config/eduwork.jsonc` and one backup. Older publisher installations without a content source also perform an initial download when this declaration is enabled.
 
+For a retired feed that only served configuration and defaulted Skills to off, list its URL in `configurationOnlySources`, a subset of `migrateFrom`. The client adopts the new Skills default once when switching feeds. The old format stored the same value for a default and a manual opt-out. Choices made on the new feed persist across restarts. Keep the existing preference for feeds that previously distributed Skills.
+
 Publish the new signed content first and retain the old source for old clients. Omit `migrateFrom` when no migration is needed.
