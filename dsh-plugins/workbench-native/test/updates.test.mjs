@@ -155,7 +155,7 @@ test('unreadable verification status allows dismissal and recovers without unloc
   assert.ok(find(UpdatePanel({ controller }), node => node.children?.includes('立即重启更新')))
 })
 
-test('a hung status read times out, ignores its late result, and polling recovers', async t => {
+test('a hung status read stays bounded and retry reuses it until success', async t => {
   const timeouts = t.mock.timers
   timeouts.enable({ apis: ['setTimeout'] })
   const window = new EventTarget(), document = { body: {} }
@@ -164,32 +164,77 @@ test('a hung status read times out, ignores its late result, and polling recover
     effect => { const clear = effect(); if (clear) t.after(clear) }, (_, snapshot) => snapshot(), node => node, window, document)
   let finishFirstStatus, statusCalls = 0
   const controller = createUpdateController(async action => {
-    if (action === 'status' && statusCalls++ === 0) return new Promise(resolve => { finishFirstStatus = resolve })
+    if (action === 'status') {
+      const call = statusCalls++
+      if (call === 0) return new Promise(resolve => { finishFirstStatus = resolve })
+      return { shell: 'electron', update: { state: call === 1 ? 'verifying' : 'ready', enabled: true, canToggle: true, latestVersion: '1.1.0' } }
+    }
     if (action === 'check-updates') return { shell: 'electron', update: { state: 'verifying', enabled: true, canToggle: true } }
-    return { shell: 'electron', update: { state: 'ready', enabled: true, canToggle: true, latestVersion: '1.1.0' } }
+    throw Error(`unexpected action: ${action}`)
   })
   t.after(() => controller.dispose())
   await nextTurn()
   controller.open()
   await nextTurn()
 
-  timeouts.tick(10_000)
-  await nextTurn()
+  for (let elapsed = 0; elapsed < 120_000; elapsed += 2_500) {
+    timeouts.tick(2_500)
+    await nextTurn()
+  }
   const failed = UpdatePanel({ controller })
   assert.match(controller.getSnapshot().statusError, /超时/)
   assert.ok(find(failed, node => node.props?.role === 'alert' && /超时/.test(node.children[0])))
   assert.ok(find(failed, node => node.children?.includes('重试读取状态')))
   assert.equal(find(UpdateFooter({ controller }), node => node.props?.['aria-label'] === '关闭更新面板').props.disabled, false)
   assert.equal(controller.getSnapshot().open, true)
+  assert.equal(statusCalls, 1)
+
+  const retry = find(failed, node => node.children?.includes('重试读取状态')).props.onClick()
+  assert.equal(statusCalls, 1, 'retry must reuse the pending request')
 
   finishFirstStatus({ shell: 'electron', update: { state: 'verifying', enabled: true } })
-  await nextTurn()
-  assert.match(controller.getSnapshot().statusError, /超时/)
-  assert.equal(controller.getSnapshot().status?.update?.state, 'verifying', 'late success must not replace the failed read')
+  await retry
+  assert.equal(controller.getSnapshot().statusError, '')
+  assert.equal(controller.getSnapshot().status?.update?.state, 'verifying')
 
   timeouts.tick(2_500)
   await nextTurn()
-  assert.equal(statusCalls, 2, 'polling continues after the timed-out read')
+  assert.equal(statusCalls, 2)
+  assert.equal(controller.getSnapshot().status?.update?.state, 'verifying')
+  timeouts.tick(350)
+  await nextTurn()
+  assert.equal(statusCalls, 3, 'polling resumes at the active-update interval')
   assert.equal(controller.getSnapshot().statusError, '')
   assert.equal(controller.getSnapshot().status?.update?.state, 'ready')
+})
+
+test('a timed-out status request rejection permits a later poll to recover', async t => {
+  const timeouts = t.mock.timers
+  timeouts.enable({ apis: ['setTimeout'] })
+  const window = new EventTarget(), document = { body: {} }
+  const React = { createElement: (type, props, ...children) => ({ type, props, children }) }
+  const { createUpdateController, UpdatePanel } = loadUpdates(React,
+    effect => { const clear = effect(); if (clear) t.after(clear) }, (_, snapshot) => snapshot(), node => node, window, document)
+  let rejectFirstStatus, statusCalls = 0
+  const controller = createUpdateController(async action => {
+    if (action === 'status' && statusCalls++ === 0) return new Promise((_, reject) => { rejectFirstStatus = reject })
+    if (action === 'check-updates') return { shell: 'electron', update: { state: 'verifying', enabled: true, canToggle: true } }
+    return { shell: 'electron', update: { state: 'ready', enabled: true, canToggle: true, latestVersion: '1.1.0' } }
+  })
+  t.after(() => controller.dispose())
+  await nextTurn()
+  controller.open()
+  timeouts.tick(10_000)
+  await nextTurn()
+  assert.equal(statusCalls, 1)
+  rejectFirstStatus(Error('后台连接已断开'))
+  await nextTurn()
+  assert.match(controller.getSnapshot().statusError, /后台连接已断开/)
+
+  timeouts.tick(2_500)
+  await nextTurn()
+  assert.equal(statusCalls, 2)
+  assert.equal(controller.getSnapshot().statusError, '')
+  assert.equal(controller.getSnapshot().status?.update?.state, 'ready')
+  assert.equal(find(UpdatePanel({ controller }), node => node.props?.role === 'alert'), undefined)
 })
