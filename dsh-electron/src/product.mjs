@@ -367,7 +367,7 @@ async function prepareDesktop() {
       distribution:settings.distribution, version:settings.productVersion, trustedUpdates }),
     beforeInstall:async()=>{
       if(process.platform==='darwin')return true
-      installTasksBeforeConfirmation=await lifecycle.updateTasks('inspect')
+      if(settings.dataLayout==='installed')installTasksBeforeConfirmation=await lifecycle.updateTasks('inspect')
       return confirmQuit()
     },onPolicy:saveUpdatePolicy})
   if(portableUpdates)lifecycle.trackBridge(portableUpdates)

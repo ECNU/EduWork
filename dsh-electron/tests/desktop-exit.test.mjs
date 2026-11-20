@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { DesktopExit } from '../src/desktop-exit.mjs'
 import { updateCoordinator } from '../src/update-coordinator.mjs'
 import { DesktopLifecycle } from '../src/lifecycle.mjs'
@@ -152,6 +153,28 @@ test('an unavailable Host task inspection cannot authorize installer handoff', a
   const lifecycle = new DesktopLifecycle()
   lifecycle.trackHost({ updateTasks: async () => { throw Error('Host unavailable') }, stop: assert.fail })
   await assert.rejects(lifecycle.updateTasks('inspect'), /Host unavailable/)
+})
+
+test('only installed updates require a successful Host preflight before quit confirmation', async () => {
+  const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
+  const hook = source.match(/beforeInstall:\s*(async\s*\(\)\s*=>\s*\{[\s\S]*?\n\s*\}),onPolicy:/)?.[1]
+  assert.ok(hook)
+  const beforeInstall = new Function('process', 'settings', 'lifecycle', 'confirmQuit',
+    `let installTasksBeforeConfirmation; return ${hook}`)
+  for (const message of ['Host inspection unavailable', 'Host inspection timed out']) {
+    const calls = []
+    const lifecycle = new DesktopLifecycle()
+    lifecycle.trackHost({ async updateTasks(action) { calls.push(action); throw Error(message) }, stop: assert.fail })
+    const coordinator = (dataLayout, approved) => updateCoordinator({ content: { snapshot: () => ({}) },
+      beforeInstall: beforeInstall({ platform: 'win32' }, { dataLayout }, lifecycle, async () => { calls.push('confirm'); return approved }),
+      software: { async action(action) { calls.push(action); return {} } } })
+    await assert.rejects(coordinator('installed', true).action('install-update'), { message })
+    assert.deepEqual(calls.splice(0), ['inspect'])
+    await coordinator('portable', false).action('install-update')
+    assert.deepEqual(calls.splice(0), ['confirm', 'status'])
+    await coordinator('portable', true).action('install-update')
+    assert.deepEqual(calls, ['confirm', 'install-update'])
+  }
 })
 
 test('immediate teardown defers the final quit beyond the native event microtasks', async () => {
