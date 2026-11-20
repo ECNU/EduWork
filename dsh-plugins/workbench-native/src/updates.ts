@@ -13,22 +13,23 @@ const row={display:'flex',alignItems:'flex-start',justifyContent:'space-between'
 // settings or the modal never stops a native download or loses its progress.
 export function createUpdateController(service) {
  let view={status:null as any,open:false,statusError:'',error:'',working:''},timer:any,stopped=false,statusRequest:any
+ const waitTimers=new Set<any>()
  const listeners=new Set<()=>void>()
- const publish=patch=>{view={...view,...patch};listeners.forEach(fn=>fn())}
- const read=async()=>{if(stopped)return;let request=statusRequest;if(!request){request=Promise.resolve().then(()=>service('status')).then(status=>({ok:true,status}),error=>({ok:false,error})).then(result=>{if(statusRequest===request)statusRequest=null;if(!stopped)publish(result.ok?{status:result.status,statusError:''}:{statusError:`无法读取更新状态：${result.error?.message||String(result.error)}`});return result});statusRequest=request}let timeout:any;const result=await Promise.race([request,new Promise(resolve=>{timeout=setTimeout(()=>resolve({timeout:true}),10_000)})]);clearTimeout(timeout);if(result.timeout)publish({statusError:'无法读取更新状态：读取更新状态超时（10 秒）'})}
+ const publish=patch=>{if(stopped)return;view={...view,...patch};listeners.forEach(fn=>fn())}
+ const read=async()=>{if(stopped)return;let request=statusRequest;if(!request){request=Promise.resolve().then(()=>service('status')).then(status=>({ok:true,status}),error=>({ok:false,error})).then(result=>{if(statusRequest===request)statusRequest=null;if(!stopped)publish(result.ok?{status:result.status,statusError:''}:{statusError:`无法读取更新状态：${result.error?.message||String(result.error)}`});return result});statusRequest=request}let timeout:any;const result=await Promise.race([request,new Promise(resolve=>{timeout=setTimeout(()=>{waitTimers.delete(timeout);resolve({timeout:true})},10_000);waitTimers.add(timeout)})]);clearTimeout(timeout);waitTimers.delete(timeout);if(result.timeout)publish({statusError:'无法读取更新状态：读取更新状态超时（10 秒）'})}
  const poll=async()=>{await read();if(!stopped)timer=setTimeout(poll,!view.statusError&&[view.status?.update?.state,view.status?.contentUpdate?.state].some(state=>['checking','downloading','verifying','applying'].includes(state))?350:2500)}
  const run=async(action)=>{
   if(view.working)return
   const started=Date.now(),working=action==='check-updates'?'checking':action==='download-update'?'downloading':action.startsWith('use-')?'switching':action.includes('software-updates')?'settings':''
   publish({error:'',working})
   try{const status=await service(action);publish({status});if(status.phase==='error'&&!status.update?.error)publish({error:status.message})}catch(e){publish({error:e.message})}
-  finally{if(working)await new Promise(resolve=>setTimeout(resolve,Math.max(0,450-(Date.now()-started))));await read();publish({working:''})}
+  finally{if(working)await new Promise(resolve=>setTimeout(resolve,Math.max(0,450-(Date.now()-started))));publish({working:''});void read()}
  }
  void poll()
  const open=()=>{publish({open:true});if(!view.statusError&&!['downloading','ready'].includes(view.status?.contentUpdate?.state)&&(!view.status?.update||['idle','installed','up_to_date','current','error'].includes(view.status.update.state)))void run('check-updates')}
  const event=()=>open();window.addEventListener('eduwork:open-updates',event)
  const close=()=>{if(view.statusError||view.status?.update?.state!=='verifying')publish({open:false})}
- return {subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)},getSnapshot:()=>view,run,open,close,retry:read,dispose:()=>{stopped=true;clearTimeout(timer);window.removeEventListener('eduwork:open-updates',event)}}
+ return {subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)},getSnapshot:()=>view,run,open,close,retry:read,dispose:()=>{stopped=true;clearTimeout(timer);waitTimers.forEach(clearTimeout);waitTimers.clear();window.removeEventListener('eduwork:open-updates',event)}}
 }
 function useUpdates(controller){return useSyncExternalStore(controller.subscribe,controller.getSnapshot,controller.getSnapshot)}
 const percent=s=>s?.downloadStage==='verifying'?(s.totalFiles>0?Math.min(100,Math.floor(s.checkedFiles/s.totalFiles*100)):0):s?.totalBytes>0?Math.min(100,Math.floor(s.downloadedBytes/s.totalBytes*100)):0

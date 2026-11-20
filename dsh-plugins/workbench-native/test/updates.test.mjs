@@ -238,3 +238,90 @@ test('a timed-out status request rejection permits a later poll to recover', asy
   assert.equal(controller.getSnapshot().status?.update?.state, 'ready')
   assert.equal(find(UpdatePanel({ controller }), node => node.props?.role === 'alert'), undefined)
 })
+
+test('dispose clears every timeout waiting on the shared status request', async t => {
+  const timeouts = t.mock.timers
+  timeouts.enable({ apis: ['setTimeout'] })
+  const window = new EventTarget(), document = { body: {} }
+  const React = { createElement: (type, props, ...children) => ({ type, props, children }) }
+  const { createUpdateController } = loadUpdates(React, undefined, undefined, undefined, window, document)
+  let finishStatus
+  const controller = createUpdateController(() => new Promise(resolve => { finishStatus = resolve }))
+  t.after(() => controller.dispose())
+  let notifications = 0
+  controller.subscribe(() => notifications++)
+  await nextTurn()
+  for (let retry = 0; retry < 4; retry++) void controller.retry()
+  await nextTurn()
+
+  timeouts.tick(10_000)
+  await nextTurn()
+  const timedOutNotifications = notifications
+  assert.equal(timedOutNotifications, 5)
+
+  controller.dispose()
+  controller.dispose()
+  timeouts.tick(10_000)
+  await nextTurn()
+  assert.equal(notifications, timedOutNotifications)
+  finishStatus({ shell: 'electron', update: { state: 'idle' } })
+  await nextTurn()
+})
+
+test('dispose prevents pending status timeout notifications', async t => {
+  const timeouts = t.mock.timers
+  timeouts.enable({ apis: ['setTimeout'] })
+  const window = new EventTarget(), document = { body: {} }
+  const React = { createElement: (type, props, ...children) => ({ type, props, children }) }
+  const { createUpdateController } = loadUpdates(React, undefined, undefined, undefined, window, document)
+  let finishStatus
+  const controller = createUpdateController(() => new Promise(resolve => { finishStatus = resolve }))
+  let notifications = 0
+  controller.subscribe(() => notifications++)
+  await nextTurn()
+
+  controller.dispose()
+  timeouts.tick(10_000)
+  await nextTurn()
+  assert.equal(notifications, 0)
+  finishStatus({ shell: 'electron', update: { state: 'idle' } })
+  await nextTurn()
+})
+
+for (const outcome of ['success', 'failure']) {
+  test(`run clears working before the pending status refresh ${outcome === 'success' ? 'succeeds' : 'fails'}`, async t => {
+    const timeouts = t.mock.timers
+    timeouts.enable({ apis: ['setTimeout'] })
+    const window = new EventTarget(), document = { body: {} }
+    const React = { createElement: (type, props, ...children) => ({ type, props, children }) }
+    const { createUpdateController } = loadUpdates(React, undefined, undefined, undefined, window, document)
+    let finishStatus
+    const controller = createUpdateController(async action => {
+      if (action === 'status') return new Promise((resolve, reject) => { finishStatus = outcome === 'success' ? resolve : reject })
+      return { phase: 'checking', update: { state: 'checking', enabled: true } }
+    })
+    t.after(() => controller.dispose())
+    await nextTurn()
+    const run = controller.run('check-updates')
+    await nextTurn()
+    assert.equal(controller.getSnapshot().working, 'checking')
+
+    timeouts.tick(450)
+    await nextTurn()
+    assert.equal(controller.getSnapshot().working, '')
+    await run
+
+    if (outcome === 'success') {
+      finishStatus({ shell: 'electron', update: { state: 'ready', enabled: true } })
+      await nextTurn()
+      await nextTurn()
+      assert.equal(controller.getSnapshot().status?.update?.state, 'ready')
+      assert.equal(controller.getSnapshot().statusError, '')
+    } else {
+      finishStatus(Error('后台连接已断开'))
+      await nextTurn()
+      await nextTurn()
+      assert.match(controller.getSnapshot().statusError, /后台连接已断开/)
+    }
+  })
+}
