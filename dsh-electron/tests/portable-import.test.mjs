@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink, lstat } from 'node:fs/promises'
+import fs, { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink, lstat } from 'node:fs/promises'
+import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import { createHash } from 'node:crypto'
@@ -76,6 +77,12 @@ async function treeSnapshot(root) {
 const noProcesses = async () => []
 const ampleSpace = async () => ({ bavail: 2 ** 30, bsize: 4096 })
 const run = (options, extra = {}) => importPortableData({ distribution, listProcesses: noProcesses, freeSpace: ampleSpace, ...options, ...extra })
+
+function mockFs(t, name, replacement) {
+  const mocked = t.mock.method(fs, name, replacement)
+  syncBuiltinESMExports()
+  t.after(() => { mocked.mock.restore(); syncBuiltinESMExports() })
+}
 
 test('projectKey matches the runtime encoding observed in the shipped sample', () => {
   assert.equal(sessionProjectKey('D:\\Workspace\\EduWork\\wm13\\EduWork\\sample-workspace-internal'), '--D-Workspace-EduWork-wm13-EduWork-sample-workspace-internal--')
@@ -300,7 +307,7 @@ test('retry reclaims only confirmed interrupted stages for the current target', 
     const child = spawn(process.execPath, ['-e', ''])
     await once(child, 'close')
     const stage = async (root, edition, ownerPid, suffix, marker = {}) => {
-      const key = sha256(JSON.stringify([edition, process.platform === 'win32' ? root.toLowerCase() : root])).slice(0, 16)
+      const key = sha256(JSON.stringify([edition, root])).slice(0, 16)
       const name = `.eduwork-import-${key}-00000000-0000-4000-8000-00000000000${suffix}`
       const path = join(base, name)
       await mkdir(path)
@@ -324,6 +331,52 @@ test('retry reclaims only confirmed interrupted stages for the current target', 
     assert.equal(receipt.state, 'imported')
     await assert.rejects(lstat(orphan), { code: 'ENOENT' })
     assert.deepEqual(await Promise.all(preserved.map(treeSnapshot)), before)
+  } finally { await rm(base, { recursive: true, force: true }) }
+})
+
+test('targets that differ only by case have distinct stage prefixes and cannot reclaim each other', async () => {
+  const { base, source, target } = await fixture()
+  try {
+    const alternate = join(base, 'USER-ROOT')
+    const hold = Error('stop after observing the stage')
+    const child = spawn(process.execPath, ['-e', ''])
+    await once(child, 'close')
+    const observe = async targetRoot => {
+      let marker
+      await assert.rejects(run({ sourceRoot: source, targetRoot, onProgress: async () => {
+        for (const name of (await readdir(base)).filter(name => name.startsWith('.eduwork-import-'))) {
+          const candidate = JSON.parse(await readFile(join(base, name, '.eduwork-import-progress.json'), 'utf8'))
+          if (candidate.ownerPid === process.pid) marker = candidate
+        }
+        throw hold
+      } }), hold)
+      return marker
+    }
+    const first = await observe(target)
+    const firstStage = join(base, first.stage)
+    await mkdir(firstStage)
+    await writeFile(join(firstStage, '.eduwork-import-progress.json'), JSON.stringify({ ...first, ownerPid: child.pid }))
+    const second = await observe(alternate)
+    assert.notEqual(first.stage.slice(0, -36), second.stage.slice(0, -36))
+    assert.ok((await lstat(firstStage)).isDirectory())
+
+    const mismatched = join(base, first.stage)
+    await writeFile(join(mismatched, '.eduwork-import-progress.json'), JSON.stringify({ ...first, target: alternate, ownerPid: child.pid }))
+    assert.equal((await run({ sourceRoot: source, targetRoot: target })).state, 'imported')
+    assert.ok((await lstat(mismatched)).isDirectory())
+  } finally { await rm(base, { recursive: true, force: true }) }
+})
+
+test('an existing workspace in a case-distinct sibling is external', async t => {
+  const { base, source, target, home, registry, externalPath } = await fixture()
+  try {
+    const sibling = join(base, 'OLD-APP', 'empty-workspace')
+    const { realpath } = fs
+    mockFs(t, 'realpath', path => path === sibling ? realpath(externalPath).then(() => sibling) : realpath(path))
+    registry.tables.workspaces['ws-external'].path = sibling
+    await writeFile(join(home, 'storages/workspace.json'), JSON.stringify(registry))
+    const plan = await buildCopyPlan(await inspectPortableSource({ sourceRoot: source, distribution }), target)
+    assert.deepEqual(plan.moves.map(move => move.id), ['ws-internal'])
   } finally { await rm(base, { recursive: true, force: true }) }
 })
 

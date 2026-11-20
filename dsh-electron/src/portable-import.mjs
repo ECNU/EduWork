@@ -2,7 +2,6 @@ import { createHash, randomUUID } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { copyFile, mkdir, readFile, readdir, lstat, realpath, rename, rm, rmdir, statfs, writeFile } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
-import { assertSeparateRoots } from './desktop-paths.mjs'
 import { remapSessionLogCwd, sessionDirectoryCwd } from './session-header-remap.mjs'
 
 // First import of an old portable Electron installation into the installed
@@ -15,8 +14,7 @@ const dshRetained = new Set(['sessions', 'attachments', 'storages', 'skills', 'p
 const browserSkipped = new Set(['Cache', 'Code Cache', 'GPUCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'ShaderCache', 'GrShaderCache', 'DIPS', 'DIPS-wal', 'Shared Dictionary', 'blob_storage', 'optimization_guide_prediction_model_store', 'component_crx_cache', 'extensions_cache', 'Safe Browsing', 'Segmentation Platform', 'Trust Tokens', 'trust_tokens.db', 'trust_tokens.db-journal'])
 const digest = bytes => createHash('sha256').update(bytes).digest('hex')
 async function fileDigest(path) { const hash = createHash('sha256'); for await (const chunk of createReadStream(path)) hash.update(chunk); return hash.digest('hex') }
-const within = (root, path) => { const rel = relative(root, path); return rel !== '' && !isAbsolute(rel) && rel !== '..' && !rel.startsWith('..' + sep) }
-const same = (a, b) => process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b
+const within = (root, path) => path !== root && path.startsWith(root.endsWith(sep) ? root : root + sep)
 const exists = async path => lstat(path).catch(error => { if (error.code === 'ENOENT') return null; throw error })
 
 // Resolve existing ancestors too: the target need not exist yet, and Windows
@@ -328,7 +326,7 @@ async function reclaimImportStages(target, distribution, prefix) {
       if (!(await lstat(progress)).isFile()) continue
       const marker = JSON.parse(await readFile(progress, 'utf8'))
       if (marker?.schemaVersion === 1 && marker.state === 'copying' && marker.stage === name
-        && marker.distribution === distribution && typeof marker.target === 'string' && same(marker.target, target)
+        && marker.distribution === distribution && marker.target === target
         && importOwnerExited(marker.ownerPid)) await rm(stage, { recursive: true, force: true })
     } catch { /* Unreadable or unconfirmed stages do not block this import. */ }
   }
@@ -338,7 +336,7 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
   const source = await inspectPortableSource({ sourceRoot, distribution })
   if (!targetRoot || !isAbsolute(targetRoot)) throw Error('目标用户目录必须是绝对路径')
   const target = await canonical(targetRoot)
-  assertSeparateRoots(source.root, target)
+  if (source.root === target || within(source.root, target) || within(target, source.root)) throw Error('Program and user data directories must be separate')
   await assertNoLinks(targetRoot)
   const running = await (listProcesses ?? windowsSourceProcessLister(source.root))()
   if (running.length) throw Error(`旧客户端或其后台 Host 仍在运行（${running.map(row => `${row.pid}:${row.name}`).join('、')}），请先正常退出后再导入`)
@@ -349,7 +347,7 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
     else {
       const receipt = entries.includes('.eduwork-migration.json')
         ? await readFile(join(target, '.eduwork-migration.json'), 'utf8').then(JSON.parse).catch(() => null) : null
-      if (receipt?.schemaVersion === 1 && receipt.state === 'imported' && same(receipt.sourceRoot, source.root)) {
+      if (receipt?.schemaVersion === 1 && receipt.state === 'imported' && receipt.sourceRoot === source.root) {
         const current = await buildCopyPlan(source, target)
         if (digest(JSON.stringify(current.files)) === receipt.planDigest) {
           await requireWorkspaceDirectories(target, current.moves)
@@ -366,8 +364,7 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
   const volume = await freeSpace(await volumeOf(dirname(target)))
   if (volume.bavail * volume.bsize < totalBytes * 1.1) throw Error('目标磁盘空间不足，未开始复制；旧目录保持原样')
   await mkdir(dirname(target), { recursive: true })
-  const targetKey = process.platform === 'win32' ? target.toLowerCase() : target
-  const prefix = `.eduwork-import-${digest(JSON.stringify([distribution, targetKey])).slice(0, 16)}-`
+  const prefix = `.eduwork-import-${digest(JSON.stringify([distribution, target])).slice(0, 16)}-`
   await reclaimImportStages(target, distribution, prefix)
   const stageName = `${prefix}${randomUUID()}`, stage = join(dirname(target), stageName)
   await mkdir(stage)
