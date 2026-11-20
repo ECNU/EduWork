@@ -116,7 +116,7 @@ eduwork/
 
 以下为 Windows 便携包的默认渠道规则。两种 Windows 便携装配脚本都接受 `-UpdateDefaultPolicy development|stable`。省略时，`X.Y.Z-dev.YYYYMMDD.N` 默认开发渠道，`X.Y.Z` 默认仅公测版。清单 URL 中的 `/stable/` 只定位更新源，不能反过来把开发包的默认偏好改成公测。
 
-Go 的随包默认值记录在 `eduwork.desktop.json` 的 `updateDefaultPolicy`，并同时写入新装的 `config/update.bridge.json`。升级保留旧 `config/` 时，新程序仍使用本次装配的默认值，避免旧配置中的错误默认值继续生效。Electron 将默认值写在 `resources/app/eduwork.desktop.json` 的 `updates.defaultPolicy`；发行方也可在 `config/eduwork.jsonc` 配置该项。
+旧 Go 过渡包曾将随包默认值写入 `eduwork.desktop.json` 和 `config/update.bridge.json`。Electron 将默认值写在 `resources/app/eduwork.desktop.json` 的 `updates.defaultPolicy`；发行方也可在 `config/eduwork.jsonc` 配置该项。
 
 第一次初始化更新器时，将所选渠道及 `source: packaged-default` 记录到 `data/state/update-preferences.json`；用户主动切换时记录 `source: user`。此文件跨重启、Go 更新和 Go → Electron 迁移保留。旧版无 `source` 的有效渠道记录同样保留；不能推测它不是用户选择而覆盖。
 

@@ -2,9 +2,9 @@
 
 [English](README_EN.md)
 
-这是独立于 `dsh-desktop/`（Go + Wails）的第二个桌面装配入口。两种宿主共用同一份 EduWork 产品装配、插件、技能及预览实现。
+这里提供 EduWork 的 Electron 桌面装配入口。`dsh-desktop/` 保留 Windows 更新器等 Go 辅助程序。
 
-桌面基底锁定 DSH `0.1.5-rc.2`（`fb2c4b9e698e30edb738bca4cf0618587db7d203`）。Electron 主进程、窗口、`dsh-app://` 和流式 Host 传输从该提交派生，产品适配以可核对的补丁生成，不修改共享的官方源码缓存。Host 适配放在 `../dsh-host/`，供两种桌面宿主复用。
+桌面基底锁定 DSH `0.1.5-rc.2`（`fb2c4b9e698e30edb738bca4cf0618587db7d203`）。Electron 主进程、窗口、`dsh-app://` 和流式 Host 传输从该提交派生，产品适配以可核对的补丁生成，不修改共享的官方源码缓存。Host 适配放在 `../dsh-host/`。
 
 显式 `--pinned-dsh-source` 构建使用 [DSH 0.2.1-rc.5 候选锁](../third_party/dsh/candidate-v0.2.1-rc.5/LOCK.json)：内核、Web 客户端、Desktop Host 和桌面模块均来自 `b830ec950faba0a46dda564be3e2d854afed94f1`。窗口工厂、完整预加载桥接、浏览器 guest 隔离、快捷键、目录选择、主题与语言同步、Host 生命周期、退出确认和故障恢复复用官方实现；输入哈希及产品适配记录在构建回执中。
 
@@ -59,7 +59,7 @@ node dsh-electron/tests/desktop-smoke.mjs --shell electron --product $Product --
 node scripts/verify-desktop-parity.mjs --reference $DesktopProduct --electron $ElectronProduct --wails $WailsProduct --evidence $ParityResult
 ```
 
-窗口验收只在明确开启的本机调试端口运行。Electron 用 `--remote-debugging-port=9333 --remote-debugging-address=127.0.0.1`；Wails 候选用 `EDUWORK_DESKTOP_CDP_PORT=9334`，默认均不开放调试端口。Electron 的 `EDUWORK_DESKTOP_TEST_DATA_ROOT`、Wails 的 `--home` 可将合成数据留在验收目录。
+窗口验收可用 `--remote-debugging-port=9333 --remote-debugging-address=127.0.0.1` 显式开启本机调试端口；默认不开放。`EDUWORK_DESKTOP_TEST_DATA_ROOT` 可将合成数据留在验收目录。
 
 共同的真实文件预览与上传脚本为 `tests/desktop-preview-acceptance.mjs`。`tests/desktop-conversation-acceptance.mjs` 仅对明确配置的私有验收 provider 发两条有界合成请求，并在退出时清理临时凭据；不将测试配置放进产品包。OIDC 系统加密与 Host 联合测试见 [测试说明](tests/oidc-native-vault.md)。实际通过范围及限制应随该次发行的验收回执提供，源码仓不打包内部测试日志或用户数据。
 

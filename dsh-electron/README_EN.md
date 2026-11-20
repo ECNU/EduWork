@@ -4,7 +4,7 @@
 
 See [desktop notifications](../docs/DESKTOP_NOTIFICATIONS_EN.md) for task alerts and pending tray items. Institutional editions reuse the public implementation; native delivery requires platform-specific acceptance.
 
-An assembly entry separate from `dsh-desktop/` (Go + Wails). Both hosts share the same EduWork product composition, plugins, skills and preview implementation.
+This directory assembles EduWork's Electron desktop app. `dsh-desktop/` retains Go helpers such as the Windows updater.
 
 The desktop baseline is DSH `0.1.5-rc.2` (`fb2c4b9e698e30edb738bca4cf0618587db7d203`). Electron's main process, window, `dsh-app://` handling and streaming Host transport are derived with reviewable patches from that commit, without modifying the shared upstream source cache. The reusable Host adapter lives in `../dsh-host/`.
 
@@ -60,7 +60,7 @@ node dsh-electron/tests/desktop-smoke.mjs --shell electron --product $Product --
 node scripts/verify-desktop-parity.mjs --reference $DesktopProduct --electron $ElectronProduct --wails $WailsProduct --evidence $ParityResult
 ```
 
-Window checks use explicitly enabled local debugging ports. Electron accepts `--remote-debugging-port=9333 --remote-debugging-address=127.0.0.1`; Wails uses `EDUWORK_DESKTOP_CDP_PORT=9334`. Both default to no debugging listener. Electron's `EDUWORK_DESKTOP_TEST_DATA_ROOT` and Wails's `--home` isolate synthetic test data.
+Window checks can explicitly enable the local debugging port with `--remote-debugging-port=9333 --remote-debugging-address=127.0.0.1`. No debugging listener is open by default. `EDUWORK_DESKTOP_TEST_DATA_ROOT` isolates synthetic test data.
 
 `tests/desktop-preview-acceptance.mjs` checks real-file preview/upload. `tests/desktop-conversation-acceptance.mjs` sends two bounded synthetic requests only to an explicitly configured private test provider and removes temporary credentials on exit. Do not include test configuration in product archives. See [native vault and OIDC tests](tests/oidc-native-vault.md). Record the actual verified scope and limitations with release evidence; internal test logs and user data do not belong in source packages.
 
