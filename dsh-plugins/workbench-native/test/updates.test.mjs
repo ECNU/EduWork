@@ -208,7 +208,7 @@ test('a hung status read stays bounded and retry reuses it until success', async
   assert.equal(controller.getSnapshot().status?.update?.state, 'ready')
 })
 
-test('a timed-out status request rejection permits a later poll to recover', async t => {
+test('a timed-out status request rejection is ignored after a newer snapshot and polling recovers', async t => {
   const timeouts = t.mock.timers
   timeouts.enable({ apis: ['setTimeout'] })
   const window = new EventTarget(), document = { body: {} }
@@ -227,9 +227,13 @@ test('a timed-out status request rejection permits a later poll to recover', asy
   timeouts.tick(10_000)
   await nextTurn()
   assert.equal(statusCalls, 1)
+  const { status, statusError } = controller.getSnapshot()
+  assert.equal(status.update.state, 'verifying')
+  assert.match(statusError, /超时/)
   rejectFirstStatus(Error('后台连接已断开'))
   await nextTurn()
-  assert.match(controller.getSnapshot().statusError, /后台连接已断开/)
+  assert.equal(controller.getSnapshot().status, status)
+  assert.equal(controller.getSnapshot().statusError, statusError)
 
   timeouts.tick(2_500)
   await nextTurn()
@@ -237,6 +241,72 @@ test('a timed-out status request rejection permits a later poll to recover', asy
   assert.equal(controller.getSnapshot().statusError, '')
   assert.equal(controller.getSnapshot().status?.update?.state, 'ready')
   assert.equal(find(UpdatePanel({ controller }), node => node.props?.role === 'alert'), undefined)
+})
+
+test('a timed-out status request can report a failure when no newer snapshot was published', async t => {
+  const timeouts = t.mock.timers
+  timeouts.enable({ apis: ['setTimeout'] })
+  const { createUpdateController } = loadUpdates({}, undefined, undefined, undefined, new EventTarget())
+  let rejectStatus
+  const controller = createUpdateController(() => new Promise((_, reject) => { rejectStatus = reject }))
+  t.after(() => controller.dispose())
+  await nextTurn()
+  timeouts.tick(10_000)
+  await nextTurn()
+  assert.match(controller.getSnapshot().statusError, /超时/)
+
+  rejectStatus(Error('后台连接已断开'))
+  await nextTurn()
+  assert.equal(controller.getSnapshot().statusError, '无法读取更新状态：后台连接已断开')
+})
+
+test('a late status rejection cannot hide a ready update', async t => {
+  const timeouts = t.mock.timers
+  timeouts.enable({ apis: ['setTimeout', 'Date'] })
+  const React = { createElement: (type, props, ...children) => ({ type, props, children }) }
+  const { createUpdateController, UpdatePanel } = loadUpdates(React, undefined, (_, snapshot) => snapshot(), undefined, new EventTarget())
+  let rejectStatus
+  const controller = createUpdateController(async action => {
+    if (action === 'status') return new Promise((_, reject) => { rejectStatus = reject })
+    return { shell: 'electron', update: { state: 'ready', enabled: true, latestVersion: '1.1.0' } }
+  })
+  t.after(() => controller.dispose())
+  const run = controller.run('check-updates')
+  await nextTurn()
+  timeouts.tick(450)
+  await run
+  assert.ok(find(UpdatePanel({ controller }), node => node.children?.includes('立即重启更新')))
+
+  rejectStatus(Error('后台连接已断开'))
+  await nextTurn()
+  assert.equal(controller.getSnapshot().statusError, '')
+  assert.ok(find(UpdatePanel({ controller }), node => node.children?.includes('立即重启更新')))
+})
+
+test('dispose settles all five retries waiting on a hung status request', async t => {
+  const timeouts = t.mock.timers
+  timeouts.enable({ apis: ['setTimeout'] })
+  const { createUpdateController } = loadUpdates({}, undefined, undefined, undefined, new EventTarget())
+  let statusCalls = 0, notifications = 0, settled = 0
+  const controller = createUpdateController(() => {
+    statusCalls++
+    return new Promise(() => {})
+  })
+  t.after(() => controller.dispose())
+  controller.subscribe(() => notifications++)
+  for (let retry = 0; retry < 5; retry++) void controller.retry().then(() => settled++)
+  await nextTurn()
+  assert.equal(statusCalls, 1)
+  assert.equal(notifications, 0)
+  assert.equal(settled, 0)
+
+  controller.dispose()
+  await nextTurn()
+  assert.equal(settled, 5, 'dispose must settle all retries before the clock advances')
+  timeouts.tick(10_000)
+  await nextTurn()
+  assert.equal(notifications, 0)
+  assert.equal(statusCalls, 1)
 })
 
 test('dispose clears every timeout waiting on the shared status request', async t => {
@@ -295,9 +365,12 @@ for (const outcome of ['success', 'failure']) {
     const window = new EventTarget(), document = { body: {} }
     const React = { createElement: (type, props, ...children) => ({ type, props, children }) }
     const { createUpdateController } = loadUpdates(React, undefined, undefined, undefined, window, document)
-    let finishStatus
+    let finishStatus, statusCalls = 0
     const controller = createUpdateController(async action => {
-      if (action === 'status') return new Promise((resolve, reject) => { finishStatus = outcome === 'success' ? resolve : reject })
+      if (action === 'status') {
+        if (statusCalls++ === 0) return { shell: 'electron', update: { state: 'idle', enabled: true } }
+        return new Promise((resolve, reject) => { finishStatus = outcome === 'success' ? resolve : reject })
+      }
       return { phase: 'checking', update: { state: 'checking', enabled: true } }
     })
     t.after(() => controller.dispose())
@@ -310,6 +383,7 @@ for (const outcome of ['success', 'failure']) {
     await nextTurn()
     assert.equal(controller.getSnapshot().working, '')
     await run
+    assert.equal(statusCalls, 2)
 
     if (outcome === 'success') {
       finishStatus({ shell: 'electron', update: { state: 'ready', enabled: true } })
@@ -323,5 +397,43 @@ for (const outcome of ['success', 'failure']) {
       await nextTurn()
       assert.match(controller.getSnapshot().statusError, /后台连接已断开/)
     }
+  })
+}
+
+for (const actionFinishes of ['before dispose', 'after dispose']) {
+  test(`dispose leaves no busy timer when an action completes ${actionFinishes}`, async t => {
+    const timeouts = t.mock.timers
+    timeouts.enable({ apis: ['setTimeout', 'Date'] })
+    const scheduleTimeout = globalThis.setTimeout
+    let callbacks = 0
+    const schedule = t.mock.method(globalThis, 'setTimeout', (callback, delay) =>
+      scheduleTimeout(() => { callbacks++; callback() }, delay))
+    const { createUpdateController } = loadUpdates({}, undefined, undefined, undefined, new EventTarget())
+    let finishAction, notifications = 0, settled = false
+    const controller = createUpdateController(async action => {
+      if (action === 'status') return { update: { state: 'idle' } }
+      return new Promise(resolve => { finishAction = () => resolve({ update: { state: 'ready' } }) })
+    })
+    t.after(() => controller.dispose())
+    await nextTurn()
+    controller.subscribe(() => notifications++)
+    void controller.run('check-updates').then(() => { settled = true })
+    if (actionFinishes === 'before dispose') {
+      finishAction()
+      await nextTurn()
+      assert.equal(schedule.mock.calls.at(-1).arguments[1], 450)
+    }
+    assert.equal(settled, false)
+    const scheduled = schedule.mock.callCount(), published = notifications
+
+    controller.dispose()
+    if (actionFinishes === 'after dispose') finishAction()
+    await nextTurn()
+    assert.equal(schedule.mock.callCount(), scheduled)
+    assert.equal(settled, true, 'dispose must end the busy wait before the clock advances')
+    timeouts.tick(450)
+    await nextTurn()
+    assert.equal(callbacks, 0)
+    assert.equal(notifications, published)
   })
 }
