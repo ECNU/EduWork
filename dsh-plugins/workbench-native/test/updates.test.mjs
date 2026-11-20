@@ -18,6 +18,33 @@ function find(node, predicate) {
   }
 }
 
+const unsupportedMessage = '当前安装包未配置软件更新'
+for (const [canToggle, userEnabled, contentEnabled, description] of [
+  [false, true, true, unsupportedMessage],
+  [false, false, true, unsupportedMessage],
+  [true, true, true, '启动时在后台检查，发现新版本后提示。'],
+  [true, false, true, '软件更新已关闭，配置与 Skills 更新不受影响。'],
+  [true, false, false, '软件更新已关闭。'],
+]) {
+  test(`software update description with canToggle=${canToggle}, userEnabled=${userEnabled}, contentEnabled=${contentEnabled}`, () => {
+    const React = { createElement: (type, props, ...children) => ({ type, props, children }) }
+    const { UpdatePanel } = loadUpdates(React, undefined, (_, snapshot) => snapshot())
+    const enabled = canToggle && userEnabled
+    const status = {
+      shell: 'electron',
+      message: canToggle ? undefined : unsupportedMessage,
+      update: { enabled, canToggle, userEnabled, state: enabled ? 'idle' : 'disabled' },
+      contentUpdate: { enabled: contentEnabled },
+    }
+    const panel = UpdatePanel({ controller: { getSnapshot: () => ({ status }) } })
+    assert.ok(find(panel, node => node.children?.includes(description)))
+    if (!canToggle) {
+      const misleading = /^(启动时在后台检查|软件更新已关闭)/
+      assert.equal(find(panel, node => node.children?.some(child => typeof child === 'string' && misleading.test(child))), undefined)
+    }
+  })
+}
+
 for (const outcome of ['ready', 'error']) {
   test(`the installed verification panel stays busy until ${outcome}`, async t => {
     const timeouts = t.mock.timers
