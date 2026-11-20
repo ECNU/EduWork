@@ -329,7 +329,7 @@ export class ContentUpdates {
     const temporary=join(this.store,'.stage-'+randomUUID())
     try {
       const bundle=validateBundle(bytes,manifest,this.environment)
-      if(bundle.skills)await this.unchangedBundledSkills()
+      if(bundle.skills && this.source.skills)await this.unchangedBundledSkills()
       for(const [name,revision] of Object.entries(manifest.components)) {
         if(revision<this.view[name+'Revision'])throw Error('内容组件修订号不能倒退')
         const active=this.state.active[name]

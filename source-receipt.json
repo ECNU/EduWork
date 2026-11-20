@@ -5,7 +5,7 @@
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-19T15:03:53.375Z",
-  "fileSetSHA256": "8c92617f74fc327a358c5b8ef761b9f63859006736abafaf432e243865d9ae36",
+  "fileSetSHA256": "2eebe5da44053d1c816609af460c8f02fb07c33c896cd192fd532b9bfd1032f0",
   "files": [
     {
       "path": ".gitattributes",
@@ -489,11 +489,11 @@
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP_EN.md",
-      "sha256": "b5b776032f2cfb63e76e1e1b1875fe9900306f04ebdc6ab0e6cdd27885986b9d"
+      "sha256": "c4a4351f70688d1e7a7a7a1e129cfde8f4f6509eae23214db7d641f96e085f49"
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP.md",
-      "sha256": "6ea5c10914a371c1f33e365b718183a649b24dcdbaac2436a5d5cb2f244593e8"
+      "sha256": "1a94ae53d86962a008d9c591f50e88fb19d5540a10d3d12b9021128c4b25083b"
     },
     {
       "path": "docs/RELEASE.md",
@@ -1765,7 +1765,7 @@
     },
     {
       "path": "dsh-host/content-updates.mjs",
-      "sha256": "01283ec4bdac89e2c785f9058f059e10c891a2c44c29ef6c44935295ad6976d8"
+      "sha256": "9d67bd1de2e0767365d540e21ec6689e1c8d3aa3617dedf28fbdb0951d821ebd"
     },
     {
       "path": "dsh-host/desktop-log.mjs",
@@ -1833,7 +1833,7 @@
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
-      "sha256": "9158fd34a6ffb68cff08e224bbfc3dd4919f6e56a32612041dee13f7c1ec0d8b"
+      "sha256": "d8dfd3c92582c9e05a8d3a3180a1eebb0da988f513ff1d8c0070e09f43302181"
     },
     {
       "path": "dsh-host/quit-inspection.mjs",
@@ -1873,7 +1873,7 @@
     },
     {
       "path": "dsh-host/test/content-updates.test.mjs",
-      "sha256": "0103856d1174524b43fc44ec566fa5c23f7695b5c3aa71b731d861ee75227018"
+      "sha256": "2f4ae2b3c89a4afdd38163c81eb9521d2b3f9069bf551bd40924a7ab3c8bcd2c"
     },
     {
       "path": "dsh-host/test/desktop-updates.test.mjs",
@@ -1949,7 +1949,7 @@
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
-      "sha256": "455c7dfc6a050a7447d8454dddb07225468d4549dc2beb5a49d9715967032896"
+      "sha256": "cea0f565f49d55897cfaf3de286efdb4747431706dbff4f35f317fe1c106d9d0"
     },
     {
       "path": "dsh-host/test/quit-inspection.test.mjs",
