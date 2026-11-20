@@ -17,7 +17,7 @@
 
 Windows 迁移开发可手动运行 `development-desktop.yml`，选择实现分支、`platform=windows` 并勾选 `windows_installed_candidate` 或 `windows_installer_candidate`。流水线先构建并检查便携包启动，再复用同一批输入组装 `installed` 布局。勾选 `windows_installed_candidate` 时，程序与源码身份回执上传为 `windows-installed-candidate` artifact（保留 7 天）。下载后运行 `electron-candidate/EduWork-Electron.exe`，验收旧数据迁入、凭据解密和冷启动。回执将这些安装版运行验收标为未执行。
 
-勾选 `windows_installer_candidate` 时，流水线用锁定的 electron-builder 26.17.0 和 NSIS 生成按用户安装的安装器，上传为 `windows-installer-candidate` artifact（保留 7 天）。安装器默认装到 `%LOCALAPPDATA%\Programs\EduWork\<发行标识>`，数据存于 `%LOCALAPPDATA%\EduWork\<发行标识>`，默认卸载保留数据。验收可用 `installed_update_url` 指定 HTTPS 静态源；配置更新源后，artifact 另含通道文件和 `.blockmap`。
+勾选 `windows_installer_candidate` 时，流水线用锁定的 electron-builder 和 NSIS 生成按用户安装的安装器，上传为 `windows-installer-candidate` artifact（保留 7 天）。开发和正式安装器打包前均检查 electron-builder 的实装版本、本地锁定版本和锁定 DSH 提交的 `pnpm-lock.yaml` 桌面条目一致。安装器默认装到 `%LOCALAPPDATA%\Programs\EduWork\<发行标识>`，数据存于 `%LOCALAPPDATA%\EduWork\<发行标识>`，默认卸载保留数据。验收可用 `installed_update_url` 指定 HTTPS 静态源；配置更新源后，artifact 另含通道文件和 `.blockmap`。
 
 Windows 安装版使用 `electron-updater`。正式公版 Windows 构建在便携启动验收后，用同一批输入生成安装器，再在同一 Windows runner 静默按用户安装、用隔离数据目录启动并卸载。构建校验对应的通道文件（稳定版为 `latest.yml`，`-dev` 版为 `dev.yml`）是否与实际安装器一致。学校版、Mac 和日常开发构建不变。
 

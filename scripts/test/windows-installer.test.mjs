@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { desktopAppPackage, installedUpdateFeed, installedUpdateYAML } from '../../dsh-electron/scripts/assemble-windows.mjs'
-import { installerInclude, installerProject, packWindowsInstaller, verifyInstalledCandidate } from '../pack-windows-installer.mjs'
+import { installerInclude, installerProject, packWindowsInstaller, verifyElectronBuilderVersion, verifyInstalledCandidate } from '../pack-windows-installer.mjs'
 
 const version = '0.4.13-dev.20261116.1'
 const desktop = {
@@ -15,6 +15,27 @@ const desktop = {
 const release = { schemaVersion: 1, shell: 'electron', version, distribution: 'eduwork', productName: 'EduWork' }
 const receipt = { kind: 'eduwork-windows-installed-candidate', version, distribution: 'eduwork', coreCommit: 'a'.repeat(40), checks: { installedAssembly: 'passed' } }
 const valid = { desktop, release, receipt, appPackage: { version }, executableExists: true }
+
+test('electron-builder must match the resolved version in the DSH desktop importer', () => {
+  const upstreamLock = `
+importers:
+  apps/desktop:
+    devDependencies:
+      electron-builder:
+        specifier: ^26.17.0
+        version: 26.18.0(electron-builder-squirrel-windows@26.18.0)(supports-color@9.4.0)
+  apps/other:
+    devDependencies:
+      electron-builder:
+        specifier: ^26.17.0
+        version: 26.17.0
+`
+  assert.doesNotThrow(() => verifyElectronBuilderVersion(upstreamLock, '26.18.0'))
+  assert.throws(() => verifyElectronBuilderVersion(upstreamLock, '26.17.0'), /EduWork.*26\.17\.0.*DSH.*26\.18\.0/)
+  assert.throws(() => verifyElectronBuilderVersion(upstreamLock.replace('apps/desktop', 'apps/web'), '26.17.0'), /apps\/desktop.*missing/)
+  assert.throws(() => verifyElectronBuilderVersion(upstreamLock.replace(/26\.18\.0\(.*\)/, '26.18.0('), '26.18.0'), /apps\/desktop.*invalid/)
+  assert.throws(() => verifyElectronBuilderVersion(upstreamLock.replace(/26\.18\.0\(.*\)/, '26.17.0(supports-color@)'), '26.17.0'), /apps\/desktop.*invalid/)
+})
 
 test('installed update metadata uses the same GitHub repository as the installer', () => {
   const updates = { provider: 'github', repository: 'ecnu/EduWork' }

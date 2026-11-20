@@ -135,7 +135,7 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source' 
     stage({
       name: 'installer',
       description: 'Build and accept public Windows installer',
-      requires: ['accept'],
+      requires: ['accept', 'upstream'],
       outputs: ['installer'],
       inputs: workspace => ({ version: workspace.parameters.version, edition: workspace.parameters.edition, development: workspace.parameters.development }),
       run: async workspace => {
@@ -336,10 +336,9 @@ async function buildAndAcceptPublicInstaller({ workspace, coreRoot }) {
   const builderRoot = join(coreRoot, 'scripts/electron-builder')
   await runBundledCli('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: builderRoot })
   const builder = join(builderRoot, 'node_modules/electron-builder/cli.js')
-  const builderVersion = await runNode(builder, ['--version'], { capture: true })
-  if (builderVersion.stdout !== '26.17.0') throw new Error('electron-builder version differs from its lockfile')
   if ((await readJSON(join(builderRoot, 'node_modules/js-yaml/package.json'))).version !== '4.3.2') throw new Error('js-yaml version differs from its lockfile')
-  const { packWindowsInstaller } = await import('../pack-windows-installer.mjs')
+  const { packWindowsInstaller, verifyElectronBuilderLock } = await import('../pack-windows-installer.mjs')
+  await verifyElectronBuilderLock(workspace.resolvePath('upstream'), builder)
   const packed = await packWindowsInstaller({ candidate, output, installedReceipt, electronBuilderCli: builder,
     icon: join(coreRoot, 'assets/eduwork/icon.ico') })
 

@@ -190,9 +190,7 @@ jobs:
       - name: Install the locked electron-builder
         if: matrix.script == 'windows' && inputs.windows_installer_candidate
         shell: bash
-        run: |
-          npm ci --ignore-scripts --no-audit --no-fund --prefix core/scripts/electron-builder
-          node core/scripts/electron-builder/node_modules/electron-builder/cli.js --version
+        run: npm ci --ignore-scripts --no-audit --no-fund --prefix core/scripts/electron-builder
       - name: Test installer packaging contracts
         if: matrix.script == 'windows' && inputs.windows_installer_candidate
         shell: bash
@@ -205,6 +203,7 @@ jobs:
             --candidate "$RUNNER_TEMP/ew-installed/electron-candidate" \
             --installed-receipt "$RUNNER_TEMP/ew-installed/installed-candidate-receipt.json" \
             --output "$RUNNER_TEMP/ew-installer" \
+            --upstream "$RUNNER_TEMP/ew-development/upstream" \
             --electron-builder-cli "$GITHUB_WORKSPACE/core/scripts/electron-builder/node_modules/electron-builder/cli.js" \
             --icon "$GITHUB_WORKSPACE/core/assets/eduwork/icon.ico"
       - name: Retain Windows installer candidate

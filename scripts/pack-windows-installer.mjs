@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { installedUpdateCacheDirName, installedUpdateFeed, installedUpdateYAML, installerPackageName } from '../dsh-electron/scripts/assemble-windows.mjs'
-import { ensureDir, fullPath, isFile, isMainModule, pathExists, readJSON, runNode, writeJSON } from './lib/build-util.mjs'
+import { capture, ensureDir, fullPath, isFile, isMainModule, pathExists, readJSON, runNode, writeJSON } from './lib/build-util.mjs'
 
 const EXECUTABLE = 'EduWork-Electron.exe'
 const BUILDER_ROOT = join(dirname(fileURLToPath(import.meta.url)), 'electron-builder')
@@ -17,6 +17,27 @@ const requireBuilder = createRequire(join(BUILDER_ROOT, 'package.json'))
 
 function requireMatch(condition, message) {
   if (!condition) throw new Error(message)
+}
+
+export function verifyElectronBuilderVersion(upstreamLock, localVersion) {
+  const lock = requireBuilder('js-yaml').load(upstreamLock)
+  const resolved = lock?.importers?.['apps/desktop']?.devDependencies?.['electron-builder']?.version
+  requireMatch(typeof resolved === 'string' && resolved, 'DSH apps/desktop resolved electron-builder version is missing from pnpm-lock.yaml')
+  const upstreamVersion = resolved.match(/^(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)(?:\((?:@[^@/()\s]+\/)?[^@/()\s]+@[^()\s]+\))*$/)?.[1]
+  requireMatch(upstreamVersion, 'DSH apps/desktop resolved electron-builder version is invalid in pnpm-lock.yaml')
+  requireMatch(localVersion === upstreamVersion, `electron-builder version mismatch: EduWork locks ${localVersion}, DSH locks ${upstreamVersion}`)
+}
+
+export async function verifyElectronBuilderLock(upstream, electronBuilderCli) {
+  const coreRoot = join(BUILDER_ROOT, '../..')
+  const { sourceLock } = await readJSON(join(coreRoot, 'config/desktop-build.json'))
+  const { commit } = await readJSON(join(coreRoot, sourceLock))
+  const lock = await capture('git', ['-C', fullPath(upstream), 'show', `${commit}:pnpm-lock.yaml`])
+  const { dependencies } = await readJSON(join(BUILDER_ROOT, 'package.json'))
+  const expected = dependencies['electron-builder']
+  verifyElectronBuilderVersion(lock, expected)
+  const installed = (await runNode(electronBuilderCli, ['--version'], { capture: true })).stdout
+  requireMatch(installed === expected, `electron-builder version differs from its lockfile: installed ${installed}, EduWork locks ${expected}`)
 }
 
 export function verifyInstalledCandidate({ desktop, release, receipt, appPackage, executableExists }) {
@@ -212,11 +233,12 @@ export async function packWindowsInstaller({ candidate, output, installedReceipt
 if (isMainModule(import.meta.url)) {
   const { values } = parseArgs({ options: {
     candidate: { type: 'string' }, output: { type: 'string' }, 'installed-receipt': { type: 'string' },
-    'electron-builder-cli': { type: 'string' }, icon: { type: 'string' },
+    'electron-builder-cli': { type: 'string' }, icon: { type: 'string' }, upstream: { type: 'string' },
   } })
-  if (!values.candidate || !values.output || !values['installed-receipt'] || !values['electron-builder-cli'] || !values.icon) {
-    throw new Error('Use --candidate <installed candidate root> --installed-receipt <json> --output <new directory> --electron-builder-cli <cli.js> --icon <icon.ico>')
+  if (!values.candidate || !values.output || !values['installed-receipt'] || !values['electron-builder-cli'] || !values.icon || !values.upstream) {
+    throw new Error('Use --candidate <installed candidate root> --installed-receipt <json> --output <new directory> --electron-builder-cli <cli.js> --icon <icon.ico> --upstream <pinned DSH checkout>')
   }
+  await verifyElectronBuilderLock(values.upstream, values['electron-builder-cli'])
   await packWindowsInstaller({
     candidate: values.candidate,
     output: values.output,

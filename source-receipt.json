@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-20T07:12:00.687Z",
-  "fileSetSHA256": "da416b47c38d60b5e80461ee5176e490fd87edc03b607b48443aa2848cea1034",
+  "createdAt": "2026-11-20T08:36:32.161Z",
+  "fileSetSHA256": "0ded607e979cb24a8902e6491f778b3d0a37dc9f6cc04d284598dea0ba58ed3b",
   "files": [
     {
       "path": ".gitattributes",
@@ -29,7 +29,7 @@
     },
     {
       "path": ".github/workflows/development-desktop.yml",
-      "sha256": "9b35f5198d890b03c503dfa4389f85be67a2b4652fc07f167161528863d4dd82"
+      "sha256": "cea470c0e22c9ffb005ee46daf5f0ebdcf21c0b4df6f68d87301361fc7b4c8ae"
     },
     {
       "path": ".github/workflows/packages-release.yml",
@@ -237,7 +237,7 @@
     },
     {
       "path": "docs/assets/build-pipeline-windows.json",
-      "sha256": "fad928420e92079cb3027e94977f1aab7276ada45a2c2cd41ff1eb5117b797d6"
+      "sha256": "0ad5e817a1e2a9c2b98d0ad58823247a2a3fab1c24162698e5a95ba7f60e0ae6"
     },
     {
       "path": "docs/assets/build-pipeline.drawio",
@@ -253,7 +253,7 @@
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "b9c165c593e7559f876c8dc2f72d6692290b70144dd1626dc6b659c9c3d851cb"
+      "sha256": "3e888cd881090da646ca8e8f617814df23f25cb778980a7a837e03a2062f6f6e"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -7773,7 +7773,7 @@
     },
     {
       "path": "scripts/lib/windows-stages.mjs",
-      "sha256": "98beb68f13c9509ac1b1aeefeab3f71fc0af6ed36583bb1fd536b6c9b8e64c35"
+      "sha256": "a97b32bad1d5342393e900c8405dee049fd7ed8b3bf8070143259930dd734479"
     },
     {
       "path": "scripts/lib/zip.mjs",
@@ -7857,7 +7857,7 @@
     },
     {
       "path": "scripts/pack-windows-installer.mjs",
-      "sha256": "c6ecda3b12a5aa7de2af0c63a7754abf75041133b2fb96c7217802ea8e8d3706"
+      "sha256": "b816137a118b2e63b4f9a908ace9054adfa271f6b30651210be97e1e48fc6c2f"
     },
     {
       "path": "scripts/pack-windows-release.mjs",
@@ -8217,7 +8217,7 @@
     },
     {
       "path": "scripts/test/windows-installer.test.mjs",
-      "sha256": "bd72e2063037fa5f6e1dafa503c70ee13e45a8efba54a9f6547a9edcc61a2719"
+      "sha256": "db60e82cc6352d5938b1bc1a485362cc5317925b249e43c9d8a9f71607aa6d71"
     },
     {
       "path": "scripts/test/windows-update-delta.test.mjs",

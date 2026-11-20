@@ -269,7 +269,8 @@
       "name": "installer",
       "description": "Build and accept public Windows installer",
       "requires": [
-        "accept"
+        "accept",
+        "upstream"
       ],
       "dependsOn": [],
       "outputs": [
