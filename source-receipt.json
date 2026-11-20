@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-20T06:24:52.882Z",
-  "fileSetSHA256": "ef7a797637ffab1f7595a134ddcb4dc9e98e9d31347d3544baacd339d92d01d4",
+  "createdAt": "2026-11-20T07:12:00.687Z",
+  "fileSetSHA256": "da416b47c38d60b5e80461ee5176e490fd87edc03b607b48443aa2848cea1034",
   "files": [
     {
       "path": ".gitattributes",
@@ -77,7 +77,7 @@
     },
     {
       "path": "AGENTS.md",
-      "sha256": "54cf301aadcebd1d6fd738e26ae0cbec603cf99aa92378a9394c0ef989475466"
+      "sha256": "80672c8b63365394cdb44dc3cfc8de89746eb91f498e0c9f17aaeb86d977a7ca"
     },
     {
       "path": "assets/eduwork/dock-blue-1024.png",
@@ -605,7 +605,7 @@
     },
     {
       "path": "docs/UPDATES.md",
-      "sha256": "6781e055d996a401416e2d243a56474f035c723054c9302a6295f9b9f148f4d2"
+      "sha256": "14d51186ecc2f68d55cb8e77c67d48a0f85d231015263809d53fede8fddfd88b"
     },
     {
       "path": "docs/USER_GUIDE.md",

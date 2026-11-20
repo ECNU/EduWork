@@ -114,7 +114,7 @@ eduwork/
 
 ## 开发包与公测包的默认渠道
 
-以下为 Windows 便携包的默认渠道规则。两种 Windows 便携装配脚本都接受 `-UpdateDefaultPolicy development|stable`。省略时，`X.Y.Z-dev.YYYYMMDD.N` 默认开发渠道，`X.Y.Z` 默认仅公测版。清单 URL 中的 `/stable/` 只定位更新源，不能反过来把开发包的默认偏好改成公测。
+装配 Windows Electron 便携包时，PowerShell 入口 `dsh-electron/scripts/assemble-windows.ps1` 使用 `-UpdateDefaultPolicy development|stable`，Node 入口 `dsh-electron/scripts/assemble-windows.mjs` 使用 `--update-default-policy development|stable`。省略时，`X.Y.Z-dev.YYYYMMDD.N` 默认开发渠道，`X.Y.Z` 默认仅公测版。清单 URL 中的 `/stable/` 只定位更新源，不能反过来把开发包的默认偏好改成公测。
 
 旧 Go 过渡包曾将随包默认值写入 `eduwork.desktop.json` 和 `config/update.bridge.json`。Electron 将默认值写在 `resources/app/eduwork.desktop.json` 的 `updates.defaultPolicy`；发行方也可在 `config/eduwork.jsonc` 配置该项。
 
