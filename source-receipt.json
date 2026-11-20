@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-20T17:11:11.344Z",
-  "fileSetSHA256": "117ffd3f6d00abd5592f76962be3d302d30a7d0fba93b2419b83db528381cc17",
+  "createdAt": "2026-11-20T18:00:03.235Z",
+  "fileSetSHA256": "5da74bc50c9cf2e4bf2777ffca628adf075e77f65671565664cf7ce89102c631",
   "files": [
     {
       "path": ".gitattributes",
@@ -3497,7 +3497,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/src/updates.ts",
-      "sha256": "1296cfd36acb124e74ffa0bdfb9dfec1b8f3ae41c4730f5482f470c156e3511e"
+      "sha256": "94923657f7f83512aedc5daf193d22efe8456fdc3717f5c0ba9be5e5bade684d"
     },
     {
       "path": "dsh-plugins/workbench-native/test/build-client.test.mjs",
@@ -3553,7 +3553,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/test/updates.test.mjs",
-      "sha256": "91d2a696e1b549371491abd7a684ec67146825bb1e56eeb298c43f100b0ee8e2"
+      "sha256": "386bb9543b32e8d7bc8c83897bcc8d08a2d6afc4b40b75c5a24521e777c7c9c4"
     },
     {
       "path": "dsh-plugins/workbench-native/tsconfig.json",
