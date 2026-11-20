@@ -317,13 +317,6 @@ async function applyWorkspaceRemap({ stage, namespace, moves }) {
   return applied
 }
 
-async function volumeOf(path) {
-  for (let current = resolve(path); ; current = dirname(current)) {
-    if (await exists(current)) return current
-    if (dirname(current) === current) throw Error('找不到目标所在的磁盘')
-  }
-}
-
 function importOwnerExited(pid) {
   if (!Number.isInteger(pid) || pid <= 0 || pid > 0x7fffffff) return false
   try { process.kill(pid, 0); return false }
@@ -332,7 +325,7 @@ function importOwnerExited(pid) {
 
 async function reclaimImportStages(target, distribution, prefix) {
   const parent = dirname(target)
-  for (const entry of await readdir(parent, { withFileTypes: true })) {
+  for (const entry of await readdir(parent, { withFileTypes: true }).catch(() => [])) {
     const { name } = entry
     if (!entry.isDirectory() || !name.startsWith(prefix) || !/^[0-9a-f-]{36}$/.test(name.slice(prefix.length))) continue
     const stage = join(parent, name), progress = join(stage, '.eduwork-import-progress.json')
@@ -378,12 +371,13 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
   }
   const plan = await buildCopyPlan(source, target)
   const totalBytes = plan.files.reduce((sum, file) => sum + file.bytes, 0)
-  const volume = await freeSpace(await volumeOf(dirname(target)))
-  if (volume.bavail * volume.bsize < totalBytes * 1.1) throw Error('目标磁盘空间不足，未开始复制；旧目录保持原样')
-  await mkdir(dirname(target), { recursive: true })
+  const parent = dirname(target)
+  await mkdir(parent, { recursive: true })
   const prefix = `.eduwork-import-${digest(JSON.stringify([distribution, target])).slice(0, 16)}-`
   await reclaimImportStages(target, distribution, prefix)
-  const stageName = `${prefix}${randomUUID()}`, stage = join(dirname(target), stageName)
+  const volume = await freeSpace(parent)
+  if (volume.bavail * volume.bsize < totalBytes * 1.1) throw Error('目标磁盘空间不足，未开始复制；旧目录保持原样')
+  const stageName = `${prefix}${randomUUID()}`, stage = join(parent, stageName)
   await mkdir(stage)
   const progressFile = join(stage, '.eduwork-import-progress.json')
   const progress = { schemaVersion: 1, state: 'copying', target, distribution, stage: stageName,

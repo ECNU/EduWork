@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs, { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink, lstat } from 'node:fs/promises'
 import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
-import { join, sep } from 'node:path'
+import { basename, dirname, join, sep } from 'node:path'
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
@@ -347,7 +347,7 @@ test('running source processes block the import', async () => {
   } finally { await rm(base, { recursive: true, force: true }) }
 })
 
-test('retry reclaims only confirmed interrupted stages for the current target', async () => {
+test('retry reclaims only confirmed interrupted stages before checking disk space', async () => {
   const { base, source, target } = await fixture()
   try {
     const child = spawn(process.execPath, ['-e', ''])
@@ -373,12 +373,38 @@ test('retry reclaims only confirmed interrupted stages for the current target', 
     await writeFile(join(legacy, 'partial.txt'), 'partial')
     const preserved = [otherEdition, otherActive, active, wrongOwner, legacy]
     const before = await Promise.all(preserved.map(treeSnapshot))
-    const receipt = await run({ sourceRoot: source, targetRoot: target })
+    const receipt = await run({ sourceRoot: source, targetRoot: target, freeSpace: async () => {
+      return (await readdir(base)).includes(basename(orphan)) ? { bavail: 0, bsize: 4096 } : ampleSpace()
+    } })
     assert.equal(receipt.state, 'imported')
     await assert.rejects(lstat(orphan), { code: 'ENOENT' })
     assert.deepEqual(await Promise.all(preserved.map(treeSnapshot)), before)
   } finally { await rm(base, { recursive: true, force: true }) }
 })
+
+for (const canCreateStage of [true, false]) {
+  test(`an unlistable target parent ${canCreateStage ? 'permits import' : 'reports the stage creation error'}`, async t => {
+    const { base, source, target } = await fixture()
+    try {
+      const leftover = join(base, '.eduwork-import-leftover')
+      await mkdir(leftover)
+      const readDir = fs.readdir
+      const deniedList = Object.assign(Error('cannot list target parent'), { code: 'EACCES', syscall: 'scandir' })
+      mockFs(t, 'readdir', (path, options) => path === base ? Promise.reject(deniedList) : readDir(path, options))
+      if (canCreateStage) {
+        assert.equal((await run({ sourceRoot: source, targetRoot: target })).state, 'imported')
+      } else {
+        const makeDir = fs.mkdir
+        const deniedCreate = Object.assign(Error('cannot create import stage'), { code: 'EACCES', syscall: 'mkdir' })
+        mockFs(t, 'mkdir', (path, options) => dirname(path) === base && basename(path).startsWith('.eduwork-import-')
+          ? Promise.reject(deniedCreate) : makeDir(path, options))
+        await assert.rejects(run({ sourceRoot: source, targetRoot: target }), error => error === deniedCreate)
+        await assert.rejects(lstat(target), { code: 'ENOENT' })
+      }
+      assert.ok((await lstat(leftover)).isDirectory())
+    } finally { await rm(base, { recursive: true, force: true }) }
+  })
+}
 
 test('targets that differ only by case have distinct stage prefixes and cannot reclaim each other', async () => {
   const { base, source, target } = await fixture()
