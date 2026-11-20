@@ -197,6 +197,19 @@ test('source and target must be separate, and link paths are refused', async t =
   } finally { await rm(base, { recursive: true, force: true }) }
 })
 
+for (const relativeDir of ['data/eduwork-electron', 'data/eduwork-electron/dsh/profiles/desktop-017', 'config', 'resources/app']) {
+  test(`an intermediate junction at ${relativeDir} prevents activation`, async () => {
+    const { base, source, target } = await fixture()
+    try {
+      const path = join(source, relativeDir), outside = join(base, 'outside')
+      await rename(path, outside)
+      await symlink(outside, path, 'junction')
+      await assert.rejects(run({ sourceRoot: source, targetRoot: target }), /链接|越界/)
+      await assert.rejects(lstat(target), { code: 'ENOENT' })
+    } finally { await rm(base, { recursive: true, force: true }) }
+  })
+}
+
 test('a source still being written aborts before activation and keeps the source intact', async () => {
   const { base, source, target } = await fixture()
   try {

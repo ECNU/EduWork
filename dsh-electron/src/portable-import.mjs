@@ -37,6 +37,25 @@ async function assertNoLinks(path) {
   }
 }
 
+async function sourceEntry(root, path) {
+  if (!within(root, path)) throw Error('旧数据路径越界')
+  let current = root, info = await exists(root)
+  for (const part of relative(root, path).split(sep)) {
+    if (info?.isSymbolicLink()) throw Error('旧数据包含链接，拒绝复制；请改用真实目录')
+    if (!info) return null
+    current = join(current, part)
+    info = await exists(current)
+  }
+  if (info?.isSymbolicLink()) throw Error('旧数据包含链接，拒绝复制；请改用真实目录')
+  if (info && !within(root, await realpath(path))) throw Error('旧数据路径越界')
+  return info
+}
+
+function requireSourceFile(info) {
+  if (!info?.isFile()) throw Error('旧数据包含非常规文件条目')
+  return info
+}
+
 // Mirrors the runtime's projectKey (dsh-session-persistence-jsonl): separator
 // runs collapse to '-', unsafe characters become ~XXXX, wrapped in '--'.
 export function sessionProjectKey(cwd) {
@@ -55,9 +74,12 @@ export async function inspectPortableSource({ sourceRoot, distribution }) {
   if (!sourceRoot || !isAbsolute(sourceRoot)) throw Error('旧客户端目录必须是绝对路径')
   const root = await canonical(sourceRoot)
   await assertNoLinks(sourceRoot)
-  const readIdentity = async (path, missing) => JSON.parse(await readFile(path, 'utf8').catch(error => {
-    if (error.code === 'ENOENT') throw Error(missing); throw error
-  }))
+  const readIdentity = async (path, missing) => {
+    const info = await sourceEntry(root, path)
+    if (!info) throw Error(missing)
+    requireSourceFile(info)
+    return JSON.parse(await readFile(path, 'utf8'))
+  }
   const release = await readIdentity(join(root, 'release.json'), '所选目录不是 EduWork 便携客户端（缺少 release.json）')
   const desktop = await readIdentity(join(root, 'resources/app/eduwork.desktop.json'), '所选目录不是 EduWork Electron 便携客户端')
   if (release.shell !== 'electron' || desktop.shell !== 'electron') throw Error('所选目录不是 Electron 版客户端，旧 Wails 数据请走原有迁移入口')
@@ -65,7 +87,7 @@ export async function inspectPortableSource({ sourceRoot, distribution }) {
   if (release.distribution !== distribution || desktop.distribution !== distribution) throw Error(`发行标识不符：所选目录属于 ${release.distribution}，当前版本为 ${distribution}`)
   const dataRoot = join(root, 'data', `${distribution}-electron`)
   const home = join(dataRoot, 'dsh')
-  if (!(await exists(home))?.isDirectory()) throw Error('所选目录没有用户数据（data 下缺少 dsh 主目录）')
+  if (!(await sourceEntry(root, home))?.isDirectory()) throw Error('所选目录没有用户数据（data 下缺少 dsh 主目录）')
   return { root, version: release.version, dshVersion: release.dshVersion, dataRoot, home, browser: join(dataRoot, 'browser'), config: join(root, 'config/eduwork.jsonc') }
 }
 
@@ -116,7 +138,9 @@ async function walkTree(base, rel, visit) {
 
 async function readRegistry(source) {
   const path = join(source.home, 'storages/workspace.json')
-  if (!(await exists(path))) return null
+  const info = await sourceEntry(source.root, path)
+  if (!info) return null
+  requireSourceFile(info)
   return JSON.parse(await readFile(path, 'utf8'))
 }
 
@@ -146,7 +170,12 @@ export async function buildCopyPlan(source, target) {
   const addTree = async (base, targetPrefix, rel = '') => walkTree(base, rel, entry => {
     files.push({ sourcePath: join(base, entry.rel), target: join(targetPrefix, entry.rel), bytes: entry.bytes, sha256: entry.sha256 })
   })
+  const addFile = async (path, target) => {
+    const info = await sourceEntry(source.root, path)
+    if (info) files.push({ sourcePath: path, target, bytes: requireSourceFile(info).size, sha256: await fileDigest(path) })
+  }
   const namespace = basename(source.dataRoot)
+  if (!(await sourceEntry(source.root, source.home))?.isDirectory()) throw Error('旧目录缺少 dsh 主目录')
   for (const name of (await readdir(source.home)).sort()) {
     if (dshRetained.has(name)) await addTree(source.home, join('data', namespace, 'dsh'), name)
     else if (name === 'profiles') {
@@ -154,30 +183,31 @@ export async function buildCopyPlan(source, target) {
       // first boot. The lockfile stays behind: pnpm records link: dependencies
       // relative to the profile directory, so a copied lockfile builds broken
       // links after the move; a repair install regenerates it from package.json.
-      for (const profile of (await readdir(join(source.home, 'profiles'))).sort()) {
+      const profiles = join(source.home, 'profiles')
+      await sourceEntry(source.root, profiles)
+      for (const profile of (await readdir(profiles)).sort()) {
         for (const file of ['cordis.patch.yml', 'package.json', 'pnpm-workspace.yaml']) {
-          const path = join(source.home, 'profiles', profile, file)
-          if (await exists(path)) files.push({ sourcePath: path, target: join('data', namespace, 'dsh/profiles', profile, file), bytes: (await lstat(path)).size, sha256: await fileDigest(path) })
+          await addFile(join(profiles, profile, file), join('data', namespace, 'dsh/profiles', profile, file))
         }
       }
     }
   }
-  if ((await exists(source.browser))?.isDirectory()) {
+  if ((await sourceEntry(source.root, source.browser))?.isDirectory()) {
     for (const name of (await readdir(source.browser)).sort()) {
       if (!browserSkipped.has(name)) await addTree(source.browser, join('data', namespace, 'browser'), name)
     }
   }
-  if ((await exists(source.config))?.isFile()) files.push({ sourcePath: source.config, target: 'config/eduwork.jsonc', bytes: (await lstat(source.config)).size, sha256: await fileDigest(source.config) })
+  await addFile(source.config, 'config/eduwork.jsonc')
   const dataDir = join(source.root, 'data')
   // software-update-preferences.json is the user's on/off choice;
   // update-preferences.json only records the channel and cannot replace it.
   for (const rel of ['configuration/state.json', 'configuration/eduwork.previous.jsonc', 'state/update-preferences.json', 'state/update-channel-040.json', 'state/software-update-preferences.json']) {
-    if (await exists(join(dataDir, rel))) await addTree(dataDir, 'data', rel)
+    await addFile(join(dataDir, rel), join('data', rel))
   }
   const moves = await planWorkspaceMoves({ registry: await readRegistry(source), source, target })
   for (const move of moves) {
     const real = await canonical(move.oldPath)
-    if (!(await exists(real))?.isDirectory()) { move.missing = true; continue }
+    if (!(await sourceEntry(source.root, real))?.isDirectory()) { move.missing = true; continue }
     await walkTree(real, '', entry => files.push({ sourcePath: join(real, entry.rel), target: join('workspaces', basename(move.newPath), entry.rel), bytes: entry.bytes, sha256: entry.sha256 }))
   }
   files.sort((a, b) => a.target < b.target ? -1 : a.target > b.target ? 1 : 0)
@@ -335,6 +365,9 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
     for (let i = 0; i < plan.files.length; i++) {
       const file = plan.files[i], destination = join(stage, file.target)
       await mkdir(dirname(destination), { recursive: true })
+      const info = await sourceEntry(source.root, file.sourcePath)
+      if (!info) throw Error('旧数据仍在被写入，已放弃启用目标；旧目录保持原样')
+      requireSourceFile(info)
       await copyFile(file.sourcePath, destination)
       if (await fileDigest(destination) !== file.sha256) throw Error('复制校验失败：旧数据可能仍在被写入；旧目录保持原样')
       if (i % 32 === 0 || i === plan.files.length - 1) {
