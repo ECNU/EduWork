@@ -12,10 +12,10 @@ const row={display:'flex',alignItems:'flex-start',justifyContent:'space-between'
 // One native state and one poller serve the footer, modal and settings. Closing
 // settings or the modal never stops a native download or loses its progress.
 export function createUpdateController(service) {
- let view={status:null as any,open:false,statusError:'',error:'',working:''},timer:any,stopped=false,reading=false
+ let view={status:null as any,open:false,statusError:'',error:'',working:''},timer:any,stopped=false,reading=false,readSequence=0
  const listeners=new Set<()=>void>()
  const publish=patch=>{view={...view,...patch};listeners.forEach(fn=>fn())}
- const read=async()=>{if(stopped||reading)return;reading=true;try{publish({status:await service('status'),statusError:''})}catch(e){publish({statusError:`无法读取更新状态：${e?.message||String(e)}`})}finally{reading=false}}
+ const read=async()=>{if(stopped||reading)return;reading=true;const sequence=++readSequence;let timeout:any;try{const status=await Promise.race([service('status'),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('读取更新状态超时（10 秒）')),10_000)})]);if(sequence===readSequence)publish({status,statusError:''})}catch(e){if(sequence===readSequence)publish({statusError:`无法读取更新状态：${e?.message||String(e)}`})}finally{clearTimeout(timeout);if(sequence===readSequence)reading=false}}
  const poll=async()=>{await read();if(!stopped)timer=setTimeout(poll,!view.statusError&&[view.status?.update?.state,view.status?.contentUpdate?.state].some(state=>['checking','downloading','verifying','applying'].includes(state))?350:2500)}
  const run=async(action)=>{
   if(view.working)return
