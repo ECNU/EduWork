@@ -373,6 +373,21 @@ test('macOS signed content uses external state and validates the packaged Skill 
   assert.match(manager.snapshot().message,/本地修改/)
 })
 
+test('configuration can update while Skills are opted out and locally edited', async t => {
+  const f = await fixture(t, { skills: false })
+  const local = join(f.product, 'skills/example/SKILL.md')
+  await writeFile(local, 'local edit')
+  f.release(1, { configuration: 1, skills: 1 }, { schemaVersion: 1, configuration: { features: { visionFallback: true } }, skills: skill() })
+  const manager = await f.open()
+  assert.equal((await manager.check()).state, 'available')
+  assert.equal((await manager.download()).state, 'ready')
+  const prepared = await manager.prepare()
+  assert.equal(prepared.configurationRevision, 1)
+  assert.equal(prepared.skillRoot, undefined)
+  await manager.ready()
+  assert.equal(await readFile(local, 'utf8'), 'local edit')
+})
+
 test('invalid signature, digest, dependencies and forbidden config never change installed content',async t=>{
   const f=await fixture(t),manager=await f.open()
   const offer=f.release(1)

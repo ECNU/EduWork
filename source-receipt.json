@@ -5,7 +5,7 @@
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-19T15:03:53.375Z",
-  "fileSetSHA256": "4e2f3ba9fb07c87b405106795af41e56282e8af2215b733166b555dc13d07ff9",
+  "fileSetSHA256": "2eebe5da44053d1c816609af460c8f02fb07c33c896cd192fd532b9bfd1032f0",
   "files": [
     {
       "path": ".gitattributes",
@@ -1765,7 +1765,7 @@
     },
     {
       "path": "dsh-host/content-updates.mjs",
-      "sha256": "01283ec4bdac89e2c785f9058f059e10c891a2c44c29ef6c44935295ad6976d8"
+      "sha256": "9d67bd1de2e0767365d540e21ec6689e1c8d3aa3617dedf28fbdb0951d821ebd"
     },
     {
       "path": "dsh-host/desktop-log.mjs",
@@ -1873,7 +1873,7 @@
     },
     {
       "path": "dsh-host/test/content-updates.test.mjs",
-      "sha256": "0103856d1174524b43fc44ec566fa5c23f7695b5c3aa71b731d861ee75227018"
+      "sha256": "2f4ae2b3c89a4afdd38163c81eb9521d2b3f9069bf551bd40924a7ab3c8bcd2c"
     },
     {
       "path": "dsh-host/test/desktop-updates.test.mjs",
