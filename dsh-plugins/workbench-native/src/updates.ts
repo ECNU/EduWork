@@ -16,7 +16,7 @@ export function createUpdateController(service) {
  const listeners=new Set<()=>void>()
  const publish=patch=>{view={...view,...patch};listeners.forEach(fn=>fn())}
  const read=async()=>{if(stopped||reading)return;reading=true;try{publish({status:await service('status')})}catch(e){publish({error:e.message})}finally{reading=false}}
- const poll=async()=>{await read();if(!stopped)timer=setTimeout(poll,[view.status?.update?.state,view.status?.contentUpdate?.state].some(state=>['checking','downloading','applying'].includes(state))?350:2500)}
+ const poll=async()=>{await read();if(!stopped)timer=setTimeout(poll,[view.status?.update?.state,view.status?.contentUpdate?.state].some(state=>['checking','downloading','verifying','applying'].includes(state))?350:2500)}
  const run=async(action)=>{
   if(view.working)return
   const started=Date.now(),working=action==='check-updates'?'checking':action==='download-update'?'downloading':action.startsWith('use-')?'switching':action.includes('software-updates')?'settings':''
@@ -27,7 +27,8 @@ export function createUpdateController(service) {
  void poll()
  const open=()=>{publish({open:true});if(!['downloading','ready'].includes(view.status?.contentUpdate?.state)&&(!view.status?.update||['idle','installed','up_to_date','current','error'].includes(view.status.update.state)))void run('check-updates')}
  const event=()=>open();window.addEventListener('eduwork:open-updates',event)
- return {subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)},getSnapshot:()=>view,run,open,close:()=>publish({open:false}),dispose:()=>{stopped=true;clearTimeout(timer);window.removeEventListener('eduwork:open-updates',event)}}
+ const close=()=>{if(view.status?.update?.state!=='verifying')publish({open:false})}
+ return {subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)},getSnapshot:()=>view,run,open,close,dispose:()=>{stopped=true;clearTimeout(timer);window.removeEventListener('eduwork:open-updates',event)}}
 }
 function useUpdates(controller){return useSyncExternalStore(controller.subscribe,controller.getSnapshot,controller.getSnapshot)}
 const percent=s=>s?.downloadStage==='verifying'?(s.totalFiles>0?Math.min(100,Math.floor(s.checkedFiles/s.totalFiles*100)):0):s?.totalBytes>0?Math.min(100,Math.floor(s.downloadedBytes/s.totalBytes*100)):0
@@ -48,18 +49,19 @@ function ContentPanel({controller,content:c,working}) {
   c.state==='ready'&&h('p',{style:note},'可以继续使用；重启前请先完成正在运行的任务。'))
 }
 export function UpdatePanel({controller}) {
- const {status,error,working}=useUpdates(controller),s=status?.update,c=status?.contentUpdate,state=working||s?.state||status?.phase
- const busy=['checking','downloading','applying','switching','settings'].includes(state)
+ const {status,error,working}=useUpdates(controller),s=status?.update,c=status?.contentUpdate
+ const verifyingPackage=s?.state==='verifying',state=verifyingPackage?'verifying':working||s?.state||status?.phase
+ const busy=['checking','downloading','verifying','applying','switching','settings'].includes(state)
  const enabled=status&&status.shell!=='web'&&(s?.enabled!==false||c?.enabled)
  const softwareEnabled=s?.userEnabled??s?.enabled
- const toggleLocked=Boolean(working)||s?.busy||s?.installOnQuit||s?.installOnNextStart||['checking','downloading','ready','applying'].includes(s?.state)
+ const toggleLocked=Boolean(working)||s?.busy||s?.installOnQuit||s?.installOnNextStart||['checking','downloading','verifying','ready','applying'].includes(s?.state)
  const policy=s?.policy||c?.policy||'stable',locked=busy||state==='ready'||s?.busy||['checking','downloading','ready'].includes(c?.state)
  const channels=[['stable','仅公测版'],['development','开发版']].filter(([value])=>!s?.policies||s.policies.includes(value))
  const setPolicy=async value=>{if(locked||value===policy)return;await controller.run(value==='development'?'use-development-updates':'use-stable-updates');await controller.run('check-updates')}
  // A Windows delta checks the installed files it reuses before it is ready.
  const verifying=state==='downloading'&&s?.downloadStage==='verifying'
  const progress=percent(s),determinate=verifying?s.totalFiles>0:state==='downloading'&&s?.downloadStage!=='extracting'&&s?.totalBytes>0
- const message=state==='available'?`发现新版本 ${s.latestVersion}`:verifying?'正在校验本机文件':state==='downloading'?`${s.downloadStage==='extracting'?'正在准备安装':'正在下载'} ${s.latestVersion}`:state==='checking'?'正在检查更新…':state==='switching'?'正在切换更新渠道…':state==='applying'?'正在退出并安装更新…':state==='installed'?'更新已完成':state==='up_to_date'?'当前已是最新版本':null
+ const message=state==='available'?`发现新版本 ${s.latestVersion}`:verifyingPackage?'正在校验安装包…':verifying?'正在校验本机文件':state==='downloading'?`${s.downloadStage==='extracting'?'正在准备安装':'正在下载'} ${s.latestVersion}`:state==='checking'?'正在检查更新…':state==='switching'?'正在切换更新渠道…':state==='applying'?'正在退出并安装更新…':state==='installed'?'更新已完成':state==='up_to_date'?'当前已是最新版本':null
  // Restore the 0.2 settings layout while sharing native state across both shells.
  // Status-specific content expands below the channel buttons, never in a second UI.
  return h('div',{'data-eduwork-update-panel':true},
@@ -89,9 +91,9 @@ export function UpdatePanel({controller}) {
   message&&s?.enabled!==false&&h('div',{style:{...row,alignItems:'center',marginTop:12}},
    h('span',{role:'status','aria-live':'polite',style:{fontSize:12,color:secondary}},message),
    state==='available'&&s&&h('button',{type:'button',style:primary,onClick:()=>controller.run('download-update')},'下载更新')),
-  s?.enabled!==false&&['checking','downloading','applying'].includes(state)&&h('div',null,
+  s?.enabled!==false&&['checking','downloading','verifying','applying'].includes(state)&&h('div',null,
    h('style',null,'@keyframes eduwork-update-progress{from{transform:translateX(-100%)}to{transform:translateX(334%)}}[data-eduwork-update-indeterminate]{animation:eduwork-update-progress 1.4s linear infinite}@media(prefers-reduced-motion:reduce){[data-eduwork-update-indeterminate]{animation:none}}'),
-   h('div',{role:'progressbar','aria-label':verifying?'本机文件校验进度':state==='downloading'?'更新下载进度':'更新处理进度','aria-valuemin':0,'aria-valuemax':100,...(determinate?{'aria-valuenow':progress}:{}),style:{height:6,marginTop:10,overflow:'hidden',borderRadius:999,background:border}},
+   h('div',{role:'progressbar','aria-label':verifyingPackage?'安装包校验进度':verifying?'本机文件校验进度':state==='downloading'?'更新下载进度':'更新处理进度','aria-valuemin':0,'aria-valuemax':100,...(determinate?{'aria-valuenow':progress}:{}),style:{height:6,marginTop:10,overflow:'hidden',borderRadius:999,background:border}},
     h('div',{'data-eduwork-update-indeterminate':determinate?undefined:true,style:{width:determinate?`${progress}%`:'30%',height:'100%',borderRadius:999,background:accent,transition:determinate?'width .2s ease':undefined}})),
    state==='downloading'&&h('div',{style:{...row,marginTop:6,fontSize:11,color:secondary,fontVariantNumeric:'tabular-nums'}},
     h('span',{style:{minWidth:0,overflowWrap:'anywhere'}},verifying?'增量更新沿用的本机文件':s?.downloadStage==='extracting'?'正在解包并校验':s?.fileName||'正在下载发行包'),
@@ -109,15 +111,16 @@ export function UpdatePanel({controller}) {
   status?.url&&h('a',{href:status.url,target:'_blank',rel:'noopener noreferrer',style:{...button,display:'inline-block',marginTop:12}},'打开下载页面'))
 }
 export function UpdateFooter({controller,wide=true}) {
- const {status,open,working}=useUpdates(controller),s=status?.update,c=status?.contentUpdate,state=working||s?.state
+ const {status,open,working}=useUpdates(controller),s=status?.update,c=status?.contentUpdate
+ const verifyingPackage=s?.state==='verifying',state=verifyingPackage?'verifying':working||s?.state
  useEffect(()=>{if(!open)return;const key=e=>{if(e.key==='Escape')controller.close()};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[open])
  if(!status||status.shell==='web')return null
  // The native Electron shell delegates software reminders to the official
  // sidebar indicator/badge. Wails and plain Web keep the legacy combined entry.
  const officialSoftwareIndicator=typeof window!=='undefined'&&(window as any).dshDesktop?.protocolVersion===1
  const contentVisible=Boolean(c?.enabled&&['available','downloading','ready','requires_software'].includes(c.state))
- const softwareVisible=!officialSoftwareIndicator&&s?.enabled&&['available','downloading','ready','applying'].includes(state)
- const softwareLabel=state==='available'?'更新':state==='downloading'?(s?.downloadStage==='verifying'?`校验 ${percent(s)}%`:s?.totalBytes>0?`下载 ${percent(s)}%`:'正在下载…'):state==='ready'?(s.installOnQuit?'退出时更新':'重启更新'):'正在更新…'
+ const softwareVisible=!officialSoftwareIndicator&&s?.enabled&&['available','downloading','verifying','ready','applying'].includes(state)
+ const softwareLabel=state==='available'?'更新':verifyingPackage?'正在校验…':state==='downloading'?(s?.downloadStage==='verifying'?`校验 ${percent(s)}%`:s?.totalBytes>0?`下载 ${percent(s)}%`:'正在下载…'):state==='ready'?(s.installOnQuit?'退出时更新':'重启更新'):'正在更新…'
  const contentLabel=c?.state==='downloading'?`内容 ${percent(c)}%`:c?.state==='ready'?'内容待生效':'内容更新'
  const label=softwareVisible?softwareLabel:contentLabel
  const contentPrompt=contentVisible&&!softwareVisible
@@ -126,7 +129,7 @@ export function UpdateFooter({controller,wide=true}) {
   visible&&h('button',{type:'button','aria-label':contentPrompt?'查看内容更新':'查看更新',title:contentPrompt?'查看配置与 Skills 更新':'查看软件及内容更新',onClick:controller.open,'data-eduwork-update-entry':true,'data-chatecnu-update-prompt':softwareVisible?state:c.state,style:{flex:'0 0 auto',alignSelf:'center',minWidth:42,height:28,margin:'4px 2px 4px 6px',border:0,borderRadius:999,padding:'0 11px',background:'var(--dsw-alias-state-info-primary, #4f78dd)',color:'white',cursor:'pointer',fontSize:11,fontWeight:700,whiteSpace:'nowrap',fontFamily:'system-ui, sans-serif'}},label),
   open&&createPortal(h('div',{style:{position:'fixed',inset:0,zIndex:11000,display:'grid',placeItems:'center',background:'rgba(0,0,0,.28)',backdropFilter:'blur(3px)'},onMouseDown:e=>{if(e.target===e.currentTarget)controller.close()}},
    h('section',{role:'dialog','aria-modal':true,'aria-label':'更新',style:{boxSizing:'border-box',width:'min(480px, calc(100vw - 32px))',maxHeight:'calc(100vh - 48px)',overflowY:'auto',padding:24,border:`1px solid ${border}`,borderRadius:16,background:'var(--dsw-alias-bg-layer-1, #fff)',color:'var(--dsw-alias-label-primary, #222)',boxShadow:'0 20px 70px #0003'}},
-    h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}},h('h2',{style:{fontSize:20,margin:0}},'更新'),h('button',{type:'button','aria-label':'关闭更新面板',onClick:controller.close,style:button},'×')),
+    h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}},h('h2',{style:{fontSize:20,margin:0}},'更新'),h('button',{type:'button','aria-label':'关闭更新面板',disabled:verifyingPackage,onClick:controller.close,style:button},'×')),
     h(UpdatePanel,{controller}))),document.body))
 }
 

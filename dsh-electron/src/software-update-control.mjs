@@ -46,7 +46,7 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
   const requireIdle = async () => {
     const current = backend ? (await backend.action('status')).update : null
     if (current?.busy || current?.installOnNextStart || current?.installOnQuit
-      || ['checking', 'downloading', 'ready', 'applying'].includes(current?.state)) throw Error('更新正在处理，请完成后再修改软件更新设置')
+      || ['checking', 'downloading', 'verifying', 'ready', 'applying'].includes(current?.state)) throw Error('更新正在处理，请完成后再修改软件更新设置')
   }
   const act = async action => {
     if (closed) throw Error('软件更新服务已关闭')

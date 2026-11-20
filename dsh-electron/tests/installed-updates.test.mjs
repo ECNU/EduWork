@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { startInstalledUpdates } from '../src/installed-updates.mjs'
+import { softwareUpdateControl } from '../src/software-update-control.mjs'
 
 test('installed updates without app-update.yml are unsupported and never check a feed', async t => {
   const resourcesPath = await mkdtemp(join(tmpdir(), 'eduwork-installed-update-'))
@@ -74,4 +75,32 @@ test('installed updates report scheduling as unsupported and reject the action',
   assert.equal(status.update.canSchedule, false)
   await assert.rejects(backend.action('schedule-update'), /不支持预约/)
   await backend.close()
+})
+
+test('installed package verification blocks software opt-out and channel changes', async t => {
+  const resourcesPath = await mkdtemp(join(tmpdir(), 'eduwork-installed-verify-'))
+  t.after(() => rm(resourcesPath, { recursive: true, force: true }))
+  await writeFile(join(resourcesPath, 'app-update.yml'), 'provider: github\nowner: example\nrepo: product\n')
+  const state = { phase: 'verifying', version: '1.1.0', percent: 100 }
+  const policies = []
+  class Coordinator {
+    state = state
+    async switchChannel(channel, persist) { await persist() }
+    dispose() {}
+  }
+  const control = await softwareUpdateControl({ dataRoot: resourcesPath, version: '1.0.0',
+    start: ({ policy }) => startInstalledUpdates({ app: { isPackaged: true }, resourcesPath, version: '1.0.0',
+      policy, Coordinator, stopBeforeInstall: assert.fail, onPolicy: next => policies.push(next) }) })
+  t.after(() => control.close())
+  assert.equal((await control.action('status')).update.state, 'verifying')
+  await assert.rejects(control.action('disable-software-updates'), /正在处理/)
+  await assert.rejects(control.action('use-development-updates'), /正在处理/)
+  assert.equal((await control.action('status')).update.userEnabled, true)
+  assert.deepEqual(policies, [])
+  state.phase = 'ready'
+  assert.equal((await control.action('status')).update.state, 'ready')
+  state.phase = 'error'
+  assert.equal((await control.action('use-development-updates')).update.policy, 'development')
+  assert.equal((await control.action('disable-software-updates')).update.userEnabled, false)
+  assert.deepEqual(policies, ['development'])
 })
