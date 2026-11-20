@@ -9,11 +9,12 @@ test('installed update stops the Host before installer handoff without awaiting 
   let operation, quitRequest
   const exit = new DesktopExit({ confirm: assert.fail, close: () => lifecycle.close(), relaunch: assert.fail,
     quit() {}, failed: assert.fail })
-  lifecycle.trackHost({ async stop() { events.push('host stopped') } })
+  lifecycle.trackHost({ async updateTasks(action) { assert.equal(action, 'lock'); return false },
+    async stop(requireGraceful) { assert.equal(requireGraceful, true); events.push('host stopped') } })
   lifecycle.trackBridge({ async close() { await operation; events.push('update bridge closed') } })
   const coordinator = updateCoordinator({ beforeInstall: async () => { events.push('confirm'); return true },
     content: { snapshot: () => ({}) }, software: { async action() {
-      await exit.prepareInstaller(() => lifecycle.stopHosts(), assert.fail)
+      await exit.prepareInstaller(() => lifecycle.prepareUpdateStop(false), assert.fail)
       assert.equal(exit.installerOwnsQuit, true)
       events.push('quitAndInstall')
       quitRequest = exit.request()
@@ -24,6 +25,41 @@ test('installed update stops the Host before installer handoff without awaiting 
   await quitRequest
   assert.deepEqual(events, ['confirm', 'host stopped', 'quitAndInstall', 'update bridge closed'])
 })
+
+for (const updateFirst of [false, true]) {
+  test(`ordinary quit and installer share one stop (update first: ${updateFirst})`, { timeout: 500 }, async () => {
+    const lifecycle = new DesktopLifecycle(), stopStarted = Promise.withResolvers(), stopFinished = Promise.withResolvers()
+    const lockStarted = Promise.withResolvers(), lockGranted = Promise.withResolvers(), stops = [], failures = []
+    lifecycle.trackHost({
+      async updateTasks(action) {
+        if (action === 'lock') { lockStarted.resolve(); await lockGranted.promise }
+        return false
+      },
+      async stop(requireGraceful) { stops.push(requireGraceful); stopStarted.resolve(); await stopFinished.promise },
+    })
+    const exit = new DesktopExit({ confirm: async () => true, close: () => lifecycle.close(),
+      relaunch: assert.fail, quit() {}, failed: failure => failures.push(failure) })
+    let installerStarts = 0
+    const install = (async () => {
+      await exit.prepareInstaller(() => lifecycle.prepareUpdateStop(false))
+      installerStarts++
+    })()
+    const result = Promise.allSettled([install])
+    await lockStarted.promise
+    if (updateFirst) { lockGranted.resolve(); await stopStarted.promise }
+    const quit = exit.request()
+    await stopStarted.promise
+    lockGranted.resolve()
+    stopFinished.resolve()
+    await quit
+    const [outcome] = await result
+    assert.equal(outcome.status, updateFirst ? 'fulfilled' : 'rejected')
+    assert.equal(installerStarts, updateFirst ? 1 : 0)
+    assert.equal(exit.installerOwnsQuit, updateFirst)
+    assert.deepEqual(stops, [updateFirst])
+    assert.equal(failures.length, updateFirst ? 0 : 1)
+  })
+}
 
 test('installed update RPC leaves Host admission before asynchronous shutdown waits for drain', { timeout: 500 }, async () => {
   const pendingRequests = new Set(), admitted = Promise.withResolvers(), installation = Promise.withResolvers()

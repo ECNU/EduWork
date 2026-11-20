@@ -8,6 +8,7 @@ export class DesktopLifecycle {
   failures = []
   shutdown = undefined
   hostStop = undefined
+  hostStopRequiresGraceful = false
   check() { if (this.closing) throw new Error('Desktop is shutting down') }
   prepare(callback) {
     this.check()
@@ -38,7 +39,11 @@ export class DesktopLifecycle {
     }
   }
   stopHosts({ requireGraceful = false } = {}) {
-    if (this.hostStop) return this.hostStop
+    if (this.hostStop) {
+      if (requireGraceful && !this.hostStopRequiresGraceful) return Promise.reject(Error('Desktop Host is already stopping without the graceful shutdown requirement'))
+      return this.hostStop
+    }
+    this.hostStopRequiresGraceful = requireGraceful
     this.hostStop = this.stopHostsOnce(requireGraceful)
     return this.hostStop
   }
