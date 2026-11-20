@@ -268,6 +268,28 @@ async function volumeOf(path) {
   }
 }
 
+function importOwnerExited(pid) {
+  if (!Number.isInteger(pid) || pid <= 0 || pid > 0x7fffffff) return false
+  try { process.kill(pid, 0); return false }
+  catch (error) { return error.code === 'ESRCH' }
+}
+
+async function reclaimImportStages(target, distribution, prefix) {
+  const parent = dirname(target)
+  for (const entry of await readdir(parent, { withFileTypes: true })) {
+    const { name } = entry
+    if (!entry.isDirectory() || !name.startsWith(prefix) || !/^[0-9a-f-]{36}$/.test(name.slice(prefix.length))) continue
+    const stage = join(parent, name), progress = join(stage, '.eduwork-import-progress.json')
+    try {
+      if (!(await lstat(progress)).isFile()) continue
+      const marker = JSON.parse(await readFile(progress, 'utf8'))
+      if (marker?.schemaVersion === 1 && marker.state === 'copying' && marker.stage === name
+        && marker.distribution === distribution && typeof marker.target === 'string' && same(marker.target, target)
+        && importOwnerExited(marker.ownerPid)) await rm(stage, { recursive: true, force: true })
+    } catch { /* Unreadable or unconfirmed stages do not block this import. */ }
+  }
+}
+
 export async function importPortableData({ sourceRoot, targetRoot, distribution, listProcesses, onProgress = () => {}, freeSpace = statfs }) {
   const source = await inspectPortableSource({ sourceRoot, distribution })
   if (!targetRoot || !isAbsolute(targetRoot)) throw Error('目标用户目录必须是绝对路径')
@@ -299,27 +321,24 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
   const volume = await freeSpace(await volumeOf(dirname(target)))
   if (volume.bavail * volume.bsize < totalBytes * 1.1) throw Error('目标磁盘空间不足，未开始复制；旧目录保持原样')
   await mkdir(dirname(target), { recursive: true })
-  // Leftovers from an interrupted attempt are reusable only while unactivated.
-  for (const name of await readdir(dirname(target))) {
-    if (!name.startsWith('.eduwork-import-')) continue
-    const orphan = join(dirname(target), name), contents = await readdir(orphan)
-    if (contents.length === 0 || contents.includes('.eduwork-import-progress.json')) await rm(orphan, { recursive: true, force: true })
-    else throw Error(`存在无法识别的导入残留 ${name}，请人工检查后再试`)
-  }
-  const stage = join(dirname(target), `.eduwork-import-${randomUUID()}`)
+  const targetKey = process.platform === 'win32' ? target.toLowerCase() : target
+  const prefix = `.eduwork-import-${digest(JSON.stringify([distribution, targetKey])).slice(0, 16)}-`
+  await reclaimImportStages(target, distribution, prefix)
+  const stageName = `${prefix}${randomUUID()}`, stage = join(dirname(target), stageName)
   await mkdir(stage)
   const progressFile = join(stage, '.eduwork-import-progress.json')
-  // Mark the stage immediately so a kill before the first copy still leaves a
-  // recognizable import leftover rather than an unknown directory.
-  await writeFile(progressFile, JSON.stringify({ schemaVersion: 1, state: 'copying', copied: 0, total: plan.files.length, bytes: totalBytes }) + '\n')
+  const progress = { schemaVersion: 1, state: 'copying', target, distribution, stage: stageName,
+    ownerPid: process.pid, total: plan.files.length, bytes: totalBytes }
+  const markProgress = copied => writeFile(progressFile, JSON.stringify({ ...progress, copied }) + '\n')
   try {
+    await markProgress(0)
     for (let i = 0; i < plan.files.length; i++) {
       const file = plan.files[i], destination = join(stage, file.target)
       await mkdir(dirname(destination), { recursive: true })
       await copyFile(file.sourcePath, destination)
       if (await fileDigest(destination) !== file.sha256) throw Error('复制校验失败：旧数据可能仍在被写入；旧目录保持原样')
       if (i % 32 === 0 || i === plan.files.length - 1) {
-        await writeFile(progressFile, JSON.stringify({ schemaVersion: 1, state: 'copying', copied: i + 1, total: plan.files.length, bytes: totalBytes }) + '\n')
+        await markProgress(i + 1)
         await onProgress({ copied: i + 1, total: plan.files.length, bytes: totalBytes })
       }
     }

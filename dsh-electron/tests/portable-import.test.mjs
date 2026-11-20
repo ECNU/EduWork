@@ -4,6 +4,8 @@ import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink, lsta
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import { createHash } from 'node:crypto'
+import { spawn } from 'node:child_process'
+import { once } from 'node:events'
 import { constants, zstdCompressSync, zstdDecompressSync } from 'node:zlib'
 import { importPortableData, inspectPortableSource, buildCopyPlan, sessionProjectKey, windowsSourceProcessLister } from '../src/portable-import.mjs'
 import { softwareUpdateControl } from '../src/software-update-control.mjs'
@@ -233,32 +235,44 @@ test('a copy failure cleans the stage and a retry succeeds', async () => {
   } finally { await rm(base, { recursive: true, force: true }) }
 })
 
-test('running source processes block the import; an interrupted stage is cleaned on retry', async () => {
+test('running source processes block the import', async () => {
   const { base, source, target } = await fixture()
   try {
     await assert.rejects(run({ sourceRoot: source, targetRoot: target, listProcesses: async () => [{ pid: 4242, name: 'EduWork-Electron.exe' }] }), /仍在运行/)
     await assert.rejects(lstat(target), { code: 'ENOENT' })
-    const orphan = join(base, '.eduwork-import-interrupted')
-    await mkdir(orphan, { recursive: true })
-    await writeFile(join(orphan, '.eduwork-import-progress.json'), '{"state":"copying"}')
-    await writeFile(join(orphan, 'partial.txt'), 'partial')
+  } finally { await rm(base, { recursive: true, force: true }) }
+})
+
+test('retry reclaims only confirmed interrupted stages for the current target', async () => {
+  const { base, source, target } = await fixture()
+  try {
+    const child = spawn(process.execPath, ['-e', ''])
+    await once(child, 'close')
+    const stage = async (root, edition, ownerPid, suffix, marker = {}) => {
+      const key = sha256(JSON.stringify([edition, process.platform === 'win32' ? root.toLowerCase() : root])).slice(0, 16)
+      const name = `.eduwork-import-${key}-00000000-0000-4000-8000-00000000000${suffix}`
+      const path = join(base, name)
+      await mkdir(path)
+      await writeFile(join(path, '.eduwork-import-progress.json'), JSON.stringify({ schemaVersion: 1, state: 'copying',
+        target: root, distribution: edition, ownerPid, stage: name, ...marker }))
+      await writeFile(join(path, 'partial.txt'), 'partial')
+      return path
+    }
+    const orphan = await stage(target, distribution, child.pid, 1)
+    const otherEdition = await stage(join(base, 'other-edition'), 'other-edition', child.pid, 2)
+    const otherActive = await stage(join(base, 'other-target'), distribution, process.pid, 3)
+    const active = await stage(target, distribution, process.pid, 4)
+    const wrongOwner = await stage(target, distribution, child.pid, 5, { target: join(base, 'other-target') })
+    const legacy = join(base, '.eduwork-import-legacy')
+    await mkdir(legacy)
+    await writeFile(join(legacy, '.eduwork-import-progress.json'), '{"state":"copying"}')
+    await writeFile(join(legacy, 'partial.txt'), 'partial')
+    const preserved = [otherEdition, otherActive, active, wrongOwner, legacy]
+    const before = await Promise.all(preserved.map(treeSnapshot))
     const receipt = await run({ sourceRoot: source, targetRoot: target })
     assert.equal(receipt.state, 'imported')
     await assert.rejects(lstat(orphan), { code: 'ENOENT' })
-    const unknown = join(base, '.eduwork-import-unknown')
-    await mkdir(unknown, { recursive: true })
-    await writeFile(join(unknown, 'mystery.txt'), 'not ours')
-    await rm(target, { recursive: true, force: true })
-    await assert.rejects(run({ sourceRoot: source, targetRoot: target }), /残留/)
-    assert.equal(await readFile(join(unknown, 'mystery.txt'), 'utf8'), 'not ours')
-    await rm(unknown, { recursive: true, force: true })
-    const activated = join(base, '.eduwork-import-activated')
-    await mkdir(activated, { recursive: true })
-    await writeFile(join(activated, '.eduwork-import-progress.json'), '{"state":"copying"}')
-    await writeFile(join(activated, '.eduwork-migration.json'), '{"state":"imported"}')
-    const second = await run({ sourceRoot: source, targetRoot: target })
-    assert.equal(second.state, 'imported')
-    await assert.rejects(lstat(activated), { code: 'ENOENT' })
+    assert.deepEqual(await Promise.all(preserved.map(treeSnapshot)), before)
   } finally { await rm(base, { recursive: true, force: true }) }
 })
 
