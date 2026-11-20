@@ -142,8 +142,54 @@ test('a second import with an unchanged source reuses the receipt', async () => 
   const { base, source, target } = await fixture()
   try {
     const first = await run({ sourceRoot: source, targetRoot: target })
-    const second = await run({ sourceRoot: source, targetRoot: target })
+    const second = await run({ sourceRoot: source, targetRoot: target, onProgress: assert.fail })
     assert.deepEqual(second, first)
+  } finally { await rm(base, { recursive: true, force: true }) }
+})
+
+for (const [description, change, error] of [
+  ['an empty child disappears from the target', async ({ target }) => {
+    await rm(join(target, 'workspaces/sample-workspace-internal/empty-child'), { recursive: true })
+  }, /目标.*目录/],
+  ['an empty child appears in the source', async ({ internalPath }) => {
+    await mkdir(join(internalPath, 'new-empty-child'))
+  }, /发生变化/],
+  ['an empty workspace disappears from both sides', async ({ source, target }) => {
+    await rm(join(source, 'empty-workspace'), { recursive: true })
+    await rm(join(target, 'workspaces/empty-workspace'), { recursive: true })
+  }, /发生变化/],
+  ['a remapped session directory disappears from the target', async ({ target }) => {
+    const remapped = sessionProjectKey(join(target, 'workspaces/sample-workspace-internal'))
+    await rm(join(target, 'data/eduwork-electron/dsh/sessions', remapped), { recursive: true })
+  }, /目标.*目录/],
+]) {
+  test(`a retry refuses the old receipt when ${description}`, async () => {
+    const input = await fixture()
+    const { base, source, target, internalPath, home, registry } = input
+    try {
+      await mkdir(join(internalPath, 'empty-child'))
+      const empty = join(source, 'empty-workspace')
+      await mkdir(empty)
+      registry.tables.workspaces['ws-empty'] = { path: empty, sessionIds: [] }
+      await writeFile(join(home, 'storages/workspace.json'), JSON.stringify(registry))
+      const first = await run({ sourceRoot: source, targetRoot: target })
+      assert.ok(first.workspacesMoved.some(move => move.id === 'ws-empty'))
+      await change(input)
+      await assert.rejects(run({ sourceRoot: source, targetRoot: target, onProgress: assert.fail }), error)
+      assert.equal(await readFile(join(target, 'data/eduwork-electron/dsh/memory.sqlite3'), 'utf8'), 'memory-db')
+    } finally { await rm(base, { recursive: true, force: true }) }
+  })
+}
+
+test('a file-only legacy receipt cannot prove a prior import matches', async () => {
+  const { base, source, target } = await fixture()
+  try {
+    const receipt = await run({ sourceRoot: source, targetRoot: target })
+    const plan = await buildCopyPlan(await inspectPortableSource({ sourceRoot: source, distribution }), target)
+    await writeFile(join(target, '.eduwork-migration.json'), JSON.stringify({
+      ...receipt, schemaVersion: 1, planDigest: sha256(JSON.stringify(plan.files)),
+    }))
+    await assert.rejects(run({ sourceRoot: source, targetRoot: target, onProgress: assert.fail }), /已有数据/)
   } finally { await rm(base, { recursive: true, force: true }) }
 })
 

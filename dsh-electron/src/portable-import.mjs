@@ -226,6 +226,20 @@ async function requireWorkspaceDirectories(root, moves) {
   }
 }
 
+async function directoryDigest(root) {
+  const directories = []
+  async function walk(parent, prefix = '') {
+    for (const entry of await readdir(parent, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue
+      const rel = join(prefix, entry.name)
+      directories.push(rel)
+      await walk(join(root, rel), rel)
+    }
+  }
+  await walk(root)
+  return digest(JSON.stringify(directories.sort()))
+}
+
 // Applied to the staged copy only: registry paths, session directory names, the
 // session header cwd and the cached working-directory fields. Session event
 // content stays untouched.
@@ -347,14 +361,17 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
     else {
       const receipt = entries.includes('.eduwork-migration.json')
         ? await readFile(join(target, '.eduwork-migration.json'), 'utf8').then(JSON.parse).catch(() => null) : null
-      if (receipt?.schemaVersion === 1 && receipt.state === 'imported' && receipt.sourceRoot === source.root) {
+      if (receipt?.schemaVersion === 2 && receipt.state === 'imported' && receipt.sourceRoot === source.root && receipt.distribution === distribution) {
         const current = await buildCopyPlan(source, target)
-        if (digest(JSON.stringify(current.files)) === receipt.planDigest) {
-          await requireWorkspaceDirectories(target, current.moves)
-          await rm(join(target, '.eduwork-import-progress.json'), { force: true }).catch(() => {})
-          return receipt
+        if (digest(JSON.stringify(current)) !== receipt.planDigest) {
+          throw Error('旧目录数据在上次导入后发生变化；请保留现有数据并人工核对后再试')
         }
-        throw Error('旧目录数据在上次导入后发生变化；请保留现有数据并人工核对后再试')
+        const directoryState = await directoryDigest(target).catch(() => null)
+        if (!directoryState || directoryState !== receipt.targetDirectoryDigest) {
+          throw Error('无法确认导入目标的工作区目录及其他目录与回执一致，请保留现有数据并人工核对')
+        }
+        await rm(join(target, '.eduwork-import-progress.json'), { force: true }).catch(() => {})
+        return receipt
       }
       throw Error('目标用户目录已有数据，导入不会合并或覆盖；如需重来请先人工备份并清空该目录')
     }
@@ -392,8 +409,8 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
     if (JSON.stringify(after) !== JSON.stringify(plan)) throw Error('旧数据仍在被写入，已放弃启用目标；旧目录保持原样')
     await requireWorkspaceDirectories(stage, plan.moves)
     const moved = await applyWorkspaceRemap({ stage, namespace: basename(source.dataRoot), moves: plan.moves })
-    const receipt = { schemaVersion: 1, state: 'imported', sourceRoot: source.root, sourceVersion: source.version, distribution,
-      files: plan.files.length, bytes: totalBytes, planDigest: digest(JSON.stringify(plan.files)), workspacesMoved: moved,
+    const receipt = { schemaVersion: 2, state: 'imported', sourceRoot: source.root, sourceVersion: source.version, distribution,
+      files: plan.files.length, bytes: totalBytes, planDigest: digest(JSON.stringify(plan)), targetDirectoryDigest: await directoryDigest(stage), workspacesMoved: moved,
       workspacesMissing: plan.moves.filter(move => move.missing).map(move => ({ id: move.id, path: move.oldPath })), createdAt: new Date().toISOString() }
     await writeFile(join(stage, '.eduwork-migration.json'), JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx', mode: 0o600 })
     // Keep the progress marker until activation succeeds so an interrupted
