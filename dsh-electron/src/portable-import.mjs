@@ -131,7 +131,11 @@ async function walkTree(base, rel, visit) {
   const path = rel ? join(base, rel) : base
   const info = await lstat(path)
   if (info.isSymbolicLink()) throw Error('旧数据包含链接，拒绝复制；请改用真实目录')
-  if (info.isDirectory()) { for (const name of (await readdir(path)).sort()) await walkTree(base, rel ? `${rel}/${name}` : name, visit); return }
+  if (info.isDirectory()) {
+    await visit({ rel, directory: true })
+    for (const name of (await readdir(path)).sort()) await walkTree(base, rel ? `${rel}/${name}` : name, visit)
+    return
+  }
   if (!info.isFile()) throw Error('旧数据包含非常规文件条目')
   await visit({ rel, bytes: info.size, sha256: await fileDigest(path) })
 }
@@ -164,11 +168,13 @@ async function planWorkspaceMoves({ registry, source, target }) {
 }
 
 // Explicit allowlist: user data crosses, program-generated runtime state and
-// regenerable caches stay behind. Entries are {sourcePath, target, bytes, sha256}.
+// regenerable caches stay behind.
 export async function buildCopyPlan(source, target) {
-  const files = []
-  const addTree = async (base, targetPrefix, rel = '') => walkTree(base, rel, entry => {
-    files.push({ sourcePath: join(base, entry.rel), target: join(targetPrefix, entry.rel), bytes: entry.bytes, sha256: entry.sha256 })
+  const files = [], directories = []
+  const addTree = (base, targetPrefix, rel = '') => walkTree(base, rel, entry => {
+    const target = join(targetPrefix, entry.rel)
+    if (entry.directory) directories.push(target)
+    else files.push({ sourcePath: join(base, entry.rel), target, bytes: entry.bytes, sha256: entry.sha256 })
   })
   const addFile = async (path, target) => {
     const info = await sourceEntry(source.root, path)
@@ -208,10 +214,18 @@ export async function buildCopyPlan(source, target) {
   for (const move of moves) {
     const real = await canonical(move.oldPath)
     if (!(await sourceEntry(source.root, real))?.isDirectory()) { move.missing = true; continue }
-    await walkTree(real, '', entry => files.push({ sourcePath: join(real, entry.rel), target: join('workspaces', basename(move.newPath), entry.rel), bytes: entry.bytes, sha256: entry.sha256 }))
+    await addTree(real, join('workspaces', basename(move.newPath)))
   }
   files.sort((a, b) => a.target < b.target ? -1 : a.target > b.target ? 1 : 0)
-  return { files, moves }
+  return { files, directories: directories.sort(), moves }
+}
+
+async function requireWorkspaceDirectories(root, moves) {
+  for (const move of moves) {
+    if (!move.missing && !(await exists(join(root, 'workspaces', basename(move.newPath))))?.isDirectory()) {
+      throw Error('导入目标缺少工作区目录，请保留现有数据并人工核对')
+    }
+  }
 }
 
 // Applied to the staged copy only: registry paths, session directory names, the
@@ -338,6 +352,7 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
       if (receipt?.schemaVersion === 1 && receipt.state === 'imported' && same(receipt.sourceRoot, source.root)) {
         const current = await buildCopyPlan(source, target)
         if (digest(JSON.stringify(current.files)) === receipt.planDigest) {
+          await requireWorkspaceDirectories(target, current.moves)
           await rm(join(target, '.eduwork-import-progress.json'), { force: true }).catch(() => {})
           return receipt
         }
@@ -362,6 +377,7 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
   const markProgress = copied => writeFile(progressFile, JSON.stringify({ ...progress, copied }) + '\n')
   try {
     await markProgress(0)
+    for (const directory of plan.directories) await mkdir(join(stage, directory), { recursive: true })
     for (let i = 0; i < plan.files.length; i++) {
       const file = plan.files[i], destination = join(stage, file.target)
       await mkdir(dirname(destination), { recursive: true })
@@ -376,7 +392,8 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
       }
     }
     const after = await buildCopyPlan(source, target)
-    if (digest(JSON.stringify(after.files)) !== digest(JSON.stringify(plan.files))) throw Error('旧数据仍在被写入，已放弃启用目标；旧目录保持原样')
+    if (JSON.stringify(after) !== JSON.stringify(plan)) throw Error('旧数据仍在被写入，已放弃启用目标；旧目录保持原样')
+    await requireWorkspaceDirectories(stage, plan.moves)
     const moved = await applyWorkspaceRemap({ stage, namespace: basename(source.dataRoot), moves: plan.moves })
     const receipt = { schemaVersion: 1, state: 'imported', sourceRoot: source.root, sourceVersion: source.version, distribution,
       files: plan.files.length, bytes: totalBytes, planDigest: digest(JSON.stringify(plan.files)), workspacesMoved: moved,

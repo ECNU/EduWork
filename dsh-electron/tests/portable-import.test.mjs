@@ -140,6 +140,44 @@ test('a second import with an unchanged source reuses the receipt', async () => 
   } finally { await rm(base, { recursive: true, force: true }) }
 })
 
+test('workspace directories survive import even when they contain no files', async () => {
+  const { base, source, target, internalPath, registry, home } = await fixture()
+  try {
+    const empty = join(source, 'empty-workspace')
+    await mkdir(empty)
+    await mkdir(join(internalPath, 'empty-child'))
+    registry.tables.workspaces['ws-empty'] = { path: empty, sessionIds: [] }
+    const registryPath = 'storages/workspace.json'
+    await writeFile(join(home, registryPath), JSON.stringify(registry))
+    const receipt = await run({ sourceRoot: source, targetRoot: target })
+    const imported = JSON.parse(await readFile(join(target, 'data/eduwork-electron/dsh', registryPath), 'utf8'))
+    const emptyTarget = join(target, 'workspaces', 'empty-workspace')
+    const nonEmptyTarget = join(target, 'workspaces', 'sample-workspace-internal')
+    assert.deepEqual(await readdir(emptyTarget), [])
+    assert.deepEqual(await readdir(join(nonEmptyTarget, 'empty-child')), [])
+    assert.deepEqual(receipt.workspacesMoved, [
+      { id: 'ws-internal', from: internalPath, to: nonEmptyTarget },
+      { id: 'ws-empty', from: empty, to: emptyTarget },
+    ])
+    assert.deepEqual(receipt.workspacesMissing, [])
+    for (const move of receipt.workspacesMoved) assert.equal(imported.tables.workspaces[move.id].path, move.to)
+    await rm(emptyTarget, { recursive: true })
+    await assert.rejects(run({ sourceRoot: source, targetRoot: target }), /工作区目录/)
+  } finally { await rm(base, { recursive: true, force: true }) }
+})
+
+test('changes to empty workspace directories invalidate the staged copy', async () => {
+  const { base, source, target, internalPath } = await fixture()
+  try {
+    const emptyChild = join(internalPath, 'empty-child')
+    await mkdir(emptyChild)
+    await assert.rejects(run({ sourceRoot: source, targetRoot: target, onProgress: async ({ copied }) => {
+      if (copied === 1) await rm(emptyChild, { recursive: true })
+    } }), /仍在被写入/)
+    await assert.rejects(lstat(target), { code: 'ENOENT' })
+  } finally { await rm(base, { recursive: true, force: true }) }
+})
+
 test('an existing target with other data is refused, and a changed source invalidates the receipt', async () => {
   const { base, source, target } = await fixture()
   try {
