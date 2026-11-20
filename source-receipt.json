@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-20T16:34:57.312Z",
-  "fileSetSHA256": "7996572385e51d499fe307252aafe9be6366cf9d2b60b69808b687029577ffdd",
+  "createdAt": "2026-11-20T17:11:11.344Z",
+  "fileSetSHA256": "117ffd3f6d00abd5592f76962be3d302d30a7d0fba93b2419b83db528381cc17",
   "files": [
     {
       "path": ".gitattributes",
@@ -1205,7 +1205,7 @@
     },
     {
       "path": "dsh-electron/src/portable-import.mjs",
-      "sha256": "1fce63f9feeffb4cae13db53866b3df20190640e6f219bde746a6455970d2f45"
+      "sha256": "95f0144dec091931fb5524470eddafbc09276a7676376c0690c251ba79a1cfe0"
     },
     {
       "path": "dsh-electron/src/portable-source-hint.mjs",
@@ -1461,7 +1461,7 @@
     },
     {
       "path": "dsh-electron/tests/portable-import.test.mjs",
-      "sha256": "afa90b1cdbb3e19ddffa18593d6c89c389b4f5e1487980ce285c7adbbc1ddc4f"
+      "sha256": "099f3a781946e1232beaaf19aebc4c01e7e4e6f25481fee9e576c330d7823efd"
     },
     {
       "path": "dsh-electron/tests/portable-source-hint.test.mjs",
@@ -3497,7 +3497,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/src/updates.ts",
-      "sha256": "8a7777634249bf7f2f754bf651212325d5e9dddcc4f8e16919e77927a6dd3f70"
+      "sha256": "1296cfd36acb124e74ffa0bdfb9dfec1b8f3ae41c4730f5482f470c156e3511e"
     },
     {
       "path": "dsh-plugins/workbench-native/test/build-client.test.mjs",
@@ -3553,7 +3553,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/test/updates.test.mjs",
-      "sha256": "8c0a3a3264cd5071d2f52e954aa2af4208b44d9d5af1d7c4eecdfc643bab537a"
+      "sha256": "91d2a696e1b549371491abd7a684ec67146825bb1e56eeb298c43f100b0ee8e2"
     },
     {
       "path": "dsh-plugins/workbench-native/tsconfig.json",
