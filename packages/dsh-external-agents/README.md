@@ -2,7 +2,7 @@
 
 [English](README_EN.md)
 
-EduWork 的可选插件：发现本机 Codex、Cursor Agent CLI，在设置中检测、启用和停用连接，也可手动添加支持 stdio 的 ACP 智能体。兼容 DSH 0.2.1-rc.5 与 0.2.2-rc.1；配套官方 Codex/ACP provider 必须与宿主版本一致。
+EduWork 的可选插件：发现本机 Codex、Cursor Agent CLI、OpenCode 和 Kimi Code，在设置中检测、启用和停用连接，也可手动添加支持 stdio 的 ACP 智能体。兼容 DSH 0.2.1-rc.5 与 0.2.2-rc.1；配套官方 Codex/ACP provider 必须与宿主版本一致。
 
 ## 安装与使用
 
@@ -14,6 +14,19 @@ EduWork 的可选插件：发现本机 Codex、Cursor Agent CLI，在设置中�
 Codex 使用 DSH 官方包固定的 Codex 运行时及本机登录；发现的 CLI 路径仅供参考，不替换官方运行时。若已有官方 Codex bundle，请先停用它，避免重复注册 provider。Cursor 需要 Agent CLI，仅安装编辑器不足以连接。
 
 其他 ACP 在“添加 ACP”中填写名称、可执行文件绝对路径和 JSON 参数数组，例如 `["acp"]`。保存不会启动程序；检测只发送 `initialize`，不创建会话、不发送任务。握手成功不代表登录或真实任务可用。不要把密钥放入参数。
+
+## 自动发现与协议
+
+| 智能体 | 连接方式 | 入口依据 |
+| --- | --- | --- |
+| Codex | DSH 官方 Codex provider，运行时由宿主锁定 | 现有官方 provider |
+| Cursor Agent CLI | `agent acp` | [官方 ACP 文档](https://cursor.com/docs/cli/acp) |
+| OpenCode | `opencode acp`，ACP v1 stdio | [官方协议说明](https://opencode.ai/docs/cli/acp/) |
+| Kimi Code | `kimi acp`，ACP stdio | [官方命令与能力表](https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-acp) |
+
+ACP 连接使用现有 provider 的 [v1 会话协议](https://agentclientprotocol.com/protocol/v1/overview)，连接检测核对协议版本。扫描只确认可执行文件存在；具体安装版本的登录、任务及工具能力需在启用后验收。OpenCode 额外扫描 `~/.opencode/bin`，Kimi 使用公共扫描位置 `~/.local/bin` 和 PATH。Windows 自动发现原生 `.exe`；`.cmd`、`.ps1` 启动器需要另行适配。所有新发现连接默认停用。
+
+其他官方 ACP 实现可手动配置。自动发现目录只收录官方公开会话入口；实验接口、第三方适配器与 MCP 工具端点需单独评估。插件不会下载注册表中的程序或执行安装器。
 
 ## 能力边界
 

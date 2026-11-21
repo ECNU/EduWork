@@ -15,9 +15,18 @@ export async function discover({home = homedir(), path = process.env.PATH ?? '',
   const suffix = platform === 'win32' ? '.exe' : ''
   const codex = await find(dirs.map(dir => join(dir, 'codex' + suffix)))
   const cursor = await find(dirs.map(dir => join(dir, 'agent' + suffix)))
+  // Official native ACP entry points. Discovery never runs a version command or installer.
+  const nativeAcp = []
+  for (const [id, name, extraDirs] of [
+    ['opencode', 'OpenCode', [join(home, '.opencode/bin')]],
+    ['kimi', 'Kimi Code', []],
+  ]) {
+    const command = await find([...extraDirs, ...dirs].map(dir => join(dir, id + suffix)))
+    nativeAcp.push({id, name, kind: 'acp', command, args: ['acp'], installed: !!command})
+  }
   const app = platform === 'darwin' && await stat('/Applications/Cursor.app').then(s => s.isDirectory(), () => false)
   return [{id: 'codex', name: 'Codex', kind: 'codex', command: codex, args: [], installed: !!codex},
-    {id: 'cursor', name: 'Cursor', kind: 'acp', command: cursor, args: ['acp'], installed: !!cursor || !!app}]
+    {id: 'cursor', name: 'Cursor', kind: 'acp', command: cursor, args: ['acp'], installed: !!cursor || !!app}, ...nativeAcp]
 }
 
 // Explicit user-initiated probe only. DSH owns environment filtering and process cleanup.

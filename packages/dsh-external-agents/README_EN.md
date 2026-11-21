@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-An optional EduWork plugin for discovering local Codex and Cursor Agent CLIs, checking and toggling connections in Settings, and adding stdio ACP agents manually. Supports DSH 0.2.1-rc.5 and 0.2.2-rc.1; the companion official Codex/ACP providers must match the Host version.
+An optional EduWork plugin for discovering local Codex, Cursor Agent CLI, OpenCode and Kimi Code, checking and toggling connections in Settings, and adding stdio ACP agents manually. Supports DSH 0.2.1-rc.5 and 0.2.2-rc.1; the companion official Codex/ACP providers must match the Host version.
 
 ## Install and use
 
@@ -14,6 +14,19 @@ An optional EduWork plugin for discovering local Codex and Cursor Agent CLIs, ch
 Codex uses the runtime pinned by the official DSH package and existing local login. The discovered CLI path is informational and does not override that runtime. Disable an existing official Codex bundle before enabling this connection to avoid duplicate provider registration. Cursor requires its Agent CLI; the editor alone is insufficient.
 
 For other ACP agents, enter a name, an absolute executable path and a JSON argument array such as `["acp"]`. Saving does not launch it. A check sends only `initialize`, never a session or task. A successful handshake does not verify login or real model execution. Do not put secrets in arguments.
+
+## Discovery and protocols
+
+| Agent | Connection | Entry point reference |
+| --- | --- | --- |
+| Codex | Official DSH Codex provider with a Host-pinned runtime | Existing official provider |
+| Cursor Agent CLI | `agent acp` | [Official ACP documentation](https://cursor.com/docs/cli/acp) |
+| OpenCode | `opencode acp`, ACP v1 stdio | [Official protocol reference](https://opencode.ai/docs/cli/acp/) |
+| Kimi Code | `kimi acp`, ACP stdio | [Official command and capability matrix](https://www.kimi.com/code/docs/en/kimi-code-cli/reference/kimi-acp) |
+
+ACP connections use the existing provider's [v1 session protocol](https://agentclientprotocol.com/protocol/v1/overview); connection checks verify the protocol version. Discovery confirms executable presence only. Login, tasks and tool capabilities require acceptance with the installed version after enabling. OpenCode also checks `~/.opencode/bin`; Kimi uses the shared `~/.local/bin` and PATH locations. Windows discovery accepts native `.exe` files; `.cmd` and `.ps1` launchers require separate adaptation. Newly discovered connections start disabled.
+
+Other official ACP implementations can be configured manually. The discovery catalog includes official public session entry points; experimental interfaces, third-party adapters and MCP tool endpoints require separate evaluation. The plugin does not download registry programs or run installers.
 
 ## Boundaries
 
