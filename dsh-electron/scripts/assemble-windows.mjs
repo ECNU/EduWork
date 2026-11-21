@@ -2,7 +2,7 @@ import { assertPreparedNode } from '../../scripts/lib/node-runtime-contract.mjs'
 // Assembles the independent Windows Electron candidate from the frozen desktop
 // product, the shell build and the verified Electron runtime. Node.js port of
 // assemble-windows.ps1.
-import { rename } from 'node:fs/promises'
+import { rename, readdir, lstat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
@@ -16,6 +16,7 @@ import { installDesktopConfig } from '../../scripts/install-desktop-config.mjs'
 import { desktopVersion } from '../../scripts/desktop-build-plan.mjs'
 import { pruneRuntimeFiles } from '../../scripts/lib/runtime-file-policy.mjs'
 import { pruneElectronLocales } from './electron-locales.mjs'
+import { loadUserConfig } from '../../dsh-host/user-config.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 
@@ -26,6 +27,81 @@ const payloadFilters = {
   excludeDir: name => name === '__pycache__',
 }
 
+// Electron and the installer both read this manifest. Installed builds must
+// declare the product version there, or the uninstall entry and app.getVersion()
+// would report the DSH component version instead of EduWork's.
+export async function installedManifestRows(root) {
+  const rows = []
+  const walk = async (directory, prefix) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name
+      if (!prefix && (entry.name === 'config' || entry.name === 'data' || entry.name === 'RELEASE-MANIFEST.json')) continue
+      const path = join(directory, entry.name)
+      if (entry.isDirectory()) await walk(path, relative)
+      else if (entry.isFile()) rows.push({ path: relative, bytes: (await lstat(path)).size, sha256: await sha256File(path) })
+      else throw new Error(`Unsupported installed candidate entry: ${relative}`)
+    }
+  }
+  await walk(root, '')
+  return rows.sort((a, b) => a.path.localeCompare(b.path, 'en'))
+}
+
+export async function writeInstalledManifest({ output, version, distribution }) {
+  const files = await installedManifestRows(output)
+  await writeJSON(join(output, 'RELEASE-MANIFEST.json'), {
+    schemaVersion: 1, kind: 'eduwork-portable-release', version, launcherVersion: version,
+    flavor: 'offline', distribution, shell: 'electron', platform: 'windows-x64',
+    launch: {
+      protocol: 'eduwork-desktop/v1', shell: 'electron', executable: 'EduWork-Electron.exe',
+      migration: 'wails-host-v1', distribution,
+    },
+    files,
+  })
+}
+
+export function desktopAppPackage({ identity, version, dataLayout = 'portable' }) {
+  const installed = dataLayout === 'installed'
+  return {
+    name: 'eduwork-desktop-electron',
+    version: installed ? version : identity.dshVersion,
+    ...(installed ? { dshVersion: identity.dshVersion } : {}),
+    private: true,
+    type: 'module',
+    main: 'lib/main.js',
+    description: 'EduWork official DSH Electron integration',
+    license: 'MulanPSL-2.0 AND MIT',
+  }
+}
+
+export function installedUpdateFeed(updates) {
+  if (updates?.provider === 'generic') {
+    const url = new URL(updates.url)
+    if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Installed generic update URL must be HTTPS')
+    return { provider: 'generic', url: url.href.replace(/\/$/, '') }
+  }
+  if (updates?.provider !== 'github') return null
+  if (!/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(updates.repository ?? '')) {
+    throw new Error('Installed GitHub update repository must be owner/repo')
+  }
+  const [owner, repo] = updates.repository.split('/')
+  return { provider: 'github', owner, repo }
+}
+
+export function installerPackageName(distribution) {
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(distribution ?? '')) throw new Error('Installed distribution identifier is invalid')
+  return `eduwork-installer-${distribution}`
+}
+
+export function installedUpdateCacheDirName(distribution) {
+  return `${installerPackageName(distribution)}-updater`
+}
+
+export function installedUpdateYAML(feed, distribution) {
+  const cacheDirName = installedUpdateCacheDirName(distribution)
+  if (feed.provider === 'generic') return `provider: generic\nurl: ${JSON.stringify(feed.url)}\nupdaterCacheDirName: ${JSON.stringify(cacheDirName)}\n`
+  return `provider: github\nowner: ${JSON.stringify(feed.owner)}\nrepo: ${JSON.stringify(feed.repo)}\nupdaterCacheDirName: ${JSON.stringify(cacheDirName)}\n`
+}
+
 export async function assembleWindows({
   product,
   shellBuild,
@@ -34,10 +110,19 @@ export async function assembleWindows({
   version,
   node = process.execPath,
   updateManifestURL = '',
+  installedUpdateURL = '',
   updateDefaultPolicy = '',
+  dataLayout = 'portable',
 } = {}) {
   if (!updateDefaultPolicy) updateDefaultPolicy = desktopVersion(version).channel
   if (!['stable', 'development'].includes(updateDefaultPolicy)) throw new Error('Update policy must be stable or development')
+  if (!['portable', 'installed'].includes(dataLayout)) throw new Error('Data layout must be portable or installed')
+  if (installedUpdateURL) {
+    let url
+    try { url = new URL(installedUpdateURL) } catch { throw new Error('Installed update URL must be HTTPS') }
+    if (dataLayout !== 'installed' || url.protocol !== 'https:' || url.username || url.password) throw new Error('Installed update URL must be HTTPS and use the installed layout')
+    installedUpdateURL = url.href.replace(/\/$/, '')
+  }
   if (!await isFile(join(electronRuntime, 'electron.exe'))) {
     throw new Error('ElectronRuntime must point to the extracted runtime containing electron.exe, not its cache parent')
   }
@@ -72,15 +157,7 @@ export async function assembleWindows({
   await copyFileTo(nodeLicense, join(output, 'resources/runtime/LICENSE-Node'))
   await copyFileTo(join(shellBuild, 'source-receipt.json'), join(app, 'source-receipt.json'))
   const name = identity.brand.product.name
-  await writeJSON(join(app, 'package.json'), {
-    name: 'eduwork-desktop-electron',
-    version: identity.dshVersion,
-    private: true,
-    type: 'module',
-    main: 'lib/main.js',
-    description: 'EduWork official DSH Electron integration',
-    license: 'MulanPSL-2.0 AND MIT',
-  })
+  await writeJSON(join(app, 'package.json'), desktopAppPackage({ identity, version, dataLayout }))
   const config = {
     schemaVersion: 1,
     shell: 'electron',
@@ -100,12 +177,13 @@ export async function assembleWindows({
     config.configurationOwnership = policy.ownership
   }
   config.updates = { defaultPolicy: updateDefaultPolicy }
-  if (identity.distribution === 'eduwork') {
-    config.updates.provider = 'github'
-    config.updates.repository = 'ecnu/EduWork'
+  const releaseConfigurationPath = join(product, 'resources/desktop/eduwork.jsonc')
+  const releaseUpdates = await isFile(releaseConfigurationPath) ? loadUserConfig(releaseConfigurationPath).updates : undefined
+  if (releaseUpdates?.provider === 'github') {
+    config.updates = { ...releaseUpdates, defaultPolicy: updateDefaultPolicy }
     config.updateChannel = 'github'
   }
-  if (updateManifestURL) {
+  if (updateManifestURL && dataLayout === 'portable') {
     config.updates = { provider: 'static', manifestURL: updateManifestURL, defaultPolicy: updateDefaultPolicy }
     config.updateChannel = 'configured'
   }
@@ -118,12 +196,22 @@ export async function assembleWindows({
     config.updates = { ...config.updates, defaultPolicy: 'development' }
     config.updateChannel = 'disabled-candidate'
   }
+  if (dataLayout === 'installed') {
+    const feed = config.sourceAlpha ? null : installedUpdateURL
+      ? { provider: 'generic', url: installedUpdateURL }
+      : installedUpdateFeed(config.updates)
+    config.dataLayout = 'installed'
+    if (feed?.provider === 'generic') config.updates = { ...feed, defaultPolicy: config.updates.defaultPolicy }
+    else if (feed?.provider !== 'github') config.updates = { provider: 'disabled', defaultPolicy: config.updates.defaultPolicy }
+    config.updateChannel = feed ? 'github' : 'disabled-candidate'
+    if (feed) await writeText(join(output, 'resources/app-update.yml'), installedUpdateYAML(feed, identity.distribution), { trailingNewline: false })
+  }
   await writeJSON(join(app, 'eduwork.desktop.json'), config)
 
   const updaterPath = join(output, 'resources/update/EduWork-Updater.exe')
   await ensureDir(dirname(updaterPath))
   await run('go', ['build', '-buildvcs=false', '-trimpath', '-ldflags', '-s -w -H windowsgui', '-o', updaterPath, './cmd/eduwork-updater'], { cwd: join(scriptRoot, '../../dsh-desktop') })
-    .catch(() => { throw new Error('Portable update helper build failed') })
+    .catch(() => { throw new Error('Windows desktop helper build failed') })
   await setUpdaterManifest({ executable: updaterPath })
   await rename(join(output, 'electron.exe'), join(output, 'EduWork-Electron.exe'))
   await setDesktopIcon({ executable: join(output, 'EduWork-Electron.exe'), shell: 'electron' })
@@ -150,12 +238,18 @@ export async function assembleWindows({
   await writeText(join(output, 'README.txt'), [
     `${name} — Electron candidate ${version}`,
     '',
-    `Run EduWork-Electron.exe. Local data stays under data/${identity.distribution}-electron.`,
-    'Close the application before moving the entire folder. When an update feed is',
-    'configured, use Settings to check/download updates and choose when to restart.',
+    dataLayout === 'installed'
+      ? `Run EduWork-Electron.exe. Personal data stays under %LOCALAPPDATA%\\EduWork\\${identity.distribution}.`
+      : `Run EduWork-Electron.exe. Local data stays under data/${identity.distribution}-electron.`,
+    ...(dataLayout === 'installed'
+      ? ['Personal data does not move with the program folder. Software updates require',
+        'a packaged update source.']
+      : ['Close the application before moving the entire folder. When an update feed is',
+        'configured, use Settings to check/download updates and choose when to restart.']),
     'To merge history from another installation, select its program root under',
     'Settings > Import history. Existing credentials and settings remain unchanged.',
   ].join('\n'))
+  if (dataLayout === 'installed') await writeInstalledManifest({ output, version, distribution: identity.distribution })
   console.log(`Independent Electron candidate assembled: ${output}`)
   return output
 }
@@ -170,11 +264,13 @@ if (isMainModule(import.meta.url)) {
       version: { type: 'string' },
       node: { type: 'string' },
       'update-manifest-url': { type: 'string' },
+      'installed-update-url': { type: 'string' },
       'update-default-policy': { type: 'string' },
+      'data-layout': { type: 'string' },
     },
   })
   if (!values.product || !values['shell-build'] || !values['electron-runtime'] || !values.output || !values.version) {
-    throw new Error('Use --product <dir> --shell-build <dir> --electron-runtime <dir> --output <dir> --version <x.y.z> [--node <node.exe>] [--update-manifest-url <url>] [--update-default-policy stable|development]')
+    throw new Error('Use --product <dir> --shell-build <dir> --electron-runtime <dir> --output <dir> --version <x.y.z> [--node <node.exe>] [--update-manifest-url <url>] [--update-default-policy stable|development] [--data-layout portable|installed]')
   }
   await assembleWindows({
     product: values.product,
@@ -184,6 +280,8 @@ if (isMainModule(import.meta.url)) {
     version: values.version,
     node: values.node ?? process.execPath,
     updateManifestURL: values['update-manifest-url'] ?? '',
+    installedUpdateURL: values['installed-update-url'] ?? '',
     updateDefaultPolicy: values['update-default-policy'] ?? '',
+    dataLayout: values['data-layout'] ?? 'portable',
   })
 }

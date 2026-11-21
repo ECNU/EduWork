@@ -78,6 +78,8 @@ test('the rendered svg names every stage once and explains it in Chinese', async
     assert.deepEqual([...mermaid.matchAll(/^  (\w+) --- join/gm)].map(match => match[1]).sort(),
       ['electron', 'native_install', 'shell', 'sparkle'])
     assert.match(mermaid, /join --> desktop/)
+    assert.match(mermaid, /accept --> installer/)
+    assert.match(mermaid, /installer --> publish/)
   } finally {
     await rm(output, { recursive: true, force: true })
   }

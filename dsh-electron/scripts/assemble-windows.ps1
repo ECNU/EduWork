@@ -8,7 +8,8 @@ param(
     [Parameter(Mandatory)][string]$Version,
     [string]$Node = (Get-Command node.exe).Source,
     [string]$UpdateManifestURL = '',
-    [ValidateSet('stable','development')][string]$UpdateDefaultPolicy
+    [ValidateSet('stable','development')][string]$UpdateDefaultPolicy,
+    [ValidateSet('portable','installed')][string]$DataLayout = 'portable'
 )
 $ErrorActionPreference = 'Stop'
 if (-not $UpdateDefaultPolicy) { $UpdateDefaultPolicy = if ($Version.Contains('-')) { 'development' } else { 'stable' } }
@@ -70,6 +71,7 @@ $bootstrap = (& $Node (Join-Path $PSScriptRoot '../../scripts/check-publisher-bo
 if ($LASTEXITCODE -ne 0) { throw 'Publisher bootstrap validation failed' }
 if ($bootstrap.enabled) { $config.updateChannel = if ($bootstrap.softwareUpdates) { 'publisher-bootstrap' } else { 'disabled-candidate' } }
 if ($identity.sourceAlpha -and -not $identity.automaticUpdates) { $config.sourceAlpha=$true;$config.appId+='.alpha';$config.updates=@{provider='disabled';defaultPolicy='development'};$config.updateChannel='disabled-candidate' }
+if ($DataLayout -eq 'installed') { $config.dataLayout='installed';$config.updates=@{provider='disabled';defaultPolicy=$UpdateDefaultPolicy};$config.updateChannel='disabled-candidate' }
 $config | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $app 'eduwork.desktop.json') -Encoding utf8NoBOM
 $updaterPath = Join-Path $Output 'resources/update/EduWork-Updater.exe'
 New-Item -ItemType Directory -Path (Split-Path $updaterPath) -Force | Out-Null
@@ -88,9 +90,9 @@ if (-not (Test-Path -LiteralPath $defaultConfig -PathType Leaf)) { $defaultConfi
 @"
 $name — Electron candidate $Version
 
-Run EduWork-Electron.exe. Local data stays under data/$($identity.distribution)-electron.
-Close the application before moving the entire folder. When an update feed is
-configured, use Settings to check/download updates and choose when to restart.
+Run EduWork-Electron.exe. $(if ($DataLayout -eq 'installed') { "Personal data stays under %LOCALAPPDATA%\EduWork\$($identity.distribution)." } else { "Local data stays under data/$($identity.distribution)-electron." })
+$(if ($DataLayout -eq 'installed') { 'Personal data does not move with the program folder. This candidate ships' } else { 'Close the application before moving the entire folder. When an update feed is' })
+$(if ($DataLayout -eq 'installed') { 'without software updates; the installer step wires them in later.' } else { 'configured, use Settings to check/download updates and choose when to restart.' })
 To merge history from another installation, select its program root under
 Settings > Import history. Existing credentials and settings remain unchanged.
 "@ | Set-Content -LiteralPath (Join-Path $Output 'README.txt') -Encoding utf8NoBOM

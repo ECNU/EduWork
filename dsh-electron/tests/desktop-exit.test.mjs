@@ -1,7 +1,181 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { DesktopExit } from '../src/desktop-exit.mjs'
 import { updateCoordinator } from '../src/update-coordinator.mjs'
+import { DesktopLifecycle } from '../src/lifecycle.mjs'
+
+test('installed update stops the Host before installer handoff without awaiting its own queue', { timeout: 500 }, async () => {
+  const events = [], lifecycle = new DesktopLifecycle()
+  let operation, quitRequest
+  const exit = new DesktopExit({ confirm: assert.fail, close: () => lifecycle.close(), relaunch: assert.fail,
+    quit() {}, failed: assert.fail })
+  lifecycle.trackHost({ async updateTasks(action) { assert.equal(action, 'lock'); return false },
+    async stop(requireGraceful) { assert.equal(requireGraceful, true); events.push('host stopped') } })
+  lifecycle.trackBridge({ async close() { await operation; events.push('update bridge closed') } })
+  const coordinator = updateCoordinator({ beforeInstall: async () => { events.push('confirm'); return true },
+    content: { snapshot: () => ({}) }, software: { async action() {
+      await exit.prepareInstaller(() => lifecycle.prepareUpdateStop(false), assert.fail)
+      assert.equal(exit.installerOwnsQuit, true)
+      events.push('quitAndInstall')
+      quitRequest = exit.request()
+      return {}
+    } } })
+  operation = coordinator.action('install-update')
+  await operation
+  await quitRequest
+  assert.deepEqual(events, ['confirm', 'host stopped', 'quitAndInstall', 'update bridge closed'])
+})
+
+for (const updateFirst of [false, true]) {
+  test(`ordinary quit and installer share one stop (update first: ${updateFirst})`, { timeout: 500 }, async () => {
+    const lifecycle = new DesktopLifecycle(), stopStarted = Promise.withResolvers(), stopFinished = Promise.withResolvers()
+    const lockStarted = Promise.withResolvers(), lockGranted = Promise.withResolvers(), stops = [], failures = []
+    lifecycle.trackHost({
+      async updateTasks(action) {
+        if (action === 'lock') { lockStarted.resolve(); await lockGranted.promise }
+        return false
+      },
+      async stop(requireGraceful) { stops.push(requireGraceful); stopStarted.resolve(); await stopFinished.promise },
+    })
+    const exit = new DesktopExit({ confirm: async () => true, close: () => lifecycle.close(),
+      relaunch: assert.fail, quit() {}, failed: failure => failures.push(failure) })
+    let installerStarts = 0
+    const install = (async () => {
+      await exit.prepareInstaller(() => lifecycle.prepareUpdateStop(false))
+      installerStarts++
+    })()
+    const result = Promise.allSettled([install])
+    await lockStarted.promise
+    if (updateFirst) { lockGranted.resolve(); await stopStarted.promise }
+    const quit = exit.request()
+    await stopStarted.promise
+    lockGranted.resolve()
+    stopFinished.resolve()
+    await quit
+    const [outcome] = await result
+    assert.equal(outcome.status, updateFirst ? 'fulfilled' : 'rejected')
+    assert.equal(installerStarts, updateFirst ? 1 : 0)
+    assert.equal(exit.installerOwnsQuit, updateFirst)
+    assert.deepEqual(stops, [updateFirst])
+    assert.equal(failures.length, updateFirst ? 0 : 1)
+  })
+}
+
+test('installed update RPC leaves Host admission before asynchronous shutdown waits for drain', { timeout: 500 }, async () => {
+  const pendingRequests = new Set(), admitted = Promise.withResolvers(), installation = Promise.withResolvers()
+  const lockAdmission = async () => {
+    await Promise.all(pendingRequests)
+    admitted.resolve()
+  }
+  const coordinator = updateCoordinator({ deferInstallResponse: true, content: { snapshot: () => ({}) },
+    beforeInstall: async () => true,
+    software: { async action(action) {
+      if (action === 'install-update') {
+        await lockAdmission()
+        installation.resolve()
+      }
+      return { phase: 'installing' }
+    } } })
+  const rpc = (async () => {
+    const request = Promise.withResolvers()
+    pendingRequests.add(request.promise)
+    try { return await coordinator.action('install-update') }
+    finally { pendingRequests.delete(request.promise); request.resolve() }
+  })()
+  const response = await Promise.race([rpc, new Promise((_, reject) => setTimeout(() => reject(Error('install RPC waited for Host admission drain')), 200))])
+  assert.equal(response.phase, 'installing')
+  await admitted.promise
+  await installation.promise
+})
+
+test('failed Host stop reports recovery and never hands off to the installer', async () => {
+  const error = Error('Synthetic Host stop failure'), failures = []
+  const exit = new DesktopExit({ confirm: assert.fail, close: assert.fail, relaunch: assert.fail, quit: assert.fail,
+    failed: failure => failures.push(failure) })
+  const recoveries = []
+  const lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({ async stop() { throw error } })
+  const install = async () => {
+    await exit.prepareInstaller(() => lifecycle.stopHosts(), failure => recoveries.push(failure))
+    assert.fail('quitAndInstall must not run')
+  }
+  await assert.rejects(install(), { errors: [error] })
+  assert.deepEqual(recoveries, [exit.failure])
+  assert.deepEqual(failures, [exit.failure])
+  assert.equal(exit.installerOwnsQuit, false)
+  assert.equal(exit.complete, false)
+})
+
+test('an update task that starts after confirmation unlocks the Host and blocks installation', async () => {
+  const events = [], lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({
+    async updateTasks(action) { events.push(action); return action === 'lock' },
+    async stop() { events.push('stop'); },
+  })
+  await assert.rejects(lifecycle.prepareUpdateStop(false), /New tasks started/)
+  assert.deepEqual(events, ['lock', 'unlock'])
+})
+
+test('update installation requires a graceful Host stop', async () => {
+  const events = [], lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({
+    async updateTasks(action) { events.push(action); return false },
+    async stop(requireGraceful) { events.push(['stop', requireGraceful]); },
+  })
+  await lifecycle.prepareUpdateStop(false)
+  assert.deepEqual(events, ['lock', ['stop', true]])
+})
+
+test('a forced Host termination blocks installer handoff and unlocks when possible', async () => {
+  const events = [], lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({
+    async updateTasks(action) { events.push(action); return false },
+    async stop(requireGraceful) { events.push(['stop', requireGraceful]); throw Error('forced termination') },
+  })
+  await assert.rejects(lifecycle.prepareUpdateStop(false), error => error instanceof AggregateError && /forced termination/.test(error.errors[0].message))
+  assert.deepEqual(events, ['lock', ['stop', true], 'unlock'])
+})
+
+test('a Host without shutdown-complete blocks installer handoff', async () => {
+  const lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({
+    async updateTasks() { return false },
+    async stop(requireGraceful) {
+      assert.equal(requireGraceful, true)
+      throw Error('shutdown was not acknowledged')
+    },
+  })
+  await assert.rejects(lifecycle.prepareUpdateStop(false), error => error instanceof AggregateError && /shutdown was not acknowledged/.test(error.errors[0].message))
+})
+
+test('an unavailable Host task inspection cannot authorize installer handoff', async () => {
+  const lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({ updateTasks: async () => { throw Error('Host unavailable') }, stop: assert.fail })
+  await assert.rejects(lifecycle.updateTasks('inspect'), /Host unavailable/)
+})
+
+test('only installed updates require a successful Host preflight before quit confirmation', async () => {
+  const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
+  const hook = source.match(/beforeInstall:\s*(async\s*\(\)\s*=>\s*\{[\s\S]*?\n\s*\}),onPolicy:/)?.[1]
+  assert.ok(hook)
+  const beforeInstall = new Function('process', 'settings', 'lifecycle', 'confirmQuit',
+    `let installTasksBeforeConfirmation; return ${hook}`)
+  for (const message of ['Host inspection unavailable', 'Host inspection timed out']) {
+    const calls = []
+    const lifecycle = new DesktopLifecycle()
+    lifecycle.trackHost({ async updateTasks(action) { calls.push(action); throw Error(message) }, stop: assert.fail })
+    const coordinator = (dataLayout, approved) => updateCoordinator({ content: { snapshot: () => ({}) },
+      beforeInstall: beforeInstall({ platform: 'win32' }, { dataLayout }, lifecycle, async () => { calls.push('confirm'); return approved }),
+      software: { async action(action) { calls.push(action); return {} } } })
+    await assert.rejects(coordinator('installed', true).action('install-update'), { message })
+    assert.deepEqual(calls.splice(0), ['inspect'])
+    await coordinator('portable', false).action('install-update')
+    assert.deepEqual(calls.splice(0), ['confirm', 'status'])
+    await coordinator('portable', true).action('install-update')
+    assert.deepEqual(calls, ['confirm', 'install-update'])
+  }
+})
 
 test('immediate teardown defers the final quit beyond the native event microtasks', async () => {
   let closed, quit = false

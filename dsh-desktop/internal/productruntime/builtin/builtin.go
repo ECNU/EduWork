@@ -14,7 +14,7 @@ const MediaRoot = "media"
 // launcher build. Python distributions, wheels, Skills and templates are
 // deliberately external green-package resources.
 //
-//go:embed python-runtime-manifest.json node-runtime-manifest.json resources-manifest.json webview2-runtime-manifest.json
+//go:embed python-runtime-manifest.json node-runtime-manifest.json resources-manifest.json
 var embeddedFiles embed.FS
 
 // ResourceFS overlays the verified external resource snapshot at product

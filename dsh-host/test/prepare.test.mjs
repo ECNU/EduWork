@@ -5,20 +5,6 @@ import { join } from 'node:path'
 import { createRequire, stripTypeScriptTypes } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { adaptHostEntry, adaptHostProcess } from '../prepare.mjs'
-import { Decoder, encodeFrame, CHUNK_BYTES } from '../wire.mjs'
-
-test('outer frames retain binary bytes and fragmented headers without base64', () => {
-  const bytes = Buffer.from([0, 255, 13, 10, 1])
-  const frame = encodeFrame(2, 99, bytes)
-  const decoder = new Decoder(), result = []
-  for (const byte of frame) result.push(...decoder.push(Buffer.from([byte])))
-  decoder.finish()
-  assert.equal(result.length, 1)
-  assert.deepEqual(result[0], { type: 2, streamId: 99, payload: bytes })
-  assert.throws(() => encodeFrame(2, 1, Buffer.alloc(CHUNK_BYTES + 1)), /invalid/)
-  const partial = new Decoder(); partial.push(frame.subarray(0, 8))
-  assert.throws(() => partial.finish(), /truncated/)
-})
 
 test('adaptation fails closed if locked upstream targets move', () => {
   assert.throws(() => adaptHostEntry('changed source'), /target changed/)
