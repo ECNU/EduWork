@@ -338,6 +338,25 @@ test('dispose clears every timeout waiting on the shared status request', async 
   await nextTurn()
 })
 
+test('dispose does not clear timeouts from completed status reads again', async t => {
+  const timeouts = t.mock.timers
+  timeouts.enable({ apis: ['setTimeout'] })
+  const clear = t.mock.method(globalThis, 'clearTimeout')
+  const { createUpdateController } = loadUpdates({}, undefined, undefined, undefined, new EventTarget())
+  const controller = createUpdateController(async () => ({ update: { state: 'idle' } }))
+  await nextTurn()
+  for (let poll = 0; poll < 2; poll++) {
+    timeouts.tick(2500)
+    await nextTurn()
+  }
+
+  const completedTimeouts = new Set(clear.mock.calls.map(call => call.arguments[0]))
+  clear.mock.resetCalls()
+  controller.dispose()
+  const repeatedClears = clear.mock.calls.filter(call => completedTimeouts.has(call.arguments[0]))
+  assert.equal(repeatedClears.length, 0)
+})
+
 test('dispose prevents pending status timeout notifications', async t => {
   const timeouts = t.mock.timers
   timeouts.enable({ apis: ['setTimeout'] })
