@@ -458,8 +458,41 @@ test('a previously initialized single config migrates only the explicitly retire
   assert.equal(loadUserConfig(f.paths.config).features.maxConcurrentRequests, 9)
 })
 
+for (const initialized of [false, true]) test(`switching from a configuration-only feed enables Skills once (initialized=${initialized})`, async t => {
+  const f = await migrationFixture(t)
+  if (initialized) {
+    f.descriptor.migrateFrom = []
+    await save(f.descriptorPath, f.descriptor)
+    await f.open()
+  }
+  f.descriptor.migrateFrom = [retired]
+  f.descriptor.configurationOnlySources = [retired]
+  f.descriptor.contentUpdates.skills = true
+  await save(f.descriptorPath, f.descriptor)
+  const next = await f.open()
+  assert.equal(next.manager.source.baseURL, f.descriptor.contentUpdates.baseURL)
+  assert.equal(next.manager.source.skills, true)
+  const local = (await readConfiguration(f.paths.config)).value
+  local.contentUpdates.skills = false
+  await save(f.paths.config, local)
+  assert.equal((await f.open()).manager.source.skills, false)
+})
+
+test('an unlisted retired feed keeps its Skills preference; unrelated URLs cannot opt in', async t => {
+  const f = await migrationFixture(t)
+  f.descriptor.contentUpdates.skills = true
+  await save(f.descriptorPath, f.descriptor)
+  assert.equal((await f.open()).manager.source.skills, false)
+  f.descriptor.configurationOnlySources = [f.descriptor.contentUpdates.baseURL]
+  await save(f.descriptorPath, f.descriptor)
+  await assert.rejects(f.open(), /configurationOnlySources/)
+})
+
 for (const kind of ['custom-source', 'different-key', 'disabled', 'explicit-config']) test(`publisher migration respects ${kind}`, async t => {
   const f = await migrationFixture(t)
+  f.descriptor.configurationOnlySources = [retired]
+  f.descriptor.contentUpdates.skills = true
+  await save(f.descriptorPath, f.descriptor)
   if (kind === 'custom-source') f.oldValue.contentUpdates.baseURL = 'https://uat.example.test/content'
   if (kind === 'different-key') f.oldValue.contentUpdates.publicKey = generateKeyPairSync('ed25519').publicKey.export({ type: 'spki', format: 'pem' })
   if (kind === 'disabled') f.oldValue.contentUpdates.configuration = false

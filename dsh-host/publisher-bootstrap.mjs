@@ -19,19 +19,20 @@ export async function readPublisherBootstrap({ ownership, product, platform = pr
   if (!bytes) return null
   if (bytes.length > 16384) throw Error('发行引导配置过大')
   const descriptor = JSON.parse(bytes.toString('utf8'))
-  if (!descriptor || Object.keys(descriptor).some(k => !['schemaVersion', 'updates', 'contentUpdates', 'migrateFrom'].includes(k))) throw Error('发行引导配置只能包含更新渠道与验签信息')
+  if (!descriptor || Object.keys(descriptor).some(k => !['schemaVersion', 'updates', 'contentUpdates', 'migrateFrom', 'configurationOnlySources'].includes(k))) throw Error('发行引导配置只能包含更新渠道与验签信息')
   // Migration authorizes old feed locations, never new credentials or a key change.
-  const { migrateFrom = [], ...configuration } = descriptor
+  const { migrateFrom = [], configurationOnlySources = [], ...configuration } = descriptor
   if (!Array.isArray(migrateFrom) || migrateFrom.length > 16 || migrateFrom.some(value => {
     try { const url = new URL(value); return typeof value !== 'string' || url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || url.href.replace(/\/$/, '') !== value }
     catch { return true }
   })) throw Error('migrateFrom 必须是有效的 HTTPS 配置源地址数组')
+  if (!Array.isArray(configurationOnlySources) || configurationOnlySources.length > migrateFrom.length || configurationOnlySources.some(url => !migrateFrom.includes(url))) throw Error('configurationOnlySources 只能包含已声明迁移的配置源')
   const trusted = parseUserConfig(descriptorPath, JSON.stringify(configuration)), source = trusted.contentUpdates
   if (!source?.configuration || (source.bundled.configuration ?? 0) !== 0) throw Error('首次下载配置必须启用 configuration，内置配置修订号必须为 0')
   if (migrateFrom.includes(source.baseURL)) throw Error('migrateFrom 不能包含当前配置源')
   // A packaging channel is chosen by desktop settings, not by a shared descriptor.
   if (trusted.updates.defaultPolicy) throw Error('默认渠道须在打包时指定，不能写入发行引导配置')
-  return { ...trusted, migrateFrom }
+  return { ...trusted, migrateFrom, configurationOnlySources }
 }
 
 export async function publisherBootstrap({ ownership, product, distribution, version, configPath, dataRoot, identity = {}, legacyConfigPath, migrateLegacy = true }) {
@@ -43,6 +44,12 @@ export async function publisherBootstrap({ ownership, product, distribution, ver
   const targetScope = source ? scopeOf(source) : null
   const previousSource = value => migrateLegacy && source && value?.configuration !== false &&
     value?.publisher === source.publisher && value?.publicKey === source.publicKey && value?.baseURL !== source.baseURL && trusted.migrateFrom.includes(value.baseURL)
+  // Only a retired feed without a Skills component can adopt the new default.
+  // Once migrated, subsequent starts retain the user's choice on the new feed.
+  const migratedSource = old => ({
+    ...source,
+    skills: source.skills && (old.skills === true || trusted.configurationOnlySources.includes(old.baseURL)),
+  })
   const markRequired = () => { file.state.requiredConfigurationScope = targetScope }
   let migratedFrom
   if (!file.state.initialized) {
@@ -109,7 +116,7 @@ export async function publisherBootstrap({ ownership, product, distribution, ver
     }
     const oldSource = baseline ? baselineSource : current?.value.contentUpdates
     if (source && migrateLegacy && (previousSource(oldSource) || trusted.migrateFrom.length && !oldSource && value.organizations?.length)) {
-      value.contentUpdates = { ...source, ...(oldSource ? { configuration: source.configuration && oldSource.configuration !== false, skills: source.skills && oldSource.skills === true } : {}) }
+      value.contentUpdates = oldSource ? migratedSource(oldSource) : source
       markRequired()
     }
     await file.initialize(value, { defaults, cleanup, current })
@@ -118,7 +125,7 @@ export async function publisherBootstrap({ ownership, product, distribution, ver
   const active = await readConfiguration(configPath)
   if (previousSource(active?.value.contentUpdates)) {
     markRequired()
-    await file.initialize({ ...active.value, contentUpdates: { ...source, configuration: true, skills: source.skills && active.value.contentUpdates.skills === true } },
+    await file.initialize({ ...active.value, contentUpdates: migratedSource(active.value.contentUpdates) },
       { defaults: file.state.defaults, cleanup: file.state.cleanup, current: active })
   }
   const config = loadUserConfig(configPath)
