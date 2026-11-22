@@ -1,0 +1,93 @@
+{
+  "name": "@eduwork/dsh-verymath",
+  "version": "0.1.0-dev",
+  "description": "VeryMath math learning and research capabilities for DSH: bilingual glossary, paper reading and dependency graphs, writing, Beamer, optimization, computation, Lean formalization, research workflows, Sage documentation lookup and MATLAB.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./core": "./lib/core/index.js",
+    "./tool": "./lib/tool/index.js",
+    "./package.json": "./package.json",
+    "./client": "./lib/client.js"
+  },
+  "files": [
+    "lib",
+    "skills",
+    "docs/capability-examples.md",
+    "docs/examples",
+    "cordis.patch.yml",
+    "README.md",
+    "README_EN.md",
+    "DEVELOPMENT.md",
+    "NOTICE.md",
+    "UPSTREAM.json",
+    "LICENSE",
+    "LICENSE-MIT",
+    "LICENSING.md",
+    "!**/tests",
+    "!**/test"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/build-client.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:runtime": "node scripts/probe-runtime.mjs",
+    "check": "npm run typecheck && npm run build && npm test && npm run test:runtime"
+  },
+  "engines": {
+    "node": ">=24.22.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.5 <4.2.0 || 4.1.0",
+    "@deepseek-ai/dsh-fs": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-skill": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0 || 3.19.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-fs": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-fs-local": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-skill": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-tool-executor-native": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "3.19.0",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
+    "@types/js-yaml": "4.0.9",
+    "@types/node": "24.19.2",
+    "jsdom": "31.0.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.8"
+  },
+  "dependencies": {
+    "js-yaml": "4.3.2"
+  },
+  "license": "MulanPSL-2.0 AND MIT",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ],
+      "immediately": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ECNU/EduWork.git",
+    "directory": "packages/dsh-verymath"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

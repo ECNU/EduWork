@@ -1,0 +1,4 @@
+goals:
+  - id: g1
+    title: LSA convergence analysis
+    status: approved

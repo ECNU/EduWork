@@ -1,0 +1,9 @@
+name: algorithm-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - algorithm design
+  - complexity analysis
+  - pseudocode lecture
+requires: [beamer, amsmath, amssymb]

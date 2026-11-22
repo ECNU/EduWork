@@ -19,6 +19,7 @@ export const packages = [
   { id: 'dsh-calendar', name: '@eduwork/dsh-calendar', directory: 'dsh-plugins/calendar', group: 'dsh-calendar' },
   { id: 'dsh-calendar-subscriptions', name: '@eduwork/dsh-calendar-subscriptions', directory: 'dsh-plugins/calendar-subscriptions', group: 'dsh-calendar-subscriptions' },
   { id: 'dsh-academic-calendar', name: '@eduwork/dsh-academic-calendar', directory: 'packages/dsh-academic-calendar', group: 'dsh-academic-calendar' },
+  { id: 'dsh-verymath', name: '@eduwork/dsh-verymath', directory: 'packages/dsh-verymath', group: 'dsh-verymath' },
 ]
 export const groups = [...new Set(packages.map(p => p.group))]
 // Also checked on Windows: these plugins handle the host's own paths, which differ there.
