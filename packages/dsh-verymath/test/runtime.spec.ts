@@ -83,6 +83,26 @@ describe('VeryMathRuntime.loadGlossary', () => {
     }
   })
 
+  it('treats ENOTDIR as a missing document, not an I/O failure', async () => {
+    // Node reports ENOTDIR for `file.json/child`, which is a nonexistent target,
+    // not a permission or device failure. Linux uses this code where macOS may
+    // report ENOENT depending on the path shape; both must start an empty
+    // glossary rather than make the upsert unavailable.
+    const runtime = await makeRuntime()
+    const dir = await makeDir()
+    const { writeFile } = await import('node:fs/promises')
+    const { join } = await import('node:path')
+    const file = join(dir, 'not-a-directory')
+    await writeFile(file, '[]')
+    try {
+      await runtime.loadGlossary(join(file, 'glossary.json'))
+      expect.unreachable()
+    } catch (error) {
+      expect(isVeryMathError(error)).toBe(true)
+      expect((error as VeryMathError).code).toBe('VERYMATH_GLOSSARY_UNAVAILABLE')
+    }
+  })
+
   it('propagates invariant violations from stored documents', async () => {
     const runtime = await makeRuntime()
     const dir = await makeDir()
@@ -237,7 +257,7 @@ describe('VeryMathRuntime skill registration', () => {
   it('registers the bundled provider on a host with a skills registry', async () => {
     const { Context } = await import('@deepseek-ai/cordis')
     const { SkillRegistry } = await import('@deepseek-ai/dsh-skill')
-    const { VeryMathSkillProvider } = await import('../../src/core/index.ts')
+    const { VeryMathSkillProvider } = await import('../src/core/index.ts')
     const ctx = new Context()
     // Constructing the registry Service on the context registers `ctx.skills`.
     const registry = new SkillRegistry(ctx)
@@ -271,5 +291,51 @@ describe('VeryMathRuntime skill registration', () => {
     const runtime = await makeRuntime()
     expect(runtime.config.queryMaxHits).toBe(20)
     expect(fakeContext(runtime).verymath).toBe(runtime)
+  })
+})
+
+describe('VeryMathRuntime Python resolution', () => {
+  it('returns the absolute interpreter path the shared resolver selected', async () => {
+    const { Context } = await import('@deepseek-ai/cordis')
+    const runtime = new VeryMathRuntime(new Context())
+    const resolved = await runtime.resolvePython()
+    if (resolved === undefined) return
+
+    expect(resolved).not.toBe('python3')
+    expect(resolved).not.toBe('python')
+    expect(resolved).toMatch(/^(?:[A-Za-z]:[\\/]|\/)/)
+    const executable = resolved.split(/[\\/]/).pop()?.toLowerCase()
+    expect(executable === 'python' || executable === 'python3' || executable?.startsWith('python3.')).toBe(true)
+  })
+
+  it('finds python3 in the conda fallback when the desktop PATH does not contain it', async () => {
+    const { Context: CordisContext } = await import('@deepseek-ai/cordis')
+    const { chmod, copyFile, mkdir, writeFile } = await import('node:fs/promises')
+    const { join } = await import('node:path')
+    const originalHome = process.env.HOME
+    const originalPath = process.env.PATH
+    try {
+      const home = await makeDir()
+      const bin = join(home, 'miniforge3', 'bin')
+      const executable = join(bin, process.platform === 'win32' ? 'python3.exe' : 'python3')
+      await mkdir(bin, { recursive: true })
+      if (process.platform === 'win32') {
+        await copyFile(process.execPath, executable)
+      } else {
+        await writeFile(executable, '#!/bin/sh\nexit 0\n', 'utf8')
+        await chmod(executable, 0o755)
+      }
+
+      process.env.HOME = home
+      process.env.PATH = join(home, 'empty-path')
+      const runtime = new VeryMathRuntime(new CordisContext())
+      expect(runtime.resolvePythonExecutable()).toBe(executable)
+      expect(await runtime.resolvePython()).toBe(executable)
+    } finally {
+      if (originalHome === undefined) delete process.env.HOME
+      else process.env.HOME = originalHome
+      if (originalPath === undefined) delete process.env.PATH
+      else process.env.PATH = originalPath
+    }
   })
 })

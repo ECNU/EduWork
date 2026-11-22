@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-An optional EduWork plugin that brings VeryMath's math research skills and tools into the conversation: structured paper reading with theorem dependency graphs, a bilingual glossary, paper writing and Beamer slides, mixed-integer and quadratic programming, least squares and invariant computation, Lean patch acceptance, research-workflow gates, plus Sage documentation lookup and MATLAB execution. 16 skills and 14 tools. Tested on DSH 0.2.2-rc.1 (the version bundled with EduWork 0.4.13) and 0.2.1-rc.5; the peer range covers both and later 0.2.x releases.
+An optional EduWork plugin that brings VeryMath's math research skills and tools into the conversation: structured paper reading with theorem dependency graphs, a bilingual glossary, paper writing and Beamer slides, mixed-integer and quadratic programming, least squares and invariant computation, Lean patch acceptance, research-workflow gates, plus Sage documentation lookup and MATLAB execution. 16 skills and 14 tools. Tested on DSH `0.2.2-rc.3` (the version bundled with EduWork 0.4.14), `0.2.2-rc.1` (0.4.13) and `0.2.1-rc.5`; the peer range covers these versions and later 0.2.x releases.
 
 ## Try it in two prompts
 
@@ -34,6 +34,8 @@ Prompts, sample inputs and verification notes for the remaining 12 capabilities 
 2. Describe the task directly (the two prompts above can be used as-is). Artifacts are written to the current session workspace.
 3. Glossary files, paper structure JSON and dependency graphs stay in the workspace and can feed follow-up tasks.
 4. The mapping between skills and tools is documented in the [capability examples](docs/capability-examples.md), which also gives copy-paste prompts, sample inputs and verification notes for each scenario.
+
+Python is resolved once through the plugin setting, `DSH_OFFICE_PYTHON`, PATH and the common conda/Homebrew directories; the tools and the panel share one absolute interpreter path.
 
 ## Capability boundaries
 

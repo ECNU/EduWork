@@ -1,7 +1,7 @@
 # 构建与验证 / Build and validation
 
-需要 Node.js 24.22.1 及以上（实测于 24.22.2）。开发依赖锁定 DSH `0.2.2-rc.1`，peer 范围同时覆盖 `0.2.1-rc.5` 与后续 `0.2.x`。
-Requires Node.js 24.22.1+ (verified on 24.22.2). Development dependencies pin DSH `0.2.2-rc.1`; the peer range also covers `0.2.1-rc.5` and later `0.2.x`.
+需要 Node.js 24.22.1 及以上（实测于 24.22.2）。开发依赖锁定 EduWork 0.4.14 所用的 DSH `0.2.2-rc.3`，peer 范围同时覆盖 `0.2.1-rc.5`、`0.2.2-rc.1` 与后续 `0.2.x`。
+Requires Node.js 24.22.1+ (verified on 24.22.2). Development dependencies pin DSH `0.2.2-rc.3`, the runtime bundled with EduWork 0.4.14; the peer range also covers `0.2.1-rc.5`, `0.2.2-rc.1` and later `0.2.x`.
 
 ```sh
 npm ci
@@ -13,8 +13,10 @@ npm run check
 
 ## check 覆盖范围 / What check covers
 
-`npm run check` 依次执行类型检查、构建、172 项 vitest 测试与 13 项 runtime probe 检查。probe 挂载真实的 `ctx.verymath` 服务、工具与技能注册表，并按 DSH 0.2.2 的要求装载原生工具执行器，用合成工作区执行全部工具（含 upsert 的别名新增／按 `term_id` 纠正／整批回滚，以及 `verymath_paper_graph` 的跨批合并），不调用模型、不访问网络。
-`npm run check` runs type checking, build, 172 vitest tests and 13 runtime probe checks. The probe mounts the real `ctx.verymath` service, tool and skill registries, then executes every tool against a synthetic workspace — including upsert alias creation, correction by `term_id`, whole-batch rollback, and `verymath_paper_graph` batch merging — without model calls or network access.
+`npm run check` 依次执行类型检查、构建、185 项 vitest 测试与 16 项 runtime probe 检查。probe 挂载真实的 `ctx.verymath` 服务、工具与技能注册表，并按 DSH 0.2.2 的要求装载原生工具执行器，用合成工作区执行全部工具（含 upsert 的别名新增／按 `term_id` 纠正／整批回滚，以及 `verymath_paper_graph` 的跨批合并），不调用模型、不访问网络。
+`npm run check` runs type checking, build, 185 vitest tests and 16 runtime probe checks. The probe mounts the real `ctx.verymath` service, tool and skill registries, then executes every tool against a synthetic workspace — including upsert alias creation, correction by `term_id`, whole-batch rollback, and `verymath_paper_graph` batch merging — without model calls or network access.
+
+The separate upstream Python suite is available only in a development checkout with the sibling `research/AI4Math-MathTool/` clone. Its tests load scripts relative to their own test file, while `npm run check` exercises the bundled build script; provenance is recorded in `UPSTREAM.json`.
 
 ## 不在 CI 覆盖内 / Not covered by CI
 

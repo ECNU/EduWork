@@ -81,6 +81,7 @@ try {
 
   const check = await execute('verymath_python_check', {})
   assert.equal(check.isError, false, JSON.stringify(check))
+  assert.equal(check.value.executable, ctx.verymath.resolvePythonExecutable(), 'the tool and the panel must report the same Python interpreter')
   report.checks.push(`verymath_python_check executes (available=${check.value.available})`)
 
   // Beamer toolchain probe: real execution (spawns latexmk/xelatex/kpsewhich probes).

@@ -11,6 +11,7 @@ import { spawn } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { normalize } from 'node:path'
 import { isErrnoCode, VeryMathError } from './error.ts'
+import { resolveExecutable, resolvePythonExecutable } from './exec.ts'
 import { parseGlossary, queryGlossary, validateGlossaryInvariants, type GlossaryHit, type GlossaryQueryOptions, type GlossaryTerm } from './glossary.ts'
 import { bundledSkillsDir } from './paths.ts'
 import { VeryMathSkillProvider } from './skills.ts'
@@ -139,7 +140,11 @@ export class VeryMathRuntime extends Service {
       // Only a genuinely absent file means "there is no glossary yet". Treating
       // every read failure that way let an EACCES/EIO/abort turn into "start from
       // an empty glossary", and the next write then replaced the real document.
-      if (isErrnoCode(error, 'ENOENT')) {
+      // ENOENT/ENOTDIR mean "there is no document at this path". Other read
+      // failures (permissions, I/O, cancellation) must not be mistaken for an
+      // empty glossary, because the upsert tool would then replace a real file
+      // with only the terms in that request.
+      if (isErrnoCode(error, 'ENOENT') || isErrnoCode(error, 'ENOTDIR')) {
         throw new VeryMathError(
           `cannot read glossary at ${key}: ${error instanceof Error ? error.message : String(error)}`,
           'VERYMATH_GLOSSARY_UNAVAILABLE',
@@ -223,6 +228,15 @@ export class VeryMathRuntime extends Service {
   }
 
   /**
+   * Resolve the configured Python interpreter without running it. The browser
+   * panel uses the same config and fallback search as the tools, so a configured
+   * `pythonExecutable`/`DSH_OFFICE_PYTHON` cannot make the two surfaces disagree.
+   */
+  resolvePythonExecutable(): string | undefined {
+    return resolvePythonExecutable(this.config.pythonExecutable)
+  }
+
+  /**
    * Locate a Python interpreter able to run the upstream `math-glossary`
    * scripts: the configured executable, then `python3`, then `python`.
    * Resolution runs once and is cached; missing interpreters map to
@@ -237,8 +251,10 @@ export class VeryMathRuntime extends Service {
   private async probePython(): Promise<string | undefined> {
     const candidates = [...new Set([this.config.pythonExecutable, 'python3', 'python'])]
     for (const candidate of candidates) {
-      const probe = await this.runPython(candidate, ['--version'], 5_000).catch(() => undefined)
-      if (probe !== undefined && probe.exitCode === 0) return candidate
+      const resolved = resolveExecutable(candidate)
+      if (resolved === undefined) continue
+      const probe = await this.runPython(resolved, ['--version'], 5_000).catch(() => undefined)
+      if (probe !== undefined && probe.exitCode === 0) return resolved
     }
     return undefined
   }

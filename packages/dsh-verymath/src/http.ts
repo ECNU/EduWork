@@ -71,6 +71,12 @@ export interface HttpContext {
    * document and the chat tool keeps answering from the pre-write snapshot.
    */
   readonly invalidateGlossaryCache?: () => void
+  /**
+   * Resolve the configured Python interpreter. The runtime owns the plugin
+   * config (`pythonExecutable`/`DSH_OFFICE_PYTHON`), so the panel asks it
+   * instead of running a second resolver with different inputs.
+   */
+  readonly resolvePythonExecutable?: () => string | undefined
 }
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' } as const
@@ -201,7 +207,7 @@ function firstLine(text: string, max = 80): string {
  * `python3` is probed here only to answer "can the glossary build scripts run";
  * the OSQP/Sage probes reuse the same command shape as the corresponding tools.
  */
-async function probeEnvironment(): Promise<ProbeRow[]> {
+async function probeEnvironment(svc?: HttpContext): Promise<ProbeRow[]> {
   // All probes run concurrently: seven sequential spawns made the panel sit on
   // "probing…" for up to twenty seconds, which reads as a hang.
   const check = (executable: string, args: readonly string[], timeoutMs = 8_000) =>
@@ -213,7 +219,7 @@ async function probeEnvironment(): Promise<ProbeRow[]> {
     return await check(executable, args, timeoutMs)
   }
 
-  const pythonExecutable = resolvePythonExecutable()
+  const pythonExecutable = svc?.resolvePythonExecutable?.() ?? resolvePythonExecutable()
   const pythonProbe = pythonExecutable === undefined
     ? Promise.resolve({ ok: false, stdout: '', stderr: 'not found' })
     : check(pythonExecutable, ['--version'], 5_000)
@@ -528,7 +534,7 @@ export function registerHttp(ctx: HttpContext, connection: ConnectionLike | unde
     methods: ['GET'],
     requestBody: 'buffered',
     fetch: guard(async () => {
-      const rows = await probeEnvironment()
+      const rows = await probeEnvironment(ctx)
       const ready = rows.filter(row => row.state === 'ready').length
       return json({ rows, ready, total: rows.length, workspace: ctx.workspace() })
     }),

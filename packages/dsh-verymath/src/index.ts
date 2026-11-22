@@ -83,6 +83,7 @@ function resolveWorkspace(ctx: Context): string {
 interface VeryMathServiceLike {
   readonly withGlossaryWrite?: <T>(path: string, task: () => Promise<T>) => Promise<T>
   readonly invalidateAllGlossaries?: () => void
+  readonly resolvePythonExecutable?: () => string | undefined
 }
 
 export const apply = (ctx: Context): void => {
@@ -101,6 +102,9 @@ export const apply = (ctx: Context): void => {
         : {}),
       ...(service?.invalidateAllGlossaries !== undefined
         ? { invalidateGlossaryCache: service.invalidateAllGlossaries.bind(service) }
+        : {}),
+      ...(service?.resolvePythonExecutable !== undefined
+        ? { resolvePythonExecutable: service.resolvePythonExecutable.bind(service) }
         : {}),
     }, connection)
   })

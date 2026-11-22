@@ -35,7 +35,7 @@ interface Registered {
 }
 
 /** Capture the routes the plugin registers, without a real host connection. */
-function mount(workspace: string, extras: { withWrite?: (path: string, task: () => Promise<unknown>) => Promise<unknown>, invalidate?: () => void } = {}): Map<string, Registered> {
+function mount(workspace: string, extras: { withWrite?: (path: string, task: () => Promise<unknown>) => Promise<unknown>, invalidate?: () => void, python?: () => string | undefined } = {}): Map<string, Registered> {
   const routes = new Map<string, Registered>()
   const connection = {
     fetch: {
@@ -48,6 +48,7 @@ function mount(workspace: string, extras: { withWrite?: (path: string, task: () 
     workspace: () => workspace,
     ...(extras.withWrite !== undefined ? { withWrite: extras.withWrite } : {}),
     ...(extras.invalidate !== undefined ? { invalidateGlossaryCache: extras.invalidate } : {}),
+    ...(extras.python !== undefined ? { resolvePythonExecutable: extras.python } : {}),
   }, connection)
   expect(ok).toBe(true)
   return routes
@@ -130,6 +131,23 @@ describe('panel routes', () => {
     }
     expect(typeof body.ready).toBe('number')
     expect(body.total).toBe(body.rows.length)
+  }, 60_000)
+
+  it('uses the runtime-configured Python executable for the environment probe', async () => {
+    // The runtime owns pythonExecutable/DSH_OFFICE_PYTHON. If the panel's route
+    // resolves independently it can report the default `python3` while the tool
+    // uses a configured interpreter, which is the same disagreement the 0.7.1
+    // resolver fix was meant to remove.
+    let calls = 0
+    const routes = mount(await makeWorkspace(), {
+      python: () => {
+        calls += 1
+        return process.execPath
+      },
+    })
+    const { body } = await call(routes, '/api/verymath/env')
+    expect(calls).toBe(1)
+    expect(body.rows.find((row: { id: string }) => row.id === 'python')).toMatchObject({ state: 'ready' })
   }, 60_000)
 
   it('lists glossaries found in the workspace, skipping unparsable ones', async () => {
