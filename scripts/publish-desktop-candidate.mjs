@@ -30,11 +30,14 @@ export function assetNames(product, version, platform) {
   const extra = platform === 'windows' ? `${product}-${version}-windows-x64-setup.zip` : zip.replace(/\.zip$/, '.dmg')
   return [zip, zip + '.sha256', `${platform}-${desktopVersion(version).prerelease?'alpha':'release'}-receipt.json`, extra, extra + '.sha256', ...(platform === 'windows' ? [extra + '.json', updateManifestName] : [])]
 }
-export function publicationPlatforms(value = '', mode = 'node') {
+export function publicationPlatforms(value = '', mode = 'node', product = '') {
   const platforms = value ? JSON.parse(value) : ['windows', 'macos']
   assert.ok(Array.isArray(platforms) && platforms.length >= 2)
   assert.deepEqual(platforms, platforms.includes('macos-x64') ? ['windows', 'macos', 'macos-x64'] : ['windows', 'macos'], 'Invalid publication platforms')
-  if (mode === 'ps1') assert.ok(!platforms.includes('macos-x64'), 'Intel Mac requires Node')
+  if (mode === 'ps1') {
+    assert.ok(!platforms.includes('macos-x64'), 'Intel Mac requires Node')
+    assert.ok(product !== 'EduWork' || !platforms.includes('windows'), 'The public Windows release requires Node')
+  }
   return platforms
 }
 export function nodeNpmAssetNames(product, version, platform, deltaFrom = [], windowsInstaller = false) {
@@ -216,7 +219,7 @@ export async function publishCandidate(env = process.env) {
   const aliases = {source: 'ps1', 'source-ps1': 'ps1', staged: 'node', 'node-npm': 'node'}
   const buildMode = aliases[env.BUILD_MODE] ?? env.BUILD_MODE ?? 'node'
   assert.ok(['ps1', 'node'].includes(buildMode), 'Unknown desktop build mode')
-  const platforms = publicationPlatforms(env.RELEASE_PLATFORMS, buildMode)
+  const platforms = publicationPlatforms(env.RELEASE_PLATFORMS, buildMode, product)
   assert.match(repository, /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/)
   const sourceWorkflow = env.CANDIDATE_WORKFLOW
   if (buildMode === 'node') nodeNpmAssetNames(product, version, 'macos')

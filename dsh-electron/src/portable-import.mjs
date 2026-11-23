@@ -207,8 +207,12 @@ export async function buildCopyPlan(source, target) {
   // refuses to start when it is missing, so the referenced file must cross too.
   const configDir = dirname(source.config)
   const configText = await readFile(source.config, 'utf8').catch(() => null)
-  const logoFile = configText === null ? undefined
-    : jsonc.getNodeValue(jsonc.parseTree(configText.replace(/^﻿/, ''), [], { allowTrailingComma: true }))?.product?.logoFile
+  // The runtime refuses a config with any parse error, so its values are not
+  // authoritative here either; an empty file parses to no tree.
+  const configErrors = []
+  const config = configText === null ? undefined
+    : jsonc.parseTree(configText.replace(/^﻿/, ''), configErrors, { allowTrailingComma: true })
+  const logoFile = configErrors.length || config === undefined ? undefined : jsonc.getNodeValue(config)?.product?.logoFile
   if (typeof logoFile === 'string' && logoFile && !isAbsolute(logoFile)) {
     const logo = resolve(configDir, logoFile)
     // An escaping path is a config the runtime already rejects; the import must

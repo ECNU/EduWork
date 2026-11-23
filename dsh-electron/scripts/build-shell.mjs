@@ -55,9 +55,15 @@ const electronAdapters = ['runtime-access.mjs', 'workspace-access.mjs', 'update-
 for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-electron/src/installed-updates.mjs'), join(output, 'src/installed-updates.mjs'))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
-await writeFile(join(output,'src/alpha-update-migration.mjs'), (await readFile(join(output,'src/alpha-update-migration.mjs'),'utf8'))
-  .replace('../../dsh-host/configuration-file.mjs','./configuration-file.mjs')
-  .replace('../../dsh-host/dsh-compatibility.mjs','./dsh-compatibility.mjs'))
+// Copied adapters sit flat in src/, so repo-relative host imports must be rewritten before esbuild.
+for (const [name, rewrites] of [['alpha-update-migration.mjs', [['../../dsh-host/configuration-file.mjs','./configuration-file.mjs'], ['../../dsh-host/dsh-compatibility.mjs','./dsh-compatibility.mjs']]], ['portable-import.mjs', [['../../dsh-host/vendor/jsonc-parser/parser.js','./vendor/jsonc-parser/parser.js']]]]) {
+  let text = await readFile(join(output, 'src', name), 'utf8')
+  for (const [from, to] of rewrites) {
+    if (!text.includes(from)) throw new Error(`Native shell rewrite target missing in ${name}: ${from}`)
+    text = text.replace(from, to)
+  }
+  await writeFile(join(output, 'src', name), text)
+}
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) await copyFile(join(repository, 'dsh-host', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-presets.mjs'), join(output, 'src/product-presets.mjs'))
 await copyFile(join(repository, 'dsh-host/native-resources.mjs'), join(output, 'src/native-resources.mjs'))

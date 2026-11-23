@@ -81,6 +81,7 @@ test('publication requires Actions, main and approved notes before any network m
   await assert.rejects(publishCandidate({}), /GitHub Actions/)
   await assert.rejects(publishCandidate({GITHUB_ACTIONS: 'true', GITHUB_REF: 'refs/heads/topic'}), /reviewed main/)
   await assert.rejects(publishCandidate({GITHUB_ACTIONS: 'true', GITHUB_REF: 'refs/heads/main', RELEASE_NOTES_APPROVED: 'false'}), /approved/)
+  await assert.rejects(publishCandidate({GITHUB_ACTIONS: 'true', GITHUB_REF: 'refs/heads/main', RELEASE_NOTES_APPROVED: 'true', RELEASE_NOTES: 'docs/releases/0.4.4.md', PUBLISH_RELEASE: 'false', SOURCE_RUN_ID: '1', GITHUB_REPOSITORY: 'ECNU/EduWork', RELEASE_PRODUCT: 'EduWork', RELEASE_VERSION: '0.4.4', BUILD_MODE: 'ps1'}), /requires Node/)
   assert.throws(() => assetNames('../escape', context.version, 'windows'))
   assert.throws(() => assetNames('EduWork', '../../escape', 'windows'))
 })
