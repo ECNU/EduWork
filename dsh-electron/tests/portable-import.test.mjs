@@ -164,18 +164,17 @@ test('a logo path outside the config directory is neither copied nor fatal', asy
 })
 
 test('a config the runtime would refuse contributes no logo reference', async () => {
-  const { base, source, target } = await fixture()
-  try {
-    const config = join(source, 'config/eduwork.jsonc')
-    await mkdir(join(source, 'config/branding'), { recursive: true })
-    await writeFile(join(source, 'config/branding/logo.png'), 'logo')
-    const plan = async () => (await buildCopyPlan(await inspectPortableSource({ sourceRoot: source, distribution }), target)).files
-    for (const text of ['', '{\n  "product": { "logoFile": "branding/logo.png" }\n']) {
-      await writeFile(config, text)
-      assert.equal((await plan()).some(file => file.target.includes('branding')), false)
-    }
-    assert.equal((await run({ sourceRoot: source, targetRoot: target })).state, 'imported')
-  } finally { await rm(base, { recursive: true, force: true }) }
+  for (const text of ['', '{\n  "product": { "logoFile": "branding/logo.png" }\n']) {
+    const { base, source, target } = await fixture()
+    try {
+      await mkdir(join(source, 'config/branding'), { recursive: true })
+      await writeFile(join(source, 'config/branding/logo.png'), 'logo')
+      await writeFile(join(source, 'config/eduwork.jsonc'), text)
+      const plan = await buildCopyPlan(await inspectPortableSource({ sourceRoot: source, distribution }), target)
+      assert.equal(plan.files.some(file => file.target.includes('branding')), false)
+      assert.equal((await run({ sourceRoot: source, targetRoot: target })).state, 'imported')
+    } finally { await rm(base, { recursive: true, force: true }) }
+  }
 })
 
 test('a second import with an unchanged source reuses the receipt', async () => {
