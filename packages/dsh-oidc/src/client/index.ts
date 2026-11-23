@@ -7,6 +7,7 @@ import { useSignIn } from './use-sign-in.js'
 import { useAccountStatus } from './use-account-status.js'
 import { createAccountState, selectConnectedModel } from './account-state.js'
 import { AccountMenu } from './account-menu.js'
+import { signIn } from './login-flow.js'
 
 export const inject = ['slots', 'locale', 'remote', 'theme']
 
@@ -194,7 +195,9 @@ export async function apply(ctx: any) {
       restart: () => unwrap(surfaceCtx.remote.oidcAccounts.restart()),
     }
     const accounts = createAccountState(base, { connected: (profileID: string) => selectConnectedModel(surfaceCtx, base, profileID) })
-    const service = accounts.service
+    const service = Object.assign(accounts.service, {
+      requestAuthorization: (profileID: string, scopes: string[], options: any = {}) => signIn(accounts.service, profileID, { ...options, scopes }),
+    })
     service.configuration().then((configuration: any) => {
       if (cancelled || configuration.uiMode === 'external') return
       const ids = configuration.profiles.map((profile: any) => profile.id)

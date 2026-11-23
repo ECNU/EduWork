@@ -47,6 +47,7 @@ const ctx = {
       openConfiguration: async target => { calls.push(target); return { ok: true, value: { opened: true } } },
       status: async () => ({ ok: true, value: account }),
       begin: async () => ({ ok: true, value: { mode: 'external', loginID: 'example-attempt' } }),
+      beginAuthorization: async (id, scopes) => { calls.push({ id, scopes }); return { ok: true, value: { mode: 'completed', status: account } } },
       loginStatus: async () => ({ ok: true, value: { state: 'completed', status: account } }),
       reconcile: async () => { account = connected; return { ok: true, value: account } },
       logout: async () => { account = { ...account, state: 'signed_out', credentialReady: false, userName: undefined }; return { ok: true, value: account } },
@@ -67,6 +68,9 @@ const settings = registrations.find(item => item.name === 'settings.models.foote
 assert.ok(settings, 'compiled client did not register organization settings')
 for (const target of ['config', 'examples']) assert.deepEqual(await settings.service.openConfiguration(target), { opened: true })
 assert.deepEqual(calls, ['config', 'examples'])
+await settings.service.requestAuthorization('example', ['feature.read'])
+assert.deepEqual(calls.at(-1), { id: 'example', scopes: ['feature.read'] })
+calls.pop()
 
 // Render the real compiled components against their shared store. A component
 // keeping a mount-only local status (the original defect) cannot pass these.

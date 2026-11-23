@@ -18,6 +18,8 @@ The canonical machine-readable schema is [`schema/enterprise-profile.v1alpha1.sc
 
 Incremental authorization accepts only configured, advertised optional scopes and retains existing grants for that login. Decline, cancellation, missing grants and extra grants preserve the previous session. It must authorize the same account and does not select another model. Refresh cannot expand scopes. Removing a granted optional scope invalidates credentials containing it, requiring a new sign-in; account for that when migrating distribution configuration.
 
+The client service supplied to account slots exposes `requestAuthorization(profileID, scopes, { signal, onPending })` to reuse polling and cancellation. Trigger it from explicit user interaction. The host `beginAuthorization` returns the existing Web redirect or desktop external-login descriptor, never credentials.
+
 Profiles are trusted deployment configuration, not user input. Nevertheless, the parser is fail-closed:
 
 - unknown keys are rejected at the root and at every executable-relevant nested object;
