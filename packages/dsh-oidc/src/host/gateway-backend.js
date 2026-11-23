@@ -8,10 +8,10 @@ import { oidcLlmIdentity, oidcLlmToken } from './oidc-llm-protocol.js'
 import { bufferResourceResponse, validateResourceRead } from './model-resource-transport.js'
 import { accessTokenNeedsRefresh } from './token-lifetime.js'
 import { serviceReadAllowed } from './service-authorization.js'
+import { authorizationFingerprint as fingerprint, requestedScopes } from './authorization-scopes.js'
 
 const seconds = backend => Math.floor(backend.now() / 1000)
 const ID_TOKEN_MARGIN_SECONDS = 10 * 60
-const fingerprint = (profile, descriptor) => createHash('sha256').update(JSON.stringify({ auth: profile.auth, descriptor })).digest('hex')
 const query = (url, key, required = false) => {
   const values = url.searchParams.getAll(key)
   if (values.length > 1 || (required && !values[0])) throw protocolError('oidc_callback_invalid', 'Invalid gateway callback parameters')
@@ -104,18 +104,39 @@ function withGatewayAuth(Base) {
       return descriptor
     }
 
-    async createAuthorization(profile, descriptor, redirectURI) {
+    async authorization(profileID) {
+      const profile = this.profile(profileID)
+      if (!profile.auth?.experimentalOidcLlm) return { profileID, supported: false, required: [], optional: [], available: [], granted: [] }
+      const descriptor = await this.discover(profile), session = await this.loadSession(profile)
+      const optional = profile.auth.optionalScopes ?? []
+      return { profileID, supported: true, required: [...descriptor.scopes], optional: [...optional],
+        available: optional.filter(scope => descriptor.supportedScopes.includes(scope)), granted: [...(session?.scopes ?? [])] }
+    }
+
+    async beginAuthorization(profileID, scopes) {
+      const profile = this.profile(profileID)
+      if (!profile.auth?.experimentalOidcLlm) throw protocolError('oidc_scope_request_unsupported', 'This connection does not support optional service authorization')
+      // Validate before opening a browser or cancelling an existing login flow.
+      requestedScopes(profile, await this.discover(profile), scopes)
+      return this.begin(profileID, scopes)
+    }
+
+    async createAuthorization(profile, descriptor, redirectURI, optionalRequest) {
       if (!profile.auth) return super.createAuthorization(profile, descriptor, redirectURI)
       const epoch = this.accountEpoch(profile)
+      const previous = optionalRequest === undefined ? undefined : await this.loadSession(profile)
+      const scopes = optionalRequest === undefined ? descriptor.scopes : requestedScopes(profile, descriptor, optionalRequest, previous)
       const clientId = descriptor.clientId ?? await registerLiteLLM(this.fetch, descriptor, redirectURI)
       if (epoch !== this.accountEpoch(profile)) throw protocolError('oidc_login_cancelled', 'Sign-in was cancelled')
       this.pruneFlows()
       if (this.flows.size >= 32) throw protocolError('oidc_flow_limit', 'Too many pending sign-ins')
       const state = randomBytes(32).toString('base64url'), verifier = randomBytes(48).toString('base64url')
-      const flow = { profileID: profile.id, verifier, clientId, redirectURI, createdAt: this.now(), epoch }
+      const flow = { profileID: profile.id, verifier, clientId, redirectURI, createdAt: this.now(), epoch,
+        ...(optionalRequest === undefined ? {} : { scopes, previousContextID: previous?.contextID, previousSubject: previous?.identity.sub }) }
       const target = new URL(descriptor.authorizationEndpoint)
       for (const [key, value] of Object.entries({ response_type: 'code', client_id: clientId, redirect_uri: redirectURI, state, code_challenge: createHash('sha256').update(verifier).digest('base64url'), code_challenge_method: 'S256', resource: descriptor.resource })) target.searchParams.set(key, value)
-      if (descriptor.scopes) target.searchParams.set('scope', descriptor.scopes.join(' '))
+      if (scopes) target.searchParams.set('scope', scopes.join(' '))
+      if (optionalRequest !== undefined) target.searchParams.set('prompt', 'consent')
       if (descriptor.identityMode === 'oidc') {
         flow.nonce = randomBytes(32).toString('base64url')
         target.searchParams.set('nonce', flow.nonce)
@@ -137,7 +158,7 @@ function withGatewayAuth(Base) {
       const raw = await tokenRequest(this.fetch, descriptor, { grant_type: 'authorization_code', client_id: flow.clientId, code, redirect_uri: flow.redirectURI, code_verifier: flow.verifier })
       const draft = descriptor.protocol === 'oidc-llm-draft-0.1'
       let token
-      try { token = draft ? oidcLlmToken(raw, descriptor, this.now) : liteLLMToken(raw, this.now) }
+      try { token = draft ? oidcLlmToken(raw, flow.scopes ? { ...descriptor, scopes: flow.scopes } : descriptor, this.now) : liteLLMToken(raw, this.now) }
       catch (cause) {
         if (draft && typeof raw.refresh_token === 'string' && raw.refresh_token.length > 0 && raw.refresh_token.length <= 65536) await this.revokeGateway(profile, descriptor, { clientId: flow.clientId, refreshToken: raw.refresh_token })
         throw cause
@@ -146,7 +167,15 @@ function withGatewayAuth(Base) {
       if (draft) {
         session.identityMode = descriptor.identityMode
         session.oidcNonce = flow.nonce
-        try { await this.gatewayIdentity(profile, descriptor, raw, session) }
+        try {
+          await this.gatewayIdentity(profile, descriptor, raw, session)
+          if (flow.scopes) {
+            const current = await this.loadSession(profile)
+            if (current?.contextID !== flow.previousContextID || flow.previousSubject && session.identity.sub !== flow.previousSubject) {
+              throw protocolError('gateway_identity_changed', 'Optional authorization must belong to the current account')
+            }
+          }
+        }
         catch (cause) { await this.revokeGateway(profile, descriptor, session); throw cause }
       } else {
         // Only project a display name; budgets, keys and team records never enter RPC.
@@ -196,14 +225,18 @@ function withGatewayAuth(Base) {
       if (session?.protocol !== descriptor.protocol || session.binding !== fingerprint(profile, descriptor) || typeof session.contextID !== 'string' || !session.contextID || typeof session.accessToken !== 'string' || !session.accessToken || typeof session.refreshToken !== 'string' || !session.refreshToken || typeof session.clientId !== 'string' || !session.clientId || !Number.isFinite(session.expiresAt) || typeof session.identity?.sub !== 'string' || !session.identity.sub || !(session.teamID === null || typeof session.teamID === 'string')) return undefined
       if (descriptor.protocol === 'oidc-llm-draft-0.1' && (session.clientId !== descriptor.clientId || session.identityMode !== descriptor.identityMode
         || !Array.isArray(session.scopes) || descriptor.scopes.some(scope => !session.scopes.includes(scope))
-        || session.scopes.some(scope => !descriptor.scopes.includes(scope))
+        || new Set(session.scopes).size !== session.scopes.length
+        || session.scopes.some(scope => !descriptor.scopes.includes(scope) && !profile.auth.optionalScopes?.includes(scope))
         || descriptor.identityMode === 'oidc' && typeof session.oidcNonce !== 'string')) return undefined
       return session
     }
 
-    async saveSession(profile, session, epoch = this.accountEpoch(profile)) {
+    async saveSession(profile, session, epoch = this.accountEpoch(profile), flow) {
       if (!profile.auth) return super.saveSession(profile, session, epoch)
       return this.writeCredentials(profile, epoch, async () => {
+        if (flow?.scopes && (await this.loadSession(profile))?.contextID !== flow.previousContextID) {
+          throw protocolError('oidc_login_cancelled', 'Account changed before optional authorization could be saved')
+        }
         await this.ctx.credentials.set(sessionRef(profile), JSON.stringify(session))
         this.invalidateGatewayCalls(profile)
         this.resourceFlights.delete(profile.id)

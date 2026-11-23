@@ -176,6 +176,16 @@
             "maxLength": 128,
             "pattern": "^[\\u0021\\u0023-\\u005b\\u005d-\\u007e]+$"
           }
+        },
+        "optionalScopes": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "pattern": "^[\\u0021\\u0023-\\u005b\\u005d-\\u007e]+$"
+          }
         }
       },
       "allOf": [
@@ -205,6 +215,7 @@
               "clientId": false,
               "identityMode": false,
               "additionalScopes": false,
+              "optionalScopes": false,
               "discoveryUrl": {
                 "$ref": "#/$defs/secureEndpointURL"
               },

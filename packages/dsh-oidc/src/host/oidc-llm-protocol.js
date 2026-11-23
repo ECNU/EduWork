@@ -47,6 +47,9 @@ export function detectOidcLlm(raw, profile) {
     identityMode, clientId: profile.auth.clientId, scopes,
     requireResponseIssuer: raw.authorization_response_iss_parameter_supported === true,
   }
+  // Metadata supports capability discovery; it never grants or requests consent.
+  result.supportedScopes = Object.freeze(raw.scopes_supported.filter(scope => typeof scope === 'string'
+    && scope.length <= 128 && /^[\x21\x23-\x5b\x5d-\x7e]+$/.test(scope)))
   for (const [key, wire] of Object.entries({ authorizationEndpoint: 'authorization_endpoint', tokenEndpoint: 'token_endpoint', revocationEndpoint: 'revocation_endpoint' })) {
     endpoint(raw[wire], profile)
     result[key] = raw[wire]

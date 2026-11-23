@@ -131,6 +131,8 @@ export class OidcAccountService extends TypertRemoteService {
     if (result.mode === 'completed') this.notifyAccount(result.status)
     return result
   }
+  authorization(profileID) { return this.callBackend('authorization', profileID) }
+  beginAuthorization(profileID, scopes) { return this.callBackend('beginAuthorization', profileID, scopes) }
   loginStatus(loginID) { return this.callBackend('loginStatus', loginID) }
   cancelLogin(loginID) { return this.callBackend('cancelLogin', loginID) }
   async reconcile(profileID, options) { return this.notifyAccount(await this.callBackend('reconcile', profileID, options)) }
@@ -180,7 +182,7 @@ export class OidcAccountService extends TypertRemoteService {
 }
 
 for (const method of [
-  'configuration', 'openConfiguration', 'status', 'resources', 'begin', 'loginStatus', 'cancelLogin', 'reconcile', 'selectEnterpriseModel', 'logout', 'management',
+  'configuration', 'openConfiguration', 'status', 'resources', 'begin', 'authorization', 'beginAuthorization', 'loginStatus', 'cancelLogin', 'reconcile', 'selectEnterpriseModel', 'logout', 'management',
   'activate', 'configure', 'addCustom', 'updateCustom', 'removeProfile', 'configureModels', 'restart',
 ]) {
   Remote(method)(OidcAccountService.prototype[method], {

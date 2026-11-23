@@ -252,12 +252,12 @@ export class WebOidcBackend {
     return result
   }
 
-  async begin(profileID) {
+  async begin(profileID, optionalRequest) {
     const profile = this.profile(profileID)
     const discovery = await this.discover(profile)
     this.pruneFlows()
     if (this.flows.size >= MAX_PENDING_FLOWS) throw publicError('oidc_flow_limit', 'too many pending OIDC login attempts')
-    const { authorizationURL } = await this.createAuthorization(profile, discovery, this.redirectURI)
+    const { authorizationURL } = await this.createAuthorization(profile, discovery, this.redirectURI, optionalRequest)
     return { mode: 'redirect', authorizationURL }
   }
 
@@ -295,7 +295,7 @@ export class WebOidcBackend {
       profileID = flow.profileID
       const profile = this.profile(flow.profileID)
       const session = await this.exchangeAuthorization(requested, flow)
-      await this.saveSession(profile, session, flow.epoch)
+      await this.saveSession(profile, session, flow.epoch, flow)
       const status = await this.reconcile(profile.id)
       this.accountChanged(status)
       outcome = 'connected'

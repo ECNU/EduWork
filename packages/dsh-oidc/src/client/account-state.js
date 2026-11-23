@@ -36,24 +36,26 @@ export function createAccountState(base, { connected = async (_profileID) => {} 
     }
     return result
   }
+  const begin = async (id, start, selectModels = true) => {
+    const generation = mutate(id), result = await start()
+    if (epoch(id) !== generation || disposed) return result
+    if (result.mode === 'external') logins.set(result.loginID, { id, generation, selectModels })
+    if (result.mode === 'completed') { publish(result.status); if (selectModels) await activate(result.status) }
+    return result
+  }
   const service = {
     ...base, status,
     accountSnapshot: id => values.get(id) ?? null,
     subscribeAccounts(listener) { listeners.add(listener); return () => listeners.delete(listener) },
-    async begin(id) {
-      const generation = mutate(id), result = await base.begin(id)
-      if (epoch(id) !== generation || disposed) return result
-      if (result.mode === 'external') logins.set(result.loginID, { id, generation })
-      if (result.mode === 'completed') { publish(result.status); await activate(result.status) }
-      return result
-    },
+    begin: id => begin(id, () => base.begin(id)),
+    beginAuthorization: (id, scopes) => begin(id, () => base.beginAuthorization(id, scopes), false),
     async loginStatus(loginID) {
       const next = await base.loginStatus(loginID), flow = logins.get(loginID)
       if (!flow || disposed || epoch(flow.id) !== flow.generation) return next
       if (next.state === 'completed' && next.status) {
         if (!flow.completion) {
           publish(next.status)
-          flow.completion = activate(next.status)
+          flow.completion = flow.selectModels ? activate(next.status) : Promise.resolve()
         }
         await flow.completion
       }

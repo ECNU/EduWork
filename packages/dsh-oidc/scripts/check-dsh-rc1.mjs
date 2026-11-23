@@ -71,7 +71,7 @@ assert.equal(credentialRef('EDUWORK_API_KEY'), 'EDUWORK_API_KEY')
 
 const oidcService = new OidcAccountService(new Context(), { allowEmptyProfiles: true, backend: 'desktop' })
 assert.deepEqual(remoteMethods(oidcService).map(marker => marker.method), [
-  'configuration', 'openConfiguration', 'status', 'resources', 'begin', 'loginStatus', 'cancelLogin', 'reconcile', 'selectEnterpriseModel', 'logout', 'management',
+  'configuration', 'openConfiguration', 'status', 'resources', 'begin', 'authorization', 'beginAuthorization', 'loginStatus', 'cancelLogin', 'reconcile', 'selectEnterpriseModel', 'logout', 'management',
   'activate', 'configure', 'addCustom', 'updateCustom', 'removeProfile', 'configureModels', 'restart',
 ], 'OidcAccountService must preserve every Typert Remote marker')
 

@@ -8,11 +8,11 @@ export function useSignIn(service: any) {
   return {
     pending,
     cancel: () => controller.current?.abort(),
-    begin: async (profileID: string) => {
+    begin: async (profileID: string, scopes?: string[]) => {
       controller.current?.abort()
       const current = new AbortController()
       controller.current = current
-      return signIn(service, profileID, { signal: current.signal, onPending: value => setPending(Boolean(value)) })
+      return signIn(service, profileID, { scopes, signal: current.signal, onPending: value => setPending(Boolean(value)) })
     },
   }
 }

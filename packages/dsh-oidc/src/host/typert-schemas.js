@@ -5,6 +5,13 @@ const pkg = '@eduwork/dsh-oidc'
 export const profileIdSchema = z.string().min(1).max(64)
 export const loginIdSchema = z.string().regex(/^[A-Za-z0-9_-]{32}$/)
 export const reconcileOptionsSchema = z.object({}).strict()
+export const authorizationScopesSchema = z.array(z.string().max(128).regex(/^[\x21\x23-\x5b\x5d-\x7e]+$/)).min(1).max(64)
+  .refine(scopes => new Set(scopes).size === scopes.length)
+export const authorizationResult = Object.freeze({
+  mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#Authorization`,
+  schema: z.object({ profileID: profileIdSchema, supported: z.boolean(), required: z.array(z.string()),
+    optional: z.array(z.string()), available: z.array(z.string()), granted: z.array(z.string()) }).strict(),
+})
 export const baseURLSchema = z.string().min(1).max(2048)
 export const modelCatalogModeSchema = z.enum(['discovery', 'manual'])
 export const configurationTargetSchema = z.enum(['config', 'examples'])

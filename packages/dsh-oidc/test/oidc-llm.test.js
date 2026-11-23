@@ -74,13 +74,13 @@ async function fixture(t, mode = 'oidc', metadataChanges = {}, provider, authCha
     },
   })
   t.after(() => backend.dispose())
-  const login = async (changeCallback = callback => {}) => {
-    const started = await backend.begin(profile.id)
+  const login = async (changeCallback = callback => {}, scopes) => {
+    const started = scopes === undefined ? await backend.begin(profile.id) : await backend.beginAuthorization(profile.id, scopes)
     const callback = new URL(authorization.searchParams.get('redirect_uri'))
     callback.searchParams.set('code', 'synthetic-code')
     callback.searchParams.set('state', authorization.searchParams.get('state'))
     if (!controls.omitIssuer) callback.searchParams.set('iss', base)
-    changeCallback(callback)
+    await changeCallback(callback)
     const response = await fetch(callback, { headers: { 'accept-language': 'zh-CN' } })
     callbackResult = { status: response.status, html: await response.text(), headers: response.headers }
     return backend.loginStatus(started.loginID)
@@ -180,6 +180,102 @@ test('additional scopes are explicit, advertised and bounded without changing de
   for (const value of [null, 'search.web', [''], ['a b'], ['a"b'], ['a\\b'], ['search.web', 'search.web'], ['x'.repeat(129)], Array.from({ length: 65 }, (_, i) => 's' + i)]) {
     assert.throws(() => normalizeEnterpriseProfile({ ...raw, auth: { ...raw.auth, additionalScopes: value } }), /additionalScopes/)
   }
+})
+
+test('optional scopes do not widen initial consent or require server rollout; malformed configuration fails', async t => {
+  const f = await fixture(t, 'oidc', { scopes_supported: [...metadata().scopes_supported, 'feature.read', 'admin.write'] }, undefined,
+    { optionalScopes: ['feature.read', 'future.read'] })
+  assert.equal((await f.login()).state, 'completed')
+  assert.deepEqual(f.authorization.searchParams.get('scope').split(' '), metadata().scopes_supported.filter(scope => scope !== 'llm:profile'))
+  const permission = await f.backend.authorization('draft')
+  assert.deepEqual(permission.optional, ['feature.read', 'future.read'])
+  assert.deepEqual(permission.available, ['feature.read'])
+  assert.equal(permission.granted.includes('feature.read'), false)
+  for (const [scopes, code] of [[[], 'oidc_scope_request_invalid'], [['feature.read', 'feature.read'], 'oidc_scope_request_invalid'], [['admin.write'], 'oidc_scope_request_denied'], [['future.read'], 'oidc_scope_unavailable']]) {
+    await assert.rejects(f.backend.beginAuthorization('draft', scopes), { code })
+  }
+  assert.equal((await f.backend.status('draft')).credentialReady, true)
+  for (const value of [null, 'feature.read', [''], ['a b'], ['a"b'], ['a\\b'], ['feature.read', 'feature.read'], ['x'.repeat(129)]]) {
+    const raw = profileRaw()
+    assert.throws(() => normalizeEnterpriseProfile({ ...raw, auth: { ...raw.auth, optionalScopes: value } }), /optionalScopes/)
+  }
+})
+
+test('adding optional configuration preserves the legacy session binding and model requests across restart', async t => {
+  const f = await fixture(t, 'oidc', { scopes_supported: [...metadata().scopes_supported, 'feature.read'] })
+  await f.login()
+  const before = await f.backend.loadSession(f.profile)
+  const { supportedScopes, ...legacyDescriptor } = await f.backend.discover(f.profile)
+  assert.equal(before.binding, createHash('sha256').update(JSON.stringify({ auth: f.profile.auth, descriptor: legacyDescriptor })).digest('hex'))
+  const raw = profileRaw()
+  const upgraded = normalizeEnterpriseProfile({ ...raw, auth: { ...raw.auth, optionalScopes: ['feature.read', 'future.read'] } })
+  const restarted = new GatewayDesktopBackend(f.backend.ctx, new Map([['draft', upgraded]]), {}, { fetch: f.backend.fetch })
+  t.after(() => restarted.dispose())
+  assert.equal((await restarted.loadSession(upgraded)).accessToken, before.accessToken)
+  assert.equal(await restarted.modelAuthorization('draft', base + '/open/api/v1'), true)
+  assert.equal((await restarted.authorization('draft')).granted.includes('feature.read'), false)
+})
+
+test('explicit consent adds only the selected scopes, preserves existing grants and survives restart/refresh', async t => {
+  const f = await fixture(t, 'oidc', { scopes_supported: [...metadata().scopes_supported, 'feature.read', 'other.read', 'admin.write'] }, undefined,
+    { optionalScopes: ['feature.read', 'other.read', 'admin.write'] })
+  await f.login()
+  assert.equal((await f.login(undefined, ['feature.read'])).state, 'completed')
+  assert.equal(f.authorization.searchParams.get('prompt'), 'consent')
+  assert.equal(f.authorization.searchParams.get('scope').includes('admin.write'), false)
+  assert.equal((await f.login(undefined, ['other.read'])).state, 'completed')
+  const scopes = (await f.backend.authorization('draft')).granted
+  assert.ok(scopes.includes('feature.read') && scopes.includes('other.read'))
+  assert.equal(scopes.includes('admin.write'), false)
+  const restarted = new GatewayDesktopBackend(f.backend.ctx, new Map([['draft', f.profile]]), {}, { fetch: f.backend.fetch })
+  t.after(() => restarted.dispose())
+  const session = await restarted.loadSession(f.profile)
+  assert.deepEqual(session.scopes, scopes)
+  assert.deepEqual((await restarted.refresh(f.profile, session)).scopes, scopes)
+  f.controls.scope = scopes.join(' ') + ' admin.write'
+  await assert.rejects(restarted.refresh(f.profile, await restarted.loadSession(f.profile)), /sign in again/)
+  assert.equal(f.records.size, 0, 'A refresh cannot gain even a configured but unconsented scope')
+})
+
+test('declined, partial or over-broad optional authorization leaves the existing login usable', async t => {
+  const f = await fixture(t, 'oidc', { scopes_supported: [...metadata().scopes_supported, 'feature.read', 'admin.write'] }, undefined,
+    { optionalScopes: ['feature.read', 'admin.write'] })
+  await f.login()
+  const original = await f.backend.loadSession(f.profile)
+  assert.equal((await f.login(callback => { callback.searchParams.delete('code'); callback.searchParams.set('error', 'access_denied') }, ['feature.read'])).state, 'failed')
+  assert.deepEqual(await f.backend.loadSession(f.profile), original)
+  for (const scopes of [original.scopes, [...original.scopes, 'feature.read', 'admin.write']]) {
+    f.controls.scope = scopes.join(' ')
+    assert.equal((await f.login(undefined, ['feature.read'])).state, 'failed')
+    assert.deepEqual(await f.backend.loadSession(f.profile), original)
+    assert.equal(await f.backend.modelAuthorization('draft', base + '/open/api/v1'), true)
+  }
+  f.controls.scope = undefined
+  const started = await f.backend.beginAuthorization('draft', ['feature.read'])
+  await f.backend.cancelLogin(started.loginID)
+  assert.deepEqual(await f.backend.loadSession(f.profile), original)
+})
+
+test('optional consent cannot silently switch accounts or overwrite a newer login', async t => {
+  const f = await fixture(t, 'oauth', { scopes_supported: [...metadata().scopes_supported, 'feature.read'] }, undefined, { optionalScopes: ['feature.read'] })
+  await f.login()
+  const original = await f.backend.loadSession(f.profile)
+  f.controls.user = 'bob'
+  assert.equal((await f.login(undefined, ['feature.read'])).state, 'failed')
+  assert.deepEqual(await f.backend.loadSession(f.profile), original)
+  f.controls.user = 'alice'
+  assert.equal((await f.login(async () => {
+    await f.backend.saveSession(f.profile, { ...original, contextID: 'new-login-context' })
+  }, ['feature.read'])).state, 'failed')
+  assert.equal((await f.backend.loadSession(f.profile)).contextID, 'new-login-context')
+  await assert.rejects(f.backend.saveSession(f.profile, original, f.backend.accountEpoch(f.profile), { scopes: ['feature.read'], previousContextID: original.contextID }), { code: 'oidc_login_cancelled' })
+  const save = f.backend.saveSession.bind(f.backend)
+  f.backend.saveSession = async (...args) => {
+    if (args[3]?.scopes) await save(f.profile, { ...original, contextID: 'replaced-before-commit' })
+    return save(...args)
+  }
+  assert.equal((await f.login(undefined, ['feature.read'])).state, 'failed')
+  assert.equal((await f.backend.loadSession(f.profile)).contextID, 'replaced-before-commit', 'failed consent must not restore a stale pre-write snapshot')
 })
 
 test('service consent survives login, Token retry, restart and logout without widening paths or scopes', async t => {
@@ -309,6 +405,28 @@ test('Web callback exposes the same safe issuer diagnostic without exchanging a 
   assert.equal(new URL(location).searchParams.get('dsh_oidc'), 'gateway_callback_issuer_missing')
   assert.ok(!f.calls.some(call => call.url === base + '/token'))
   assert.equal(f.records.size, 0)
+})
+
+test('Web optional consent uses the same bound flow and preserves the previous login on decline', async t => {
+  const f = await fixture(t, 'oidc', { scopes_supported: [...metadata().scopes_supported, 'feature.read'] }, undefined, { optionalScopes: ['feature.read'] })
+  await f.login()
+  const web = new GatewayWebBackend({ ...f.backend.ctx, webServer: { host: '127.0.0.1', port: 3080 } },
+    new Map([[f.profile.id, f.profile]]), {}, { fetch: f.backend.fetch })
+  for (const declined of [true, false]) {
+    const before = await web.loadSession(f.profile)
+    const started = await web.beginAuthorization('draft', ['feature.read'])
+    await f.backend.openExternal(started.authorizationURL)
+    const authorization = new URL(started.authorizationURL)
+    const callback = new URL(authorization.searchParams.get('redirect_uri'))
+    callback.searchParams.set('state', authorization.searchParams.get('state'))
+    callback.searchParams.set('iss', base)
+    callback.searchParams.set(declined ? 'error' : 'code', declined ? 'access_denied' : 'synthetic-code')
+    let location
+    await web.callback({ url: callback.pathname + callback.search }, { writeHead: (_status, headers) => { location = headers.location }, end() {} })
+    assert.equal(new URL(location).searchParams.get('dsh_oidc'), declined ? 'oidc_authorization_rejected' : 'connected')
+    if (declined) assert.deepEqual(await web.loadSession(f.profile), before)
+    else assert.ok((await web.authorization('draft')).granted.includes('feature.read'))
+  }
 })
 
 test('draft refresh is single-flight, accepts optional refreshed ID Token and persists one rotated pair', async t => {

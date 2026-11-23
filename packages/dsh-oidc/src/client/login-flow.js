@@ -9,10 +9,10 @@ const wait = (ms, signal) => new Promise(resolve => {
  * Browser navigation is kept for Web; desktop never navigates its renderer to the IdP.
  * @param {any} service
  * @param {string} profileID
- * @param {{signal?: AbortSignal, onPending?: (pending: boolean) => void, redirect?: (url: string) => void, interval?: number}} options
+ * @param {{signal?: AbortSignal, scopes?: string[], onPending?: (pending: boolean) => void, redirect?: (url: string) => void, interval?: number}} options
  */
-export async function signIn(service, profileID, { signal, onPending = (pending = false) => {}, redirect = url => window.location.assign(url), interval = 1000 } = {}) {
-  const result = await service.begin(profileID)
+export async function signIn(service, profileID, { signal, scopes, onPending = (pending = false) => {}, redirect = url => window.location.assign(url), interval = 1000 } = {}) {
+  const result = scopes === undefined ? await service.begin(profileID) : await service.beginAuthorization(profileID, scopes)
   if (result.mode === 'redirect') { if (!signal?.aborted) redirect(result.authorizationURL); return service.status(profileID) }
   if (result.mode === 'completed') return result.status
   if (result.mode !== 'external') throw new Error('Unsupported organization sign-in response')

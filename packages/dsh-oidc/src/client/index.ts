@@ -177,6 +177,8 @@ export async function apply(ctx: any) {
       status: (profileID: string) => unwrap(surfaceCtx.remote.oidcAccounts.status(profileID)),
       resources: (profileID: string) => unwrap(surfaceCtx.remote.oidcAccounts.resources(profileID)),
       begin: (profileID: string) => unwrap(surfaceCtx.remote.oidcAccounts.begin(profileID)),
+      authorization: (profileID: string) => unwrap(surfaceCtx.remote.oidcAccounts.authorization(profileID)),
+      beginAuthorization: (profileID: string, scopes: string[]) => unwrap(surfaceCtx.remote.oidcAccounts.beginAuthorization(profileID, scopes)),
       loginStatus: (loginID: string) => unwrap(surfaceCtx.remote.oidcAccounts.loginStatus(loginID)),
       cancelLogin: (loginID: string) => unwrap(surfaceCtx.remote.oidcAccounts.cancelLogin(loginID)),
       reconcile: (profileID: string, options: any) => unwrap(surfaceCtx.remote.oidcAccounts.reconcile(profileID, options)),

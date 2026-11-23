@@ -7,6 +7,19 @@ const authenticated = { ...signedOut, state: 'authenticated', userName: 'Example
 const connected = { ...authenticated, state: 'connected', credentialReady: true }
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
 
+test('optional authorization refreshes the shared account snapshot without selecting another model', async () => {
+  const selected = [], requested = []
+  const { service } = createAccountState({
+    beginAuthorization: async (...args) => { requested.push(args); return { mode: 'external', loginID: 'consent' } },
+    loginStatus: async () => ({ state: 'completed', status: connected }),
+  }, { connected: async id => selected.push(id) })
+  await service.beginAuthorization('school', ['feature.read'])
+  await service.loginStatus('consent')
+  assert.deepEqual(requested, [['school', ['feature.read']]])
+  assert.equal(service.accountSnapshot('school'), connected)
+  assert.deepEqual(selected, [])
+})
+
 test('one shared snapshot updates every consumer and rejects a stale mount read after selecting models', async () => {
   const old = deferred(), seen = [[], [], []], selected = []
   let reads = 0

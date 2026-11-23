@@ -1,6 +1,6 @@
 import {
   accountResult, baseURLSchema, beginResult, configurationResult, configurationTargetSchema, openConfigurationResult, jsonParameter, managementResult, loginIdSchema, loginResult,
-  modelCatalogModeSchema, profileIdSchema, reconcileOptionsSchema, restartResult, runtimeModelsSchema, resourcesResult, enterpriseSelectionResult, enterpriseSelectionOptionsSchema,
+  modelCatalogModeSchema, profileIdSchema, reconcileOptionsSchema, restartResult, runtimeModelsSchema, resourcesResult, enterpriseSelectionResult, enterpriseSelectionOptionsSchema, authorizationResult, authorizationScopesSchema,
 } from './typert-schemas.js'
 
 const pkg = '@eduwork/dsh-oidc'
@@ -24,6 +24,8 @@ export const TYPERT_REMOTE = {
     descriptor('status', [profile()], accountResult),
     descriptor('resources', [profile()], resourcesResult),
     descriptor('begin', [profile()], beginResult),
+    descriptor('authorization', [profile()], authorizationResult),
+    descriptor('beginAuthorization', [profile(), jsonParameter('scopes', authorizationScopesSchema, `${pkg}#AuthorizationScopes`)], beginResult),
     descriptor('loginStatus', [login()], loginResult),
     descriptor('cancelLogin', [login()], loginResult),
     descriptor('reconcile', [profile(), options()], accountResult),

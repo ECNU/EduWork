@@ -14,6 +14,10 @@ The canonical machine-readable schema is [`schema/enterprise-profile.v1alpha1.sc
 
 `auth.additionalScopes` explicitly requests additional service scopes for oidc-llm integrations, such as institution search. No additional scopes are requested by default. Each must be advertised in discovery's `scopes_supported`; token and refresh responses must retain the requested scopes. Changing scope configuration requires a new sign-in rather than expanding an existing token's authority.
 
+`auth.optionalScopes` declares scopes that features may request on demand. Ordinary sign-in does not request them, and a scope not yet advertised by the server does not prevent basic sign-in. Adding optional scopes preserves existing sessions. When the user enables a feature, call `oidcAccounts.authorization(profileID)` for `required`, `optional`, `available` and `granted`, then `beginAuthorization(profileID, scopes)`. `available` is the intersection of configured and advertised scopes; only `granted` describes the current token's permissions. Explain the purpose and requested permissions before starting, and reuse the existing login polling, cancellation and failure flow.
+
+Incremental authorization accepts only configured, advertised optional scopes and retains existing grants for that login. Decline, cancellation, missing grants and extra grants preserve the previous session. It must authorize the same account and does not select another model. Refresh cannot expand scopes. Removing a granted optional scope invalidates credentials containing it, requiring a new sign-in; account for that when migrating distribution configuration.
+
 Profiles are trusted deployment configuration, not user input. Nevertheless, the parser is fail-closed:
 
 - unknown keys are rejected at the root and at every executable-relevant nested object;

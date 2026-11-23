@@ -30,7 +30,7 @@ export class DesktopOidcBackend extends WebOidcBackend {
     ctx.effect(() => () => this.dispose(), 'dsh-oidc: temporary desktop callbacks')
   }
 
-  async begin(profileID) {
+  async begin(profileID, optionalRequest) {
     const profile = this.profile(profileID)
     if (this.disposed) throw error('oidc_host_unavailable', 'OIDC host has stopped')
     if (typeof this.openExternal !== 'function') throw error('oidc_browser_unavailable', 'The desktop browser service is unavailable')
@@ -60,7 +60,7 @@ export class DesktopOidcBackend extends WebOidcBackend {
         throw error('oidc_host_unavailable', 'OIDC host has stopped')
       }
       attempt.origin = `http://127.0.0.1:${server.address().port}`
-      const authorization = await this.createAuthorization(profile, discovery, `${attempt.origin}${OIDC_CALLBACK_PATH}`)
+      const authorization = await this.createAuthorization(profile, discovery, `${attempt.origin}${OIDC_CALLBACK_PATH}`, optionalRequest)
       if (this.disposed || attempt.state !== 'pending') throw error('oidc_login_cancelled', 'Sign-in was cancelled')
       Object.assign(attempt, { oauthState: authorization.state, flow: authorization.flow })
       attempt.timer = setTimeout(() => { void this.cancelLogin(loginID, 'expired').catch(() => {}) }, this.ttl)
@@ -147,15 +147,15 @@ export class DesktopOidcBackend extends WebOidcBackend {
   async finishAuthorization(attempt, requested) {
     const profile = this.profile(attempt.profileID)
     const previous = new Map()
-    let wrote = false
+    let wrote = false, session
     try {
-      const session = await this.exchangeAuthorization(requested, attempt.flow)
+      session = await this.exchangeAuthorization(requested, attempt.flow)
       if (attempt.state !== 'pending') return
       const refs = [sessionRef(profile)]
       for (const ref of refs) previous.set(ref, await this.ctx.credentials.resolve(ref))
       if (attempt.state !== 'pending') return
       wrote = true
-      await this.saveSession(profile, session, attempt.flow.epoch)
+      await this.saveSession(profile, session, attempt.flow.epoch, attempt.flow)
       if (attempt.state !== 'pending') return
       // A resource outage must not turn a successful identity login into a failed login.
       let status
@@ -175,6 +175,14 @@ export class DesktopOidcBackend extends WebOidcBackend {
       // Cancellation/disposal while the host vault writes must not resurrect a login.
       if (wrote && attempt.state !== 'completed') {
         await this.writeCredentials(profile, attempt.flow.epoch, async () => {
+          // Optional consent must not roll a concurrent newer login back when
+          // its commit was rejected before any credential was written.
+          if (attempt.flow.scopes && session?.contextID) {
+            const record = await this.ctx.credentials.resolve(sessionRef(profile))
+            let current
+            try { current = JSON.parse(record?.value ?? 'null') } catch { return }
+            if (current?.contextID !== session.contextID) return
+          }
           for (const [ref, record] of previous) {
             if (record?.value !== undefined) await this.ctx.credentials.set(ref, record.value)
             else await this.ctx.credentials.unset(ref)

@@ -10,6 +10,16 @@ const schema = JSON.parse(await readFile(new URL('schema/enterprise-profile.v1al
 const validate = new Ajv2020({ allErrors: true, strict: true }).compile(schema)
 
 const selectionProfile = JSON.parse(await readFile(new URL('examples/oidc-llm.enterprise-profile.example.json', root), 'utf8'))
+for (const scopes of [[], ['feature.read'], ['future.read', 'feature.write']]) {
+  const value = { ...selectionProfile, auth: { ...selectionProfile.auth, optionalScopes: scopes } }
+  assert.equal(validate(value), true)
+  normalizeEnterpriseProfile(value)
+}
+for (const scopes of [null, [''], ['a b'], ['a', 'a']]) {
+  const value = { ...selectionProfile, auth: { ...selectionProfile.auth, optionalScopes: scopes } }
+  assert.equal(validate(value), false)
+  assert.throws(() => normalizeEnterpriseProfile(value))
+}
 for (const [type, expected] of [[undefined, true], ...['llm', 'embedding', 'rerank', 'image', 'tts', 'unknown'].map(type => [type, true]), [null, false], ['chat', false], ['LLM', false], ['', false], [123, false], [[], false]]) {
   const value = { ...selectionProfile, provider: { models: [{ id: 'example', ...(type === undefined ? {} : { type }) }] } }
   assert.equal(validate(value), expected, 'model type schema acceptance')
