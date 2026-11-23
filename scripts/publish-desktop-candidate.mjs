@@ -30,17 +30,14 @@ export function assetNames(product, version, platform) {
   const extra = platform === 'windows' ? `${product}-${version}-windows-x64-setup.zip` : zip.replace(/\.zip$/, '.dmg')
   return [zip, zip + '.sha256', `${platform}-${desktopVersion(version).prerelease?'alpha':'release'}-receipt.json`, extra, extra + '.sha256', ...(platform === 'windows' ? [extra + '.json', updateManifestName] : [])]
 }
-export function publicationPlatforms(value = '', mode = 'node', product = '') {
+export function publicationPlatforms(value = '', mode = 'node') {
   const platforms = value ? JSON.parse(value) : ['windows', 'macos']
   assert.ok(Array.isArray(platforms) && platforms.length >= 2)
   assert.deepEqual(platforms, platforms.includes('macos-x64') ? ['windows', 'macos', 'macos-x64'] : ['windows', 'macos'], 'Invalid publication platforms')
-  if (mode === 'ps1') {
-    assert.ok(!platforms.includes('macos-x64'), 'Intel Mac requires Node')
-    assert.ok(product !== 'EduWork' || !platforms.includes('windows'), 'The public Windows release requires Node')
-  }
+  if (mode === 'ps1') assert.ok(!platforms.includes('macos-x64'), 'Intel Mac requires Node')
   return platforms
 }
-export function nodeNpmAssetNames(product, version, platform, deltaFrom = []) {
+export function nodeNpmAssetNames(product, version, platform, deltaFrom = [], windowsInstaller = false) {
   assert.match(product, /^[A-Za-z0-9-]+$/)
   desktopVersion(version)
   assert.ok(['windows', 'macos', 'macos-x64'].includes(platform))
@@ -51,7 +48,7 @@ export function nodeNpmAssetNames(product, version, platform, deltaFrom = []) {
     const setup = `${product}-${version}-windows-x64-setup.zip`
     names.push(updateManifestName, setup, `${setup}.sha256`, `${setup}.json`)
     for (const delta of deltaFrom.map(from => windowsDeltaName(product, version, from))) names.push(delta, `${delta}.sha256`)
-    if (product === 'EduWork') {
+    if (windowsInstaller) {
       const installer = `EduWork-Setup-${version}-x64.exe`
       names.push(installer, `${version.includes('-dev.') ? 'dev' : 'latest'}.yml`, `${installer}.blockmap`)
     }
@@ -219,7 +216,7 @@ export async function publishCandidate(env = process.env) {
   const aliases = {source: 'ps1', 'source-ps1': 'ps1', staged: 'node', 'node-npm': 'node'}
   const buildMode = aliases[env.BUILD_MODE] ?? env.BUILD_MODE ?? 'node'
   assert.ok(['ps1', 'node'].includes(buildMode), 'Unknown desktop build mode')
-  const platforms = publicationPlatforms(env.RELEASE_PLATFORMS, buildMode, env.RELEASE_PRODUCT)
+  const platforms = publicationPlatforms(env.RELEASE_PLATFORMS, buildMode)
   assert.match(repository, /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/)
   const sourceWorkflow = env.CANDIDATE_WORKFLOW
   if (buildMode === 'node') nodeNpmAssetNames(product, version, 'macos')
@@ -271,11 +268,12 @@ export async function publishCandidate(env = process.env) {
     assert.equal((await lstat(archive)).size, artifact.size_in_bytes)
     assert.equal('sha256:' + await hashFile(archive), artifact.digest, 'Actions artifact digest mismatch')
     const names = execFileSync('unzip', ['-Z1', archive], {encoding: 'utf8'}).trim().split(/\r?\n/)
-    // The receipt lists the delta updates; every other file name is fixed.
-    const deltas = buildMode === 'node'
-      ? JSON.parse(execFileSync('unzip', ['-p', archive, 'release-receipt.json'], {encoding: 'utf8'})).deltas ?? [] : []
+    // The receipt lists the delta updates and whether this build carries the
+    // Windows installer; every other file name is fixed.
+    const built = buildMode === 'node' ? JSON.parse(execFileSync('unzip', ['-p', archive, 'release-receipt.json'], {encoding: 'utf8'})) : null
+    const deltas = built?.deltas ?? []
     const expected = buildMode === 'ps1' ? assetNames(product, version, platform)
-      : nodeNpmAssetNames(product, version, platform, deltas.map(delta => delta.from))
+      : nodeNpmAssetNames(product, version, platform, deltas.map(delta => delta.from), built.windowsInstaller !== undefined)
     assert.deepEqual(names.sort(), expected.sort(), 'Unexpected paths in artifact archive')
     await mkdir(directory, {recursive: true})
     execFileSync('unzip', ['-q', archive, '-d', directory])
@@ -305,7 +303,7 @@ export async function publishCandidate(env = process.env) {
   await writeFile(notesAsset, notes)
   files.push({name: 'RELEASE-NOTES.md', path: notesAsset, bytes: Buffer.byteLength(notes), sha256: await hashFile(notesAsset)})
   // Windows delta updates carry a SHA-256 sidecar for the updater; macOS ones are signed in the appcast.
-  assert.equal(files.length, 8 + (product === 'EduWork' && platforms.includes('windows') ? 3 : 0) + 5 * (receipts.length - 1) + 2 * (receipts[0].deltas?.length ?? 0) + receipts.slice(1).reduce((sum, receipt) => sum + (receipt.deltas?.length ?? 0), 0))
+  assert.equal(files.length, 8 + (receipts[0].windowsInstaller !== undefined ? 3 : 0) + 5 * (receipts.length - 1) + 2 * (receipts[0].deltas?.length ?? 0) + receipts.slice(1).reduce((sum, receipt) => sum + (receipt.deltas?.length ?? 0), 0))
   const result = {verified: true, published: false, buildMode, repository, sourceRun: run.id, editionCommit: run.head_sha, coreCommit, tag: 'v' + version, files: files.map(({path, ...file}) => file)}
   if (env.PUBLISH_RELEASE === 'true') {
     const tag = result.tag

@@ -138,6 +138,31 @@ test('normal import copies the allowlist, remaps the internal workspace and neve
   } finally { await rm(base, { recursive: true, force: true }) }
 })
 
+test('import carries the logo the config references', async () => {
+  const { base, source, target } = await fixture()
+  try {
+    const logo = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex')
+    await mkdir(join(source, 'config/branding'), { recursive: true })
+    await writeFile(join(source, 'config/branding/logo.png'), logo)
+    const config = '{\n  "schemaVersion": 1,\n  "product": { "logoFile": "branding/logo.png" }\n}\n'
+    await writeFile(join(source, 'config/eduwork.jsonc'), config)
+    await run({ sourceRoot: source, targetRoot: target })
+    assert.equal(await readFile(join(target, 'config/eduwork.jsonc'), 'utf8'), config)
+    assert.deepEqual(await readFile(join(target, 'config/branding/logo.png')), logo)
+  } finally { await rm(base, { recursive: true, force: true }) }
+})
+
+test('a logo path outside the config directory is neither copied nor fatal', async () => {
+  const { base, source, target } = await fixture()
+  try {
+    await writeFile(join(source, 'escape.png'), 'outside')
+    await writeFile(join(source, 'config/eduwork.jsonc'), '{\n  "schemaVersion": 1,\n  "product": { "logoFile": "../escape.png" }\n}\n')
+    const plan = await buildCopyPlan(await inspectPortableSource({ sourceRoot: source, distribution }), target)
+    assert.equal(plan.files.some(file => file.target.includes('escape')), false)
+    assert.equal((await run({ sourceRoot: source, targetRoot: target })).state, 'imported')
+  } finally { await rm(base, { recursive: true, force: true }) }
+})
+
 test('a second import with an unchanged source reuses the receipt', async () => {
   const { base, source, target } = await fixture()
   try {

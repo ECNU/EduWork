@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-23T06:40:03.000Z",
-  "fileSetSHA256": "8f1efdd2afb9220dd7b52b44d6dc91c558676bfc0900715abf2219fafcda9a28",
+  "createdAt": "2026-11-23T07:40:01.631Z",
+  "fileSetSHA256": "69985b628574baac845e9e305004558b5c23f93ecfd7ad54027347262e0c10b9",
   "files": [
     {
       "path": ".gitattributes",
@@ -1205,7 +1205,7 @@
     },
     {
       "path": "dsh-electron/src/portable-import.mjs",
-      "sha256": "95f0144dec091931fb5524470eddafbc09276a7676376c0690c251ba79a1cfe0"
+      "sha256": "a72e27cf436978ddd7fde3eb90d07404f1cddfd2e0605b1153a30b3dfebe4f95"
     },
     {
       "path": "dsh-electron/src/portable-source-hint.mjs",
@@ -1461,7 +1461,7 @@
     },
     {
       "path": "dsh-electron/tests/portable-import.test.mjs",
-      "sha256": "099f3a781946e1232beaaf19aebc4c01e7e4e6f25481fee9e576c330d7823efd"
+      "sha256": "82e63cb305c14e1565db20790f241634721a2d31716c5e3d57f9121ec0bcb8f2"
     },
     {
       "path": "dsh-electron/tests/portable-source-hint.test.mjs",
@@ -3497,7 +3497,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/src/updates.ts",
-      "sha256": "59ca7b276209ad9b407302651fae84798b7d911eff2f3a432de9c490348322bc"
+      "sha256": "0b373267999fe45486d630ce273fbd5d8912484f9904a38f97b1410b02359759"
     },
     {
       "path": "dsh-plugins/workbench-native/test/build-client.test.mjs",
@@ -8081,7 +8081,7 @@
     },
     {
       "path": "scripts/publish-desktop-candidate.mjs",
-      "sha256": "7e3744200a0373d34368b03ff22a1cb7c4f142b0d81e516efc7ae857ddd370b1"
+      "sha256": "4670d9fb33a906d1f54e734ed5b0e766ec4a35409db75d2393e4f309c03d0eda"
     },
     {
       "path": "scripts/publish-windows-release.mjs",
@@ -8285,7 +8285,7 @@
     },
     {
       "path": "tests/desktop-candidate-publication.test.mjs",
-      "sha256": "9d9046639e56ee5399646e5861fa9d36ed05a2b2033a475f1022587f6791e08b"
+      "sha256": "dc7cd294f6ba479eb05b38ba48ff32aa9e8d2a537612d1cb482de81e189c3fd5"
     },
     {
       "path": "tests/desktop-enterprise-ui-acceptance.mjs",

@@ -3,6 +3,7 @@ import { createReadStream } from 'node:fs'
 import { copyFile, mkdir, readFile, readdir, lstat, realpath, rename, rm, rmdir, statfs, writeFile } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { remapSessionLogCwd, sessionDirectoryCwd } from './session-header-remap.mjs'
+import * as jsonc from '../../dsh-host/vendor/jsonc-parser/parser.js'
 
 // First import of an old portable Electron installation into the installed
 // user directory. The Wails-era updater handshake stays in legacy-migration.mjs.
@@ -202,6 +203,18 @@ export async function buildCopyPlan(source, target) {
     }
   }
   await addFile(source.config, 'config/eduwork.jsonc')
+  // The runtime resolves product.logoFile inside the config directory and
+  // refuses to start when it is missing, so the referenced file must cross too.
+  const configDir = dirname(source.config)
+  const configText = await readFile(source.config, 'utf8').catch(() => null)
+  const logoFile = configText === null ? undefined
+    : jsonc.getNodeValue(jsonc.parseTree(configText.replace(/^﻿/, ''), [], { allowTrailingComma: true }))?.product?.logoFile
+  if (typeof logoFile === 'string' && logoFile && !isAbsolute(logoFile)) {
+    const logo = resolve(configDir, logoFile)
+    // An escaping path is a config the runtime already rejects; the import must
+    // not fail on it, nor copy anything outside the config directory.
+    if (within(configDir, logo)) await addFile(logo, join('config', relative(configDir, logo)))
+  }
   const dataDir = join(source.root, 'data')
   // software-update-preferences.json is the user's on/off choice;
   // update-preferences.json only records the channel and cannot replace it.
