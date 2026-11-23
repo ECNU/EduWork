@@ -65,6 +65,9 @@ await exports.apply(ctx)
 await new Promise(resolve => setImmediate(resolve))
 const settings = registrations.find(item => item.name === 'settings.models.footer')?.inject()
 assert.ok(settings, 'compiled client did not register organization settings')
+const footerDetails = registrations.find(item => item.name === 'sidebar.footer.action').children['oidc.account.footer.details']
+assert.equal(footerDetails.kind, 'single')
+assert.equal(footerDetails.scope, 'root')
 for (const target of ['config', 'examples']) assert.deepEqual(await settings.service.openConfiguration(target), { opened: true })
 assert.deepEqual(calls, ['config', 'examples'])
 

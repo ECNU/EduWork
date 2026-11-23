@@ -155,11 +155,14 @@ function FooterAccount({ t, service, configuration, renderSlot, wide = true }: a
   const status = useAccountStatus(service, profile.id)
   const userName = accountUserName(status)
   const statusLabel = status?.state === 'connected' ? (profile.provider ? t('account.footerConnected') : t('account.identityConnected')) : t('account.footerSetup')
-  return h(AccountMenu, { t, service, profile, renderSlot, wide }, h('div', { style: { display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 } },
+  const account = h(AccountMenu, { t, service, profile, renderSlot, wide }, h('div', { style: { display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 } },
     h(ProductMark, { profile, size: 28 }),
     wide && h('div', { style: { minWidth: 0 } },
       h('div', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 600 } }, userName || accountOrganization(profile)),
       h('div', { style: { fontSize: 10, color: 'var(--dsw-alias-label-tertiary)' } }, accountStatusLine(profile, statusLabel, userName)))))
+  return h('div', { style: { display: 'flex', flexDirection: 'column', width: wide ? '100%' : 36, minWidth: 0 } },
+    account,
+    typeof renderSlot === 'function' ? renderSlot('oidc.account.footer.details', { profile, status, service, wide }, { fallback: null }) : null)
 }
 
 export async function apply(ctx: any) {
@@ -218,7 +221,10 @@ export async function apply(ctx: any) {
       }, EnterpriseOnboarding)))
       disposers.push(surfaceCtx.slots.inject('sidebar.footer.action', () => surfaceCtx.slots.register({
         name: 'sidebar.footer.action', id: 'dsh-oidc-account', locale: NS, order: -90,
-        children: { 'oidc.account.menu.details': { kind: 'single', scope: 'root' } },
+        children: {
+          'oidc.account.menu.details': { kind: 'single', scope: 'root' },
+          'oidc.account.footer.details': { kind: 'single', scope: 'root' },
+        },
         inject: () => ({ service, configuration }),
       }, FooterAccount)))
       disposers.push(surfaceCtx.slots.inject('settings.general.item', () => surfaceCtx.slots.register({
