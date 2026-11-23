@@ -198,6 +198,7 @@ export async function apply(ctx: any) {
     const service = Object.assign(accounts.service, {
       requestAuthorization: (profileID: string, scopes: string[], options: any = {}) => signIn(accounts.service, profileID, { ...options, scopes }),
     })
+    surfaceCtx.provide('oidcClientAccounts', service)
     service.configuration().then((configuration: any) => {
       if (cancelled || configuration.uiMode === 'external') return
       const ids = configuration.profiles.map((profile: any) => profile.id)

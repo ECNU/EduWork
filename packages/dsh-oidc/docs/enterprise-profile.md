@@ -197,3 +197,4 @@ OIDC 客户端是 public client。运行时秘密在登录后创建，并且只�
 ## 版本管理
 
 未知 `schemaVersion` 会被拒绝。Alpha 阶段字段可能在 `v1alphaN` 之间变化。稳定 `v1` 的 minor 版本只增加可选字段；不兼容变更使用新 Schema 版本。详见[兼容性与发布策略](compatibility.md)。
+学校插件以外的功能 UI 可以通过客户端 Cordis 的 `oidcClientAccounts` 服务复用相同账户状态和 `requestAuthorization(profileID, scopes, { signal })` 流程。使用 `ctx.inject(['oidcClientAccounts'], ...)` 等待服务就绪；它不暴露令牌。取消流程使用 AbortSignal，所需权限由每个功能明确选择。

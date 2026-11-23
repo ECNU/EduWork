@@ -197,3 +197,4 @@ The OIDC client is public. Runtime secrets are created after login and stored on
 ## Versioning
 
 Unknown `schemaVersion` values are rejected. During alpha, any field may change between `v1alphaN` versions. A stable `v1` will use additive optional fields for minor releases and a new schema version for incompatible changes. See [Compatibility](compatibility.en.md).
+Feature UIs can use the client Cordis `oidcClientAccounts` service for the same account state and `requestAuthorization(profileID, scopes, { signal })` flow. Wait with `ctx.inject(['oidcClientAccounts'], ...)`; no tokens are exposed. Use AbortSignal to cancel and explicitly select the scopes needed by the feature.

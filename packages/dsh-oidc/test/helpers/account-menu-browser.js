@@ -10,6 +10,7 @@ let onboarding = params.has('onboarding'), account = onboarding ? { profileID: p
 const registrations = [], events = new Map()
 const ok = value => Promise.resolve({ ok: true, value })
 const ctx = {
+  provide: (name, value) => { ctx[name] = value },
   locale: {
     dictionaries: new Map(),
     register(namespace, values) { this.dictionaries.set(namespace, values); return () => this.dictionaries.delete(namespace) },

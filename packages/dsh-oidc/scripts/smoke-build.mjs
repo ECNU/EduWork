@@ -37,6 +37,7 @@ const connected = { ...identity, state: 'connected', credentialReady: true }
 const activations = [], sessionSelections = []
 let currentSession = null
 const ctx = {
+  provide: (name, value) => { ctx[name] = value },
   locale: new LocaleRuntime({ emit() {} }),
   remote: {
     $mount: async () => () => {},
@@ -66,6 +67,7 @@ await exports.apply(ctx)
 await new Promise(resolve => setImmediate(resolve))
 const settings = registrations.find(item => item.name === 'settings.models.footer')?.inject()
 assert.ok(settings, 'compiled client did not register organization settings')
+assert.equal(ctx.oidcClientAccounts, settings.service)
 for (const target of ['config', 'examples']) assert.deepEqual(await settings.service.openConfiguration(target), { opened: true })
 assert.deepEqual(calls, ['config', 'examples'])
 await settings.service.requestAuthorization('example', ['feature.read'])
