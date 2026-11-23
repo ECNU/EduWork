@@ -5,7 +5,7 @@
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-19T15:03:53.375Z",
-  "fileSetSHA256": "2eebe5da44053d1c816609af460c8f02fb07c33c896cd192fd532b9bfd1032f0",
+  "fileSetSHA256": "64353f8c6713e412d3a715d08957083773d5de48618cbe9b44b2be2842ee381f",
   "files": [
     {
       "path": ".gitattributes",
@@ -1629,7 +1629,7 @@
     },
     {
       "path": "dsh-electron/tests/sidebar-browser.test.mjs",
-      "sha256": "d466bafbffc45e49b3f0b6eeddbc673310d37c1a4fc07a2ffb235ba14471fcb7"
+      "sha256": "60bab4e2ff3aa16e9028fe1ec2489603ce504d04dc8ff8038c7f4b8324fc43d3"
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",
