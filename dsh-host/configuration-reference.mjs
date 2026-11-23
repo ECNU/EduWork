@@ -49,6 +49,7 @@ export const configurationFields = {
     clientId: ['仅 oidc-llm：服务端分配的公开客户端 ID，不是 client_secret；LiteLLM 自动注册，不填写。', 'replace-with-public-client-id'],
     identityMode: ['仅 oidc-llm，必须显式选 oidc 或 oauth；oidc 还验证 ID Token。', 'oidc'],
     additionalScopes: ['仅 oidc-llm，显式申请额外服务范围；必须由服务端 discovery 支持，刷新时不得扩张。', []],
+    optionalScopes: ['仅 oidc-llm，可由用户按功能另行授权的范围；普通登录不申请，新增范围兼容旧登录，刷新不得扩权。', []],
   }),
   ...fields('organizations[].oidc.', {
     issuer: ['OIDC 签发者 URL；客户端据此查找发现文档。', 'https://id.example.org'],
