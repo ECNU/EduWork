@@ -19,7 +19,7 @@ import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
 import { firstRunPending, firstRunPendingSync, firstRunDialogs, resolveFirstRunData } from './first-run.mjs'
 import { importPortableData, inspectPortableSource } from './portable-import.mjs'
-import { portableMigrationNoticeForBuild, portableSourceSuggestion, writePortableSourceHintBestEffort } from './portable-source-hint.mjs'
+import { portableSourceSuggestion } from './portable-source-hint.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
 import { startPortableUpdates, portableStartupUpdateConfiguration, resolveUpdateConfiguration } from './portable-updates.mjs'
@@ -212,12 +212,6 @@ export async function resolveInstalledFirstRun() {
   })
   return action
 }
-export async function recordPortableSourceHint() {
-  if (process.platform !== 'win32' || settings.dataLayout === 'installed') return
-  const { realpath } = await import('node:fs/promises')
-  await writePortableSourceHintBestEffort({ localAppData: process.env.LOCALAPPDATA, distribution: settings.distribution,
-    root: await realpath(paths.root), version: settings.productVersion }, error => desktopHostLog(`[desktop] portable source hint could not be written: ${error.message}\n`))
-}
 export function installEduworkFromDmg() {
   return installFromDmg({ app, shell, dialog, appPath: paths.root, warn: message => desktopHostLog(`[installer] ${message}\n`) })
 }
@@ -363,8 +357,6 @@ async function prepareDesktop() {
   softwareUpdates = software
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
     deferInstallResponse:settings.dataLayout==='installed',
-    migrationNotice: portableMigrationNoticeForBuild({ platform:process.platform, dataLayout:settings.dataLayout,
-      distribution:settings.distribution, version:settings.productVersion, trustedUpdates }),
     beforeInstall:async()=>{
       if(process.platform==='darwin')return true
       if(settings.dataLayout==='installed')installTasksBeforeConfirmation=await lifecycle.updateTasks('inspect')

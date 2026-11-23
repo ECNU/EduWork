@@ -1,11 +1,11 @@
 // A shared surface; software and signed content retain separate transactions.
-export function updateCoordinator({software,content,version,onRestart,onPolicy,beforeInstall=async()=>true,migrationNotice,deferInstallResponse=false}) {
+export function updateCoordinator({software,content,version,onRestart,onPolicy,beforeInstall=async()=>true,deferInstallResponse=false}) {
   const jobs=new Set()
   let restarting=false
   const background=promise=>{jobs.add(promise);promise.catch(()=>{}).finally(()=>jobs.delete(promise))}
   const snapshot=async()=>{
     const status=software?await software.action('status'):{shell:'electron',version,phase:'disabled',message:'未配置软件更新',update:{enabled:false,state:'disabled'}}
-    return {...status,contentUpdate:content.snapshot(),...(migrationNotice?{migrationNotice}:{})}
+    return {...status,contentUpdate:content.snapshot(),}
   }
   return {
     async action(action) {

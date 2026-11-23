@@ -352,7 +352,6 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'in
     })
     mock('product.mjs', {
       configureEduworkPaths() {},
-      recordPortableSourceHint() {},
       resolveInstalledFirstRun: async () => {
         calls.push('first-run')
         if (scenario === 'first-run-cancel') return 'cancel'

@@ -27,8 +27,8 @@ export function validateReceipt(receipt, {repository, version, commit}) {
   validateFileIdentity(receipt.portableExtractor?.asset,unpackName)
   validateFileIdentity(receipt.portableExtractor?.receipt,unpackName+'.json')
   const publicWindows = edition === 'EduWork'
-  if (publicWindows !== (receipt.windowsInstaller !== undefined)) throw Error('Windows installer is required only for the public release')
-  if (publicWindows) {
+  if (!publicWindows && receipt.windowsInstaller !== undefined) throw Error('Windows installer is published only for the public release')
+  if (receipt.windowsInstaller !== undefined) {
     const installer = `EduWork-Setup-${version}-x64.exe`
     const channel = version.includes('-dev.') ? 'dev' : 'latest'
     if (receipt.windowsInstaller?.channel !== channel) throw Error('Invalid Windows installer channel')

@@ -104,9 +104,6 @@ export function UpdatePanel({controller}) {
     h('p',{style:{...note,overflowWrap:'anywhere'}},status?.version?`当前版本 ${status.version}`:'读取当前版本…'),
     h('p',{style:note},!status?'正在读取更新状态…':s?.canToggle===false?status.message
      :softwareEnabled?'启动时在后台检查，发现新版本后提示。':c?.enabled?'软件更新已关闭，配置与 Skills 更新不受影响。':'软件更新已关闭。'),
-   status?.migrationNotice?.installerURL&&h('p',{style:{...note,marginTop:8}},
-    '可迁移到标准安装版。请先退出本程序，再运行安装器；旧目录不会被修改，凭据会在同一台电脑、同一 Windows 账号下随数据导入。 ',
-    h('a',{href:status.migrationNotice.installerURL,target:'_blank',rel:'noopener noreferrer'},'下载安装器'))),
    h('button',{type:'button',style:{...button,flexShrink:0},disabled:!statusError&&(locked||!enabled),onClick:statusError?controller.retry:()=>controller.run('check-updates')},statusError?'重试读取状态':state==='checking'?'检查中…':!softwareEnabled&&c?.enabled?'检查内容更新':'检查更新')),
   s?.canToggle&&h('label',{style:{display:'flex',gap:8,alignItems:'flex-start',marginTop:12,fontSize:13}},
    h('input',{type:'checkbox',checked:Boolean(softwareEnabled),disabled:toggleLocked,onChange:e=>controller.run(e.target.checked?'enable-software-updates':'disable-software-updates')}),

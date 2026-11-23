@@ -137,10 +137,10 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source' 
       description: 'Build and accept public Windows installer',
       requires: ['accept', 'upstream'],
       outputs: ['installer'],
-      inputs: workspace => ({ version: workspace.parameters.version, edition: workspace.parameters.edition, development: workspace.parameters.development }),
+      inputs: workspace => ({ version: workspace.parameters.version, edition: workspace.parameters.edition, development: workspace.parameters.development, windowsInstaller: workspace.parameters.windowsInstaller }),
       run: async workspace => {
         await ensureDir(workspace.resolvePath('installer'))
-        if (workspace.parameters.edition !== 'EduWork' || workspace.parameters.development) return
+        if (workspace.parameters.edition !== 'EduWork' || workspace.parameters.development || !workspace.parameters.windowsInstaller) return
         await buildAndAcceptPublicInstaller({ workspace, coreRoot })
       },
     }),
@@ -149,7 +149,7 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source' 
       description: 'Release ZIP, delta updates, receipt and update manifest',
       requires: ['accept', 'installer'],
       outputs: ['publish'],
-      inputs: async (workspace) => ({ deltaBases: await Promise.all(workspace.parameters.deltaBases.map(sha256File)) }),
+      inputs: async (workspace) => ({ deltaBases: await Promise.all(workspace.parameters.deltaBases.map(sha256File)), windowsInstaller: workspace.parameters.windowsInstaller }),
       run: async (workspace) => {
         await publishWindows({ workspace, coreRoot, receiptBase })
       },
@@ -422,7 +422,7 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
     }
   }
 
-  const installerReceipt = name === 'EduWork' && !development
+  const installerReceipt = workspace.parameters.windowsInstaller && name === 'EduWork' && !development
     ? await readJSON(workspace.resolvePath('installer/receipt.json')) : null
   if (installerReceipt) {
     for (const file of [installerReceipt.asset, installerReceipt.channelFile, installerReceipt.blockMap]) {
