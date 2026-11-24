@@ -195,6 +195,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Desktop executable as the automation browser failed' }
           node --test core/dsh-electron/tests/sidebar-browser.test.mjs
           if ($LASTEXITCODE) { throw 'Agent Sidebar browser checks failed' }
+          node --test core/dsh-plugins/workbench-native/test/window-drag.test.mjs
+          if ($LASTEXITCODE) { throw 'Skills page window drag checks failed' }
       - name: Qualify the assembled desktop product without source resolution hooks
         shell: pwsh
         run: |

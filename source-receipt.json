@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-19T15:03:53.375Z",
-  "fileSetSHA256": "2eebe5da44053d1c816609af460c8f02fb07c33c896cd192fd532b9bfd1032f0",
+  "createdAt": "2026-11-24T06:38:48.480Z",
+  "fileSetSHA256": "2976f9d72cefb421873b4ce5bf646471126ff24e570d9ebdf7980d7c3d8091e3",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "aa35184c7c835dc859a1c4eafc0bb5b765f17fcd8385f6337bc3315c1f11b3fe"
+      "sha256": "d4b22232d6f7e982f5d0bf74017676d51e24f4652c55bf3dc913be23953a6719"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -3621,7 +3621,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/src/client.ts",
-      "sha256": "d467c8caeadce33ef1fac7a04baa0410ba6d0ec50fc21c2be829af499c891e3d"
+      "sha256": "685f1cc6692228939c847f9f5228792a05261d09d4be9301ce21ca566c8b4753"
     },
     {
       "path": "dsh-plugins/workbench-native/src/concurrency.ts",
@@ -3690,6 +3690,14 @@
     {
       "path": "dsh-plugins/workbench-native/test/updates-browser.mjs",
       "sha256": "f9a9eaaffb3ebfeed76870ee6706401912089fa89574b2b2ff52b9b8bfdf045e"
+    },
+    {
+      "path": "dsh-plugins/workbench-native/test/window-drag.electron.mjs",
+      "sha256": "007cda9f0c84ec72910dd155489b1f510dd09c1784b4681e7cdf7abad1ca7355"
+    },
+    {
+      "path": "dsh-plugins/workbench-native/test/window-drag.test.mjs",
+      "sha256": "ac9860dbfb3e34889b3c8964ece705919a067be8386309a6d0edeb941423e3f8"
     },
     {
       "path": "dsh-plugins/workbench-native/tsconfig.json",
