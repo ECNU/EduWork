@@ -5,7 +5,7 @@
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-25T06:56:00.681Z",
-  "fileSetSHA256": "7f20c92aea87267a934a6a92953d4198e1d4a2fcf66a7744dd65f249e9d584f2",
+  "fileSetSHA256": "09ea180342b4d1c83bdeb35ecdc9924574f4099eefbc76928ba0e28df69be57c",
   "files": [
     {
       "path": ".gitattributes",
@@ -1013,7 +1013,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.mjs",
-      "sha256": "5fdccfb109ab5a8dd11e71be619ec8fe427a1f7a7d8a6c7671d03a48d959641a"
+      "sha256": "4869e1f46b7268eac9c282fb7974ed5f3d3867e5bc7ddda53e9cac8f707107a9"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
@@ -8293,7 +8293,7 @@
     },
     {
       "path": "scripts/test/windows-installer.test.mjs",
-      "sha256": "d003cfb57352dd7ef4a8229548b24882c2e319972d91c1cb6f0fb7f6630f2d4e"
+      "sha256": "f43241d6b2f52bb2de682b8ce3d619a6f5d934ffc30cc06f5d3d66b8fa1c0a9f"
     },
     {
       "path": "scripts/test/windows-update-delta.test.mjs",
