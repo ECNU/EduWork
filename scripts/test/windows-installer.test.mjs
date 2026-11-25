@@ -14,11 +14,14 @@ test('portable migration is opt-in and never changes the baseline config when di
     { dataLayout: 'portable', portableMigration: false },
     { dataLayout: 'portable', portableMigration: 'true' },
     { dataLayout: 'installed', portableMigration: true },
-    { dataLayout: 'portable', portableMigration: true, sourceAlpha: true },
+    { dataLayout: 'portable', portableMigration: true, identity: { sourceAlpha: true } },
   ]) {
     assert.equal(JSON.stringify({ ...baseline, ...portableMigrationConfiguration(options) }), JSON.stringify(baseline))
   }
   assert.deepEqual(portableMigrationConfiguration({ dataLayout: 'portable', portableMigration: true }), { portableMigration: true })
+  // Development candidates are source builds with automatic updates.
+  assert.deepEqual(portableMigrationConfiguration({ dataLayout: 'portable', portableMigration: true,
+    identity: { sourceAlpha: true, automaticUpdates: true } }), { portableMigration: true })
 })
 import { installerInclude, installerProject, packWindowsInstaller, verifyElectronBuilderVersion, verifyInstalledCandidate } from '../pack-windows-installer.mjs'
 

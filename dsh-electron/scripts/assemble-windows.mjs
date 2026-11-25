@@ -102,8 +102,11 @@ export function installedUpdateYAML(feed, distribution) {
   return `provider: github\nowner: ${JSON.stringify(feed.owner)}\nrepo: ${JSON.stringify(feed.repo)}\nupdaterCacheDirName: ${JSON.stringify(cacheDirName)}\n`
 }
 
-export function portableMigrationConfiguration({ dataLayout, portableMigration, sourceAlpha }) {
-  return dataLayout === 'portable' && portableMigration === true && !sourceAlpha ? { portableMigration: true } : {}
+// Source builds that enable automatic updates are packaged as ordinary updatable builds.
+export const effectiveSourceAlpha = identity => Boolean(identity.sourceAlpha) && identity.automaticUpdates !== true
+
+export function portableMigrationConfiguration({ dataLayout, portableMigration, identity = {} }) {
+  return dataLayout === 'portable' && portableMigration === true && !effectiveSourceAlpha(identity) ? { portableMigration: true } : {}
 }
 
 export async function assembleWindows({
@@ -174,7 +177,7 @@ export async function assembleWindows({
     node: '../runtime/node.exe',
     updateChannel: 'disabled-candidate',
     configurationOwnership: 'user',
-    ...portableMigrationConfiguration({ dataLayout, portableMigration, sourceAlpha: identity.sourceAlpha }),
+    ...portableMigrationConfiguration({ dataLayout, portableMigration, identity }),
   }
   const policyPath = join(product, 'resources/desktop/configuration-policy.json')
   if (await pathExists(policyPath)) {
@@ -196,7 +199,7 @@ export async function assembleWindows({
   const bootstrap = JSON.parse(await capture(node, [join(scriptRoot, '../../scripts/check-publisher-bootstrap.mjs'), product, config.configurationOwnership])
     .catch(() => { throw new Error('Publisher bootstrap validation failed') }))
   if (bootstrap.enabled) config.updateChannel = bootstrap.softwareUpdates ? 'publisher-bootstrap' : 'disabled-candidate'
-  if (identity.sourceAlpha && identity.automaticUpdates !== true) {
+  if (effectiveSourceAlpha(identity)) {
     config.sourceAlpha = true
     config.appId += '.alpha'
     config.updates = { ...config.updates, defaultPolicy: 'development' }
