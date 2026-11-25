@@ -102,6 +102,10 @@ export function installedUpdateYAML(feed, distribution) {
   return `provider: github\nowner: ${JSON.stringify(feed.owner)}\nrepo: ${JSON.stringify(feed.repo)}\nupdaterCacheDirName: ${JSON.stringify(cacheDirName)}\n`
 }
 
+export function portableMigrationConfiguration({ dataLayout, portableMigration, sourceAlpha }) {
+  return dataLayout === 'portable' && portableMigration === true && !sourceAlpha ? { portableMigration: true } : {}
+}
+
 export async function assembleWindows({
   product,
   shellBuild,
@@ -113,6 +117,7 @@ export async function assembleWindows({
   installedUpdateURL = '',
   updateDefaultPolicy = '',
   dataLayout = 'portable',
+  portableMigration = false,
 } = {}) {
   if (!updateDefaultPolicy) updateDefaultPolicy = desktopVersion(version).channel
   if (!['stable', 'development'].includes(updateDefaultPolicy)) throw new Error('Update policy must be stable or development')
@@ -169,6 +174,7 @@ export async function assembleWindows({
     node: '../runtime/node.exe',
     updateChannel: 'disabled-candidate',
     configurationOwnership: 'user',
+    ...portableMigrationConfiguration({ dataLayout, portableMigration, sourceAlpha: identity.sourceAlpha }),
   }
   const policyPath = join(product, 'resources/desktop/configuration-policy.json')
   if (await pathExists(policyPath)) {
@@ -267,10 +273,11 @@ if (isMainModule(import.meta.url)) {
       'installed-update-url': { type: 'string' },
       'update-default-policy': { type: 'string' },
       'data-layout': { type: 'string' },
+      'portable-migration': { type: 'boolean' },
     },
   })
   if (!values.product || !values['shell-build'] || !values['electron-runtime'] || !values.output || !values.version) {
-    throw new Error('Use --product <dir> --shell-build <dir> --electron-runtime <dir> --output <dir> --version <x.y.z> [--node <node.exe>] [--update-manifest-url <url>] [--update-default-policy stable|development] [--data-layout portable|installed]')
+    throw new Error('Use --product <dir> --shell-build <dir> --electron-runtime <dir> --output <dir> --version <x.y.z> [--node <node.exe>] [--update-manifest-url <url>] [--update-default-policy stable|development] [--data-layout portable|installed] [--portable-migration]')
   }
   await assembleWindows({
     product: values.product,
@@ -283,5 +290,6 @@ if (isMainModule(import.meta.url)) {
     installedUpdateURL: values['installed-update-url'] ?? '',
     updateDefaultPolicy: values['update-default-policy'] ?? '',
     dataLayout: values['data-layout'] ?? 'portable',
+    portableMigration: values['portable-migration'],
   })
 }

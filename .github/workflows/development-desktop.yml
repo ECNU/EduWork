@@ -20,7 +20,7 @@ on:
         default: false
         type: boolean
       windows_installer_candidate:
-        description: 'Also build a per-user Windows NSIS installer from the installed-layout candidate (artifact only; manual acceptance required)'
+        description: 'Enable Windows portable migration and build a per-user NSIS candidate (artifact only; manual acceptance required)'
         required: false
         default: false
         type: boolean
@@ -105,12 +105,15 @@ jobs:
         shell: bash
         env:
           DEVELOPMENT_VERSION: ${{ needs.version.outputs.development_version }}
+          WINDOWS_INSTALLER_CANDIDATE: ${{ matrix.script == 'windows' && inputs.windows_installer_candidate || false }}
         run: |
+          options=()
+          if [[ "$WINDOWS_INSTALLER_CANDIDATE" == true ]]; then options+=(--windows-installer); fi
           node core/scripts/ci-eduwork-${{ matrix.script }}-release.mjs \
             --core-root ./core --edition-root ./core \
             --distribution-config config/distributions/generic.json \
             --version "$DEVELOPMENT_VERSION" --development --recipe pinned-source \
-            --output "$RUNNER_TEMP/ew-development"
+            --output "$RUNNER_TEMP/ew-development" "${options[@]}"
       - name: Retain redacted validation reports
         if: always()
         uses: actions/upload-artifact@v4

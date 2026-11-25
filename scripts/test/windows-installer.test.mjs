@@ -4,7 +4,21 @@ import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { desktopAppPackage, installedUpdateFeed, installedUpdateYAML } from '../../dsh-electron/scripts/assemble-windows.mjs'
+import { desktopAppPackage, installedUpdateFeed, installedUpdateYAML, portableMigrationConfiguration } from '../../dsh-electron/scripts/assemble-windows.mjs'
+
+test('portable migration is opt-in and never changes the baseline config when disabled', () => {
+  const baseline = { schemaVersion: 1, shell: 'electron', updateChannel: 'github' }
+  for (const options of [
+    { dataLayout: 'portable' },
+    { dataLayout: 'portable', portableMigration: false },
+    { dataLayout: 'portable', portableMigration: 'true' },
+    { dataLayout: 'installed', portableMigration: true },
+    { dataLayout: 'portable', portableMigration: true, sourceAlpha: true },
+  ]) {
+    assert.equal(JSON.stringify({ ...baseline, ...portableMigrationConfiguration(options) }), JSON.stringify(baseline))
+  }
+  assert.deepEqual(portableMigrationConfiguration({ dataLayout: 'portable', portableMigration: true }), { portableMigration: true })
+})
 import { installerInclude, installerProject, packWindowsInstaller, verifyElectronBuilderVersion, verifyInstalledCandidate } from '../pack-windows-installer.mjs'
 
 const version = '0.4.13-dev.20261116.1'
