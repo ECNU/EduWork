@@ -47,6 +47,7 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
     const current = backend ? (await backend.action('status')).update : null
     if (current?.busy || current?.installOnNextStart || current?.installOnQuit
       || ['checking', 'downloading', 'verifying', 'ready', 'applying'].includes(current?.state)) throw Error('更新正在处理，请完成后再修改软件更新设置')
+    return current
   }
   const act = async action => {
     if (closed) throw Error('软件更新服务已关闭')
@@ -85,10 +86,12 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
     return result
   }
   return {
-    reserveIdle() {
+    reserveIdle(expectedPolicy, contentIdle) {
       return enqueue(async () => {
         if (closed || reserved || !enabled || !supported) throw Error('软件更新当前不可用于迁移')
-        await requireIdle()
+        const current = await requireIdle()
+        if (current?.policy !== expectedPolicy) throw Error('软件更新渠道已变更，请重新检查后再迁移')
+        if (!contentIdle()) throw Error('请先完成当前更新再迁移')
         reserved = true
         return () => { reserved = false }
       })

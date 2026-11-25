@@ -19,8 +19,9 @@ export function updateCoordinator({software,content,version,onRestart,onPolicy,b
         const {update}=await snapshot()
         if(action==='dismiss-portable-migration')migration.dismiss(update)
         else {
-          if(restarting||content.busy)throw Error('请先完成当前更新再迁移')
-          void migration.start(update)?.catch(()=>{})
+          const contentIdle=()=>!restarting&&!content.busy
+          if(!contentIdle())throw Error('请先完成当前更新再迁移')
+          void migration.start(update,contentIdle)?.catch(()=>{})
         }
         return snapshot()
       }
@@ -30,7 +31,8 @@ export function updateCoordinator({software,content,version,onRestart,onPolicy,b
       }
       if(action==='check-updates'||action==='check-updates-background') {
         if(software)await software.action(action==='check-updates-background' && !(await software.action('status')).update?.nativeUI ? 'check-updates' : action)
-        background(content.check({retryFailed:action==='check-updates'}));return snapshot()
+        if(!migration?.busy)background(content.check({retryFailed:action==='check-updates'}))
+        return snapshot()
       }
       if(action==='download-content-update') {background(content.download());return snapshot()}
       if(action==='restart-content-update') {

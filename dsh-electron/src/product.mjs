@@ -432,7 +432,7 @@ async function prepareDesktop() {
       discover: policy => discoverPortableInstaller({ source: installerSource, policy, version: settings.productVersion }),
       download: installer => downloadPortableInstaller({ installer, cache }),
       cleanup: async executable => { await unlink(executable).catch(() => {}); await rmdir(dirname(executable)).catch(() => {}) },
-      reserve: () => software.reserveIdle(),
+      reserve: (policy, contentIdle) => software.reserveIdle(policy, contentIdle),
       preflight: async () => {
         if (intents.read()) throw Error('已有待处理的迁移，请重新打开旧客户端继续或撤销')
         if ((await windowsSourceProcessLister(installedRoot)()).length) throw Error('安装版正在运行，请先正常退出安装版')

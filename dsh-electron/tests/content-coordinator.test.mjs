@@ -1,6 +1,56 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { updateCoordinator } from '../src/update-coordinator.mjs'
+import { softwareUpdateControl } from '../src/software-update-control.mjs'
+import { createPortableMigration } from '../src/portable-migration-upgrade.mjs'
+
+async function migrationCoordinator(t, { beforeChannel, beforeCheck, duringDownload } = {}) {
+  const dataRoot = await mkdtemp(join(tmpdir(), 'eduwork-update-admission-'))
+  t.after(() => rm(dataRoot, { recursive: true, force: true }))
+  let policy = 'development', downloads = 0, checks = 0
+  const status = () => ({ update: { enabled: true, policy, state: 'current' } })
+  const backend = { async action(action) {
+    if (action === 'use-stable-updates') { await beforeChannel?.(); policy = 'stable' }
+    if (action === 'check-updates') await beforeCheck?.()
+    return status()
+  } }
+  const software = await softwareUpdateControl({ dataRoot, version: '0.4.14', policy, start: async () => backend })
+  const { promise: finished, resolve: onFinished } = Promise.withResolvers()
+  const migration = createPortableMigration({ source: {}, discover: async () => ({ version: '0.4.15-dev.1' }),
+    reserve: (...args) => software.reserveIdle(...args), download: async () => { downloads++; await duringDownload?.() },
+    preflight: async () => { throw Error('synthetic download boundary') }, fail: onFinished })
+  await migration.check((await software.action('status')).update)
+  const content = { state: {}, snapshot: () => ({ state: 'current' }), async selectPolicy() {}, async check() { checks++ } }
+  return { coordinator: updateCoordinator({ software, content, migration }), finished, downloads: () => downloads, checks: () => checks }
+}
+
+test('a queued channel switch invalidates a migration candidate before download', async t => {
+  const channel = Promise.withResolvers(), switching = Promise.withResolvers()
+  const fixture = await migrationCoordinator(t, { beforeChannel: () => { switching.resolve(); return channel.promise } })
+  const changed = fixture.coordinator.action('use-stable-updates')
+  await switching.promise
+  await fixture.coordinator.action('start-portable-migration')
+  channel.resolve()
+  await changed
+  await fixture.finished
+  assert.equal(fixture.downloads(), 0)
+})
+
+test('an ordinary check waiting on software cannot start a content check after migration starts', async t => {
+  const check = Promise.withResolvers(), checking = Promise.withResolvers(), download = Promise.withResolvers()
+  const fixture = await migrationCoordinator(t, { beforeCheck: () => { checking.resolve(); return check.promise }, duringDownload: () => download.promise })
+  const ordinary = fixture.coordinator.action('check-updates')
+  await checking.promise
+  await fixture.coordinator.action('start-portable-migration')
+  check.resolve()
+  try {
+    await ordinary
+    assert.equal(fixture.checks(), 0)
+  } finally { download.resolve(); await fixture.finished }
+})
 
 test('the default coordinator preserves the baseline status and never forwards migration actions', async () => {
   const calls = []

@@ -23,9 +23,10 @@ async function fixture(t, changes={}) {
 test('migration admission cannot take over queued updates or admit a later software action', async t => {
   const f=await fixture(t), control=await softwareUpdateControl(f.options)
   f.state.installOnQuit=true
-  await assert.rejects(control.reserveIdle(), /正在处理/)
+  await assert.rejects(control.reserveIdle('development', () => true), /正在处理/)
   delete f.state.installOnQuit
-  const release=await control.reserveIdle()
+  await assert.rejects(control.reserveIdle('development', () => false), /完成当前更新/)
+  const release=await control.reserveIdle('development', () => true)
   const count=f.calls.length
   await assert.rejects(control.action('download-update'), /正在准备迁移/)
   await assert.rejects(control.action('use-stable-updates'), /正在准备迁移/)

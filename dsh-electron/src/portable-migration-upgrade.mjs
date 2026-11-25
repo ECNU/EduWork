@@ -54,13 +54,14 @@ export function createPortableMigration({ source, discover, download, reserve, p
       if (synchronize(update) && candidate) return { version: candidate.version, dismissed, busy: Boolean(operation) }
     },
     dismiss(update) { if (synchronize(update)) dismissed = true },
-    start(update) {
-      if (operation || !synchronize(update) || !candidate) return
+    start(update, contentIdle) {
+      const channel = synchronize(update)
+      if (operation || !channel || !candidate) return
       const installer = candidate
       operation = (async () => {
         let release, intent, executable, stopped = false, launched = false
         try {
-          release = await reserve()
+          release = await reserve(channel, contentIdle)
           executable = await download(installer)
           const portable = await preflight()
           const active = await inspectTasks()
