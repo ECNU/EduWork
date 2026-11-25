@@ -36,7 +36,7 @@ const response = await ctx.oidcAccounts.authorizedFetch(profileID, approvedURL,
   { method: 'GET', signal }, { serviceURL: approvedURL })
 ```
 
-`serviceURL` 只由受信 Host 根据机构配置生成，不能直接转发浏览器、模型或来源响应中的授权目标。它只允许精确 HTTPS URL、无正文 GET，拒绝凭据、片段和重定向；不会持久化扩大白名单，也不新增 RPC。请求前后及响应读取后仍须核对账号身份和世代。测试仅在 Profile 和业务 Host 都明确开启 `allowInsecureDevelopment` 时使用字面回环 IP 的 HTTP 服务；生产默认关闭。具体边界见 [ADR 0002](decisions/0002-host-service-reads.md)。业务插件自行限制响应大小并保护日志，日历订阅的上限为5 MiB。
+`serviceURL` 只由受信 Host 根据机构配置生成，不能直接转发浏览器、模型或来源响应中的授权目标。它只允许精确 HTTPS URL、无正文 GET，拒绝凭据、片段和重定向；不会持久化扩大白名单，也不新增 RPC。请求前后及响应读取后仍须核对账号身份和世代。测试仅在 Profile 和业务 Host 都明确开启 `allowInsecureDevelopment` 时使用 HTTP 服务：目标限字面回环 IP，或与明确配置的 `auth.expectedIssuer`／`oidc.issuer` 同源的精确 URL（协议、主机、端口均匹配）；生产默认关闭。具体边界见 [ADR 0002](decisions/0002-host-service-reads.md)。业务插件自行限制响应大小并保护日志，日历订阅的上限为5 MiB。
 
 ## 客户端账户菜单
 

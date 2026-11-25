@@ -36,7 +36,7 @@ const response = await ctx.oidcAccounts.authorizedFetch(profileID, approvedURL,
   { method: 'GET', signal }, { serviceURL: approvedURL })
 ```
 
-Only trusted Host configuration may supply serviceURL; never directly forward renderer, model or feed authorization targets. It permits one exact HTTPS URL, GET without a body, no URL credentials, fragment or redirect, and adds neither persistent permissions nor RPCs. Recheck account identity and generation before/after requests and body reads. Literal loopback HTTP test services require explicit allowInsecureDevelopment in both the Profile and business Host; production defaults remain secure. See [ADR 0002](decisions/0002-host-service-reads.en.md). Consumers bound responses and protect logs; subscriptions cap bodies at 5 MiB.
+Only trusted Host configuration may supply serviceURL; never directly forward renderer, model or feed authorization targets. It permits one exact HTTPS URL, GET without a body, no URL credentials, fragment or redirect, and adds neither persistent permissions nor RPCs. Recheck account identity and generation before/after requests and body reads. HTTP test services require explicit allowInsecureDevelopment in both the Profile and business Host. Targets must use literal loopback IPs or match the exact origin (scheme, host and port) pinned by auth.expectedIssuer / oidc.issuer; production defaults remain secure. See [ADR 0002](decisions/0002-host-service-reads.en.md). Consumers bound responses and protect logs; subscriptions cap bodies at 5 MiB.
 
 ## Client account menu
 
