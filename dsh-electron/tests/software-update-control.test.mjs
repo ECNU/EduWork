@@ -19,6 +19,22 @@ async function fixture(t, changes={}) {
     }},...changes}
   return {options,calls,starts,state,prefs:join(dataRoot,'state/software-update-preferences.json')}
 }
+
+test('migration admission cannot take over queued updates or admit a later software action', async t => {
+  const f=await fixture(t), control=await softwareUpdateControl(f.options)
+  f.state.installOnQuit=true
+  await assert.rejects(control.reserveIdle(), /正在处理/)
+  delete f.state.installOnQuit
+  const release=await control.reserveIdle()
+  const count=f.calls.length
+  await assert.rejects(control.action('download-update'), /正在准备迁移/)
+  await assert.rejects(control.action('use-stable-updates'), /正在准备迁移/)
+  assert.equal(f.calls.length,count)
+  release()
+  await control.action('download-update')
+  assert.equal(f.calls.at(-1),'download-update')
+  await control.close()
+})
 test('development updates default on; off survives restart and does not start or check the backend',async t=>{
   const f=await fixture(t), control=await softwareUpdateControl(f.options)
   assert.equal((await control.action('status')).update.userEnabled,true)

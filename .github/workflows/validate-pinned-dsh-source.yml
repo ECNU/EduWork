@@ -97,7 +97,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Locked installer tooling installation failed' }
           npm ci --ignore-scripts --no-audit --no-fund --prefix "core/third_party/dsh/$env:DSH_CANDIDATE/desktop-probe"
           if ($LASTEXITCODE) { throw 'Locked desktop dependencies installation failed' }
-          node --test core/dsh-electron/tests/portable-installer-feed.test.mjs
+          node --test core/dsh-electron/tests/portable-installer-feed.test.mjs core/dsh-electron/tests/first-run-migration-intent.test.mjs core/dsh-electron/tests/portable-migration-upgrade.test.mjs
           if ($LASTEXITCODE) { throw 'Portable installer feed checks failed' }
           node --test core/dsh-electron/tests/installed-updates.test.mjs core/dsh-electron/tests/update-channel-adaptation.test.mjs core/dsh-electron/tests/portable-source-hint.test.mjs core/dsh-electron/tests/update-policy.test.mjs core/scripts/test/windows-installer.test.mjs core/tests/installed-candidate.test.mjs
           if ($LASTEXITCODE) { throw 'Installed update and migration integration checks failed' }

@@ -145,6 +145,15 @@ test('NSIS finish page relaunches a forced update but leaves manual installation
   assert.doesNotMatch(finishPage, /MUI_FINISHPAGE_RUN/)
 })
 
+test('NSIS migration guard only checks and aborts while ordinary operations use the stock guard', () => {
+  const guard = installerInclude(desktop).match(/!macro customCheckAppRunning\n([\s\S]*?)\n!macroend/)?.[1] ?? ''
+  const [migration, ordinary] = guard.split('${else}')
+  assert.match(migration, /\$\{GetOptions\} .* "--eduwork-portable-migration"/)
+  assert.match(migration, /FIND_PROCESS.*\n.*\$R0 == 0\n\s*MessageBox.*\n\s*Quit/)
+  assert.doesNotMatch(migration, /KILL_PROCESS|Stop-Process|taskkill|_CHECK_APP_RUNNING/)
+  assert.match(ordinary, /!insertmacro _CHECK_APP_RUNNING/)
+})
+
 test('installer project fixes per-user, no-elevation and data-preserving behavior', () => {
   const project = installerProject({ desktop, release, electronVersion: '44.0.0', artifactsDir: 'C:/out/artifacts', icon: 'C:/icon.ico', includePath: 'C:/out/installer.nsh' })
   assert.equal(project.packageJSON.version, version)

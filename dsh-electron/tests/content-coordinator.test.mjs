@@ -2,6 +2,18 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { updateCoordinator } from '../src/update-coordinator.mjs'
 
+test('the default coordinator preserves the baseline status and never forwards migration actions', async () => {
+  const calls = []
+  const baseline = { shell: 'electron', version: '0.4.14', phase: 'ready', update: { enabled: true, installOnQuit: true } }
+  const contentUpdate = { state: 'available' }
+  const coordinator = updateCoordinator({ software: { action: async action => { calls.push(action); return baseline } },
+    content: { snapshot: () => contentUpdate } })
+  await assert.rejects(coordinator.action('start-portable-migration'), /未启用/)
+  await assert.rejects(coordinator.action('dismiss-portable-migration'), /未启用/)
+  assert.deepEqual(await coordinator.action('status'), { ...baseline, contentUpdate })
+  assert.deepEqual(calls, ['status'])
+})
+
 test('one check exposes both statuses, and software download also starts compatible content',async()=>{
   const actions=[];let state='current',policy='stable',restarts=0,resolveDownload
   const content={state:{},snapshot:()=>({enabled:true,state,policy}),

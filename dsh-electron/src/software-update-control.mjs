@@ -5,14 +5,14 @@ import { createSoftwareUpdateScheduler, mayCheckSoftware } from './software-upda
 
 // Separate from channel preferences, which the Windows helper also writes.
 export async function softwareUpdateControl({ dataRoot, version, policy = 'stable', defaultEnabled = true,
-  supported = true, start, onPolicy = async () => {} }) {
+  supported = true, start, onPolicy = async () => {}, onChecked }) {
   const path = join(dataRoot, 'state/software-update-preferences.json')
   const saved = await readFile(path, 'utf8').then(JSON.parse).catch(error => {
     if (error.code !== 'ENOENT') throw error
     return undefined
   })
   if (saved !== undefined && (!saved || typeof saved !== 'object' || saved.schemaVersion !== 1 || typeof saved.enabled !== 'boolean')) throw Error('软件更新偏好文件无效，原文件已保留')
-  let enabled = saved?.enabled ?? defaultEnabled, backend, startFailure, queue = Promise.resolve(), closed = false, scheduler
+  let enabled = saved?.enabled ?? defaultEnabled, backend, startFailure, queue = Promise.resolve(), closed = false, scheduler, reserved = false
   const persist = async next => {
     await mkdir(dirname(path), { recursive: true })
     const temporary = `${path}.${randomUUID()}.tmp`
@@ -50,6 +50,7 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
   }
   const act = async action => {
     if (closed) throw Error('软件更新服务已关闭')
+    if (reserved) throw Error('正在准备迁移，请稍候')
     if (action === 'enable-software-updates' || action === 'disable-software-updates') {
       if (!supported) throw Error('当前安装包未配置软件更新')
       const next = action === 'enable-software-updates'
@@ -84,12 +85,21 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
     return result
   }
   return {
+    reserveIdle() {
+      return enqueue(async () => {
+        if (closed || reserved || !enabled || !supported) throw Error('软件更新当前不可用于迁移')
+        await requireIdle()
+        reserved = true
+        return () => { reserved = false }
+      })
+    },
     action(action) {
       if (action === 'status') return snapshot()
       return enqueue(async () => {
         try {
           const result = await act(action)
           scheduler?.record(action, result)
+          if (action === 'check-updates' || action === 'check-updates-background') onChecked?.(result.update)
           return result
         } catch (error) {
           if (action === 'check-updates' || action === 'check-updates-background') scheduler?.checkFailed()
@@ -102,8 +112,10 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
       scheduler = createSoftwareUpdateScheduler({ ...options, readStatus: snapshot,
         check: stillDue => enqueue(async () => {
           const current = await snapshot()
-          if (closed || !stillDue() || !enabled || !supported || !mayCheckSoftware(current.update)) return { started: false, status: current }
-          return { started: true, status: await act(current.update.nativeUI ? 'check-updates-background' : 'check-updates') }
+          if (closed || reserved || !stillDue() || !enabled || !supported || !mayCheckSoftware(current.update)) return { started: false, status: current }
+          const status = await act(current.update.nativeUI ? 'check-updates-background' : 'check-updates')
+          onChecked?.(status.update)
+          return { started: true, status }
         }),
       })
       scheduler.start()

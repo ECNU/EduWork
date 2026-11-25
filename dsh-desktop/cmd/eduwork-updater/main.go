@@ -30,6 +30,9 @@ func run(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("expected serve or apply-update")
 	}
+	if args[0] == "portable-migration" {
+		return updater.RunPortableMigration(args[1:])
+	}
 	if args[0] == "check-workspace-access" || args[0] == "repair-workspace-access" {
 		f := flag.NewFlagSet(args[0], flag.ContinueOnError)
 		root := f.String("root", "", "")

@@ -1,15 +1,33 @@
 // A shared surface; software and signed content retain separate transactions.
-export function updateCoordinator({software,content,version,onRestart,onPolicy,beforeInstall=async()=>true,deferInstallResponse=false}) {
+export function updateCoordinator({software,content,version,onRestart,onPolicy,beforeInstall=async()=>true,deferInstallResponse=false,migration}) {
   const jobs=new Set()
   let restarting=false
   const background=promise=>{jobs.add(promise);promise.catch(()=>{}).finally(()=>jobs.delete(promise))}
+  const merge=status=>{
+    const portableMigration=migration?.state(status.update)
+    return {...status,contentUpdate:content.snapshot(),...(portableMigration ? {portableMigration} : {})}
+  }
   const snapshot=async()=>{
     const status=software?await software.action('status'):{shell:'electron',version,phase:'disabled',message:'未配置软件更新',update:{enabled:false,state:'disabled'}}
-    return {...status,contentUpdate:content.snapshot(),}
+    return merge(status)
   }
   return {
     async action(action) {
       if(action==='status')return snapshot()
+      if(action==='start-portable-migration'||action==='dismiss-portable-migration') {
+        if(!migration)throw Error('此客户端未启用便携版迁移')
+        const {update}=await snapshot()
+        if(action==='dismiss-portable-migration')migration.dismiss(update)
+        else {
+          if(restarting||content.busy)throw Error('请先完成当前更新再迁移')
+          void migration.start(update)?.catch(()=>{})
+        }
+        return snapshot()
+      }
+      if(migration?.busy) {
+        if(action==='check-updates'||action==='check-updates-background')return snapshot()
+        throw Error('正在准备迁移，请稍候')
+      }
       if(action==='check-updates'||action==='check-updates-background') {
         if(software)await software.action(action==='check-updates-background' && !(await software.action('status')).update?.nativeUI ? 'check-updates' : action)
         background(content.check({retryFailed:action==='check-updates'}));return snapshot()
@@ -30,7 +48,7 @@ export function updateCoordinator({software,content,version,onRestart,onPolicy,b
         if(result?.update?.policy&&result.update.policy!==policy)throw Error(result.update.error||'软件更新渠道未能切换')
         if(!software)await onPolicy?.(policy)
         await content.selectPolicy(policy)
-        return result?{...result,contentUpdate:content.snapshot()}:snapshot()
+        return result?merge(result):snapshot()
       }
       if(action==='download-update'&&content.snapshot().state==='available')background(content.download())
       if(!software)throw Error('未配置软件更新')
@@ -41,7 +59,7 @@ export function updateCoordinator({software,content,version,onRestart,onPolicy,b
           return snapshot()
         }
       }
-      const result=await software.action(action);return {...result,contentUpdate:content.snapshot()}
+      const result=await software.action(action);return merge(result)
     },
     async close() {await content.close();await Promise.allSettled([...jobs]);await software?.close()},
   }
