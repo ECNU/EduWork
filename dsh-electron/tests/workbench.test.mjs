@@ -14,6 +14,9 @@ test('workbench bridge allows only authenticated fixed actions and no renderer-o
     assert.equal((await call({action:'status'})).status,200)
     assert.equal((await call({action:'download-content-update'})).status,200)
     assert.equal((await call({action:'restart-content-update'})).status,200)
-    assert.deepEqual(calls,['status','download-content-update','restart-content-update'])
+    assert.equal((await call({action:'start-portable-migration',url:'https://example.test/setup.exe'})).status,400)
+    assert.equal((await call({action:'start-portable-migration'})).status,200)
+    assert.equal((await call({action:'dismiss-portable-migration'})).status,200)
+    assert.deepEqual(calls,['status','download-content-update','restart-content-update','start-portable-migration','dismiss-portable-migration'])
   } finally { await bridge.close() }
 })

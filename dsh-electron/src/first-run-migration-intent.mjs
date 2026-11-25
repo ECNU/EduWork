@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { lstatSync, readFileSync, unlinkSync } from 'node:fs'
-import { link, mkdir, unlink, writeFile } from 'node:fs/promises'
+import { lstatSync, readFileSync, realpathSync, unlinkSync } from 'node:fs'
+import { link, mkdir, readdir, unlink, writeFile } from 'node:fs/promises'
 import { isAbsolute, join, resolve } from 'node:path'
 
 const distributionPattern = /^[a-z0-9][a-z0-9-]{0,99}$/
@@ -11,6 +11,19 @@ const fields = ['schemaVersion', 'id', 'distribution', 'sourceRoot', 'sourceVers
 const missing = error => { if (error.code !== 'ENOENT') throw error; return null }
 export const sameMigrationPath = (left, right) => typeof left === 'string' && typeof right === 'string'
   && isAbsolute(left) && isAbsolute(right) && resolve(left).toLowerCase() === resolve(right).toLowerCase()
+
+export function readPortableMigrationReceipt(targetRoot, { distribution, sourceRoot, intentId }) {
+  const path = join(targetRoot, '.eduwork-migration.json')
+  try {
+    const info = lstatSync(path)
+    if (!info.isFile() || info.size > 1 << 20 || !sameMigrationPath(path, realpathSync(path))) return
+    const receipt = JSON.parse(readFileSync(path, 'utf8'))
+    if (receipt?.schemaVersion === 2 && receipt.state === 'imported' && receipt.distribution === distribution
+      && sameMigrationPath(receipt.sourceRoot, sourceRoot) && (intentId === undefined || receipt.intentId === intentId)) return receipt
+  } catch (error) {
+    if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error
+  }
+}
 
 export function migrationIntentStore({ localAppData, testRoot, distribution, platform = process.platform }) {
   if (platform !== 'win32') return null
@@ -37,6 +50,27 @@ export function migrationIntentStore({ localAppData, testRoot, distribution, pla
   }
   return {
     path, directory, read,
+    async claim(id) {
+      if (!idPattern.test(id ?? '')) throw Error('迁移意图无效')
+      const prefix = `${distribution}.migration-${id}-`, name = `${prefix}${process.pid}-${randomUUID()}`
+      const claim = join(directory, name)
+      await writeFile(claim, '', { flag: 'wx', mode: 0o600 })
+      const release = () => unlink(claim).catch(error => { missing(error) })
+      try {
+        for (const entry of await readdir(directory)) {
+          if (entry === name || !entry.startsWith(prefix)) continue
+          const owner = Number(entry.slice(prefix.length).split('-')[0])
+          if (!Number.isSafeInteger(owner) || owner <= 0 || owner > 0x7fffffff) continue
+          let active = true
+          try { process.kill(owner, 0) }
+          catch (error) { if (error.code === 'ESRCH') active = false }
+          if (active) throw Error('另一个客户端正在处理迁移，请稍后重试')
+          await unlink(join(directory, entry)).catch(error => { missing(error) })
+        }
+        if (read()?.id !== id) throw Error('迁移意图已变更，请退出后重试')
+        return release
+      } catch (error) { await release(); throw error }
+    },
     async write({ sourceRoot, sourceVersion, installerVersion }) {
       const row = validate({ schemaVersion: 1, id: randomUUID(), distribution, sourceRoot, sourceVersion, installerVersion, createdAt: new Date().toISOString() })
       await mkdir(directory, { recursive: true })

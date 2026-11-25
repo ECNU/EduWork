@@ -72,7 +72,7 @@ test('activation defers only for an unsettled installed first-run, then binds th
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
   const configure = source.slice(source.indexOf('export function configureEduworkPaths()'), source.indexOf('let pathsActivated'))
   assert.match(configure, /if \(!firstRunPendingSync\(\{ userRoot: paths\.userRoot, dataLayout: settings\.dataLayout \}\)\) activateEduworkPaths\(\)/)
-  assert.match(configure, /installedMigrationIntent\([\s\S]*?if \(!pendingInstalledMigration\) \{\s*if \(!firstRunPendingSync/)
+  assert.match(configure, /installedMigrationIntent\([\s\S]*?if \(!pendingInstalledMigration && !earlyPortableRedirect\) \{\s*if \(!firstRunPendingSync/)
 })
 
 test('the gate reuses existing data without dialogs, and activation is idempotent and owns the fresh target', () => {

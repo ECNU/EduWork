@@ -34,6 +34,7 @@ type migrationIdentity struct {
 	Distribution      string `json:"distribution"`
 	ProductName       string `json:"productName"`
 	ProductVersion    string `json:"productVersion"`
+	AppID             string `json:"appId"`
 	PortableMigration bool   `json:"portableMigration"`
 }
 
@@ -123,7 +124,56 @@ func migrationInstallerPath(cache, installer, product, version string) bool {
 	return len(parts) == 2 && strings.HasPrefix(parts[0], "installer-") && parts[1] == product+"-Setup-"+version+"-x64.exe"
 }
 
-func RunPortableMigration(args []string) error {
+func installedMigrationExecutable(local, distribution, minimum string) (string, error) {
+	root := filepath.Join(local, "Programs", "EduWork", distribution)
+	var installed migrationIdentity
+	if err := readMigrationJSON(filepath.Join(root, "resources", "app", "eduwork.desktop.json"), &installed); err != nil {
+		return "", err
+	}
+	if installed.SchemaVersion != 1 || installed.Shell != "electron" || installed.DataLayout != "installed" || installed.Distribution != distribution || installed.AppID != "org.eduwork."+distribution+".electron" {
+		return "", errors.New("installed EduWork identity does not match the portable edition")
+	}
+	if minimum == "" {
+		minimum = installed.ProductVersion
+	}
+	if comparison, err := CompareVersions(installed.ProductVersion, minimum); err != nil || comparison < 0 {
+		return "", errors.New("installed EduWork does not meet the migration version")
+	}
+	executable := filepath.Join(root, "EduWork-Electron.exe")
+	if err := requireMigrationPath(executable); err != nil {
+		return "", err
+	}
+	info, err := os.Lstat(executable)
+	if err != nil || !info.Mode().IsRegular() {
+		return "", errors.New("installed EduWork executable is missing or invalid")
+	}
+	return executable, nil
+}
+
+func startInstalledMigration(executable string) error {
+	command := exec.Command(executable)
+	command.Dir = filepath.Dir(executable)
+	configureMigrationAppCommand(command)
+	if err := command.Start(); err != nil {
+		return err
+	}
+	_ = command.Process.Release()
+	return nil
+}
+
+func readMatchingMigrationIntent(path, root, intentID string, desktop migrationIdentity) (migrationIntent, error) {
+	var intent migrationIntent
+	if err := readMigrationJSON(path, &intent); err != nil {
+		return intent, err
+	}
+	comparison, err := CompareVersions(intent.InstallerVersion, intent.SourceVersion)
+	if err != nil || comparison < 0 || intent.SchemaVersion != 1 || intent.ID != intentID || intent.Distribution != desktop.Distribution || !strings.EqualFold(intent.SourceRoot, root) {
+		return intent, errors.New("portable migration intent no longer matches this source")
+	}
+	return intent, nil
+}
+
+func RunPortableMigration(args []string) (result error) {
 	options := flag.NewFlagSet("portable-migration", flag.ContinueOnError)
 	mode := options.String("mode", "", "")
 	distribution := options.String("distribution", "", "")
@@ -137,8 +187,18 @@ func RunPortableMigration(args []string) error {
 	if err := options.Parse(args); err != nil {
 		return err
 	}
-	if options.NArg() != 0 || *mode != "install" || !migrationDistribution.MatchString(*distribution) || !migrationID.MatchString(*intent) || *parent <= 0 || *parent > 1<<31-1 || os.Getenv("EDUWORK_DESKTOP_TEST_DATA_ROOT") != "" {
+	needIntent := *mode != "redirect" || *intent != ""
+	detached := *mode == "install" || *mode == "redirect"
+	if options.NArg() != 0 || (!detached && *mode != "probe" && *mode != "withdraw") || (!detached && *worker) ||
+		!migrationDistribution.MatchString(*distribution) || (needIntent && !migrationID.MatchString(*intent)) ||
+		*parent <= 0 || *parent > 1<<31-1 || os.Getenv("EDUWORK_DESKTOP_TEST_DATA_ROOT") != "" {
 		return errors.New("invalid portable migration arguments")
+	}
+	if *worker {
+		defer func() { showMigrationWorkerError(result) }()
+		if err := waitForProcessExit(*parent, 30*time.Second); err != nil {
+			return err
+		}
 	}
 	self, err := os.Executable()
 	if err != nil {
@@ -146,7 +206,7 @@ func RunPortableMigration(args []string) error {
 	}
 	root := filepath.Dir(filepath.Dir(filepath.Dir(self)))
 	local := os.Getenv("LOCALAPPDATA")
-	if !filepath.IsAbs(local) || !filepath.IsAbs(*installer) || !strings.EqualFold(self, filepath.Join(root, "resources", "update", "EduWork-Updater.exe")) {
+	if !filepath.IsAbs(local) || (*mode == "install" && !filepath.IsAbs(*installer)) || !strings.EqualFold(self, filepath.Join(root, "resources", "update", "EduWork-Updater.exe")) {
 		return errors.New("invalid portable migration roots")
 	}
 	var desktop migrationIdentity
@@ -158,6 +218,35 @@ func RunPortableMigration(args []string) error {
 	}
 	directory := filepath.Join(local, "EduWork")
 	cache := filepath.Join(directory, *distribution+".portable-installers")
+	intentPath := filepath.Join(directory, *distribution+".portable-migration.json")
+	if *mode == "withdraw" {
+		release, err := installguard.Acquire(cache)
+		if err != nil {
+			return err
+		}
+		defer release()
+		if _, err := readMatchingMigrationIntent(intentPath, root, *intent, desktop); err != nil {
+			return err
+		}
+		return os.Remove(intentPath)
+	}
+	if *mode == "probe" || *mode == "redirect" {
+		minimum := ""
+		if *intent != "" {
+			row, err := readMatchingMigrationIntent(intentPath, root, *intent, desktop)
+			if err != nil {
+				return err
+			}
+			minimum = row.InstallerVersion
+		}
+		executable, err := installedMigrationExecutable(local, *distribution, minimum)
+		if err != nil || *mode == "probe" {
+			return err
+		}
+		if *worker {
+			return startInstalledMigration(executable)
+		}
+	}
 	if !*worker {
 		command := exec.Command(self, append(append([]string{"portable-migration"}, args...), "--worker")...)
 		configureDetachedHelperCommand(command)
@@ -167,31 +256,39 @@ func RunPortableMigration(args []string) error {
 		_ = command.Process.Release()
 		return nil
 	}
-	err = runMigrationInstaller(cache, directory, root, desktop, *parent, *intent, *installer, *algorithm, *digest, *bytes)
+	return runMigrationInstaller(cache, intentPath, local, root, desktop, *intent, *installer, *algorithm, *digest, *bytes)
+}
+
+func showMigrationWorkerError(err error) {
 	if err != nil {
-		message := windows.StringToUTF16Ptr("未能启动迁移安装程序。旧数据未修改，请重新打开旧客户端核对或撤销待迁移。\n\n" + err.Error())
+		message := windows.StringToUTF16Ptr("未能打开 EduWork 安装版。旧数据未修改，请重新打开旧客户端核对。\n\n" + err.Error())
 		caption := windows.StringToUTF16Ptr("EduWork 迁移未完成")
 		windows.NewLazySystemDLL("user32.dll").NewProc("MessageBoxW").Call(0, uintptr(unsafe.Pointer(message)), uintptr(unsafe.Pointer(caption)), 0x10)
 	}
-	return err
 }
 
-func runMigrationInstaller(cache, directory, root string, desktop migrationIdentity, parent int, intentID, installer, algorithm, digest string, bytes int64) error {
-	if err := waitForProcessExit(parent, 30*time.Second); err != nil {
-		return err
-	}
+func runMigrationInstaller(cache, intentPath, local, root string, desktop migrationIdentity, intentID, installer, algorithm, digest string, bytes int64) error {
 	release, err := installguard.Acquire(cache)
 	if err != nil {
 		return err
 	}
 	defer release()
-	var intent migrationIntent
-	if err := readMigrationJSON(filepath.Join(directory, desktop.Distribution+".portable-migration.json"), &intent); err != nil {
+	intent, err := readMatchingMigrationIntent(intentPath, root, intentID, desktop)
+	if err != nil {
 		return err
 	}
-	comparison, err := CompareVersions(intent.InstallerVersion, desktop.ProductVersion)
-	if err != nil || comparison < 0 || intent.SchemaVersion != 1 || intent.ID != intentID || intent.Distribution != desktop.Distribution || !strings.EqualFold(intent.SourceRoot, root) || intent.SourceVersion != desktop.ProductVersion || !migrationInstallerPath(cache, installer, desktop.ProductName, intent.InstallerVersion) {
+	if intent.SourceVersion != desktop.ProductVersion || !migrationInstallerPath(cache, installer, desktop.ProductName, intent.InstallerVersion) {
 		return errors.New("installer does not match portable migration intent")
+	}
+	if err := requireMigrationPath(installer); err != nil {
+		return err
+	}
+	defer func() {
+		_ = os.Remove(installer)
+		_ = os.Remove(filepath.Dir(installer))
+	}()
+	if executable, err := installedMigrationExecutable(local, desktop.Distribution, intent.InstallerVersion); err == nil {
+		return startInstalledMigration(executable)
 	}
 	file, err := verifyMigrationInstaller(installer, algorithm, digest, bytes)
 	if err != nil {
@@ -205,10 +302,7 @@ func runMigrationInstaller(cache, directory, root string, desktop migrationIdent
 	if err != nil {
 		return err
 	}
-	err = command.Wait()
-	_ = os.Remove(installer)
-	_ = os.Remove(filepath.Dir(installer))
-	return err
+	return command.Wait()
 }
 
 func configureMigrationAppCommand(command *exec.Cmd) {

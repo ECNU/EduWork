@@ -1,8 +1,6 @@
-import { lstat, readFile, realpath } from 'node:fs/promises'
-import { join } from 'node:path'
 import semver from 'semver'
 import { firstRunPending } from './first-run.mjs'
-import { migrationIntentStore, sameMigrationPath } from './first-run-migration-intent.mjs'
+import { migrationIntentStore, readPortableMigrationReceipt, sameMigrationPath } from './first-run-migration-intent.mjs'
 import { importPortableData, inspectPortableSource } from './portable-import.mjs'
 
 export function installedMigrationIntent({ platform = process.platform, dataLayout, openStore = migrationIntentStore, ...options }) {
@@ -12,19 +10,6 @@ export function installedMigrationIntent({ platform = process.platform, dataLayo
     const intent = store.read()
     if (intent) return { store, intent }
   } catch (error) { return { error } }
-}
-
-export async function readPortableMigrationReceipt(targetRoot, { distribution, sourceRoot, intentId }) {
-  const path = join(targetRoot, '.eduwork-migration.json')
-  try {
-    const info = await lstat(path)
-    if (!info.isFile() || info.size > 1 << 20 || !sameMigrationPath(path, await realpath(path))) return
-    const receipt = JSON.parse(await readFile(path, 'utf8'))
-    if (receipt?.schemaVersion === 2 && receipt.state === 'imported' && receipt.distribution === distribution
-      && sameMigrationPath(receipt.sourceRoot, sourceRoot) && (intentId === undefined || receipt.intentId === intentId)) return receipt
-  } catch (error) {
-    if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error
-  }
 }
 
 export async function resolveInstalledMigration({ targetRoot, version, intent, store, error,
@@ -37,14 +22,16 @@ export async function resolveInstalledMigration({ targetRoot, version, intent, s
     return { action: 'imported', receipt }
   }
   const decide = async () => {
-    const receipt = await readPortableMigrationReceipt(targetRoot, { ...intent, intentId: intent.id })
+    const receipt = readPortableMigrationReceipt(targetRoot, { ...intent, intentId: intent.id })
     if (receipt) return settle(receipt)
     if (!await conflict()) return { action: 'cancel' }
     await clear()
     return { action: 'relaunch' }
   }
+  let release
   try {
     if (error) throw error
+    release = await store.claim(intent.id)
     if (!await pending()) return await decide()
     if (!semver.valid(version) || semver.lt(version, intent.installerVersion)) throw Error('安装版版本低于迁移所需版本，请更新后重试')
     const source = await inspect({ sourceRoot: intent.sourceRoot, distribution: intent.distribution })
@@ -61,7 +48,7 @@ export async function resolveInstalledMigration({ targetRoot, version, intent, s
   } catch (error) {
     await failed(error)
     return { action: 'cancel' }
-  }
+  } finally { await release?.() }
 }
 
 export function installedMigrationDialogs(showMessageBox) {

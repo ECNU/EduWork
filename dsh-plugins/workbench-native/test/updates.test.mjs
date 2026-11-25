@@ -4,8 +4,9 @@ import { stripTypeScriptTypes } from 'node:module'
 import test from 'node:test'
 import { setImmediate as nextTurn } from 'node:timers/promises'
 
-const source = stripTypeScriptTypes(readFileSync(new URL('../src/updates.ts', import.meta.url), 'utf8'))
-  .replace(/^import .*\n/gm, '').replace(/^export /gm, '')
+const source = ['portable-migration-upgrade.ts', 'updates.ts'].map(file =>
+  stripTypeScriptTypes(readFileSync(new URL(`../src/${file}`, import.meta.url), 'utf8'))
+    .replace(/^import .*\n/gm, '').replace(/^export /gm, '')).join('\n')
 const loadUpdates = new Function('React', 'useEffect', 'useSyncExternalStore', 'createPortal', 'window', 'document',
   `${source}\nreturn { createUpdateController, UpdatePanel, UpdateFooter }`)
 
@@ -38,12 +39,34 @@ for (const [canToggle, userEnabled, contentEnabled, description] of [
     }
     const panel = UpdatePanel({ controller: { getSnapshot: () => ({ status }) } })
     assert.ok(find(panel, node => node.children?.includes(description)))
+    assert.equal(find(panel, node => node.props?.migration), undefined)
     if (!canToggle) {
       const misleading = /^(启动时在后台检查|软件更新已关闭)/
       assert.equal(find(panel, node => node.children?.some(child => typeof child === 'string' && misleading.test(child))), undefined)
     }
   })
 }
+
+test('dismissing the portable prompt leaves the verified migration in settings', () => {
+  const actions = []
+  const React = { createElement: (type, props, ...children) => typeof type === 'function'
+    ? type({ ...props, children }) : { type, props, children } }
+  const { UpdatePanel, UpdateFooter } = loadUpdates(React, () => {}, (_, snapshot) => snapshot())
+  const migration = { version: '0.4.15', dismissed: false }
+  const status = { shell: 'electron', update: { enabled: true, state: 'idle' }, portableMigration: migration }
+  const controller = { getSnapshot: () => ({ status }), run: action => { actions.push(action); migration.dismissed = true } }
+  const prompt = node => node.props?.['data-chatecnu-update-prompt'] === 'portable-migration'
+  assert.ok(find(UpdateFooter({ controller }), prompt))
+  find(UpdatePanel({ controller }), node => node.type === 'button' && node.children.includes('稍后')).props.onClick()
+  assert.equal(find(UpdateFooter({ controller }), prompt), undefined)
+  const start = find(UpdatePanel({ controller }), node => node.type === 'button' && node.children.includes('升级并迁移'))
+  assert.equal(start.props.disabled, false)
+  start.props.onClick()
+  assert.deepEqual(actions, ['dismiss-portable-migration', 'start-portable-migration'])
+  delete status.portableMigration
+  assert.equal(find(UpdateFooter({ controller }), prompt), undefined)
+  assert.equal(find(UpdatePanel({ controller }), node => node.props?.['data-eduwork-portable-migration']), undefined)
+})
 
 for (const outcome of ['ready', 'error']) {
   test(`the installed verification panel stays busy until ${outcome}`, async t => {

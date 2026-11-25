@@ -5,6 +5,7 @@ package updater
 import (
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -59,5 +60,53 @@ func TestPortableMigrationLaunchStripsSourceEnvironment(t *testing.T) {
 		if entry != "LOCALAPPDATA=target" && !strings.HasPrefix(strings.ToUpper(entry), "SYSTEMROOT=") {
 			t.Fatalf("unexpected environment: %v", command.Env)
 		}
+	}
+}
+
+func TestPortableMigrationInstalledIdentity(t *testing.T) {
+	local, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(local, "Programs", "EduWork", "eduwork")
+	app := filepath.Join(root, "resources", "app")
+	if err := os.MkdirAll(app, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	executable := filepath.Join(root, "EduWork-Electron.exe")
+	if err := os.WriteFile(executable, []byte("synthetic"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	identity := migrationIdentity{SchemaVersion: 1, Shell: "electron", DataLayout: "installed", Distribution: "eduwork", AppID: "org.eduwork.eduwork.electron", ProductVersion: "0.4.15"}
+	writeIdentity := func() {
+		data, err := json.Marshal(identity)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(app, "eduwork.desktop.json"), data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeIdentity()
+	for _, minimum := range []string{"", "0.4.14", "0.4.15"} {
+		if resolved, err := installedMigrationExecutable(local, "eduwork", minimum); err != nil || resolved != executable {
+			t.Fatalf("unexpected installed executable %q: %v", resolved, err)
+		}
+	}
+	if _, err := installedMigrationExecutable(local, "eduwork", "0.4.16"); err == nil {
+		t.Fatal("accepted an older installed version")
+	}
+	identity.AppID = "org.eduwork.other.electron"
+	writeIdentity()
+	if _, err := installedMigrationExecutable(local, "eduwork", ""); err == nil {
+		t.Fatal("accepted another installed identity")
+	}
+	identity.AppID = "org.eduwork.eduwork.electron"
+	writeIdentity()
+	if err := os.Remove(executable); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := installedMigrationExecutable(local, "eduwork", ""); err == nil {
+		t.Fatal("accepted a missing installed executable")
 	}
 }

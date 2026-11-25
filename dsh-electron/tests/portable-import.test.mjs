@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import fs, { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink, lstat } from 'node:fs/promises'
+import fs, { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink, lstat, realpath } from 'node:fs/promises'
 import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, sep } from 'node:path'
@@ -15,7 +15,7 @@ const distribution = 'eduwork'
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
 
 async function fixture() {
-  const base = await mkdtemp(join(tmpdir(), 'eduwork-portable-import-'))
+  const base = await mkdtemp(join(await realpath(tmpdir()), 'eduwork-portable-import-'))
   const source = join(base, 'old-app'), target = join(base, 'user-root')
   const home = join(source, 'data/eduwork-electron/dsh')
   const put = async (rel, content) => { const path = join(source, rel); await mkdir(join(path, '..'), { recursive: true }); await writeFile(path, content) }

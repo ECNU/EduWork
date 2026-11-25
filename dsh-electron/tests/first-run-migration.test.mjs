@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createRequire, registerHooks } from 'node:module'
 import { pathToFileURL } from 'node:url'
-import { mkdtemp, mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { migrationProgressPage } from '../src/first-run-progress.mjs'
 
 const semver = pathToFileURL(createRequire(new URL('../../scripts/electron-builder/package.json', import.meta.url)).resolve('semver')).href
@@ -15,13 +15,13 @@ const { installedMigrationIntent, resolveInstalledMigration } = await import('..
 hook.deregister()
 
 async function fixture(t) {
-  const base = await mkdtemp(join(tmpdir(), 'eduwork-migration-decision-'))
+  const base = await mkdtemp(join(await realpath(tmpdir()), 'eduwork-migration-decision-'))
   t.after(() => rm(base, { recursive: true, force: true }))
   const targetRoot = join(base, 'installed')
   const intent = { id: 'intent', distribution: 'eduwork', sourceRoot: join(base, 'old'), sourceVersion: '0.4.14', installerVersion: '0.4.15' }
   const receipt = { schemaVersion: 2, state: 'imported', intentId: intent.id, distribution: intent.distribution, sourceRoot: intent.sourceRoot }
   const events = []
-  const options = { targetRoot, version: '0.4.15', intent, store: { remove: id => { events.push(['remove', id]); return true } },
+  const options = { targetRoot, version: '0.4.15', intent, store: { claim: async () => () => {}, remove: id => { events.push(['remove', id]); return true } },
     inspect: async () => ({ root: intent.sourceRoot, version: intent.sourceVersion }),
     useProgress: async run => { events.push('progress'); return run(() => {}) },
     importSource: async args => { events.push(['import', args.intentId]); return receipt },

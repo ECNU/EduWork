@@ -20,10 +20,12 @@ import { desktopPaths } from './desktop-paths.mjs'
 import { firstRunPending, firstRunPendingSync, firstRunDialogs, resolveFirstRunData } from './first-run.mjs'
 import { importPortableData, inspectPortableSource, windowsSourceProcessLister } from './portable-import.mjs'
 import { portableInstallerSource, discoverPortableInstaller, downloadPortableInstaller } from './portable-installer-feed.mjs'
-import { createPortableMigration, launchPortableMigrationHelper } from './portable-migration-upgrade.mjs'
-import { migrationIntentStore } from './first-run-migration-intent.mjs'
+import { createPortableMigration, launchPortableMigrationHelper, writePortableSourceHint } from './portable-migration-upgrade.mjs'
+import { migrationIntentStore, sameMigrationPath } from './first-run-migration-intent.mjs'
 import { installedMigrationIntent, installedMigrationDialogs, resolveInstalledMigration } from './first-run-migration.mjs'
 import { withMigrationProgress } from './first-run-progress.mjs'
+import { portableMigrationEnabled, portableRedirectGate, handlePortableRedirect, portableRedirectDialogs } from './portable-migrated-redirect.mjs'
+import { refreshPortableShortcuts } from './portable-import-shortcuts.mjs'
 import { portableSourceSuggestion } from './portable-source-hint.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
@@ -164,7 +166,7 @@ const activationWindows = () => [
   ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window)),
 ]
 export const showDesktop = () => showDesktopWindows(activationWindows())
-let pendingInstalledMigration, firstRunInProgress = false
+let pendingInstalledMigration, earlyPortableRedirect, firstRunInProgress = false
 export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
@@ -185,14 +187,11 @@ export function configureEduworkPaths() {
     event.preventDefault()
     void desktopExit.request()
   })
-  // Only an unsettled installed first-run defers activation, keeping the target
-  // untouched until the user decides. Once the choice is settled the browser
-  // profile must bind to the target before Chromium initializes os_crypt, so the
-  // imported credentials decrypt with the source key; every other layout always
-  // activates immediately.
   pendingInstalledMigration = installedMigrationIntent({ dataLayout: settings.dataLayout,
     localAppData: process.env.LOCALAPPDATA, testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, distribution: settings.distribution })
-  if (!pendingInstalledMigration) {
+  earlyPortableRedirect = portableRedirectGate({ root: paths.root, settings,
+    localAppData: process.env.LOCALAPPDATA, testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT })
+  if (!pendingInstalledMigration && !earlyPortableRedirect) {
     if (!firstRunPendingSync({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) activateEduworkPaths()
   }
 }
@@ -208,6 +207,50 @@ export function activateEduworkPaths() {
   process.env.DSH_HOME = paths.home
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
 }
+function portableMigrationHelper(options) {
+  return launchPortableMigrationHelper({ distribution: settings.distribution,
+    helper: join(paths.root, 'resources/update/EduWork-Updater.exe'), ...options })
+}
+
+export async function resolvePortableRedirect() {
+  if (!earlyPortableRedirect) return 'normal'
+  return handlePortableRedirect({ gate: earlyPortableRedirect,
+    launch: portableMigrationHelper,
+    canResume: intentId => portableMigrationHelper({ mode: 'probe', intentId }).then(() => true, () => false),
+    withdraw: async () => {
+      const { store, intent } = earlyPortableRedirect
+      const release = await store.claim(intent.id)
+      try {
+        const installed = join(process.env.LOCALAPPDATA, 'Programs', 'EduWork', settings.distribution)
+        if ((await windowsSourceProcessLister(installed)()).length) throw Error('请先正常退出安装版，再撤销待迁移')
+        await portableMigrationHelper({ mode: 'withdraw', intentId: intent.id })
+      } finally { await release() }
+    }, ...portableRedirectDialogs(options => dialog.showMessageBox(options)) })
+}
+
+export async function recordPortableSource() {
+  if (!portableMigrationEnabled({ settings, testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT })) return
+  try {
+    await writePortableSourceHint({ localAppData: process.env.LOCALAPPDATA, distribution: settings.distribution,
+      root: paths.root, version: settings.productVersion })
+  } catch (error) { desktopHostLog(`[portable migration] ${error.message}\n`) }
+}
+
+async function finishPortableImport(receipt) {
+  if (process.platform !== 'win32' || process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT) return
+  const installed = join(process.env.LOCALAPPDATA, 'Programs', 'EduWork', settings.distribution)
+  if (!sameMigrationPath(paths.root, installed)) return
+  const warnings = []
+  const warn = error => warnings.push(error.message)
+  try {
+    await refreshPortableShortcuts({ desktop: app.getPath('desktop'), sourceRoot: receipt.sourceRoot,
+      executable: join(installed, 'EduWork-Electron.exe'), appId: settings.appId,
+      read: path => shell.readShortcutLink(path), write: (path, operation, options) => shell.writeShortcutLink(path, operation, options), warn })
+  } catch (error) { warn(error) }
+  if (warnings.length) await dialog.showMessageBox({ type: 'warning', title: '数据已导入',
+    message: '部分桌面快捷方式未更新。可以从开始菜单打开安装版。', detail: warnings.join('\n') }).catch(() => {})
+}
+
 export async function resolveInstalledFirstRun() {
   if (pendingInstalledMigration) {
     firstRunInProgress = true
@@ -215,14 +258,14 @@ export async function resolveInstalledFirstRun() {
       const { action } = await resolveInstalledMigration({ ...pendingInstalledMigration,
         targetRoot: paths.userRoot, version: settings.productVersion,
         ...installedMigrationDialogs(options => dialog.showMessageBox(options)),
-        useProgress: run => withMigrationProgress(BrowserWindow, run) })
+        useProgress: run => withMigrationProgress(BrowserWindow, run), finish: finishPortableImport })
       return action
     } finally { firstRunInProgress = false }
   }
   if (!await firstRunPending({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) return 'reuse'
   const suggestedSource = await portableSourceSuggestion({ localAppData: process.env.LOCALAPPDATA,
     distribution: settings.distribution, validate: root => inspectPortableSource({ sourceRoot: root, distribution: settings.distribution }) })
-  const { action } = await resolveFirstRunData({
+  const { action, receipt } = await resolveFirstRunData({
     ...firstRunDialogs({ productName: settings.productName,
       suggestedSource,
       showMessageBox: options => dialog.showMessageBox(options),
@@ -230,6 +273,7 @@ export async function resolveInstalledFirstRun() {
     importSource: sourceRoot => importPortableData({ sourceRoot, targetRoot: paths.userRoot, distribution: settings.distribution }),
     createTarget: () => activateEduworkPaths(),
   })
+  if (receipt) await finishPortableImport(receipt)
   return action
 }
 export function installEduworkFromDmg() {
@@ -400,8 +444,7 @@ async function prepareDesktop() {
         await stopDesktopForExit({ beforeInstall: true, requireGraceful: true, activeBeforeConfirmation: active })
         await stopDesktopForExit()
       }),
-      launch: (installerPath, installer, intent) => launchPortableMigrationHelper({ mode: 'install', distribution, installerPath, installer,
-        intentId: intent.id, helper: join(paths.root, 'resources/update/EduWork-Updater.exe') }),
+      launch: (installerPath, installer, intent) => portableMigrationHelper({ mode: 'install', installerPath, installer, intentId: intent.id }),
       quit: () => app.quit(),
       fail: (error, stopped) => showDesktopMessageBox({ type: 'error', title: '未启动迁移安装', message: error.message,
         detail: stopped || lifecycle.closing || lifecycle.hostStop ? '旧数据保留。请退出并重新打开客户端后重试。' : '旧数据保留。请核对后重试。' }),

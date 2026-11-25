@@ -20,7 +20,7 @@ import { redactDiagnostic } from './diagnostics.mjs'
 import { startupDiagnostic } from './startup-failure.mjs'
 import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
-import { configureEduworkPaths, activateEduworkPaths, resolveInstalledFirstRun, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
+import { configureEduworkPaths, activateEduworkPaths, resolveInstalledFirstRun, resolvePortableRedirect, recordPortableSource, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
   showDesktopFailure, prepareDesktopRecovery, cancelDesktopStartup, isShutdownFailed, recordStartupStopFailureHealth, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand, desktopStartupHint,
   showHostStartupProgress, readInitialCloseAction, productUpdateObserver } from './product.mjs'
@@ -209,6 +209,12 @@ async function main() {
   if (await installEduworkFromDmg() || isQuitting()) return
   // Lock stays in default userData: an early redirect would let Chromium bootstrap write the target before the choice.
   if (!claimDesktopSingleInstance(app, showDesktop)) return
+  const portableAction = await resolvePortableRedirect()
+  if (portableAction !== 'normal') {
+    if (portableAction === 'relaunch') await restartDesktop()
+    else app.quit()
+    return
+  }
   // The installed first-run data choice precedes any target write, the browser
   // profile and the Host; cancelling quits without creating the target.
   const firstRunAction = await resolveInstalledFirstRun()
@@ -222,6 +228,7 @@ async function main() {
     return
   }
   activateEduworkPaths()
+  await recordPortableSource()
   // The early BootPage must obey the local close policy before preparation reads it.
   readInitialCloseAction()
   void pruneCrashReports(app.getPath('logs')).catch(() => {})

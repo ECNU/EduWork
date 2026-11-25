@@ -215,7 +215,7 @@ const electron = 'data:text/javascript,export {}'
 registerHooks({ resolve(specifier, context, next) {
   return specifier === 'electron' ? { url: electron, shortCircuit: true } : next(specifier, context)
 } })
-for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'installer-failure', 'second-instance', 'quit-during-cleanup', 'first-run-cancel', 'first-run-fresh', 'first-run-imported', 'preparation-visible', 'preparation-hidden', 'preparation-failure', 'host-failure', 'early-host-failure', 'host-start-cleanup-failure', 'early-configuration-failure', 'native-duplicate-renderer', 'native-recovery-rejected', 'renderer-before-page-load', 'web-boot-before-page-load', 'renderer-during-prepare', 'renderer-then-bootstrap', 'renderer-then-updater', 'renderer-before-ready-guard', 'renderer-during-desktop-ready', 'renderer-during-shell', 'renderer-during-sidebar-listen', 'renderer-rollback-cancelled-quit', 'renderer-rollback-cleanup-failure', 'renderer-rollback-persistent-cleanup-exit', 'renderer-rollback-persistent-cleanup-restart', 'renderer-host-stop-failure', 'renderer-host-stop-failure-trial', 'renderer-host-stop-failure-restart', 'quit-during-host', 'quit-host-stop-failure', 'quit-confirmation-dialog-failure', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure', 'recovery-preload-failure']) {
+for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'installer-failure', 'second-instance', 'quit-during-cleanup', 'portable-redirect', 'first-run-cancel', 'first-run-fresh', 'first-run-imported', 'preparation-visible', 'preparation-hidden', 'preparation-failure', 'host-failure', 'early-host-failure', 'host-start-cleanup-failure', 'early-configuration-failure', 'native-duplicate-renderer', 'native-recovery-rejected', 'renderer-before-page-load', 'web-boot-before-page-load', 'renderer-during-prepare', 'renderer-then-bootstrap', 'renderer-then-updater', 'renderer-before-ready-guard', 'renderer-during-desktop-ready', 'renderer-during-shell', 'renderer-during-sidebar-listen', 'renderer-rollback-cancelled-quit', 'renderer-rollback-cleanup-failure', 'renderer-rollback-persistent-cleanup-exit', 'renderer-rollback-persistent-cleanup-restart', 'renderer-host-stop-failure', 'renderer-host-stop-failure-trial', 'renderer-host-stop-failure-restart', 'quit-during-host', 'quit-host-stop-failure', 'quit-confirmation-dialog-failure', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure', 'recovery-preload-failure']) {
   test(`native installer startup: ${scenario}`, { skip: !source }, async t => {
     const calls = [], crashSources = [], crashReports = [], failureCalls = [], dialogOptions = [], exitFailures = [], app = new EventEmitter(), lifecycle = new DesktopLifecycle()
     let rollbackAttempts = 0
@@ -352,6 +352,12 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'in
     })
     mock('product.mjs', {
       configureEduworkPaths() {},
+      resolvePortableRedirect: async () => {
+        if (scenario !== 'portable-redirect') return 'normal'
+        calls.push('portable-redirect')
+        return 'exit'
+      },
+      recordPortableSource: async () => assert.notEqual(scenario, 'portable-redirect'),
       resolveInstalledFirstRun: async () => {
         calls.push('first-run')
         if (scenario === 'first-run-cancel') return 'cancel'
@@ -847,6 +853,8 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'in
       assert.equal(dialogOptions.find(value => value.type === 'error').title, 'Fixture is unavailable')
     } else if (scenario === 'second-instance') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'quit'])
+    } else if (scenario === 'portable-redirect') {
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'portable-redirect', 'quit'])
     } else if (scenario === 'first-run-cancel') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'first-run', 'quit'])
       assert.equal(exit.complete, true)

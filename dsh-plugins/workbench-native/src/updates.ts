@@ -1,5 +1,6 @@
 import React, { useEffect, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
+import { PortableMigrationUpgrade, portableMigrationPrompt } from './portable-migration-upgrade'
 const h = React.createElement
 const accent='var(--dsw-alias-state-business-primary, #3575ef)'
 const border='var(--dsw-alias-border-l2, #ddd)'
@@ -137,6 +138,7 @@ export function UpdatePanel({controller}) {
     s.canSchedule!==false&&!s.installOnQuit&&!s.installOnNextStart&&h('button',{type:'button',style:button,onClick:()=>controller.run('schedule-update')},'下次启动时安装'),
     h('button',{type:'button',style:primary,onClick:()=>controller.run('install-update')},'立即重启更新'))),
   alert&&h('p',{role:'alert',style:{...note,marginTop:12,color:'var(--dsw-alias-state-error-primary, #a82332)',overflowWrap:'anywhere'}},alert),
+  status?.portableMigration&&h(PortableMigrationUpgrade,{migration:status.portableMigration,run:controller.run,locked:locked||toggleLocked||Boolean(working),button,primary,note}),
   h(ContentPanel,{controller,content:c,working}),
   s?.releaseNotesURL&&h('a',{href:s.releaseNotesURL,target:'_blank',rel:'noopener noreferrer',style:{...button,display:'inline-block',marginTop:12}},'查看发行说明'),
   status?.url&&h('a',{href:status.url,target:'_blank',rel:'noopener noreferrer',style:{...button,display:'inline-block',marginTop:12}},'打开下载页面'))
@@ -153,11 +155,12 @@ export function UpdateFooter({controller,wide=true}) {
  const softwareVisible=!officialSoftwareIndicator&&s?.enabled&&['available','downloading','verifying','ready','applying'].includes(state)
  const softwareLabel=statusError?'更新状态不可用':state==='available'?'更新':verifyingPackage?'正在校验…':state==='downloading'?(s?.downloadStage==='verifying'?`校验 ${percent(s)}%`:s?.totalBytes>0?`下载 ${percent(s)}%`:'正在下载…'):state==='ready'?(s.installOnQuit?'退出时更新':'重启更新'):'正在更新…'
  const contentLabel=c?.state==='downloading'?`内容 ${percent(c)}%`:c?.state==='ready'?'内容待生效':'内容更新'
- const label=softwareVisible?softwareLabel:contentLabel
- const contentPrompt=contentVisible&&!softwareVisible
- const visible=wide&&(softwareVisible||contentVisible)
+ const migrationPrompt=portableMigrationPrompt(status?.portableMigration)
+ const label=migrationPrompt?'升级并迁移':softwareVisible?softwareLabel:contentLabel
+ const contentPrompt=contentVisible&&!softwareVisible&&!migrationPrompt
+ const visible=wide&&(softwareVisible||contentVisible||migrationPrompt)
  return h(React.Fragment,null,
-  visible&&h('button',{type:'button','aria-label':contentPrompt?'查看内容更新':'查看更新',title:contentPrompt?'查看配置与 Skills 更新':'查看软件及内容更新',onClick:controller.open,'data-eduwork-update-entry':true,'data-chatecnu-update-prompt':softwareVisible?state:c.state,style:{flex:'0 0 auto',alignSelf:'center',minWidth:42,height:28,margin:'4px 2px 4px 6px',border:0,borderRadius:999,padding:'0 11px',background:'var(--dsw-alias-state-info-primary, #4f78dd)',color:'white',cursor:'pointer',fontSize:11,fontWeight:700,whiteSpace:'nowrap',fontFamily:'system-ui, sans-serif'}},label),
+  visible&&h('button',{type:'button','aria-label':migrationPrompt?'查看便携版迁移选项':contentPrompt?'查看内容更新':'查看更新',title:migrationPrompt?'查看便携版迁移选项':contentPrompt?'查看配置与 Skills 更新':'查看软件及内容更新',onClick:controller.open,'data-eduwork-update-entry':true,'data-chatecnu-update-prompt':migrationPrompt?'portable-migration':softwareVisible?state:c?.state,style:{flex:'0 0 auto',alignSelf:'center',minWidth:42,height:28,margin:'4px 2px 4px 6px',border:0,borderRadius:999,padding:'0 11px',background:'var(--dsw-alias-state-info-primary, #4f78dd)',color:'white',cursor:'pointer',fontSize:11,fontWeight:700,whiteSpace:'nowrap',fontFamily:'system-ui, sans-serif'}},label),
   open&&createPortal(h('div',{style:{position:'fixed',inset:0,zIndex:11000,display:'grid',placeItems:'center',background:'rgba(0,0,0,.28)',backdropFilter:'blur(3px)'},onMouseDown:e=>{if(e.target===e.currentTarget)controller.close()}},
    h('section',{role:'dialog','aria-modal':true,'aria-label':'更新',style:{boxSizing:'border-box',width:'min(480px, calc(100vw - 32px))',maxHeight:'calc(100vh - 48px)',overflowY:'auto',padding:24,border:`1px solid ${border}`,borderRadius:16,background:'var(--dsw-alias-bg-layer-1, #fff)',color:'var(--dsw-alias-label-primary, #222)',boxShadow:'0 20px 70px #0003'}},
     h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}},h('h2',{style:{fontSize:20,margin:0}},'更新'),h('button',{type:'button','aria-label':'关闭更新面板',disabled:verifyingPackage&&!statusError,onClick:controller.close,style:button},'×')),

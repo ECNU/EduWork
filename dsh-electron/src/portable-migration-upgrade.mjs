@@ -1,5 +1,22 @@
 import { execFile } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
+import { mkdir, rename, unlink, writeFile } from 'node:fs/promises'
+import { dirname, isAbsolute } from 'node:path'
 import { promisify } from 'node:util'
+import { portableSourceHintPath } from './portable-source-hint.mjs'
+
+export async function writePortableSourceHint({ localAppData, distribution, root, version }) {
+  if (!isAbsolute(localAppData || '') || !isAbsolute(root || '') || !/^[a-z0-9][a-z0-9-]{0,99}$/.test(distribution ?? '') || !version) return
+  const path = portableSourceHintPath(localAppData, distribution)
+  const temporary = `${path}.${randomUUID()}.tmp`
+  await mkdir(dirname(path), { recursive: true })
+  try {
+    const value = { schemaVersion: 1, distribution, root, version, updatedAt: new Date().toISOString() }
+    await writeFile(temporary, JSON.stringify(value) + '\n', { flag: 'wx', mode: 0o600 })
+    await rename(temporary, path)
+    return path
+  } finally { await unlink(temporary).catch(() => {}) }
+}
 
 export function createPortableMigration({ source, discover, download, reserve, preflight, inspectTasks, confirm, stop, intents,
   launch, quit, fail, cleanup, now = Date.now }) {
@@ -56,7 +73,10 @@ export function createPortableMigration({ source, discover, download, reserve, p
           quit()
         } catch (error) {
           if (intent) {
-            try { intents.remove(intent.id) } catch { /* Preserve recoverable intent */ }
+            try {
+              const releaseIntent = await intents.claim?.(intent.id)
+              try { intents.remove(intent.id) } finally { await releaseIntent?.() }
+            } catch { /* Preserve recoverable intent */ }
           }
           await fail(error, stopped)
         } finally {
@@ -71,9 +91,10 @@ export function createPortableMigration({ source, discover, download, reserve, p
 
 export async function launchPortableMigrationHelper({ helper, mode, distribution, parentPid = process.pid, installerPath, installer, intentId, run = promisify(execFile) }) {
   const args = ['portable-migration', '--mode', mode, '--distribution', distribution, '--parent-pid', String(parentPid)]
+  if (intentId) args.push('--intent', intentId)
   if (mode === 'install') {
     const digest = installer.algorithm === 'sha512' ? Buffer.from(installer.digest, 'base64').toString('hex') : installer.digest
-    args.push('--installer', installerPath, '--bytes', String(installer.bytes), '--algorithm', installer.algorithm, '--digest', digest, '--intent', intentId)
+    args.push('--installer', installerPath, '--bytes', String(installer.bytes), '--algorithm', installer.algorithm, '--digest', digest)
   }
   await run(helper, args, { windowsHide: true, timeout: 15000 })
 }
