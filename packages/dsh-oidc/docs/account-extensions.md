@@ -14,7 +14,7 @@ const response = await ctx.oidcAccounts.modelResourceFetch(profileID, '/quota', 
 
 这是 Host 专属方法，**没有 Remote 标记**，不向客户端返回 Key。请求使用已校验的网关 API 基址和当前 Access Token，要求有效的 auth 模型授权。只允许 GET，路径必须是 `/segment` 形式（字母、数字、下划线、连字符，可多级），拒绝 URL、查询、片段、编码路径、点段和额外请求选项。请求不跟随重定向，超时 20 秒，缓冲响应最多 1 MiB。HTTP 错误仍返回 Response，由扩展定义友好状态。网络异常和身份变化可能抛出错误；扩展不得向 UI 回显原始请求或响应中的秘密。
 
-读取响应期间注销或替换 Key 会拒绝结果。扩展还必须在自身层订阅 `oidc/accounts-changed` 和 `credentials/reference-updated`，失效正在请求的账户快照；每次异步操作结束后检查世代编号，不能将旧用户结果写入新用户状态。扩展卸载时中止请求。公版不缓存扩展资源。
+读取响应期间注销或替换授权会拒绝结果。扩展必须在自身层订阅 `oidc/accounts-changed`，在注销、换账号或 `authorizationChanged: true` 时失效账户快照；每次异步操作结束后核对身份和世代编号，不能将旧授权结果写入新授权状态。`credentials/reference-updated` 也可能来自同一账号的正常 Token 续期或其他凭据更新，只应触发身份复核，不能一律中止请求或清空用户输入。有 `accountIdentity()` 时按稳定身份复核；兼容不提供该方法的旧版本时，应采用保守失效策略。扩展卸载时中止请求。公版不缓存扩展资源。
 
 需要 OAuth Access Token 的机构服务使用 `authorizedFetch(profileID, endpoint, init, authorization?)`。请求前检查到期时间，默认提前 30 分钟刷新；提前量不超过该 Token 实际有效期的一半（例如有效期 10 分钟时，剩余 5 分钟开始刷新），避免短有效期 Token 刚获取就反复刷新。刷新时间随凭据保存在 Host，重启后仍生效；只有到期时间的旧会话先按默认余量处理，首次刷新后自动补齐，无须重新登录。`auth` 模式 GET/HEAD 收到 401 后最多刷新并重试一次。
 
