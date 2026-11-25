@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { desktopAppPackage, installedUpdateFeed, installedUpdateYAML, portableMigrationConfiguration } from '../../dsh-electron/scripts/assemble-windows.mjs'
@@ -152,11 +153,40 @@ test('NSIS migration guard proceeds only on an explicit no-process result and le
   assert.match(setup, /\$\{GetOptions\} .* "--eduwork-portable-migration"/)
   const [migration, ordinary] = branches.split('\n  ${else}\n')
   assert.match(migration, /StrCpy \$R0 2\n\s*\$\{if\} \$IsPowerShellAvailable == 0/)
-  assert.match(migration, /Get-CimInstance -ClassName Win32_Process -ErrorAction Stop.*exit 0.*exit 1.*catch \{ exit 2 \}/)
+  assert.match(migration, /\$\$result = 1.*Get-CimInstance -ClassName Win32_Process -ErrorAction Stop.*exit 0.*exit \$\$result.*catch \{ exit 2 \}/)
+  assert.match(migration, /-LiteralPath \$\$root -Filter \*\.exe -File -Recurse -Force -ErrorAction Stop/)
+  assert.match(migration, /!\$\$process\.ExecutablePath -and \$\$process\.Name -in \$\$names/)
   assert.match(migration, /\$\{if\} \$R0 != 1\n\s*MessageBox.*\n\s*Quit\n\s*\$\{endif\}$/)
   assert.doesNotMatch(migration, /FIND_PROCESS/)
   assert.doesNotMatch(migration, /KILL_PROCESS|Stop-Process|taskkill|_CHECK_APP_RUNNING/)
   assert.match(ordinary, /^    !insertmacro _CHECK_APP_RUNNING\n  \$\{endif\}$/)
+})
+
+test('NSIS migration probe rejects unreadable paths for matching installed executable names', { skip: process.platform !== 'win32' }, async t => {
+  const directory = await mkdtemp(join(await realpath(tmpdir()), 'eduwork-nsis-probe-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const root = join(directory, "EduWork's install")
+  const host = join(root, 'resources', 'runtime', 'Node.exe')
+  await mkdir(join(root, 'resources', 'runtime'), { recursive: true })
+  await writeFile(host, '')
+  const probe = installerInclude(desktop).match(/nsExec::Exec .* -Command "(try \{.*\})"`/)?.[1]
+  assert.ok(probe, 'generated PowerShell probe')
+  for (const [label, processPath, name, expected] of [
+    ['target process', host, 'node.exe', 0],
+    ['adjacent directory', join(`${root}-other`, 'Node.exe'), 'node.exe', 1],
+    ['unreadable path and matching name', '', 'NODE.EXE', 2],
+    ['unreadable path and unrelated name', '', 'system.exe', 1],
+  ]) {
+    const fixture = 'function Get-CimInstance { [pscustomobject]@{ ExecutablePath = $env:TEST_PROCESS_PATH; Path = $env:TEST_PROCESS_PATH; Name = $env:TEST_PROCESS_NAME } }'
+    const script = `${fixture}; ${probe.replaceAll('$$', '$')}`
+    const result = spawnSync(join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'),
+      ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], {
+        encoding: 'utf8', timeout: 15000, windowsHide: true,
+        env: { ...process.env, EDUWORK_MIGRATION_INSTALL_DIR: root, TEST_PROCESS_PATH: processPath, TEST_PROCESS_NAME: name },
+      })
+    assert.ifError(result.error)
+    assert.equal(result.status, expected, `${label}: ${result.stderr}`)
+  }
 })
 
 test('installer project fixes per-user, no-elevation and data-preserving behavior', () => {

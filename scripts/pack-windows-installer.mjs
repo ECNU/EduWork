@@ -100,7 +100,11 @@ export function installerInclude(desktop) {
     '    ${if} $IsPowerShellAvailable == 0',
     '      System::Call \'kernel32::SetEnvironmentVariableW(w "EDUWORK_MIGRATION_INSTALL_DIR", w "$INSTDIR")i.r0\'',
     '      ${if} $0 != 0',
-    '        nsExec::Exec /TIMEOUT=10000 `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = $$env:EDUWORK_MIGRATION_INSTALL_DIR.TrimEnd([char]92) + [char]92; foreach ($$process in (Get-CimInstance -ClassName Win32_Process -ErrorAction Stop)) { if ($$process.Path -and $$process.Path.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase)) { exit 0 } }; exit 1 } catch { exit 2 }"`',
+    '        nsExec::Exec /TIMEOUT=10000 `"$PowerShellPath" -NoProfile -NonInteractive -Command "try { $$root = $$env:EDUWORK_MIGRATION_INSTALL_DIR.TrimEnd([char]92); '
+      + '$$names = if (Test-Path -LiteralPath $$root -ErrorAction Stop) { (Get-ChildItem -LiteralPath $$root -Filter *.exe -File -Recurse -Force -ErrorAction Stop).Name }; '
+      + '$$root += [char]92; $$result = 1; foreach ($$process in (Get-CimInstance -ClassName Win32_Process -ErrorAction Stop)) { '
+      + 'if ($$process.ExecutablePath -and $$process.ExecutablePath.StartsWith($$root, [StringComparison]::OrdinalIgnoreCase)) { exit 0 }; '
+      + 'if (!$$process.ExecutablePath -and $$process.Name -in $$names) { $$result = 2 } }; exit $$result } catch { exit 2 }"`',
     '        Pop $R0',
     '        System::Call \'kernel32::SetEnvironmentVariableW(w "EDUWORK_MIGRATION_INSTALL_DIR", p 0)i\'',
     '      ${endif}',
