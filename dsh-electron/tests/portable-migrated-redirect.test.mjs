@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises'
+import { runInNewContext } from 'node:vm'
+import { migrationIntentStore } from '../src/first-run-migration-intent.mjs'
 import { portableRedirectGate, handlePortableRedirect } from '../src/portable-migrated-redirect.mjs'
 import { refreshPortableShortcuts } from '../src/portable-import-shortcuts.mjs'
 import { writePortableSourceHint } from '../src/portable-migration-upgrade.mjs'
@@ -16,6 +18,32 @@ test('before activation an opt-out skips all portable migration state', () => {
   for (const override of [{ settings: {} }, { platform: 'darwin' }, { testRoot: root }, { settings: { ...settings, dataLayout: 'installed' } }, { settings: { ...settings, sourceAlpha: true } }]) {
     assert.equal(portableRedirectGate({ root, localAppData: root, platform: 'win32', settings, read, ...override }), undefined)
   }
+})
+
+test('a portable instance rechecks for a new intent after acquiring the desktop lock', async t => {
+  const localAppData = await mkdtemp(join(await realpath(tmpdir()), 'eduwork-redirect-lock-'))
+  t.after(() => rm(localAppData, { recursive: true, force: true }))
+  const platform = 'win32', sourceRoot = join(localAppData, 'old')
+  await mkdir(sourceRoot)
+  const store = migrationIntentStore({ localAppData, platform, distribution: settings.distribution })
+  const readPortableRedirect = () => portableRedirectGate({ root: sourceRoot, localAppData, platform, settings })
+  const earlyPortableRedirect = readPortableRedirect()
+  assert.equal(earlyPortableRedirect, undefined)
+  const published = await store.write({ sourceRoot, sourceVersion: '0.4.14', installerVersion: '0.4.15' })
+  const product = await readFile(new URL('../src/product.mjs', import.meta.url), 'utf8')
+  const native = await readFile(new URL('../src/native-desktop.mjs', import.meta.url), 'utf8')
+  const resolver = product.slice(product.indexOf('export async function resolvePortableRedirect('), product.indexOf('export async function recordPortableSource('))
+  const startup = native.slice(native.indexOf('async function main()'), native.indexOf('  activateEduworkPaths()', native.indexOf('async function main()')))
+  const events = []
+  await runInNewContext(`${resolver.replace('export ', '')}\n${startup}\n  startOldHost()\n}\nmain()`, {
+    earlyPortableRedirect, readPortableRedirect: () => { events.push('recheck'); return readPortableRedirect() }, handlePortableRedirect,
+    installEduworkFromDmg: async () => false, isQuitting: () => false, showDesktop() {},
+    claimDesktopSingleInstance: () => { events.push('lock'); return true },
+    portableMigrationHelper: async ({ mode, intentId }) => { assert.equal(intentId, published.id); events.push(mode) },
+    portableRedirectDialogs: () => ({ choose: async () => 'resume', fail: error => { throw error } }),
+    resolveInstalledFirstRun: async () => 'reuse', startOldHost: () => events.push('old-host'), app: { quit: () => events.push('quit') },
+  })
+  assert.deepEqual(events, ['lock', 'recheck', 'probe', 'redirect', 'quit'])
 })
 
 test('activation redirects only the canonical source for this distribution', async t => {

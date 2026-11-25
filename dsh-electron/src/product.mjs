@@ -167,6 +167,8 @@ const activationWindows = () => [
 ]
 export const showDesktop = () => showDesktopWindows(activationWindows())
 let pendingInstalledMigration, earlyPortableRedirect, firstRunInProgress = false
+const readPortableRedirect = () => portableRedirectGate({ root: paths.root, settings,
+  localAppData: process.env.LOCALAPPDATA, testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT })
 export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
@@ -189,8 +191,7 @@ export function configureEduworkPaths() {
   })
   pendingInstalledMigration = installedMigrationIntent({ dataLayout: settings.dataLayout,
     localAppData: process.env.LOCALAPPDATA, testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, distribution: settings.distribution })
-  earlyPortableRedirect = portableRedirectGate({ root: paths.root, settings,
-    localAppData: process.env.LOCALAPPDATA, testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT })
+  earlyPortableRedirect = readPortableRedirect()
   if (!pendingInstalledMigration && !earlyPortableRedirect) {
     if (!firstRunPendingSync({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) activateEduworkPaths()
   }
@@ -213,12 +214,13 @@ function portableMigrationHelper(options) {
 }
 
 export async function resolvePortableRedirect() {
-  if (!earlyPortableRedirect) return 'normal'
-  return handlePortableRedirect({ gate: earlyPortableRedirect,
+  const gate = readPortableRedirect()
+  if (!gate) return earlyPortableRedirect ? 'relaunch' : 'normal'
+  return handlePortableRedirect({ gate,
     launch: portableMigrationHelper,
     canResume: intentId => portableMigrationHelper({ mode: 'probe', intentId }).then(() => true, () => false),
     withdraw: async () => {
-      const { store, intent } = earlyPortableRedirect
+      const { store, intent } = gate
       const release = await store.claim(intent.id)
       try {
         const installed = join(process.env.LOCALAPPDATA, 'Programs', 'EduWork', settings.distribution)
