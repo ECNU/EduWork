@@ -5,7 +5,7 @@
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-25T06:56:00.681Z",
-  "fileSetSHA256": "52f0f85568e4e72b6f2e3426647bd75b2937bb766a7dcf7ad54bfe58dfa5ae7e",
+  "fileSetSHA256": "7f20c92aea87267a934a6a92953d4198e1d4a2fcf66a7744dd65f249e9d584f2",
   "files": [
     {
       "path": ".gitattributes",
@@ -1261,7 +1261,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "d91285a71b49d67323ed4d8ec7a1d5cf9af1d69793247ff4eb1fa20962df5f1f"
+      "sha256": "873a703c8b2f1311700e93350cf8f65443dcfed7097cc26e5acedadba881299c"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1517,7 +1517,7 @@
     },
     {
       "path": "dsh-electron/tests/portable-migrated-redirect.test.mjs",
-      "sha256": "faf0da3d94ad26e6b7b86b04ade8cc6a322e371659ac90bbc174e58c06e25771"
+      "sha256": "ffe5a346b3d597ef683b0565e7c29bffe41034ea963c504a14ceb71a366bba87"
     },
     {
       "path": "dsh-electron/tests/portable-migration-upgrade.test.mjs",
@@ -7933,7 +7933,7 @@
     },
     {
       "path": "scripts/pack-windows-installer.mjs",
-      "sha256": "d34a2ec21966d3a9238cde2904dc3aa503d4cb3d89c8e6e616631dc3f466f605"
+      "sha256": "17b648c2578b0c913d2006e44f8f020be8276c669d502719ff32e70d6c849d04"
     },
     {
       "path": "scripts/pack-windows-release.mjs",
@@ -8293,7 +8293,7 @@
     },
     {
       "path": "scripts/test/windows-installer.test.mjs",
-      "sha256": "7fa86f7c71f8cd1aa45ba9f15bacd668ec1abedd0eea8f60e909a2859b5aa095"
+      "sha256": "d003cfb57352dd7ef4a8229548b24882c2e319972d91c1cb6f0fb7f6630f2d4e"
     },
     {
       "path": "scripts/test/windows-update-delta.test.mjs",

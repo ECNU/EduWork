@@ -216,6 +216,10 @@ function portableMigrationHelper(options) {
 export async function resolvePortableRedirect() {
   const gate = readPortableRedirect()
   if (!gate) return earlyPortableRedirect ? 'relaunch' : 'normal'
+  if (!earlyPortableRedirect && gate.intent) {
+    desktopHostLog('[portable migration] Exiting duplicate portable startup during migration\n')
+    return 'exit'
+  }
   return handlePortableRedirect({ gate,
     launch: portableMigrationHelper,
     canResume: intentId => portableMigrationHelper({ mode: 'probe', intentId }).then(() => true, () => false),

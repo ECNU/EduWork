@@ -20,7 +20,7 @@ test('before activation an opt-out skips all portable migration state', () => {
   }
 })
 
-test('a portable instance rechecks for a new intent after acquiring the desktop lock', async t => {
+test('a portable instance exits silently for a new intent after acquiring the desktop lock, but redirects for a receipt', async t => {
   const localAppData = await mkdtemp(join(await realpath(tmpdir()), 'eduwork-redirect-lock-'))
   t.after(() => rm(localAppData, { recursive: true, force: true }))
   const platform = 'win32', sourceRoot = join(localAppData, 'old')
@@ -34,16 +34,34 @@ test('a portable instance rechecks for a new intent after acquiring the desktop 
   const native = await readFile(new URL('../src/native-desktop.mjs', import.meta.url), 'utf8')
   const resolver = product.slice(product.indexOf('export async function resolvePortableRedirect('), product.indexOf('export async function recordPortableSource('))
   const startup = native.slice(native.indexOf('async function main()'), native.indexOf('  activateEduworkPaths()', native.indexOf('async function main()')))
-  const events = []
-  await runInNewContext(`${resolver.replace('export ', '')}\n${startup}\n  startOldHost()\n}\nmain()`, {
-    earlyPortableRedirect, readPortableRedirect: () => { events.push('recheck'); return readPortableRedirect() }, handlePortableRedirect,
-    installEduworkFromDmg: async () => false, isQuitting: () => false, showDesktop() {},
-    claimDesktopSingleInstance: () => { events.push('lock'); return true },
-    portableMigrationHelper: async ({ mode, intentId }) => { assert.equal(intentId, published.id); events.push(mode) },
-    portableRedirectDialogs: () => ({ choose: async () => 'resume', fail: error => { throw error } }),
-    resolveInstalledFirstRun: async () => 'reuse', startOldHost: () => events.push('old-host'), app: { quit: () => events.push('quit') },
+  const runStartup = async snapshot => {
+    const events = []
+    await runInNewContext(`${resolver.replace('export ', '')}\n${startup}\n  startOldHost()\n}\nmain()`, {
+      earlyPortableRedirect: snapshot, readPortableRedirect: () => { events.push('recheck'); return readPortableRedirect() }, handlePortableRedirect,
+      installEduworkFromDmg: async () => false, isQuitting: () => false, showDesktop() {},
+      claimDesktopSingleInstance: () => { events.push('lock'); return true },
+      desktopHostLog: () => events.push('log'),
+      portableMigrationHelper: async options => events.push([options.mode, options.intentId]),
+      portableRedirectDialogs: () => ({ choose: async () => { events.push('choose'); return 'resume' }, fail: error => { throw error } }),
+      resolveInstalledFirstRun: async () => 'reuse', startOldHost: () => events.push('old-host'), app: { quit: () => events.push('quit') },
+    })
+    return events
+  }
+  await t.test('new intent exits without probing, prompting or launching', async () => {
+    assert.deepEqual(await runStartup(earlyPortableRedirect), ['lock', 'recheck', 'log', 'quit'])
   })
-  assert.deepEqual(events, ['lock', 'recheck', 'probe', 'redirect', 'quit'])
+  await t.test('an intent present during early startup still prompts for recovery', async () => {
+    assert.deepEqual(await runStartup(readPortableRedirect()),
+      ['lock', 'recheck', ['probe', published.id], 'choose', ['redirect', published.id], 'quit'])
+  })
+  await t.test('new receipt redirects without prompting', async () => {
+    const target = join(store.directory, settings.distribution)
+    await mkdir(target)
+    await writeFile(join(target, '.eduwork-migration.json'), JSON.stringify({
+      schemaVersion: 2, distribution: settings.distribution, state: 'imported', sourceRoot,
+    }))
+    assert.deepEqual(await runStartup(earlyPortableRedirect), ['lock', 'recheck', ['redirect', undefined], 'quit'])
+  })
 })
 
 test('activation redirects only the canonical source for this distribution', async t => {
