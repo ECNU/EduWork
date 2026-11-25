@@ -44,6 +44,21 @@ func replacementFixture(t *testing.T, content map[string]string) *Archive {
 	}
 	return a
 }
+func TestExistingInstallationReportsDirectoryConflict(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "自定义安装")
+	id := Identity{Distribution: "eduwork"}
+	if version, err := ExistingInstallation(target, id); err != nil || version != "" {
+		t.Fatalf("new target returned version %q and error %v", version, err)
+	}
+	if err := os.Mkdir(target, 0700); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ExistingInstallation(target, id)
+	if err == nil || !strings.HasPrefix(err.Error(), "目标目录已存在，请检查安装路径") || !strings.Contains(err.Error(), target) {
+		t.Fatalf("expected directory conflict with target path, got %v", err)
+	}
+}
+
 func TestReplacePreservesPrivateAndUnknownFiles(t *testing.T) {
 	old := replacementFixture(t, map[string]string{"old.txt": "old", "same.txt": "old", "config/user.json": "default", "data/sessions/a": "default"})
 	target := filepath.Join(t.TempDir(), "应用")

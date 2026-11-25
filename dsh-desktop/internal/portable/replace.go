@@ -33,7 +33,7 @@ func ExistingInstallation(target string, id Identity) (string, error) {
 	defer root.Close()
 	m, err := installedManifest(root, id)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("目标目录已存在，请检查安装路径：\n%s\n\n%w", target, err)
 	}
 	return m.Version, nil
 }
