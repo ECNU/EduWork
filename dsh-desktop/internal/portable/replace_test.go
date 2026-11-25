@@ -54,8 +54,40 @@ func TestExistingInstallationReportsDirectoryConflict(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := ExistingInstallation(target, id)
-	if err == nil || !strings.HasPrefix(err.Error(), "目标目录已存在，请检查安装路径") || !strings.Contains(err.Error(), target) {
+	if err == nil || err.Error() != "目标目录已存在，请检查安装路径：\n"+target {
 		t.Fatalf("expected directory conflict with target path, got %v", err)
+	}
+}
+
+func TestExistingInstallationChecksPresentManifest(t *testing.T) {
+	const mismatch = "已有应用的版本或发行标识不匹配，不能覆盖安装"
+	const desktopIdentity = `{"shell":"electron","distribution":"eduwork"}`
+	fixture := replacementFixture(t, map[string]string{})
+	target := t.TempDir()
+	app := filepath.Join(target, "resources", "app")
+	if err := os.MkdirAll(app, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(app, "eduwork.desktop.json"), []byte(desktopIdentity), 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifest := filepath.Join(target, "RELEASE-MANIFEST.json")
+	if err := os.WriteFile(manifest, fixture.ManifestBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if version, err := ExistingInstallation(target, fixture.Identity); err != nil || version != fixture.Identity.Version {
+		t.Fatalf("same edition: version %q, error %v", version, err)
+	}
+	otherEdition := fixture.Identity
+	otherEdition.Distribution = "eduwork-chatecnu"
+	if _, err := ExistingInstallation(target, otherEdition); err == nil || err.Error() != mismatch {
+		t.Fatalf("other edition: expected an identity mismatch, got %v", err)
+	}
+	if err := os.WriteFile(manifest, []byte("{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ExistingInstallation(target, fixture.Identity); err == nil || err.Error() != mismatch {
+		t.Fatalf("invalid manifest: expected an identity mismatch, got %v", err)
 	}
 }
 
