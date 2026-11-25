@@ -152,17 +152,18 @@ test('NSIS finish page relaunches a forced update but leaves manual installation
 test('NSIS migration guard proceeds only on an explicit no-process result and leaves ordinary operations on the stock guard', () => {
   const guard = installerInclude(desktop).match(/!macro customCheckAppRunning\n([\s\S]*?)\n!macroend/)?.[1] ?? ''
   const [setup, branches] = guard.split('\n  ${ifNot} ${Errors}\n')
-  assert.match(setup, /^  !insertmacro IS_POWERSHELL_AVAILABLE$/m)
   assert.match(setup, /\$\{GetOptions\} .* "--eduwork-portable-migration"/)
   const [migration, ordinary] = branches.split('\n  ${else}\n')
-  assert.match(migration, /StrCpy \$R0 2\n\s*\$\{if\} \$IsPowerShellAvailable == 0/)
+  // The stock availability precheck fails under an inherited PowerShell 7 module path; the probe must not depend on it.
+  assert.doesNotMatch(guard.split('\n  ${else}\n')[0], /IS_POWERSHELL_AVAILABLE|IsPowerShellAvailable/)
+  assert.match(migration, /StrCpy \$R0 2\n.*\n\s*System::Call 'kernel32::SetEnvironmentVariableW\(w "PSModulePath", p 0\)i'\n[\s\S]*nsExec::Exec/)
   assert.match(migration, /\$\$result = 1.*Get-CimInstance -ClassName Win32_Process -ErrorAction Stop.*exit 0.*exit \$\$result.*catch \{ exit 2 \}/)
   assert.match(migration, /-LiteralPath \$\$root -Filter \*\.exe -File -Recurse -Force -ErrorAction Stop/)
   assert.match(migration, /!\$\$process\.ExecutablePath -and \$\$process\.Name -in \$\$names/)
   assert.match(migration, /\$\{if\} \$R0 != 1\n\s*MessageBox.*\n\s*Quit\n\s*\$\{endif\}$/)
   assert.doesNotMatch(migration, /FIND_PROCESS/)
   assert.doesNotMatch(migration, /KILL_PROCESS|Stop-Process|taskkill|_CHECK_APP_RUNNING/)
-  assert.match(ordinary, /^    !insertmacro _CHECK_APP_RUNNING\n  \$\{endif\}$/)
+  assert.match(ordinary, /^    !insertmacro IS_POWERSHELL_AVAILABLE\n    !insertmacro _CHECK_APP_RUNNING\n  \$\{endif\}$/)
 })
 
 test('NSIS migration probe rejects unreadable paths for matching installed executable names', { skip: process.platform !== 'win32' }, async t => {
