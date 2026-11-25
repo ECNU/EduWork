@@ -54,6 +54,18 @@ test('channels can change while disabled and survive first backend creation',asy
   assert.equal(f.starts[0].policy,'stable')
   await control.close()
 })
+test('a package without software updates never starts the backend and cannot be enabled',async t=>{
+  const f=await fixture(t,{defaultEnabled:false,supported:false}), control=await softwareUpdateControl(f.options)
+  const status=await control.action('status')
+  assert.equal(status.update.canToggle,false)
+  assert.equal(status.update.userEnabled,false)
+  assert.equal(status.phase,'disabled')
+  await assert.rejects(control.action('enable-software-updates'),/未配置软件更新/)
+  await assert.rejects(control.action('download-update'),/未配置软件更新/)
+  assert.equal((await control.action('check-updates')).phase,'disabled')
+  assert.equal(f.starts.length,0)
+  await control.close()
+})
 for(const changes of [{busy:true},{installOnQuit:true},{installOnNextStart:true},...['checking','downloading','ready','applying'].map(state=>({state}))]) {
   test('toggle cannot hide an active or scheduled installation '+JSON.stringify(changes),async t=>{
     const f=await fixture(t), control=await softwareUpdateControl(f.options)

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { resolve, join, relative } from 'node:path'
-import { desktopPaths } from '../src/desktop-paths.mjs'
+import { desktopPaths, assertSeparateRoots } from '../src/desktop-paths.mjs'
 
 const settings = { distribution: 'example', productVersion: '0.3.6', configurationOwnership: 'user', product: '../product', node: '../runtime/node' }
 
@@ -24,6 +24,7 @@ test('macOS mutable paths and both editions use the user config directory, inclu
   const options = { appRoot, appData, settings, platform: 'darwin' }
   const paths = desktopPaths(options), userRoot = join(appData, 'example-electron')
   assert.equal(paths.root, root)
+  assert.equal(paths.userRoot, userRoot)
   assert.equal(paths.product, join(root, 'Contents/Resources/product'))
   for (const path of [paths.config, paths.home, paths.userData, paths.logs, paths.updateDataRoot]) {
     assert.equal(relative(userRoot, path).startsWith('..'), false)
@@ -41,12 +42,92 @@ test('Windows portable config, update state and manifest locations stay compatib
   const root = resolve('synthetic-portable'), appRoot = join(root, 'resources/app')
   const paths = desktopPaths({ appRoot, settings, platform: 'win32' })
   assert.equal(paths.root, root)
+  assert.equal(paths.userRoot, root)
   assert.equal(paths.config, join(root, 'config/eduwork.jsonc'))
   assert.equal(paths.home, join(root, 'data/example-electron/dsh'))
   assert.equal(paths.updateDataRoot, join(root, 'data'))
   assert.equal(paths.skillsManifestPath, join(root, 'RELEASE-MANIFEST.json'))
   assert.throws(() => desktopPaths({ appRoot, settings, platform: 'win32', testRoot: 'relative' }))
   assert.throws(() => desktopPaths({ appRoot, settings, platform: 'win32', testRoot: join(root, 'current') }))
+  const testRoot = resolve('synthetic-isolated-portable')
+  const isolated = desktopPaths({ appRoot, settings, platform: 'win32', testRoot })
+  assert.equal(isolated.home, join(testRoot, 'dsh'))
+  assert.equal(isolated.userData, join(testRoot, 'browser'))
+  assert.equal(isolated.logs, join(testRoot, 'logs'))
+  assert.equal(isolated.updateDataRoot, join(testRoot, 'updates'))
+  assert.equal(isolated.config, join(root, 'config/eduwork.jsonc'))
+})
+
+test('Windows installed layout keeps personal state in the per-user directory', () => {
+  const root = resolve('synthetic-installed-program'), appRoot = join(root, 'resources/app')
+  const appData = resolve('synthetic-user/Local')
+  const options = { appRoot, appData, settings: { ...settings, dataLayout: 'installed' }, platform: 'win32' }
+  const paths = desktopPaths(options), userRoot = join(appData, 'EduWork/example')
+  assert.equal(paths.root, root)
+  assert.equal(paths.userRoot, userRoot)
+  assert.equal(paths.config, join(userRoot, 'config/eduwork.jsonc'))
+  assert.equal(paths.home, join(userRoot, 'data/example-electron/dsh'))
+  assert.equal(paths.userData, join(userRoot, 'data/example-electron/browser'))
+  assert.equal(paths.logs, join(userRoot, 'data/example-electron/logs'))
+  assert.equal(paths.updateDataRoot, join(userRoot, 'data'))
+  assert.equal(paths.product, join(root, 'resources/product'))
+  assert.equal(paths.skillsManifestPath, join(root, 'RELEASE-MANIFEST.json'))
+  for (const path of [paths.config, paths.home, paths.userData, paths.logs, paths.updateDataRoot]) {
+    assert.equal(relative(userRoot, path).startsWith('..'), false)
+    assert.equal(relative(root, path).startsWith('..'), true)
+  }
+  const portable = { appRoot, settings, platform: 'win32' }
+  assert.deepEqual(desktopPaths({ ...portable, appData }), desktopPaths(portable))
+})
+
+test('Windows installed layout rejects program and user directories that contain each other', () => {
+  const appData = resolve('synthetic-user/Local')
+  const installed = { appData, settings: { ...settings, dataLayout: 'installed' }, platform: 'win32' }
+  const userRoot = join(appData, 'EduWork/example')
+  assert.throws(() => desktopPaths({ ...installed, appRoot: join(userRoot, 'program/resources/app') }), /separate/)
+  assert.throws(() => desktopPaths({ ...installed, appRoot: join(userRoot, 'resources/app') }), /separate/)
+  const root = resolve('synthetic-installed-program')
+  assert.throws(() => desktopPaths({ ...installed, appRoot: join(root, 'resources/app'), appData: join(root, 'data') }), /separate/)
+  assert.throws(() => desktopPaths({ ...installed, appRoot: join(root, 'resources/app'), appData: join(root, 'DATA') }), /separate/)
+  assert.throws(() => desktopPaths({ ...installed, appRoot: join(root, 'resources/app'), appData: undefined }), /absolute/)
+  assert.throws(() => desktopPaths({ ...installed, appRoot: join(root, 'resources/app'), appData: 'relative-user' }), /absolute/)
+})
+
+test('Windows installed test root isolates config and data together', () => {
+  const root = resolve('synthetic-installed-program'), appRoot = join(root, 'resources/app')
+  const options = { appRoot, appData: resolve('synthetic-user/Local'), settings: { ...settings, dataLayout: 'installed' }, platform: 'win32' }
+  const testRoot = resolve('synthetic-isolated-installed')
+  const paths = desktopPaths({ ...options, testRoot })
+  assert.equal(paths.userRoot, testRoot)
+  assert.equal(paths.config, join(testRoot, 'config/eduwork.jsonc'))
+  assert.equal(paths.home, join(testRoot, 'data/example-electron/dsh'))
+  assert.equal(paths.updateDataRoot, join(testRoot, 'data'))
+  assert.throws(() => desktopPaths({ ...options, testRoot: join(root, 'isolated') }), /separate/)
+  assert.throws(() => desktopPaths({ ...options, testRoot: join(testRoot, 'current') }), /isolated absolute/)
+  const withoutAppData = desktopPaths({ appRoot, settings: { ...settings, dataLayout: 'installed' }, platform: 'win32', testRoot })
+  assert.deepEqual(withoutAppData, paths)
+  assert.throws(() => desktopPaths({ ...options, testRoot, configOverride: join(root, 'config/eduwork.jsonc') }), /separate/)
+  const beside = desktopPaths({ ...options, testRoot, configOverride: join(root, '../shared-eduwork.jsonc') })
+  assert.equal(beside.config, resolve('synthetic-installed-program/../shared-eduwork.jsonc'))
+})
+
+test('Windows installed root boundary handles siblings, lookalike names, separators and drives', () => {
+  const root = resolve('synthetic-program')
+  assertSeparateRoots(root, resolve('synthetic-program-data'), 'win32')
+  assertSeparateRoots('C:\\Program Files\\EduWork', 'D:\\EduWorkData', 'win32')
+  assertSeparateRoots(root, join(root, '../synthetic-other'), 'win32')
+  assert.throws(() => assertSeparateRoots(root, join(root, '..data'), 'win32'), /separate/)
+  assert.throws(() => assertSeparateRoots(root, join(root, 'data'), 'win32'), /separate/)
+  assert.throws(() => assertSeparateRoots(root + '\\', root, 'win32'), /separate/)
+  assert.throws(() => assertSeparateRoots(root, root.toUpperCase(), 'win32'), /separate/)
+  assert.throws(() => assertSeparateRoots(join(root, 'data'), root, 'win32'), /separate/)
+  assertSeparateRoots('/opt/eduwork', '/opt/eduwork-data', 'linux')
+  assert.throws(() => assertSeparateRoots('/opt/eduwork', '/opt/Eduwork-data/../eduwork/data', 'linux'), /separate/)
+})
+
+test('macOS ignores the Windows installed layout flag', () => {
+  const options = { appRoot: resolve('synthetic-installed/Example.app/Contents/Resources/app'), appData: resolve('synthetic-user/Application Support'), settings, platform: 'darwin' }
+  assert.deepEqual(desktopPaths({ ...options, settings: { ...settings, dataLayout: 'installed' } }), desktopPaths(options))
 })
 
 test('macOS source Alpha isolates all writable state without moving the read-only product', () => {

@@ -65,5 +65,18 @@ function createUpstreamProductApi(): DshDesktopProductApi {`)
     replace("await inspection.catch((error: unknown) => {\n      console.warn('desktop quit: task inspection unavailable', error)",
       "await inspection.catch(() => {\n      console.warn('desktop quit: task inspection unavailable')")
   }
+  if (file === 'apps/desktop/src/ipc.ts') {
+    replace("  readonly percent?: number\n  readonly failedOperation?: 'check' | 'download' | 'install'", "  readonly percent?: number\n  readonly downloadedBytes?: number\n  readonly totalBytes?: number\n  readonly failedOperation?: 'check' | 'download' | 'install'")
+  }
+  if (file === 'apps/desktop/src/updates/electron-updater/channel.ts') {
+    replace('updater.channel = channel', "updater.channel = channel === 'stable' ? 'latest' : 'dev'")
+    replace('updater.allowPrerelease = true', "updater.allowPrerelease = channel === 'nightly'")
+  }
+  if (file === 'apps/desktop/src/update-coordinator.ts') {
+    replace('this.setState({ phase: percent >= 100 ? \'verifying\' : \'downloading\', ...this.target(), percent })', 'this.setState({ phase: percent >= 100 ? \'verifying\' : \'downloading\', ...this.target(), percent, downloadedBytes: progress.transferred, totalBytes: progress.total })')
+    replace('    this.disposed = true\n    this.updater.off(\'download-progress\', this.onProgress)', '    this.disposed = true\n    this.cancellation?.cancel()\n    this.updater.off(\'download-progress\', this.onProgress)')
+    // Non-silent mode keeps NSIS installation progress visible.
+    replace('this.updater.quitAndInstall(true, true)', 'this.updater.quitAndInstall(false, true)')
+  }
   return source
 }

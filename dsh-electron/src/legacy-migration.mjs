@@ -42,7 +42,8 @@ export async function readMigrationLaunch({root,settings,argv}) {
   let file=argument(argv,'--eduwork-migration'),health=argument(argv,'--update-health-file')
   if(!file&&!health)return null
   if(!file&&health&&isAbsolute(health)) {
-    root=await realpath(root);health=await owned(root,health)
+    root=await realpath(root)
+    health=await owned(root,health)
     const rel=relative(join(root,'data/state/updates/transactions'),health).split(sep)
     if(rel.length!==2||rel[0]!==settings.productVersion||rel[1]!=='health.ok')throw Error('Unexpected update health location')
     return {kind:'electron-update-v1',healthFile:health,version:settings.productVersion}

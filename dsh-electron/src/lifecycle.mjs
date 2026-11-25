@@ -7,6 +7,8 @@ export class DesktopLifecycle {
   bridges = new Set()
   failures = []
   shutdown = undefined
+  hostStop = undefined
+  hostStopRequiresGraceful = false
   check() { if (this.closing) throw new Error('Desktop is shutting down') }
   prepare(callback) {
     this.check()
@@ -17,6 +19,41 @@ export class DesktopLifecycle {
   }
   trackHost(host) { this.check(); this.hosts.add(host) }
   trackBridge(bridge) { this.bridges.add(bridge); this.check() }
+  async updateTasks(action) {
+    if (this.hosts.size !== 1) throw new Error('Desktop Host task state is unavailable')
+    const [host] = this.hosts
+    if (typeof host.updateTasks !== 'function') throw new Error('Desktop Host task state is unavailable')
+    return host.updateTasks(action)
+  }
+  async prepareUpdateStop(activeBeforeConfirmation) {
+    let lockRequested = false
+    try {
+      lockRequested = true
+      const active = await this.updateTasks('lock')
+      if (active && !activeBeforeConfirmation) throw new Error('New tasks started after update confirmation')
+      await this.stopHosts({ requireGraceful: true })
+      lockRequested = false
+    } catch (error) {
+      if (lockRequested) await this.updateTasks('unlock').catch(() => {})
+      throw error
+    }
+  }
+  stopHosts({ requireGraceful = false } = {}) {
+    if (this.hostStop) {
+      if (requireGraceful && !this.hostStopRequiresGraceful) return Promise.reject(Error('Desktop Host is already stopping without the graceful shutdown requirement'))
+      return this.hostStop
+    }
+    this.hostStopRequiresGraceful = requireGraceful
+    this.hostStop = this.stopHostsOnce(requireGraceful)
+    return this.hostStop
+  }
+  async stopHostsOnce(requireGraceful) {
+    while (this.preparations.size) await Promise.allSettled([...this.preparations])
+    const results = await Promise.allSettled([...this.hosts].map(async host => host.stop(requireGraceful)))
+    const failures = results.filter(result => result.status === 'rejected').map(result => result.reason)
+    this.failures.push(...failures)
+    if (failures.length) throw new AggregateError(failures, 'Desktop Host could not be stopped')
+  }
   close() {
     if (this.shutdown) return this.shutdown
     this.closing = true
@@ -24,8 +61,7 @@ export class DesktopLifecycle {
       const collect = results => {
         for (const result of results) if (result.status === 'rejected') this.failures.push(result.reason)
       }
-      while (this.preparations.size) await Promise.allSettled([...this.preparations])
-      collect(await Promise.allSettled([...this.hosts].map(host => host.stop())))
+      try { await this.stopHosts() } catch {}
       collect(await Promise.allSettled([...this.bridges].map(bridge => bridge.close())))
     })()
     return this.shutdown

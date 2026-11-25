@@ -46,6 +46,7 @@ const STAGE_LABELS = {
   sparkle: { name: '准备 Mac 更新', summary: '配置 Sparkle 更新组件' },
   desktop: { name: '打包桌面应用', summary: '生成目标系统的安装包' },
   accept: { name: '验收桌面包', summary: '检查打包后的启动' },
+  installer: { name: '验收 Windows 安装器', summary: '公版发行：打包、安装、启动和卸载' },
   publish: { name: '生成交付文件', summary: '整理归档与构建回执' },
 }
 
@@ -80,7 +81,8 @@ const DIAGRAM_POSITIONS = {
   sparkle: [4, 4],
   desktop: [6, 2],
   accept: [7, 2],
-  publish: [8, 2],
+  installer: [8, 3],
+  publish: [9, 2],
 }
 
 function layout(stages) {
@@ -93,7 +95,7 @@ function layout(stages) {
       y: MARGIN + position[1] * ROW_HEIGHT,
     })
   }
-  return { placed, width: MARGIN * 2 + 9 * COLUMN_WIDTH, height: MARGIN * 2 + 6 * ROW_HEIGHT }
+  return { placed, width: MARGIN * 2 + 10 * COLUMN_WIDTH, height: MARGIN * 2 + 6 * ROW_HEIGHT }
 }
 
 function drawioXml({ title, stages, edges }) {
@@ -180,7 +182,7 @@ const C = {
 }
 
 function svgDiagram({ title, subtitle, stages, edges }) {
-  const width = PAD_X * 2 + 9 * CARD_W + 8 * COL_GAP
+  const width = PAD_X * 2 + 10 * CARD_W + 9 * COL_GAP
   const height = PAD_TOP + 5 * ROW_STEP + CARD_H + PAD_BOTTOM
   const pos = name => {
     const position = DIAGRAM_POSITIONS[name]
@@ -292,16 +294,21 @@ function sharedDiagramStages(platforms) {
   const windows = new Map(platforms.windows.map(entry => [entry.name, entry]))
   const macos = new Map(platforms.macos.map(entry => [entry.name, entry]))
   const macOnly = [...macos.keys()].filter(name => !windows.has(name))
+  const winOnly = [...windows.keys()].filter(name => !macos.has(name))
   if (macOnly.length !== 1 || macOnly[0] !== 'sparkle') {
     throw new Error(`Unexpected platform-specific stages: ${macOnly.join(', ')}`)
   }
+  if (winOnly.length !== 1 || winOnly[0] !== 'installer') {
+    throw new Error(`Unexpected Windows-specific stages: ${winOnly.join(', ')}`)
+  }
   for (const entry of platforms.windows) {
     const mac = macos.get(entry.name)
-    if (!mac) throw new Error(`Windows-only stage needs a diagram branch: ${entry.name}`)
+    if (!mac) continue
     for (const kind of ['requires', 'dependsOn', 'outputs', 'mutableOutputs']) {
-      const actual = kind === 'requires' || kind === 'dependsOn'
-        ? mac[kind].filter(name => name !== 'sparkle') : mac[kind]
-      if (JSON.stringify(actual) !== JSON.stringify(entry[kind])) {
+      const dependencies = kind === 'requires' || kind === 'dependsOn'
+      const macShared = dependencies ? mac[kind].filter(name => windows.has(name)) : mac[kind]
+      const winShared = dependencies ? entry[kind].filter(name => macos.has(name)) : entry[kind]
+      if (JSON.stringify(macShared) !== JSON.stringify(winShared)) {
         throw new Error(`Platform dependencies differ for ${entry.name}.${kind}`)
       }
     }
@@ -311,14 +318,14 @@ function sharedDiagramStages(platforms) {
     desktop: 'Electron desktop package',
     publish: 'Archive, receipt and update metadata',
   }
-  return platforms.macos.map(entry => ({
+  return [...platforms.macos, windows.get('installer')].map(entry => ({
     name: entry.name,
     description: descriptions[entry.name] ?? entry.description,
     requires: entry.requires,
     dependsOn: entry.dependsOn,
     outputs: entry.outputs,
     mutableOutputs: entry.mutableOutputs,
-    platforms: entry.name === 'sparkle' ? 'macos' : 'both',
+    platforms: macOnly.includes(entry.name) ? 'macos' : winOnly.includes(entry.name) ? 'windows' : 'both',
   }))
 }
 
