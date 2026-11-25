@@ -15,7 +15,7 @@ import (
 )
 
 // ErrMissingInstallationManifest indicates that an existing directory has no release manifest.
-var ErrMissingInstallationManifest = errors.New("清单文件未找到，请彻底卸载后重新安装")
+var ErrMissingInstallationManifest = errors.New("未找到已有应用的安装清单，无法继续覆盖安装。")
 
 // ExistingInstallation only recognizes the same Electron product and edition.
 func ExistingInstallation(target string, id Identity) (string, error) {

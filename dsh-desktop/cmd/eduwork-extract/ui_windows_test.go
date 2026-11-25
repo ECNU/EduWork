@@ -33,7 +33,7 @@ func TestCheckInstallationTargetAfterManifestIsRemoved(t *testing.T) {
 	if err := os.Remove(manifest); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := checkInstallationTarget(target, id, true); err == nil || err.Error() != "清单文件未找到，请彻底卸载后重新安装" {
+	if _, err := checkInstallationTarget(target, id, true); err == nil || err.Error() != "未找到已有应用的安装清单，无法继续覆盖安装。" {
 		t.Fatalf("expected a missing manifest error after confirmation, got %v", err)
 	}
 	if _, err := checkInstallationTarget(target, id, false); err == nil || err.Error() != "目标目录已存在，请检查安装路径：\n"+target {
