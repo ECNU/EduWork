@@ -145,13 +145,18 @@ test('NSIS finish page relaunches a forced update but leaves manual installation
   assert.doesNotMatch(finishPage, /MUI_FINISHPAGE_RUN/)
 })
 
-test('NSIS migration guard only checks and aborts while ordinary operations use the stock guard', () => {
+test('NSIS migration guard proceeds only on an explicit no-process result and leaves ordinary operations on the stock guard', () => {
   const guard = installerInclude(desktop).match(/!macro customCheckAppRunning\n([\s\S]*?)\n!macroend/)?.[1] ?? ''
-  const [migration, ordinary] = guard.split('${else}')
-  assert.match(migration, /\$\{GetOptions\} .* "--eduwork-portable-migration"/)
-  assert.match(migration, /FIND_PROCESS.*\n.*\$R0 == 0\n\s*MessageBox.*\n\s*Quit/)
+  const [setup, branches] = guard.split('\n  ${ifNot} ${Errors}\n')
+  assert.match(setup, /^  !insertmacro IS_POWERSHELL_AVAILABLE$/m)
+  assert.match(setup, /\$\{GetOptions\} .* "--eduwork-portable-migration"/)
+  const [migration, ordinary] = branches.split('\n  ${else}\n')
+  assert.match(migration, /StrCpy \$R0 2\n\s*\$\{if\} \$IsPowerShellAvailable == 0/)
+  assert.match(migration, /Get-CimInstance -ClassName Win32_Process -ErrorAction Stop.*exit 0.*exit 1.*catch \{ exit 2 \}/)
+  assert.match(migration, /\$\{if\} \$R0 != 1\n\s*MessageBox.*\n\s*Quit\n\s*\$\{endif\}$/)
+  assert.doesNotMatch(migration, /FIND_PROCESS/)
   assert.doesNotMatch(migration, /KILL_PROCESS|Stop-Process|taskkill|_CHECK_APP_RUNNING/)
-  assert.match(ordinary, /!insertmacro _CHECK_APP_RUNNING/)
+  assert.match(ordinary, /^    !insertmacro _CHECK_APP_RUNNING\n  \$\{endif\}$/)
 })
 
 test('installer project fixes per-user, no-elevation and data-preserving behavior', () => {
