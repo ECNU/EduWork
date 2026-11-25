@@ -3,11 +3,11 @@ import test from 'node:test'
 import { SideChatRegistry } from '../src/client/controller.js'
 import { SideChatNavigation } from '../src/client/navigation.js'
 
-function fixture() {
+function fixture({ closeFails = false } = {}) {
   let sequence = 0, mounted = 'source', active
   const pending = [], closed = [], tabs = []
   const registry = new SideChatRegistry({ owner: () => String(++sequence).padStart(32, 'x'), request: input => {
-    if (input.action === 'close') { closed.push(input); return Promise.resolve({}) }
+    if (input.action === 'close') { closed.push(input); return closeFails ? Promise.reject(new Error('archive failed')) : Promise.resolve({}) }
     return new Promise(resolve => pending.push({ input, finish: () => resolve({ sessionId: `side-${input.owner}` }) }))
   } })
   const sidebar = {
@@ -52,6 +52,17 @@ test('navigating away during a new creation archives its orphan after all waiter
   assert.equal(f.closed.length, 1)
   assert.equal(f.tabs.length, 0)
   assert.equal(f.registry.all().length, 0)
+})
+
+test('a failed orphan cleanup keeps the navigation outcome and stays retryable', async () => {
+  const f = fixture({ closeFails: true })
+  const opening = f.navigation.open({ sourceSessionId: 'source', atSeq: 3 })
+  f.setMounted('other')
+  f.pending[0].finish()
+  await assert.rejects(opening, /expired/)
+  const [owner] = f.registry.all()
+  assert.equal(owner.snapshot.phase, 'closing')
+  assert.equal(owner.snapshot.error, undefined)
 })
 
 test('navigating away while reusing an existing tab never closes it', async () => {
