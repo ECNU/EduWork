@@ -4,7 +4,7 @@
 
 See [desktop notifications](../docs/DESKTOP_NOTIFICATIONS_EN.md) for task alerts and pending tray items. Institutional editions reuse the public implementation; native delivery requires platform-specific acceptance.
 
-An assembly entry separate from `dsh-desktop/` (Go + Wails). Both hosts share the same EduWork product composition, plugins, skills and preview implementation.
+This directory assembles EduWork's Electron desktop app. `dsh-desktop/` retains Go helpers such as the Windows updater.
 
 The desktop baseline is DSH `0.1.5-rc.2` (`fb2c4b9e698e30edb738bca4cf0618587db7d203`). Electron's main process, window, `dsh-app://` handling and streaming Host transport are derived with reviewable patches from that commit, without modifying the shared upstream source cache. The reusable Host adapter lives in `../dsh-host/`.
 
@@ -14,10 +14,10 @@ Product adapters retain organization login, encrypted credentials, portable upda
 
 Search, the interactive browser, Studio exports and video rendering all launch the EduWork executable itself as Chromium; the release carries no separate browser. The [`desktop-main.mjs`](src/desktop-main.mjs) entry branches before any desktop module runs: `--remote-debugging-pipe` (Playwright), or `--remote-debugging-port` together with `--enable-automation` (Remotion), selects [automation browser](src/automation-browser.mjs) mode. That process takes no single-instance lock, reads or writes no application configuration and uses only the caller's `--user-data-dir`. The main process implements browser-level CDP with windows and session partitions and relays page commands through `webContents.debugger`. Playwright uses the pipe; Remotion uses a WebSocket that listens only on 127.0.0.1 behind a random path, and Chromium's own debugging port stays closed. Site permission requests are denied except clipboard writes and fullscreen, no client certificate is presented, downloads are cancelled, and the user agent matches Chrome. A launch with only `--remote-debugging-port` is still the ordinary desktop, used by the window acceptance below.
 
-The candidate shell requires source, Host and npm Runtime prepared from the same lock, without the old desktop source or a shared compiler cache:
+The candidate shell requires source, Host, npm Runtime and `desktop-tools/apps/desktop` prepared from the same lock:
 
 ```powershell
-node dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream $Upstream --host $HostBuild --runtime $Runtime --output $ShellBuild
+node dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream $Upstream --host $HostBuild --runtime $Runtime --desktop-tools $DesktopTools --output $ShellBuild
 node dsh-electron/scripts/probe-native-desktop.mjs --shell $ShellBuild --runtime $Runtime --electron $ElectronExecutable --output $Evidence
 ```
 
@@ -60,7 +60,7 @@ node dsh-electron/tests/desktop-smoke.mjs --shell electron --product $Product --
 node scripts/verify-desktop-parity.mjs --reference $DesktopProduct --electron $ElectronProduct --wails $WailsProduct --evidence $ParityResult
 ```
 
-Window checks use explicitly enabled local debugging ports. Electron accepts `--remote-debugging-port=9333 --remote-debugging-address=127.0.0.1`; Wails uses `EDUWORK_DESKTOP_CDP_PORT=9334`. Both default to no debugging listener. Electron's `EDUWORK_DESKTOP_TEST_DATA_ROOT` and Wails's `--home` isolate synthetic test data.
+Window checks can explicitly enable the local debugging port with `--remote-debugging-port=9333 --remote-debugging-address=127.0.0.1`. No debugging listener is open by default. `EDUWORK_DESKTOP_TEST_DATA_ROOT` isolates synthetic test data.
 
 `tests/desktop-preview-acceptance.mjs` checks real-file preview/upload. `tests/desktop-conversation-acceptance.mjs` sends two bounded synthetic requests only to an explicitly configured private test provider and removes temporary credentials on exit. Do not include test configuration in product archives. See [native vault and OIDC tests](tests/oidc-native-vault.md). Record the actual verified scope and limitations with release evidence; internal test logs and user data do not belong in source packages.
 

@@ -93,6 +93,10 @@ jobs:
           if ($LASTEXITCODE) { throw 'Portable source product links failed' }
           node --test core/dsh-electron/tests/directory-picker.test.mjs core/dsh-host/test/product-profile.test.mjs core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-host/test/quit-inspection.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/desktop-web-paths.test.mjs core/dsh-electron/tests/startup-presentation.test.mjs core/dsh-electron/tests/startup-close-policy.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
+          npm ci --ignore-scripts --no-audit --no-fund --prefix core/scripts/electron-builder
+          if ($LASTEXITCODE) { throw 'Locked installer tooling installation failed' }
+          node --test core/dsh-electron/tests/installed-updates.test.mjs core/dsh-electron/tests/update-channel-adaptation.test.mjs core/dsh-electron/tests/portable-source-hint.test.mjs core/dsh-electron/tests/update-policy.test.mjs core/scripts/test/windows-installer.test.mjs core/tests/installed-candidate.test.mjs
+          if ($LASTEXITCODE) { throw 'Installed update and migration integration checks failed' }
           node --test core/dsh-electron/tests/legacy-migration.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop migration and update health checks failed' }
           node --test core/dsh-electron/tests/electron-locales.test.mjs
@@ -178,7 +182,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Pinned Electron metadata installation failed' }
           node core/dsh-electron/scripts/prepare-electron.mjs --upstream "$env:RUNNER_TEMP/desktop-tools" --output "$env:RUNNER_TEMP/electron"
           if ($LASTEXITCODE) { throw 'Pinned Electron preparation failed' }
-          node core/dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream upstream --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-shell"
+          node core/dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream upstream --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --desktop-tools $desktopTools --output "$env:RUNNER_TEMP/native-shell"
           if ($LASTEXITCODE) { throw 'Native desktop build failed' }
           $env:EDUWORK_TEST_NATIVE_SHELL = "$env:RUNNER_TEMP/native-shell"
           node --experimental-test-module-mocks --experimental-transform-types --test core/dsh-electron/tests/installer-cleanup.test.mjs

@@ -3,7 +3,7 @@ import { TaskNotifications, nativeNotificationAdapter } from './task-notificatio
 import { createTaskbarIndicator } from './taskbar-indicator.mjs'
 import { createDesktopPet } from './desktop-pet.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
-import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
+import { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
 import { join, isAbsolute, dirname, basename } from 'node:path'
 import { execFile } from 'node:child_process'
@@ -17,10 +17,14 @@ import { DesktopExit } from './desktop-exit.mjs'
 import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
+import { firstRunPending, firstRunPendingSync, firstRunDialogs, resolveFirstRunData } from './first-run.mjs'
+import { importPortableData, inspectPortableSource } from './portable-import.mjs'
+import { portableSourceSuggestion } from './portable-source-hint.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
-import { startPortableUpdates, editablePortableUpdateConfiguration, resolveUpdateConfiguration } from './portable-updates.mjs'
+import { startPortableUpdates, portableStartupUpdateConfiguration, resolveUpdateConfiguration } from './portable-updates.mjs'
 import { startMacSparkleUpdates, editableMacUpdateConfiguration } from './mac-sparkle-updates.mjs'
+import { startInstalledUpdates } from './installed-updates.mjs'
 import { softwareUpdateControl, updatesWhenEnabled } from './software-update-control.mjs'
 import { workbenchAction } from './workbench-support.mjs'
 import { desktopLogger } from './desktop-log.mjs'
@@ -78,16 +82,15 @@ const relaunchDesktop = configureDesktopRelaunch(app, process.platform === 'win3
 // Ownership applies only to this shell, not a detached updater's next launch.
 delete process.env.EDUWORK_LAUNCHER_RESTART
 let confirmQuit = async () => true
+let reportUpdateStopFailure
+let installTasksBeforeConfirmation = false
 const desktopExit = new DesktopExit({
   confirm: () => confirmQuit(),
-  close: async () => {
-    await directoryPicker.close()
-    await stopDesktopServices()
-  },
+  close: () => stopDesktopForExit(),
   relaunch: () => relaunchDesktop(process.argv.slice(1), updateCompleted),
   quit: () => app.quit(), failed: error => desktopHostLog(`[desktop:quit] ${error.message}\n`),
 })
-export function setDesktopQuitGuard(guard) { confirmQuit = guard }
+export function setDesktopQuitGuard(guard, onUpdateStopFailure) { confirmQuit = guard; reportUpdateStopFailure = onUpdateStopFailure }
 export function restartDesktop(options) {
   return desktopExit.restart(options)
 }
@@ -106,8 +109,18 @@ export function cancelDesktopStartup() {
   startupCancelled = true
   contentUpdates?.close()
 }
-export async function stopDesktopServices() {
-  void contentUpdates?.close()
+async function stopDesktopForExit(options) {
+  await directoryPicker.close()
+  await stopDesktopServices(options)
+}
+export async function stopDesktopServices({ beforeInstall = false, requireGraceful = false, activeBeforeConfirmation = false } = {}) {
+  const stoppingContent = contentUpdates?.close()
+  if (beforeInstall) {
+    await stoppingContent
+    if (requireGraceful) await lifecycle.prepareUpdateStop(activeBeforeConfirmation)
+    else await lifecycle.stopHosts()
+    return
+  }
   let serviceFailure
   try { productUpdateObserver.dispose() } catch (error) { serviceFailure = error }
   try { await lifecycle.close() } catch (error) { serviceFailure ??= error }
@@ -150,19 +163,12 @@ export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
   if (settings.schemaVersion !== 1 || settings.shell !== 'electron' || !/^[a-z0-9.-]+$/u.test(settings.appId)) throw new Error('Invalid EduWork desktop identity')
-  paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : undefined,
+  paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : process.env.LOCALAPPDATA,
     testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, configOverride: process.env.EDUWORK_CONFIG_FILE })
-  mkdirSync(paths.userData, { recursive: true })
-  mkdirSync(paths.logs, { recursive: true })
-  desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
   // Successful sandboxed startup is the capability check. Lack of WRITE_DAC
   // or one expected ACE does not prove Electron cannot run. Installation and
   // update still provision runtime access; ordinary startup never changes ACLs.
   applyDesktopBrand(app, process.platform, settings)
-  app.setPath('userData', paths.userData)
-  app.setAppLogsPath(paths.logs)
-  process.env.DSH_HOME = paths.home
-  process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
   // Startup/error recovery must take precedence over a partially loaded workbench.
   attachAppActivation({ app, windows: activationWindows })
   // Own the process tree from the beginning of startup, including when the
@@ -173,6 +179,38 @@ export function configureEduworkPaths() {
     event.preventDefault()
     void desktopExit.request()
   })
+  // Only an unsettled installed first-run defers activation, keeping the target
+  // untouched until the user decides. Once the choice is settled the browser
+  // profile must bind to the target before Chromium initializes os_crypt, so the
+  // imported credentials decrypt with the source key; every other layout always
+  // activates immediately.
+  if (!firstRunPendingSync({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) activateEduworkPaths()
+}
+let pathsActivated = false
+export function activateEduworkPaths() {
+  if (pathsActivated) return
+  pathsActivated = true
+  mkdirSync(paths.userData, { recursive: true })
+  mkdirSync(paths.logs, { recursive: true })
+  desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
+  app.setPath('userData', paths.userData)
+  app.setAppLogsPath(paths.logs)
+  process.env.DSH_HOME = paths.home
+  process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
+}
+export async function resolveInstalledFirstRun() {
+  if (!await firstRunPending({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) return 'reuse'
+  const suggestedSource = await portableSourceSuggestion({ localAppData: process.env.LOCALAPPDATA,
+    distribution: settings.distribution, validate: root => inspectPortableSource({ sourceRoot: root, distribution: settings.distribution }) })
+  const { action } = await resolveFirstRunData({
+    ...firstRunDialogs({ productName: settings.productName,
+      suggestedSource,
+      showMessageBox: options => dialog.showMessageBox(options),
+      showOpenDialog: options => dialog.showOpenDialog(options) }),
+    importSource: sourceRoot => importPortableData({ sourceRoot, targetRoot: paths.userRoot, distribution: settings.distribution }),
+    createTarget: () => activateEduworkPaths(),
+  })
+  return action
 }
 export function installEduworkFromDmg() {
   return installFromDmg({ app, shell, dialog, appPath: paths.root, warn: message => desktopHostLog(`[installer] ${message}\n`) })
@@ -238,13 +276,15 @@ async function prepareDesktop() {
     if (startupCancelled) throw new Error('Desktop preparation was cancelled')
   }
   check()
-  migrationLaunch = await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
+  migrationLaunch = settings.dataLayout === 'installed' ? null : await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
   check()
   const appearance = startupAppearance()
   if (appearance.dock) app.dock.setIcon(appearance.dock)
   if (migrationLaunch) showStartupProgress('正在迁移旧版历史数据…')
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
-  if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
+  // Portable Windows keeps its editable config inside the program directory;
+  // macOS and the installed layout need the user copy seeded before first use.
+  if (settings.configurationOwnership === 'user' && (process.platform === 'darwin' || settings.dataLayout === 'installed'))
     await initializeUserConfig({ product: paths.product, config: paths.config })
   const identity = JSON.parse(await readFile(join(paths.product,'assembly.json'),'utf8'))
   publisher = await publisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product,
@@ -277,7 +317,7 @@ async function prepareDesktop() {
     }})
   user=loadUserConfig(paths.config)
   const updateDefaults = process.platform === 'win32'
-    ? editablePortableUpdateConfiguration({defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
+    ? portableStartupUpdateConfiguration({platform:process.platform,dataLayout:settings.dataLayout,defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
     : editableMacUpdateConfiguration({defaults:settings.updates,updates:user.updates,feeds:settings.macSparkle?.feeds,version:settings.productVersion})
   contentUpdates = await new ContentUpdates({root:paths.root,dataRoot:paths.updateDataRoot,skillsManifestPath:paths.skillsManifestPath,product:paths.product,configPath:paths.config,version:settings.productVersion,distribution:settings.distribution,identity,
     configurationDefaults:{updates:updateDefaults},
@@ -292,7 +332,7 @@ async function prepareDesktop() {
   catch (error) { desktopHostLog(`[configuration] Could not refresh optional JSONC help: ${error.message}\n`) }
   user=loadUserConfig(paths.config)
   const effectiveUpdateDefaults = process.platform === 'win32'
-    ? editablePortableUpdateConfiguration({defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
+    ? portableStartupUpdateConfiguration({platform:process.platform,dataLayout:settings.dataLayout,defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
     : editableMacUpdateConfiguration({defaults:settings.updates,updates:user.updates,feeds:settings.macSparkle?.feeds,version:settings.productVersion})
   const saveUpdatePolicy = async policy=>{
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
@@ -300,15 +340,28 @@ async function prepareDesktop() {
   }
   const software = await softwareUpdateControl({dataRoot:paths.updateDataRoot,version:settings.productVersion,
     policy:contentUpdates.policy,defaultEnabled:user.updates.provider!=='disabled',
-    supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32',onPolicy:saveUpdatePolicy,
+    supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32' && (settings.dataLayout!=='installed' || existsSync(join(process.resourcesPath,'app-update.yml'))),onPolicy:saveUpdatePolicy,
     start:({policy,applyScheduled})=>process.platform==='darwin'
       ? startMacSparkleUpdates({appPath:app.getAppPath(),version:settings.productVersion,enabled:true,
         feeds:effectiveUpdateDefaults.macFeeds,policy,onPolicy:saveUpdatePolicy})
+      : settings.dataLayout==='installed'
+        ? import('./update-coordinator.ts').then(({ DesktopUpdateCoordinator }) => startInstalledUpdates({
+          app, resourcesPath:process.resourcesPath, version:settings.productVersion, policy, onPolicy:saveUpdatePolicy,
+          Coordinator:DesktopUpdateCoordinator,
+          stopBeforeInstall:()=>desktopExit.prepareInstaller(()=>stopDesktopForExit({beforeInstall:true,requireGraceful:true,
+            activeBeforeConfirmation:installTasksBeforeConfirmation}),reportUpdateStopFailure),
+        }))
       : startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
-        version:settings.productVersion,distribution:settings.distribution,applyScheduled,onQuit:()=>desktopExit.handoff()})})
+        version:settings.productVersion,distribution:settings.distribution,
+        applyScheduled,onQuit:()=>desktopExit.handoff()})})
   softwareUpdates = software
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
-    beforeInstall:()=>process.platform==='darwin'||confirmQuit(),onPolicy:saveUpdatePolicy})
+    deferInstallResponse:settings.dataLayout==='installed',
+    beforeInstall:async()=>{
+      if(process.platform==='darwin')return true
+      if(settings.dataLayout==='installed')installTasksBeforeConfirmation=await lifecycle.updateTasks('inspect')
+      return confirmQuit()
+    },onPolicy:saveUpdatePolicy})
   if(portableUpdates)lifecycle.trackBridge(portableUpdates)
   if (user.product.name) {
     settings.productName = user.product.name
@@ -378,7 +431,7 @@ async function prepareDesktop() {
     open: key => taskNotifications.activate(key), contextMenu: () => petMenu(), changed: () => refreshTray(),
     log: message => desktopHostLog(`[desktop-pet] ${message}\n`) })
   const runWorkbench = (action, updateStatus) => workbenchAction({ action, config: paths.config, version: settings.productVersion,
-    shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home, updateStatus })
+    shell: 'electron', logs: paths.logs, root: paths.root, updateDataRoot: paths.updateDataRoot, product: paths.product, home: paths.home, updateStatus })
   const workbench = createWorkbenchUpdateHandler({
     getCoordinator: () => portableUpdates,
     observer: productUpdateObserver,
