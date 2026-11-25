@@ -12,7 +12,35 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"golang.org/x/sys/windows"
 )
+
+func TestPortableMigrationHandleRejectsDifferentExecutionPath(t *testing.T) {
+	directory, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	opened := filepath.Join(directory, "opened.exe")
+	other := filepath.Join(directory, "other.exe")
+	for _, path := range []string{opened, other} {
+		if err := os.WriteFile(path, []byte("same synthetic bytes"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	file, err := os.Open(opened)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	handle := windows.Handle(file.Fd())
+	if err := requireMigrationHandlePath(handle, strings.ToUpper(opened)); err != nil {
+		t.Fatalf("matching path rejected: %v", err)
+	}
+	if err := requireMigrationHandlePath(handle, other); err == nil {
+		t.Fatal("accepts execution path different from the verified handle")
+	}
+}
 
 func TestPortableMigrationInstallerVerification(t *testing.T) {
 	cache, err := filepath.EvalSymlinks(t.TempDir())

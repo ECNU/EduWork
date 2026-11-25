@@ -78,6 +78,30 @@ func requireMigrationPath(path string) error {
 	return nil
 }
 
+func requireMigrationHandlePath(handle windows.Handle, expected string) error {
+	buffer := make([]uint16, windows.MAX_PATH)
+	for {
+		length, err := windows.GetFinalPathNameByHandle(handle, &buffer[0], uint32(len(buffer)), 0)
+		if err != nil {
+			return err
+		}
+		if length >= uint32(len(buffer)) {
+			buffer = make([]uint16, length+1)
+			continue
+		}
+		path := windows.UTF16ToString(buffer[:length])
+		if unc, ok := strings.CutPrefix(path, `\\?\UNC\`); ok {
+			path = `\\` + unc
+		} else {
+			path = strings.TrimPrefix(path, `\\?\`)
+		}
+		if !strings.EqualFold(filepath.Clean(path), filepath.Clean(expected)) {
+			return errors.New("opened portable migration installer does not match the cache path")
+		}
+		return nil
+	}
+}
+
 func verifyMigrationInstaller(path, algorithm, digest string, bytes int64) (*os.File, error) {
 	var checksum hash.Hash
 	switch algorithm {
@@ -103,6 +127,10 @@ func verifyMigrationInstaller(path, algorithm, digest string, bytes int64) (*os.
 		return nil, err
 	}
 	file := os.NewFile(uintptr(handle), path)
+	if err := requireMigrationHandlePath(handle, path); err != nil {
+		file.Close()
+		return nil, err
+	}
 	info, err := file.Stat()
 	if err == nil && info.Mode().IsRegular() && info.Size() == bytes {
 		var copied int64
