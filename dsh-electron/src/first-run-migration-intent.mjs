@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { lstatSync, readFileSync, realpathSync, unlinkSync } from 'node:fs'
+import { lstatSync, readFileSync, realpathSync, renameSync, unlinkSync } from 'node:fs'
 import { link, mkdir, readdir, unlink, writeFile } from 'node:fs/promises'
 import { isAbsolute, join, resolve } from 'node:path'
 
@@ -38,14 +38,21 @@ export function migrationIntentStore({ localAppData, testRoot, distribution, pla
       || typeof row.createdAt !== 'string' || !Number.isFinite(Date.parse(row.createdAt))) throw Error('迁移意图无效，请核对后重试')
     return row
   }
-  const read = () => {
+  const read = ({ isolateInvalid = false } = {}) => {
     try {
       const info = lstatSync(path)
       if (!info.isFile() || info.size > 8192 || !lstatSync(directory).isDirectory()) throw Error('迁移意图文件无效')
-      let row
-      try { row = JSON.parse(readFileSync(path, 'utf8')) }
-      catch (error) { if (error.code) throw error; throw Error('迁移意图无法读取') }
-      return validate(row)
+      const data = readFileSync(path, 'utf8')
+      try { return validate(JSON.parse(data)) }
+      catch (error) {
+        if (!isolateInvalid) throw error instanceof SyntaxError ? Error('迁移意图无法读取') : error
+        const current = lstatSync(path)
+        if (current.dev !== info.dev || current.ino !== info.ino || current.mtimeMs !== info.mtimeMs || current.size !== info.size) return read()
+        const backup = join(directory, `${distribution}.portable-migration.invalid-${Date.now()}-${randomUUID()}.json`)
+        renameSync(path, backup)
+        console.warn(`[portable migration] 已隔离损坏的迁移意图：${backup}`)
+        return null
+      }
     } catch (error) { return missing(error) }
   }
   return {

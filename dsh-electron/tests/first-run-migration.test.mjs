@@ -6,6 +6,8 @@ import { createRequire, registerHooks } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { mkdtemp, mkdir, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { migrationProgressPage } from '../src/first-run-progress.mjs'
+import { firstRunPendingSync } from '../src/first-run.mjs'
+import { migrationIntentStore } from '../src/first-run-migration-intent.mjs'
 
 const semver = pathToFileURL(createRequire(new URL('../../scripts/electron-builder/package.json', import.meta.url)).resolve('semver')).href
 const hook = registerHooks({ resolve(specifier, context, next) {
@@ -31,12 +33,32 @@ async function fixture(t) {
   return { targetRoot, intent, receipt, events, options }
 }
 
-test('only an installed Windows client checks for an intent; malformed state is retained', () => {
-  const invalid = () => { throw Error('invalid intent') }
-  assert.equal(installedMigrationIntent({ platform: 'win32', dataLayout: undefined, openStore: invalid }), undefined)
-  assert.equal(installedMigrationIntent({ platform: 'darwin', dataLayout: 'installed', openStore: invalid }), undefined)
+test('only an installed Windows client checks for an intent; IO errors still block startup', () => {
+  const denied = () => { throw Object.assign(Error('access denied'), { code: 'EACCES' }) }
+  assert.equal(installedMigrationIntent({ platform: 'win32', dataLayout: undefined, openStore: denied }), undefined)
+  assert.equal(installedMigrationIntent({ platform: 'darwin', dataLayout: 'installed', openStore: denied }), undefined)
   assert.equal(installedMigrationIntent({ platform: 'win32', dataLayout: 'installed', openStore: () => ({ read: () => null }) }), undefined)
-  assert.match(installedMigrationIntent({ platform: 'win32', dataLayout: 'installed', openStore: invalid }).error.message, /invalid/)
+  const error = installedMigrationIntent({ platform: 'win32', dataLayout: 'installed', openStore: () => ({ read: denied }) }).error
+  assert.equal(error.code, 'EACCES')
+})
+
+test('installed startup quarantines invalid intent and uses its existing data without importing', async t => {
+  const { targetRoot, intent: { sourceRoot, distribution } } = await fixture(t)
+  const platform = 'win32', dataLayout = 'installed', testRoot = join(targetRoot, '..')
+  const store = migrationIntentStore({ testRoot, distribution, platform })
+  await mkdir(sourceRoot)
+  await mkdir(targetRoot)
+  await writeFile(join(sourceRoot, 'existing'), 'portable')
+  await writeFile(join(targetRoot, 'existing'), 'installed')
+  await writeFile(store.path, '{}')
+  assert.equal(installedMigrationIntent({ testRoot, distribution, platform, dataLayout }), undefined)
+  assert.equal(firstRunPendingSync({ platform, dataLayout, userRoot: targetRoot }), false)
+  const backup = (await readdir(testRoot)).find(name => /^eduwork\.portable-migration\.invalid-\d+.*\.json$/.test(name))
+  assert.equal(await readFile(join(testRoot, backup), 'utf8'), '{}')
+  assert.equal(await readFile(join(sourceRoot, 'existing'), 'utf8'), 'portable')
+  assert.equal(await readFile(join(targetRoot, 'existing'), 'utf8'), 'installed')
+  assert.deepEqual(await readdir(sourceRoot), ['existing'])
+  assert.deepEqual(await readdir(targetRoot), ['existing'])
 })
 
 test('an empty target imports exactly the validated source with progress before removing the matching intent', async t => {

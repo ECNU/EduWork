@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { mkdtemp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { runInNewContext } from 'node:vm'
 import { migrationIntentStore } from '../src/first-run-migration-intent.mjs'
 import { portableRedirectGate, handlePortableRedirect } from '../src/portable-migrated-redirect.mjs'
@@ -63,8 +63,30 @@ test('activation redirects only the canonical source for this distribution', asy
   }
   await writeFile(path, '{')
   assert.equal(portableRedirectGate(options), undefined)
-  await writeFile(join(localAppData, 'EduWork', 'eduwork.portable-migration.json'), '{')
-  assert.ok(portableRedirectGate(options).error)
+})
+
+test('portable startup quarantines damaged intent, keeps both data directories and still honors a receipt', async t => {
+  const localAppData = await mkdtemp(join(await realpath(tmpdir()), 'eduwork-redirect-invalid-'))
+  t.after(() => rm(localAppData, { recursive: true, force: true }))
+  const source = join(localAppData, 'old'), directory = join(localAppData, 'EduWork'), target = join(directory, 'eduwork')
+  const platform = 'win32', options = { root: source, localAppData, settings, platform }
+  const store = migrationIntentStore({ localAppData, distribution: settings.distribution, platform })
+  await mkdir(source)
+  await mkdir(target, { recursive: true })
+  await writeFile(join(source, 'existing'), 'portable')
+  await writeFile(join(target, 'existing'), 'installed')
+  await writeFile(store.path, '{')
+  assert.equal(portableRedirectGate(options), undefined)
+  const backup = (await readdir(directory)).find(name => /^eduwork\.portable-migration\.invalid-\d+.*\.json$/.test(name))
+  assert.equal(await readFile(join(directory, backup), 'utf8'), '{')
+  assert.equal(await readFile(join(source, 'existing'), 'utf8'), 'portable')
+  assert.equal(await readFile(join(target, 'existing'), 'utf8'), 'installed')
+  assert.deepEqual(await readdir(source), ['existing'])
+  assert.deepEqual(await readdir(target), ['existing'])
+  const receipt = { schemaVersion: 2, distribution: 'eduwork', state: 'imported', sourceRoot: await realpath(source) }
+  await writeFile(join(target, '.eduwork-migration.json'), JSON.stringify(receipt))
+  await writeFile(store.path, '{')
+  assert.deepEqual(portableRedirectGate(options), { receipt })
 })
 
 test('a receipt outranks a pending intent; a matching pending intent opens installed or can be withdrawn', async () => {

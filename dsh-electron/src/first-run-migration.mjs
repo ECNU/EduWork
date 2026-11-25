@@ -7,7 +7,7 @@ export function installedMigrationIntent({ platform = process.platform, dataLayo
   if (platform !== 'win32' || dataLayout !== 'installed') return
   try {
     const store = openStore({ ...options, platform })
-    const intent = store.read()
+    const intent = store.read({ isolateInvalid: true })
     if (intent) return { store, intent }
   } catch (error) { return { error } }
 }

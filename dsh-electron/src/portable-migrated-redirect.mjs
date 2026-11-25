@@ -15,7 +15,7 @@ export function portableRedirectGate({ root, settings, localAppData, testRoot, p
     const store = migrationIntentStore({ localAppData, distribution, platform })
     const receipt = read(join(store.directory, distribution), { distribution, sourceRoot })
     if (receipt) return { receipt }
-    const intent = store.read()
+    const intent = store.read({ isolateInvalid: true })
     if (sameMigrationPath(intent?.sourceRoot, sourceRoot)) return { store, intent }
   } catch (error) { return { error } }
 }
