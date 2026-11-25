@@ -44,7 +44,7 @@ func replacementFixture(t *testing.T, content map[string]string) *Archive {
 	}
 	return a
 }
-func TestExistingInstallationReportsDirectoryConflict(t *testing.T) {
+func TestExistingInstallationReportsMissingManifest(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "自定义安装")
 	id := Identity{Distribution: "eduwork"}
 	if version, err := ExistingInstallation(target, id); err != nil || version != "" {
@@ -54,8 +54,8 @@ func TestExistingInstallationReportsDirectoryConflict(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err := ExistingInstallation(target, id)
-	if err == nil || err.Error() != "目标目录已存在，请检查安装路径：\n"+target {
-		t.Fatalf("expected directory conflict with target path, got %v", err)
+	if !errors.Is(err, ErrMissingInstallationManifest) {
+		t.Fatalf("expected a missing installation manifest, got %v", err)
 	}
 }
 

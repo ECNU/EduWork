@@ -15,7 +15,7 @@ import (
 )
 
 // ErrMissingInstallationManifest indicates that an existing directory has no release manifest.
-var ErrMissingInstallationManifest = errors.New("此目录不是可识别的 EduWork 安装目录，请选择其他位置")
+var ErrMissingInstallationManifest = errors.New("清单文件未找到，请彻底卸载后重新安装")
 
 // ExistingInstallation only recognizes the same Electron product and edition.
 func ExistingInstallation(target string, id Identity) (string, error) {
@@ -35,9 +35,6 @@ func ExistingInstallation(target string, id Identity) (string, error) {
 	}
 	defer root.Close()
 	m, err := installedManifest(root, id)
-	if errors.Is(err, ErrMissingInstallationManifest) {
-		return "", fmt.Errorf("目标目录已存在，请检查安装路径：\n%s", target)
-	}
 	if err != nil {
 		return "", err
 	}

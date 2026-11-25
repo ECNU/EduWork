@@ -17,8 +17,6 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-const retryInstallHint = "调整安装选项后可重新尝试。"
-
 var user = windows.NewLazySystemDLL("user32.dll")
 var gdi = windows.NewLazySystemDLL("gdi32.dll")
 var shell = windows.NewLazySystemDLL("shell32.dll")
@@ -189,6 +187,14 @@ func chooseFolder() {
 		text(location, filepath.Join(windows.UTF16ToString(pathBuf[:]), identity.Root))
 	}
 }
+func checkInstallationTarget(target string, id portable.Identity, confirmed bool) (string, error) {
+	version, err := portable.ExistingInstallation(target, id)
+	if !confirmed && errors.Is(err, portable.ErrMissingInstallationManifest) {
+		return "", fmt.Errorf("目标目录已存在，请检查安装路径：\n%s", target)
+	}
+	return version, err
+}
+
 func begin() {
 	target := readText(location)
 	confirmed := feedbackMode == "confirm"
@@ -206,7 +212,7 @@ func begin() {
 	}
 	text(location, target)
 	overwrite := false
-	version, err := portable.ExistingInstallation(target, identity)
+	version, err := checkInstallationTarget(target, identity, confirmed)
 	if err != nil {
 		showFeedback("error", "无法安装到此位置", err.Error())
 		return
@@ -312,9 +318,6 @@ func tick() {
 				showFeedback("error", "安装已取消", "可以重新选择安装位置后再试。")
 			} else {
 				showFeedback("error", "安装未完成", r.err.Error())
-				if errors.Is(r.err, portable.ErrMissingInstallationManifest) {
-					text(feedbackHint, retryInstallHint+"\r\n或检查原EduWork安装完整性，若未完全卸载请完全卸载后重试。")
-				}
 			}
 			return
 		}
@@ -590,7 +593,7 @@ func showFeedback(mode, title, detail string) {
 		text(feedbackHint, "先尝试正常退出，未退出的进程将强制结束；未保存内容可能丢失。更新进行中请等待完成。")
 	}
 	if mode == "error" {
-		text(feedbackHint, retryInstallHint)
+		text(feedbackHint, "调整安装选项后可重新尝试。")
 	}
 	layoutPage()
 }
