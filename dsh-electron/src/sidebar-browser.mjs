@@ -16,15 +16,20 @@ import { WebSocketServer } from 'ws'
 export const SIDEBAR_BROWSER_ENV = 'EDUWORK_SIDEBAR_BROWSER_SECRET'
 // The user's presses and keys a Sidebar page has had, in its top document (lib/page.js of browser-upstream reads it).
 export const SIDEBAR_INPUT_COUNT = '__eduworkInput'
-export const SIDEBAR_BROWSER_IPC = { bind: 'eduwork:sidebar-browser:bind', opened: 'eduwork:sidebar-browser:opened', request: 'eduwork:sidebar-browser:request' }
+export const SIDEBAR_BROWSER_IPC = { bind: 'eduwork:sidebar-browser:bind', opened: 'eduwork:sidebar-browser:opened', request: 'eduwork:sidebar-browser:request', width: 'eduwork:sidebar-browser:width' }
 
 const OPEN_TIMEOUT_MS = 20_000
 // Domains Playwright uses on a page. The rest reach past the page: other
 // targets, the workspace's shared storage, downloads or certificate checks.
-// The blocked methods do too: cookies belong to the whole shared partition.
+// The blocked methods do too: cookies belong to the whole shared partition,
+// and the user chooses how wide a Sidebar page is (sidebar-client.js), which
+// Playwright's browser_resize alone would change.
 const pageDomains = new Set(['Accessibility', 'CSS', 'DOM', 'Debugger', 'Emulation', 'Fetch', 'HeapProfiler', 'IO', 'Input', 'Inspector', 'Log', 'Network', 'Overlay', 'Page', 'Profiler', 'Runtime'])
 const pageBlocked = new Set(['Page.setDownloadBehavior', 'Network.clearBrowserCache', 'Network.clearBrowserCookies', 'Network.deleteCookies', 'Network.getAllCookies',
-  'Network.getCookies', 'Network.loadNetworkResource', 'Network.setCookie', 'Network.setCookieControls', 'Network.setCookies'])
+  'Network.getCookies', 'Network.loadNetworkResource', 'Network.setCookie', 'Network.setCookieControls', 'Network.setCookies', 'Emulation.setDeviceMetricsOverride'])
+// Why a blocked method is, where the Agent can do something about it.
+const blockedBecause = { 'Emulation.setDeviceMetricsOverride': 'Sidebar pages lay out at desktop width (at least 1280 px, scaled down to fit a narrower tab) or at the Sidebar\'s own width, which the user changes by dragging the Sidebar. '
+  + 'The user chooses in Settings → General → Sidebar page width (Desktop width or Follow the Sidebar), or for one page by right-clicking a blank part of it and choosing "Show this page at desktop width"; the Agent cannot resize pages' }
 const allowedOnPage = method => method === 'Target.setAutoAttach' || pageDomains.has(method.slice(0, method.indexOf('.'))) && !pageBlocked.has(method)
 // Commands that show the user what the Agent is doing on a page.
 const visibleOnPage = new Set(['Input.dispatchMouseEvent', 'Input.dispatchKeyEvent', 'Input.insertText', 'Page.navigate', 'Page.reload', 'Page.navigateToHistoryEntry', 'Page.captureScreenshot', 'Page.bringToFront'])
@@ -53,6 +58,7 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
   const opening = new Map() // open request id -> { resolve, reject, timer }
   const arrivals = new Map() // `${session} ${tab}` -> resolve(page)
   const binding = new Set() // guest ids whose target id is being read
+  const widths = new WeakMap() // guest -> whether it shows its page at desktop width, as the application page reports
   let server, newTabUrl, active = 0, presses = 0
 
   const tell = message => {
@@ -246,7 +252,7 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
       try {
         const result = page && await pageCommand(page, method, params)
         if (result !== undefined) return reply({ result })
-        if (!allowedOnPage(method)) throw failure(`'${method}' is not available in the Sidebar browser`, -32601)
+        if (!allowedOnPage(method)) throw failure(blockedBecause[method] ?? `'${method}' is not available in the Sidebar browser`, -32601)
         reply({ result: await carrier.guest.debugger.sendCommand(method, params, page ? undefined : sessionId) })
       } finally {
         if (input) carrier.inputs--
@@ -376,6 +382,28 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
         if (target.autoAttach) attachSession(page)
       }
       arrivals.get(`${sessionId} ${tabId}`)?.(page)
+    },
+
+    /**
+     * The application page reports whether a Sidebar guest shows its page at desktop width (sidebar-client.js).
+     * @param window - the verified application window that sent it.
+     */
+    widthShown(window, guestId, desktop) {
+      const guest = Number.isSafeInteger(guestId) ? webContents.fromId(guestId) : undefined
+      if (guest?.getType() === 'webview' && guest.hostWebContents === window.webContents && typeof desktop === 'boolean') widths.set(guest, desktop)
+    },
+
+    /**
+     * Whether a Sidebar guest shows its page at desktop width, or undefined
+     * while the application page has not said, as for a guest it does not size.
+     */
+    desktopWidth(guest) {
+      return widths.get(guest)
+    },
+
+    /** The user's choice of width for one Sidebar tab, from its page's menu. */
+    chooseWidth(guest, desktop) {
+      tell({ type: 'width', guestId: guest.id, desktop })
     },
 
     /** Whether the Agent gave a Sidebar guest input since the user last did. */

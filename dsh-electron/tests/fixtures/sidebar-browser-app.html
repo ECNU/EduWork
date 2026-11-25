@@ -7,7 +7,7 @@
   .session:not([hidden]) { display: contents }
   .panel { position: absolute; inset: 0; overflow: clip }
   .cell:not([hidden]) { position: absolute; inset: 0; display: flex }
-  .cell div, webview { display: flex; flex: 1 }
+  .cell div:not([hidden]), webview { display: flex; flex: 1 }
   /* The upstream Sidebar slides a collapsed panel's docked cells past its edge. */
   .panel [data-dockkit-host='dock'] { transform: translateX(576px); visibility: hidden }
   .panel[data-sidebar-right-open] [data-dockkit-host='dock'] { transform: none; visibility: visible }
@@ -114,9 +114,14 @@
     active: () => ({ id: session(onScreen).active }),
     focus: tabId => focus(onScreen, tabId),
   }
-  connectSidebarBrowser({ bridge: window.eduworkSidebarBrowser, desktop, sidebar, document, storage: async id => `storage-${id}`, conversation, text: key => key })
+  // The user's width setting, desktop width as by default.
+  let desktopWidth = true
+  const widthListeners = new Set()
+  const width = { getSnapshot: () => desktopWidth, subscribe: listener => { widthListeners.add(listener); return () => widthListeners.delete(listener) } }
+  connectSidebarBrowser({ bridge: window.eduworkSidebarBrowser, desktop, sidebar, document, storage: async id => `storage-${id}`, conversation, text: key => key, desktopWidth: width })
   const fixture = window.fixture = {
     show, focus, expand, openTabIn, storages, stopped, acquireDelay: 0,
+    desktopWidth(value) { desktopWidth = value; for (const listener of widthListeners) listener() },
     held: () => [...held],
     running: (id, value) => conversation(id).set(value),
     event: (id, event) => conversation(id).append(event),

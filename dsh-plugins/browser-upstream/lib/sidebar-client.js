@@ -1,10 +1,10 @@
 // The application page's half of the Agent's Sidebar browser
 // (dsh-electron/src/sidebar-browser.mjs). It reports which conversation and
 // tab each browser guest shows, opens and closes tabs for the Agent, keeps a
-// working conversation's tabs painting behind what the user sees, and marks
+// working conversation's tabs painting behind what the user sees, marks
 // the tab the Agent acts on, which the user only watches until the Agent's
-// turn ends, asks them something or they stop it. The Web client has no
-// bridge and skips all of it.
+// turn ends, asks them something or they stop it, and shows pages at desktop
+// width. The Web client has no bridge and skips all of it.
 const FRAME = 'webview[data-sidebar-browser-frame="webview"]'
 const SESSION = 'data-sidebar-right-session'
 const TAB = 'data-sidebar-right-tab'
@@ -13,6 +13,15 @@ const DOCK = '[data-dockkit-host="dock"]'
 const RENDER = 'data-eduwork-agent-render'
 const BACKGROUND = 'data-eduwork-agent-background'
 const ACTING = 'data-eduwork-agent-acting'
+// At desktop width, a page whose tab is narrower than this lays out at this
+// width, as on a desktop, and shows scaled down to fill its tab. Only the
+// guest element's own inline style changes, so a guest DSH stops marking as a
+// Sidebar page simply follows the Sidebar's width.
+const DESKTOP = 1280
+// The user sets it in this plugin's settings, which DSH names by the plugin's
+// entry in the product's composition (config/distributions, pinned-browser.mjs).
+export const SIDEBAR_SETTINGS = 'eduwork-browser'
+const FITTED = ['flex', 'width', 'height', 'transform', 'transformOrigin', 'marginRight', 'marginBottom']
 
 // A guest under a hidden ancestor, or in a collapsed Sidebar's docked cell
 // (moved past the window edge and invisible), stops painting, and Playwright
@@ -83,9 +92,10 @@ export async function workspaceStorage(list, sessionId, signal) {
  * @param storage - (session id, signal) => the Sidebar browser storage of the conversation's workspace.
  * @param conversation - a conversation's DSH session binding: its session, whether its turn runs, and cancel, and its events.
  * @param text - the marker's 'acting' and 'stop' labels.
+ * @param desktopWidth - the user's setting, { getSnapshot, subscribe }: whether pages show at desktop width.
  * @returns disconnects from the main process and clears every mark.
  */
-export function connectSidebarBrowser({ bridge, desktop, sidebar, document, storage, conversation, text }) {
+export function connectSidebarBrowser({ bridge, desktop, sidebar, document, storage, conversation, text, desktopWidth }) {
   const working = new Set()
   const watched = new WeakSet()
   const acting = new Map() // session id -> { tabId, lock, unsubscribe }
@@ -107,9 +117,77 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
     let guestId
     try { guestId = frame.getWebContentsId() } catch { return } // before dom-ready
     if (tabId && sessionId) bridge.bind(guestId, sessionId, tabId)
+    bridge.width(guestId, desktopFor(frame))
   }
+
+  // Each page's width: the user's setting, or their choice for its tab from
+  // the page's menu, which lasts while the application runs.
+  const chosen = new Map() // `${session id} ${tab id}` -> whether at desktop width
+  const followed = new Map() // guest element -> { parent, width, height }: the tab it fills
+  const keyOf = frame => {
+    for (const [tabId, page] of backgrounds) if (page.frame === frame) return `${page.sessionId} ${tabId}`
+    return `${sessionOf(frame)} ${frame.closest(`[${TAB}]`)?.getAttribute(TAB)}`
+  }
+  const desktopFor = frame => chosen.get(keyOf(frame)) ?? desktopWidth.getSnapshot()
+  const fit = frame => {
+    const { width, height } = followed.get(frame)
+    if (!desktopFor(frame) || !(width < DESKTOP)) {
+      for (const name of FITTED) frame.style[name] = ''
+      return
+    }
+    // The guest element really is DESKTOP wide, scaled down from its top-left
+    // corner to cover its tab exactly. Its margins take back all the room it
+    // takes, so the tab's size never depends on it and can still shrink.
+    const scale = width / DESKTOP, tall = height / scale
+    Object.assign(frame.style, { flex: 'none', width: `${DESKTOP}px`, height: `${tall}px`, transform: `scale(${scale})`, transformOrigin: '0 0',
+      marginRight: `${-DESKTOP}px`, marginBottom: `${-tall}px` })
+  }
+  // The main process shows the choice in the page's menu.
+  const report = frame => {
+    let guestId
+    try { guestId = frame.getWebContentsId() } catch { return } // before dom-ready, which reports it
+    bridge.width(guestId, desktopFor(frame))
+  }
+  const sizes = new ResizeObserver(entries => {
+    for (const { target, contentRect } of entries) {
+      const frame = [...followed].find(([, tab]) => tab.parent === target)?.[0]
+      // A hidden tab keeps the layout it had.
+      if (frame === undefined || contentRect.width === 0 || contentRect.height === 0) continue
+      Object.assign(followed.get(frame), { width: contentRect.width, height: contentRect.height })
+      fit(frame)
+    }
+  })
+  // Fitted as soon as it is found, before its guest attaches and loads a page.
+  const follow = frame => {
+    const parent = frame.parentElement
+    followed.set(frame, { parent })
+    sizes.observe(parent)
+    if (parent.clientWidth > 0 && parent.clientHeight > 0) {
+      Object.assign(followed.get(frame), { width: parent.clientWidth, height: parent.clientHeight })
+      fit(frame)
+    }
+  }
+  // A guest element gone, with or without its tab, or moved into another tab
+  // as DSH could move it, where it is found and followed anew.
+  const unfollowGone = () => {
+    for (const [frame, { parent }] of followed) {
+      if (frame.isConnected && frame.parentElement === parent) continue
+      sizes.unobserve(parent)
+      followed.delete(frame)
+    }
+  }
+  const refit = () => {
+    for (const frame of followed.keys()) {
+      if (followed.get(frame).width !== undefined) fit(frame)
+      report(frame)
+    }
+  }
+  const unwatchWidth = desktopWidth.subscribe(refit)
+
   const watch = () => {
+    unfollowGone()
     for (const frame of document.querySelectorAll(FRAME)) {
+      if (!followed.has(frame)) follow(frame)
       if (watched.has(frame)) continue
       watched.add(frame)
       frame.addEventListener('dom-ready', () => bind(frame), { once: true })
@@ -159,6 +237,7 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
       // A failed load shows on the page itself, where the Agent looks.
       frame.loadURL(url).catch(() => {})
       bridge.bind(frame.getWebContentsId(), sessionId, tabId)
+      report(frame)
     }, { once: true })
     // Nobody waits for a popup: when it cannot open, the Agent just sees no new page.
     const unsubscribe = desktop.onOpenRequested(lease, link => openPage(sessionId, link).catch(() => {}))
@@ -166,6 +245,7 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
     holder.append(frame)
     document.body.append(holder)
     paint()
+    follow(frame)
     return tabId
   }
   const openPage = async (sessionId, url) => {
@@ -292,6 +372,14 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
       returnFocus(pressing.previous, pressing.frames)
       pressing = undefined
     },
+    // The user's choice from the page's menu.
+    width({ guestId, desktop }) {
+      const frame = [...followed.keys()].find(frame => { try { return frame.getWebContentsId() === guestId } catch { return false } })
+      if (frame === undefined) return
+      chosen.set(keyOf(frame), desktop)
+      if (followed.get(frame).width !== undefined) fit(frame)
+      report(frame)
+    },
   }
   const unsubscribe = bridge.onRequest(message => handlers[message.type]?.(message))
   watch()
@@ -299,7 +387,10 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
     for (const lifetime of lifetimes.values()) lifetime.abort()
     unsubscribe()
     unwatchScreen()
+    unwatchWidth()
     observer.disconnect()
+    sizes.disconnect()
+    for (const frame of followed.keys()) for (const name of FITTED) frame.style[name] = ''
     for (const tabId of [...backgrounds.keys()]) closeBackground(tabId)
     for (const sessionId of [...acting.keys()]) unmark(sessionId)
     for (const element of document.querySelectorAll(`[${RENDER}]`)) element.removeAttribute(RENDER)

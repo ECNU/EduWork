@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
 import { createRequire } from 'node:module'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
@@ -10,6 +11,8 @@ const url = new URL(values.cdp)
 assert.ok(['127.0.0.1', 'localhost'].includes(url.hostname))
 const product = resolve(values.product), evidence = resolve(values.evidence)
 const identity = JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8'))
+const composition = JSON.parse(await readFile(join(product, 'composition.json'), 'utf8'))
+const sidebarBrowser = composition.flatMap(row => row.insert ?? []).find(entry => entry.name === '@eduwork/dsh-browser-upstream')
 assert.ok(['electron', 'wails'].includes(values.shell))
 await mkdir(evidence, { recursive: true })
 const { chromium } = createRequire(join(product, 'd/package.json'))('playwright-core')
@@ -39,6 +42,8 @@ try {
   await page.waitForLoadState('domcontentloaded')
   if (!values['launch-only']) {
   await page.getByRole('button', { name: /^(设置|Settings)$/ }).waitFor()
+  // The user guide's first-run tour can cover the window at any moment.
+  await page.addLocatorHandler(page.locator('#eduwork-user-guide-tour'), tour => tour.getByRole('button', { name: /^(跳过|Skip)$/ }).click())
   for (let attempt = 0; attempt < 8; attempt++) {
     for (const name of [/^(继续|Continue)$/, /^(稍后配置|Configure later|Maybe later)$/, /^(使用其他模型|Use another model)$/]) {
       const button = page.getByRole('button', { name }).last()
@@ -83,6 +88,9 @@ try {
   await check('settings-over-official-pipe', async () => {
     const result = await rpc('settings/describe')
     assert.ok(result.namespaces.some(row => row.ns === 'chatecnu-brand'))
+    // Settings list a plugin only once it runs; the browser's has its own row rather than a generated form.
+    const entry = sidebarBrowser && result.namespaces.find(row => row.ns === sidebarBrowser.id)
+    if (sidebarBrowser) assert.ok(['desktop', 'sidebar'].includes(entry?.value.sidebarWidth) && entry.autoGenerate === false, 'Sidebar browser plugin is active')
     return { namespaces: result.namespaces.map(row => row.ns) }
   })
   if (!values['launch-only']) {
@@ -107,6 +115,70 @@ try {
     assert.equal(await page.getByText(/^(最近成果|Recent artifacts|Recent results)$/).count(), 0)
     assert.equal(await page.getByText(/^(工作区 Wiki|Workspace Wiki)$/).count(), 0)
     return { defaultCollapsed: true, wikiAbsent: true }
+  })
+  if (values.shell === 'electron' && sidebarBrowser) await check('sidebar-page-at-desktop-width', async () => {
+    // A page whose button shows only when it lays out at desktop width, past the Sidebar's width; it counts the clicks on it.
+    const site = createServer((_request, response) => response.end('<!doctype html><body style="margin:0"><script>window.firstWidth = innerWidth; window.clicks = 0</script>'
+      + '<button id="go" style="position:absolute;left:1100px;top:40px;width:120px;height:40px" onclick="clicks++">go</button>'))
+    await new Promise(resolve => site.listen(0, '127.0.0.1', resolve))
+    const address = `http://127.0.0.1:${site.address().port}/`
+    const until = async (found, what) => {
+      for (const deadline = Date.now() + 20_000; Date.now() < deadline; await new Promise(resolve => setTimeout(resolve, 250))) {
+        const value = await found()
+        if (value) return value
+      }
+      throw new Error('Timed out waiting for ' + what)
+    }
+    // The user's choice in Settings → General, once the Host has it.
+    const choose = async (option, value) => {
+      await page.getByRole('button', { name: /^(设置|Settings)$/ }).first().click()
+      await page.getByText(/^(侧边栏网页宽度|Sidebar page width)$/).locator('xpath=ancestor::*[.//button][1]').getByRole('button').click()
+      await page.getByRole('menuitem', { name: option }).click()
+      await until(async () => (await rpc('settings/describe')).namespaces.find(row => row.ns === sidebarBrowser.id).value.sidebarWidth === value, 'the chosen width')
+      await page.keyboard.press('Escape')
+    }
+    // The page's guest element and its tab in the application page, and the page's own layout.
+    const shown = () => page.evaluate(async address => {
+      const opened = frame => { try { return frame.checkVisibility() && frame.getURL().startsWith(address) } catch { return false } }
+      const frame = [...document.querySelectorAll('webview[data-sidebar-browser-frame]')].find(opened)
+      const layout = await frame?.executeJavaScript('document.readyState === "complete" && (r => ({ first: firstWidth, width: innerWidth, button: [r.x, r.y, r.width, r.height], clicks }))(go.getBoundingClientRect())').catch(() => false)
+      if (!layout) return null
+      const box = element => (r => ({ x: r.x, y: r.y, width: r.width, height: r.height }))(element.getBoundingClientRect())
+      return { ...layout, element: box(frame), elementWidth: frame.offsetWidth, tab: box(frame.parentElement) }
+    }, address)
+    const covers = now => ['x', 'y', 'width', 'height'].every(side => Math.abs(now.element[side] - now.tab[side]) < 1)
+    // The user's click on the scaled-down button, repeated while a page just shown takes no input yet.
+    // A click at a point skips the tour's handler, which a locator's wait runs first.
+    const click = () => until(async () => {
+      await page.locator('body').waitFor()
+      const now = await shown(), scale = now.element.width / 1280, [x, y, width, height] = now.button
+      await page.mouse.click(now.element.x + (x + width / 2) * scale, now.element.y + (y + height / 2) * scale)
+      return (await shown()).clicks > now.clicks
+    }, 'the click on the page')
+    try {
+      await choose(/^(桌面宽度|Desktop width)$/, 'desktop')
+      await page.getByRole('button', { name: /^(新建会话|New session)$/i }).first().click()
+      // The new session's Sidebar shows collapsed, or open on its guide.
+      const column = page.locator('[data-rightbar-col]'), expand = page.locator('[data-sidebar-right-expand]').first()
+      const browserEntry = column.locator('[data-sidebar-right-guide-entry="browser"]:visible').first()
+      await expand.or(browserEntry).first().waitFor()
+      if (await expand.isVisible()) await expand.click()
+      await browserEntry.click()
+      const field = column.getByRole('textbox', { name: /^(输入 HTTP\(S\) 地址|Enter an HTTP\(S\) address)$/ }).filter({ visible: true }).first()
+      await field.fill(address); await field.press('Enter')
+      const opened = await until(shown, 'the Sidebar page')
+      assert.ok(opened.tab.width < 1280, 'The Sidebar is narrower than a desktop page')
+      assert.deepEqual([opened.first, opened.width, opened.elementWidth, covers(opened)], [1280, 1280, 1280, true])
+      await click()
+      // Switched in Settings, the same page follows the Sidebar's width, then lays out at desktop width again, without reloading.
+      await choose(/^(跟随侧边栏|Follow the Sidebar)$/, 'sidebar')
+      const following = await until(async () => { const now = await shown(); return now && Math.abs(now.width - now.tab.width) < 1 && covers(now) && now }, 'the page at the Sidebar\'s width')
+      await choose(/^(桌面宽度|Desktop width)$/, 'desktop')
+      const desktop = await until(async () => { const now = await shown(); return now?.width === 1280 && covers(now) && now }, 'the page at desktop width again')
+      assert.deepEqual([following.first, following.clicks, desktop.first, desktop.clicks], [1280, 1, 1280, 1], 'The page stays loaded')
+      await click()
+      return { tab: opened.tab, following: following.width, scale: desktop.element.width / 1280 }
+    } finally { site.closeAllConnections(); site.close() }
   })
   }
   await page.screenshot({ path: join(evidence, 'desktop.png') })
