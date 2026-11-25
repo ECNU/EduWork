@@ -29,7 +29,19 @@ const pages = {
   // localhost and 127.0.0.1 are different sites: the frame gets its own process.
   '/frame': '<title>Frame</title><iframe id="inner" width="400" height="120"></iframe><script>inner.src = location.href.replace("127.0.0.1", "localhost").replace("/frame", "/inner")</script>',
   '/inner': `<input id="field" aria-label="Field"><p id="seen">-</p>
-    <script>addEventListener('keydown', event => { if (event.key === 'Enter') seen.textContent = field.value + ' trusted=' + event.isTrusted })</script>`,
+    <script>addEventListener('keydown', event => { if (event.key === 'Enter') seen.textContent = field.value + ' trusted=' + event.isTrusted })
+    addEventListener('contextmenu', () => { window.menus = (window.menus ?? 0) + 1 })</script>`,
+  // Each element with room to right-click beside its words, which macOS would select.
+  '/menu': `<title>Menu</title><a id="link" href="/second" style="display: inline-block; padding: 10px">Second</a>
+    <a id="script" href="javascript:void 0" style="display: inline-block; padding: 10px">Script</a>
+    <a id="mail" href="mailto:someone@example.org" style="display: inline-block; padding: 10px">Mail</a>
+    <img id="image" src="/image.svg" width="60" height="30"><img id="broken" src="/missing.png" width="60" height="30">
+    <iframe id="framed" width="60" height="30" style="border: 0"></iframe><input id="field" value="draft" style="width: 200px">
+    <p id="text">Selected words</p><div id="blank" style="height: 200px"></div>
+    <script>framed.src = location.href.replace('127.0.0.1', 'localhost').replace('/menu', '/framed')
+    addEventListener('contextmenu', () => { window.menus = (window.menus ?? 0) + 1 })</script>`,
+  '/framed': '<body style="margin: 0"><img src="/image.svg" width="60" height="30"></body>',
+  '/image.svg': '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="30"><rect width="60" height="30" fill="#2a7"/></svg>',
 }
 
 let app, origin, endpoint, server
@@ -88,7 +100,8 @@ before(async () => {
   server = createServer((request, response) => {
     const path = new URL(request.url, 'http://x').pathname, body = pages[path]
     if (path === '/never') return
-    setTimeout(() => response.writeHead(body ? 200 : 404, { 'content-type': 'text/html; charset=utf-8' }).end(body ?? ''), ['/held', '/popup'].includes(path) ? 1000 : 0)
+    const type = path.endsWith('.svg') ? 'image/svg+xml' : 'text/html; charset=utf-8'
+    setTimeout(() => response.writeHead(body ? 200 : 404, { 'content-type': type }).end(body ?? ''), ['/held', '/popup'].includes(path) ? 1000 : 0)
   }).listen(0, '127.0.0.1')
   await once(server, 'listening')
   origin = `http://127.0.0.1:${server.address().port}`
@@ -321,6 +334,132 @@ test('a press or key the user gives a page, in any of its frames, counts in the 
   await busy
   await run(`${guest}.sendInputEvent({ type: 'keyDown', keyCode: 'a' })`)
   assert.equal(await count(), 2)
+  await browser.close()
+})
+
+test('a right click on a page opens the menu for what was clicked, and the Agent\'s opens none', live, async () => {
+  const { browser, context } = await connect('session-a')
+  const [tab] = context.pages()
+  await tab.goto(`${origin}/`)
+  await tab.goto(`${origin}/menu`)
+  // The Agent's turn has ended: the user works in the page.
+  await page('fixture.running("session-a", false)')
+  // What the clipboard holds once the page or the menu has written it.
+  const clipboard = async (expected, read = 'clipboard.readText()') => {
+    for (const deadline = Date.now() + 2000; ;) {
+      const value = await run(`const { clipboard } = await import('electron'); return ${read}`)
+      if (value === expected || Date.now() > deadline) return value
+      await wait(100)
+    }
+  }
+  // The menus shown, disabled items in brackets.
+  const shown = () => run(`return menus.map(menu => menu.items.map(item => item.type === 'separator' ? '-' : item.enabled ? item.label : '(' + item.label + ')'))`)
+  const choose = label => run(`menus.splice(0).at(-1).items.find(item => item.label === ${JSON.stringify(label)}).click()`)
+  // The user's press, routed into the page from the application window as theirs is.
+  const press = async (locator, button, x) => {
+    const box = await locator.boundingBox()
+    const [left, top] = await page('(r => [r.x, r.y])(document.querySelector("[data-sidebar-right-session=session-a] .cell:not([hidden]) webview").getBoundingClientRect())')
+    await run(`const input = window.webContents.debugger
+      input.attach('1.3')
+      try {
+        for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await input.sendCommand('Input.dispatchMouseEvent', { type, x: ${left + box.x + x(box.width)}, y: ${top + box.y + 4},
+          button: type === 'mouseMoved' ? 'none' : '${button}', buttons: type === 'mousePressed' ? ${button === 'right' ? 2 : 1} : 0, clickCount: 1 })
+      }
+      finally { input.detach() }`)
+  }
+  // A page the Sidebar shows anew takes the user's input only once it is laid
+  // out anew, until then going to the page shown before: press it until a press counts.
+  const takesInput = async () => {
+    const inputs = () => tab.evaluate(() => document.__eduworkInput ?? 0)
+    for (const before = await inputs(), deadline = Date.now() + 5000; await inputs() === before;) {
+      assert.ok(Date.now() < deadline, 'the page the Sidebar shows takes no input from the user')
+      await press(tab.locator('#blank'), 'left', width => width / 2)
+    }
+  }
+  const rightClick = async selector => {
+    await run('menus.length = 0')
+    await press(tab.locator(selector), 'right', width => width - 4)
+    await wait(300)
+    return shown()
+  }
+  await takesInput()
+  assert.deepEqual(await rightClick('#link'), [['在新标签页中打开链接', '在系统浏览器中打开链接', '复制链接地址']])
+  await choose('复制链接地址')
+  assert.equal(await clipboard(`${origin}/second`), `${origin}/second`)
+  await rightClick('#link')
+  await choose('在系统浏览器中打开链接')
+  for (const deadline = Date.now() + 2000; !await run('return externals.length') && Date.now() < deadline;) await wait(50)
+  assert.deepEqual(await run('return externals'), [`${origin}/second`])
+  await rightClick('#link')
+  const [opened] = await Promise.all([context.waitForEvent('page'), choose('在新标签页中打开链接')])
+  await opened.waitForLoadState()
+  assert.equal(opened.url(), `${origin}/second`)
+  await opened.close()
+  // The Sidebar shows the page again, as it does once the user closes the tab in front of it.
+  await page(`fixture.focus('session-a', [...document.querySelectorAll('[data-sidebar-right-session=session-a] webview')]
+    .find(frame => frame.getURL() === ${JSON.stringify(`${origin}/menu`)}).closest('[data-sidebar-right-tab]').getAttribute('data-sidebar-right-tab'))`)
+  await takesInput()
+  // Links the page may not open, such as javascript:, show no link items; others can still be copied.
+  assert.deepEqual(await rightClick('#script'), [['后退', '(前进)', '刷新']])
+  assert.deepEqual(await rightClick('#mail'), [['复制链接地址']])
+  // An image's pixels when the image has loaded and its frame is in the top document's process.
+  assert.deepEqual(await rightClick('#broken'), [['(复制图片)', '复制图片地址']])
+  const framed = tab.frames().find(frame => frame.url().endsWith('/framed')) ?? await tab.waitForEvent('framenavigated', frame => frame.url().endsWith('/framed'))
+  await framed.waitForFunction(() => document.images[0]?.complete)
+  assert.deepEqual(await rightClick('#framed'), [['(复制图片)', '复制图片地址']])
+  assert.deepEqual(await rightClick('#image'), [['复制图片', '复制图片地址']])
+  await choose('复制图片地址')
+  assert.equal(await clipboard(`${origin}/image.svg`), `${origin}/image.svg`)
+  await rightClick('#image')
+  await choose('复制图片')
+  assert.equal(await clipboard(true, `(await clipboard.read()).some(item => item.types.includes('image/png'))`), true)
+  // Editing as in DSH's own menu, on what the field holds.
+  await tab.$eval('#field', field => { field.focus(); field.select() })
+  assert.deepEqual(await rightClick('#field'), [['(撤销)', '(重做)', '-', '剪切', '复制', '粘贴', '-', '全选']])
+  await choose('剪切')
+  await tab.waitForFunction(() => document.getElementById('field').value === '')
+  assert.equal(await clipboard('draft'), 'draft')
+  await rightClick('#field')
+  await choose('撤销')
+  await tab.waitForFunction(() => document.getElementById('field').value === 'draft')
+  await tab.evaluate(() => getSelection().selectAllChildren(document.getElementById('text')))
+  assert.deepEqual(await rightClick('#text'), [['复制']])
+  await choose('复制')
+  assert.equal(await clipboard('Selected words'), 'Selected words')
+  assert.deepEqual(await rightClick('#blank'), [['后退', '(前进)', '刷新']])
+  await choose('后退')
+  await tab.waitForURL(`${origin}/`)
+  await tab.goForward()
+  await tab.evaluate(() => { window.before = true })
+  await rightClick('#blank')
+  await Promise.all([tab.waitForEvent('load'), choose('刷新')])
+  assert.equal(await tab.evaluate(() => window.before), undefined)
+  // The Agent's right click opens the page's own menus and nothing on the user's screen.
+  await page('fixture.running("session-a", true)')
+  await tab.click('#link', { button: 'right', position: { x: 2, y: 2 } })
+  await wait(300)
+  assert.deepEqual(await shown(), [])
+  await page('fixture.running("session-a", false)')
+  assert.equal((await rightClick('#blank')).length, 1)
+  // Nor do the menu keys it presses after the user's own press, in the page or in a cross-site frame,
+  // whose keys do not pass the guest's own input events. Windows opens the page's menu on them.
+  const keys = async (frame, names) => {
+    const before = await frame.evaluate(() => window.menus ?? 0)
+    await page('fixture.running("session-a", false)')
+    await press(frame.locator('#field'), 'left', () => 4)
+    await page('fixture.running("session-a", true)')
+    await run('menus.length = 0')
+    for (const name of names) await tab.keyboard.press(name)
+    await wait(300)
+    assert.deepEqual(await shown(), [])
+    if (process.platform === 'win32') assert.equal(await frame.evaluate(() => window.menus) - before, names.length)
+  }
+  // Electron has no key name for the menu key, so the page's own frame gets it unnamed (sidebar-browser.mjs).
+  await keys(tab.mainFrame(), ['Shift+F10'])
+  await tab.goto(`${origin}/frame`)
+  const inner = tab.frames().find(frame => frame.url().includes('/inner'))
+  await inner.waitForSelector('#field')
+  await keys(inner, ['Shift+F10', 'ContextMenu'])
   await browser.close()
 })
 
