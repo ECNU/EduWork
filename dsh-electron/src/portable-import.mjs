@@ -356,14 +356,18 @@ async function reclaimImportStages(target, distribution, prefix) {
   }
 }
 
-export async function importPortableData({ sourceRoot, targetRoot, distribution, listProcesses, onProgress = () => {}, freeSpace = statfs }) {
+export async function importPortableData({ sourceRoot, targetRoot, distribution, listProcesses, onProgress = () => {}, freeSpace = statfs, intentId, sourceVersion }) {
   const source = await inspectPortableSource({ sourceRoot, distribution })
+  if (intentId && source.version !== sourceVersion) throw Error('旧客户端版本与迁移意图不符')
   if (!targetRoot || !isAbsolute(targetRoot)) throw Error('目标用户目录必须是绝对路径')
   const target = await canonical(targetRoot)
   if (source.root === target || within(source.root, target) || within(target, source.root)) throw Error('Program and user data directories must be separate')
   await assertNoLinks(targetRoot)
-  const running = await (listProcesses ?? windowsSourceProcessLister(source.root))()
-  if (running.length) throw Error(`旧客户端或其后台 Host 仍在运行（${running.map(row => `${row.pid}:${row.name}`).join('、')}），请先正常退出后再导入`)
+  const assertStopped = async () => {
+    const running = await (listProcesses ?? windowsSourceProcessLister(source.root))()
+    if (running.length) throw Error(`旧客户端或其后台 Host 仍在运行（${running.map(row => `${row.pid}:${row.name}`).join('、')}），请先正常退出后再导入`)
+  }
+  await assertStopped()
   const prior = await exists(target)
   if (prior) {
     const entries = await readdir(target)
@@ -371,7 +375,7 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
     else {
       const receipt = entries.includes('.eduwork-migration.json')
         ? await readFile(join(target, '.eduwork-migration.json'), 'utf8').then(JSON.parse).catch(() => null) : null
-      if (receipt?.schemaVersion === 2 && receipt.state === 'imported' && receipt.sourceRoot === source.root && receipt.distribution === distribution) {
+      if (!intentId && receipt?.schemaVersion === 2 && receipt.state === 'imported' && receipt.sourceRoot === source.root && receipt.distribution === distribution) {
         const current = await buildCopyPlan(source, target)
         if (digest(JSON.stringify(current)) !== receipt.planDigest) {
           throw Error('旧目录数据在上次导入后发生变化；请保留现有数据并人工核对后再试')
@@ -422,10 +426,12 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
     const moved = await applyWorkspaceRemap({ stage, namespace: basename(source.dataRoot), moves: plan.moves })
     const receipt = { schemaVersion: 2, state: 'imported', sourceRoot: source.root, sourceVersion: source.version, distribution,
       files: plan.files.length, bytes: totalBytes, planDigest: digest(JSON.stringify(plan)), targetDirectoryDigest: await directoryDigest(stage), workspacesMoved: moved,
-      workspacesMissing: plan.moves.filter(move => move.missing).map(move => ({ id: move.id, path: move.oldPath })), createdAt: new Date().toISOString() }
+      workspacesMissing: plan.moves.filter(move => move.missing).map(move => ({ id: move.id, path: move.oldPath })), createdAt: new Date().toISOString(),
+      ...(intentId ? { intentId } : {}) }
     await writeFile(join(stage, '.eduwork-migration.json'), JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx', mode: 0o600 })
     // Keep the progress marker until activation succeeds so an interrupted
     // stage stays recognizable as an import leftover on retry.
+    if (intentId) await assertStopped()
     await rename(stage, target)
     await rm(join(target, '.eduwork-import-progress.json'), { force: true }).catch(() => {})
     return receipt

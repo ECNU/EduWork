@@ -22,6 +22,8 @@ import { importPortableData, inspectPortableSource, windowsSourceProcessLister }
 import { portableInstallerSource, discoverPortableInstaller, downloadPortableInstaller } from './portable-installer-feed.mjs'
 import { createPortableMigration, launchPortableMigrationHelper } from './portable-migration-upgrade.mjs'
 import { migrationIntentStore } from './first-run-migration-intent.mjs'
+import { installedMigrationIntent, installedMigrationDialogs, resolveInstalledMigration } from './first-run-migration.mjs'
+import { withMigrationProgress } from './first-run-progress.mjs'
 import { portableSourceSuggestion } from './portable-source-hint.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
@@ -162,6 +164,7 @@ const activationWindows = () => [
   ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window)),
 ]
 export const showDesktop = () => showDesktopWindows(activationWindows())
+let pendingInstalledMigration, firstRunInProgress = false
 export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
@@ -176,7 +179,7 @@ export function configureEduworkPaths() {
   attachAppActivation({ app, windows: activationWindows })
   // Own the process tree from the beginning of startup, including when the
   // user quits while configuration is still being prepared.
-  app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
+  app.on('window-all-closed', () => { if (process.platform !== 'darwin' && !firstRunInProgress) app.quit() })
   app.on('before-quit', event => {
     if (desktopExit.complete) return
     event.preventDefault()
@@ -187,7 +190,11 @@ export function configureEduworkPaths() {
   // profile must bind to the target before Chromium initializes os_crypt, so the
   // imported credentials decrypt with the source key; every other layout always
   // activates immediately.
-  if (!firstRunPendingSync({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) activateEduworkPaths()
+  pendingInstalledMigration = installedMigrationIntent({ dataLayout: settings.dataLayout,
+    localAppData: process.env.LOCALAPPDATA, testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, distribution: settings.distribution })
+  if (!pendingInstalledMigration) {
+    if (!firstRunPendingSync({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) activateEduworkPaths()
+  }
 }
 let pathsActivated = false
 export function activateEduworkPaths() {
@@ -202,6 +209,16 @@ export function activateEduworkPaths() {
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
 }
 export async function resolveInstalledFirstRun() {
+  if (pendingInstalledMigration) {
+    firstRunInProgress = true
+    try {
+      const { action } = await resolveInstalledMigration({ ...pendingInstalledMigration,
+        targetRoot: paths.userRoot, version: settings.productVersion,
+        ...installedMigrationDialogs(options => dialog.showMessageBox(options)),
+        useProgress: run => withMigrationProgress(BrowserWindow, run) })
+      return action
+    } finally { firstRunInProgress = false }
+  }
   if (!await firstRunPending({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) return 'reuse'
   const suggestedSource = await portableSourceSuggestion({ localAppData: process.env.LOCALAPPDATA,
     distribution: settings.distribution, validate: root => inspectPortableSource({ sourceRoot: root, distribution: settings.distribution }) })

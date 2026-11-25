@@ -72,6 +72,7 @@ test('activation defers only for an unsettled installed first-run, then binds th
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
   const configure = source.slice(source.indexOf('export function configureEduworkPaths()'), source.indexOf('let pathsActivated'))
   assert.match(configure, /if \(!firstRunPendingSync\(\{ userRoot: paths\.userRoot, dataLayout: settings\.dataLayout \}\)\) activateEduworkPaths\(\)/)
+  assert.match(configure, /installedMigrationIntent\([\s\S]*?if \(!pendingInstalledMigration\) \{\s*if \(!firstRunPendingSync/)
 })
 
 test('the gate reuses existing data without dialogs, and activation is idempotent and owns the fresh target', () => {
@@ -88,7 +89,7 @@ test('a settled first-run relaunches to rebind os_crypt; cancel quits without a 
   const main = source.slice(source.indexOf('async function main()'), source.indexOf('app.on(\'will-quit\''))
   assert.match(main, /const firstRunAction = await resolveInstalledFirstRun\(\)/)
   assert.match(main, /if \(firstRunAction === 'cancel'\) \{ app\.quit\(\); return \}/)
-  assert.match(main, /if \(firstRunAction === 'imported' \|\| firstRunAction === 'fresh'\) \{[\s\S]*?app\.relaunch\(\)[\s\S]*?app\.quit\(\)[\s\S]*?return[\s\S]*?\}/)
+  assert.match(main, /if \(firstRunAction === 'imported' \|\| firstRunAction === 'fresh' \|\| firstRunAction === 'relaunch'\) \{[\s\S]*?app\.relaunch\(\)[\s\S]*?app\.quit\(\)[\s\S]*?return[\s\S]*?\}/)
   // The relaunch must precede activation/Host startup so the next process binds the target.
   assert.ok(main.indexOf('app.relaunch()') < main.indexOf('activateEduworkPaths()'))
 })

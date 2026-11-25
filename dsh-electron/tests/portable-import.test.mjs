@@ -84,6 +84,19 @@ function mockFs(t, name, replacement) {
   t.after(() => { mocked.mock.restore(); syncBuiltinESMExports() })
 }
 
+test('an intent is recorded only after both source stops and a verified copy', async t => {
+  const { base, source, target } = await fixture()
+  t.after(() => rm(base, { recursive: true, force: true }))
+  const options = { sourceRoot: source, targetRoot: target, intentId: 'synthetic-intent', sourceVersion: '0.4.13' }
+  let inspections = 0
+  await assert.rejects(run(options, { listProcesses: async () => ++inspections === 1 ? [] : [{ pid: 7, name: 'Host' }] }), /仍在运行/)
+  await assert.rejects(lstat(target), { code: 'ENOENT' })
+  const receipt = await run(options)
+  assert.equal(receipt.intentId, options.intentId)
+  assert.deepEqual(JSON.parse(await readFile(join(target, '.eduwork-migration.json'), 'utf8')), receipt)
+  await assert.rejects(run({ ...options, intentId: 'different-intent' }), /目标用户目录已有数据/)
+})
+
 test('projectKey matches the runtime encoding observed in the shipped sample', () => {
   assert.equal(sessionProjectKey('D:\\Workspace\\EduWork\\wm13\\EduWork\\sample-workspace-internal'), '--D-Workspace-EduWork-wm13-EduWork-sample-workspace-internal--')
   assert.equal(sessionProjectKey('C:\\Users\\测试\\proj'), '--C-Users-~6D4B~8BD5-proj--')

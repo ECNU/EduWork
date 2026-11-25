@@ -213,7 +213,7 @@ async function main() {
   // profile and the Host; cancelling quits without creating the target.
   const firstRunAction = await resolveInstalledFirstRun()
   if (firstRunAction === 'cancel') { app.quit(); return }
-  if (firstRunAction === 'imported' || firstRunAction === 'fresh') {
+  if (firstRunAction === 'imported' || firstRunAction === 'fresh' || firstRunAction === 'relaunch') {
     // The choice settled while activation was deferred, so Chromium bound os_crypt
     // to the default profile. Relaunch so the next process activates immediately
     // and the browser profile (credential key included) binds to the chosen target.
