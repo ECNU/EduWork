@@ -14,7 +14,8 @@ import (
 	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/installguard"
 )
 
-var errMissingInstallationManifest = errors.New("此目录不是可识别的 EduWork 安装目录，请选择其他位置")
+// ErrMissingInstallationManifest indicates that an existing directory has no release manifest.
+var ErrMissingInstallationManifest = errors.New("此目录不是可识别的 EduWork 安装目录，请选择其他位置")
 
 // ExistingInstallation only recognizes the same Electron product and edition.
 func ExistingInstallation(target string, id Identity) (string, error) {
@@ -34,7 +35,7 @@ func ExistingInstallation(target string, id Identity) (string, error) {
 	}
 	defer root.Close()
 	m, err := installedManifest(root, id)
-	if errors.Is(err, errMissingInstallationManifest) {
+	if errors.Is(err, ErrMissingInstallationManifest) {
 		return "", fmt.Errorf("目标目录已存在，请检查安装路径：\n%s", target)
 	}
 	if err != nil {
@@ -46,7 +47,7 @@ func installedManifest(root *os.Root, id Identity) (Manifest, error) {
 	var m Manifest
 	f, err := root.Open("RELEASE-MANIFEST.json")
 	if errors.Is(err, os.ErrNotExist) {
-		return m, errMissingInstallationManifest
+		return m, ErrMissingInstallationManifest
 	}
 	if err != nil {
 		return m, fmt.Errorf("无法打开已有应用的安装清单：%w", err)

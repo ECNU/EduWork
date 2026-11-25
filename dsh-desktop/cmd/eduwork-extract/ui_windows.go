@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,6 +16,8 @@ import (
 	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/portable"
 	"golang.org/x/sys/windows"
 )
+
+const retryInstallHint = "调整安装选项后可重新尝试。"
 
 var user = windows.NewLazySystemDLL("user32.dll")
 var gdi = windows.NewLazySystemDLL("gdi32.dll")
@@ -309,6 +312,9 @@ func tick() {
 				showFeedback("error", "安装已取消", "可以重新选择安装位置后再试。")
 			} else {
 				showFeedback("error", "安装未完成", r.err.Error())
+				if errors.Is(r.err, portable.ErrMissingInstallationManifest) {
+					text(feedbackHint, retryInstallHint+"\r\n或检查原EduWork安装完整性，若未完全卸载请完全卸载后重试。")
+				}
 			}
 			return
 		}
@@ -584,7 +590,7 @@ func showFeedback(mode, title, detail string) {
 		text(feedbackHint, "先尝试正常退出，未退出的进程将强制结束；未保存内容可能丢失。更新进行中请等待完成。")
 	}
 	if mode == "error" {
-		text(feedbackHint, "调整安装选项后可重新尝试。")
+		text(feedbackHint, retryInstallHint)
 	}
 	layoutPage()
 }
