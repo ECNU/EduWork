@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-25T13:17:13.137Z",
-  "fileSetSHA256": "75c8efcb7c5c977e990cb692ede5948aa17c47eab8a47a2abb403e9ebc27499a",
+  "createdAt": "2026-11-25T14:43:19.943Z",
+  "fileSetSHA256": "9f4d3b05989bc8d9624f653a8ee45d77875a2d125174610d9b5aa277e878f787",
   "files": [
     {
       "path": ".gitattributes",
@@ -7517,11 +7517,11 @@
     },
     {
       "path": "README_EN.md",
-      "sha256": "8f2a3f3b97df850cf4cc6b80f94ae0783edaca1eb4d50dcb050a0cf2984dabcb"
+      "sha256": "9dff6e9917282de79720e06b04a8df479deabcea9f97c8a5488f91be6971b0df"
     },
     {
       "path": "README.md",
-      "sha256": "88b7c782e42eb32133becc50c033f856be2cb65b871ae8d3d2b925d27e802809"
+      "sha256": "e1e3faf7163abb78c3d6579162187e2668c3c7bfc1f631edaa00d93212d2f4b6"
     },
     {
       "path": "RELEASE-CHECKLIST_EN.md",
@@ -9129,11 +9129,11 @@
     },
     {
       "path": "website/index.html",
-      "sha256": "d81807a14f4d671ad4b385762abc22969e1576b1593187e7bacf46d865a37846"
+      "sha256": "36197f8c1f024e8908e1c0145e138c7b8af1c3835a3dc4d8b9f9190fcad67eea"
     },
     {
       "path": "website/language.js",
-      "sha256": "042f1f0b38697f7656f2dc576e2a77544e42b1d06a1ba9cdd34a8b13ed06dde3"
+      "sha256": "3ba94802cf746b988c883521af6038a95ea1c492b67802b228692829e4fe2431"
     },
     {
       "path": "website/project.css",

@@ -12,11 +12,13 @@
 
 [简体中文](README.md) | **English**
 
-[Website](https://ecnu.github.io/EduWork/?lang=en) · [Bundled plugins](#bundled-plugins) · [Installation & use](#installation-and-use) · [Documentation](#documentation) · [Roadmap discussion](https://github.com/ECNU/EduWork/issues/95)
+[Website](https://ecnu.github.io/EduWork/?lang=en) · [Bundled plugins](#bundled-plugins) · [Installation & use](#installation-and-use) · [Data & privacy](#data-and-privacy) · [Documentation](#documentation) · [Roadmap discussion](https://github.com/ECNU/EduWork/issues/95)
 
 </div>
 
 EduWork builds on [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness), combining plugins, skills and a desktop environment for teaching, research and office work. Chat, create and learn with local materials, using your own model service or a compatible school or organization account.
+
+**The public edition disables DSH's extra session-log uploads, product interaction and device analytics, plugin inventory reports, and official session-feedback uploads.** Normal model and tool calls still send task data to the services you choose. See [data and privacy](#data-and-privacy).
 
 ![EduWork workspace: conversations, materials and artifact previews](docs/images/workspace.png)
 
@@ -114,7 +116,18 @@ Contribute code, plugins, skills, documentation or practical experience. [Contri
 
 ## Data and privacy
 
-Conversations, workspace references and memories are managed locally. Remote models, search and media services receive the content needed for a task; their data policies apply. When moving to another computer, copy workspace files outside the client directory separately. For troubleshooting, export a diagnostic ZIP or session log as described in the [user guide](docs/USER_GUIDE.md). Screenshots use demo materials.
+Conversations, workspace references and memories are managed locally. The public distribution disables the following DSH reporting capabilities through its [distribution policy](dsh-host/distribution-policy.mjs). The policy applies at startup and on configuration reload, with no separate opt-out required:
+
+| Reporting capability | Public edition policy |
+| --- | --- |
+| Extra session logs | Disables session-log uploads attached to native DeepSeek model requests. |
+| Product interaction and device analytics | Disables official product behavior and device analytics reporting. |
+| Plugin inventory | Disables reports of plugin package names and versions. |
+| Official session feedback | Disables official feedback entry points and their session-context upload channel. |
+
+**Normal service calls still use the network.** Remote models, search, mail, media and other online tools receive the data needed for the task. Model adapters may still send request identifiers used by the selected protocol; this policy does not change normal API requests or guarantee anonymity. The selected service's data policies apply. Review the behavior of any plugins you add or distribution changes you make.
+
+**You decide whether to share diagnostic files.** Exporting a diagnostic ZIP or session log does not automatically submit it to maintainers. Session logs may contain conversations and tool results, so review them before sharing; see the [user guide](docs/USER_GUIDE.md#故障诊断). When moving to another computer, copy workspace files outside the client directory separately. Screenshots use demo materials.
 
 <a id="acknowledgments-and-license"></a>
 
