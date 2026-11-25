@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-26T05:20:32.988Z",
-  "fileSetSHA256": "34b9e4a52ca7bbed8a2e53c18e9ad5a894530b28d62557f47612d6a236226a8a",
+  "createdAt": "2026-11-26T05:22:07.653Z",
+  "fileSetSHA256": "1068708d3a66bb2eb38cd87e98f30605077a42ffc7004d1251f85088fb82db20",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "3e2dc3026ba935a62c322a735474148d1cc903eaf6f6de858029a86858cb5239"
+      "sha256": "4ad38d8ef705084bbcd722012fa3b4ab147866c9e7694ae3edea1bd0f5b7c0bc"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -2145,7 +2145,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/read-act.js",
-      "sha256": "d04cdeb6a45872430511aba74ec2928940e1a0e0bced47476188b9e1b62643dc"
+      "sha256": "9b908a2e4eda1bfd348171bb48b968a9dd65a07b6afb456548cdf6de58475b6a"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/sidebar-client.js",
@@ -2181,7 +2181,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "60ed7f9a995e5d699840354fcc68e9a80cef22a4526d723ae6dea3c21a71c5eb"
+      "sha256": "42706e7f0b8b5f8d8cd7707f9d7e838f294d92b74e5734f78ed887f6f2d80749"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/sidebar.test.mjs",
@@ -9320,7 +9320,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "60ed7f9a995e5d699840354fcc68e9a80cef22a4526d723ae6dea3c21a71c5eb",
+      "sha256": "42706e7f0b8b5f8d8cd7707f9d7e838f294d92b74e5734f78ed887f6f2d80749",
       "kind": "synthetic-network-classification-test",
       "reason": "The private URLs are synthetic addresses in a browser approval classification test: entering a private network from another site asks, links within it do not. They are not configured service endpoints. Keys and all other private content are still audited."
     }
