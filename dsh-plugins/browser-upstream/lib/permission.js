@@ -1,6 +1,6 @@
 import { basename } from 'node:path'
 import { isPrivateTarget, normalizeURL } from '@chatecnu-work/dsh-tool-browser/core'
-import { LOOKS, QUIET, callFor, covered, elementOf, pageOf } from './read-act.js'
+import { LOOKS, QUIET, callFor, covered, elementOf, pageOf, websitePageOf } from './read-act.js'
 
 const prefix = 'mcp__playwright-mcp__'
 const access = (ctx, exec) => exec.agent && ctx.sandboxPolicy.resolve({ session: exec.agent.session }).mode
@@ -80,6 +80,14 @@ const ask = questions => {
   return { kind: 'ask', reason, displayReason: { en: reason, zh: `允许智能体${questions.map(q => q[1]).join('；')}` } }
 }
 
+// What browser_clear_data clears: the workspace's browser data is shared by its conversations.
+const clearing = {
+  site: host => [`clear the data of ${host}'s website in this workspace's Sidebar browser: sign-ins, cookies, site storage and cache. It is signed out in the workspace's other conversations too, and its open pages reload`,
+    `清除侧边栏浏览器里 ${host} 所在网站在本工作区的数据：登录状态、Cookie、网站存储和缓存。同一工作区其他对话里的这个网站也会退出登录，打开着的这个网站的网页会重新加载`],
+  workspace: ['clear all data of this workspace\'s Sidebar browser: sign-ins, cookies, site storage and cache of every website. They are signed out in the workspace\'s other conversations too, and its open pages reload',
+    '清除侧边栏浏览器在本工作区的所有数据：所有网站的登录状态、Cookie、网站存储和缓存。同一工作区其他对话里的网站也会退出登录，打开着的网页会重新加载'],
+}
+
 // browser_act's steps, as the Agent's request for confirmation lists them.
 const listed = {
   click: (_a, element) => [`click ${en(element?.name)}`, `点击${zh(element?.name)}`],
@@ -114,6 +122,12 @@ export function browserPermission(ctx, exec, next) {
     if (exec.name === 'browser_act' && args.confirm !== undefined) return confirmation(args.confirm, acts.map(([action, element]) => listed[action.do]?.(action, element)).filter(Boolean), questions)
     if (mode === 'danger-full-access') return next()
     return questions.length ? ask(questions) : next()
+  }
+  if (exec.name === 'browser_clear_data') {
+    // Without a website's page read, the tool itself says to read one first (clear-data.js).
+    const host = websitePageOf(exec.agent)?.hostname
+    if (mode === 'danger-full-access' || exec.arguments?.scope === 'site' && host === undefined) return next()
+    return ask([exec.arguments?.scope === 'site' ? clearing.site(host) : clearing.workspace])
   }
   if (!exec.name.startsWith(prefix)) return next()
   const denial = browserGuard(ctx, exec)

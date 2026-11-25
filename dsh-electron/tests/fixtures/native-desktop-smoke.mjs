@@ -17,6 +17,7 @@ import { DesktopFatalRecovery } from 'fixture-recovery'
 import { resolveDesktopLocale } from 'fixture-locale'
 import { installMicrophonePermissions } from 'fixture-permissions'
 import { removeWindowMenu } from 'fixture-menu'
+import { createSidebarBrowser } from 'fixture-sidebar-browser'
 const output = process.env.EDUWORK_PROBE_OUTPUT, results = [], limitations = []
 app.setPath('userData', join(output, 'browser-data'))
 protocol.registerSchemesAsPrivileged([{ scheme: 'dsh-app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }])
@@ -90,7 +91,7 @@ app.whenReady().then(async () => {
       await mainWindow.webContents.executeJavaScript("window.dispatchEvent(new Event('eduwork:open-updates'));")
     },
     updates: updateObserver, pickDirectory: signal => picker.pick(signal),
-    bootBrand: () => bootBrand, sidebarBrowser: { byAgent: () => false } })
+    bootBrand: () => bootBrand, sidebarBrowser: createSidebarBrowser({ getWindow: () => mainWindow }) })
   const visibilityRoles = () => Menu.getApplicationMenu().items[0].submenu.items
     .map(item => item.role).filter(role => ['hide', 'hideothers', 'unhide'].includes(role))
   const expectedVisibilityRoles = process.platform === 'darwin' ? ['hide', 'hideothers', 'unhide'] : []
@@ -486,10 +487,18 @@ app.whenReady().then(async () => {
     guest.debugger.detach()
     await until(() => menus.length > 0)
   } finally { Menu.prototype.popup = popup }
-  assert.deepEqual(menus, [['后退', '前进', '刷新']])
+  assert.deepEqual(menus, [['后退', '前进', '刷新', '', '清除此网站的数据…']])
   await evaluate(`__DSH_LOCALE__.onChange('en')`)
   await until(() => bridge.locale().id.startsWith('en'))
   results.push('the user\'s right click on a leased guest opens the desktop bridge\'s page menu in the application language')
+  // Clearing from settings reaches the workspace partitions DSH reserves, as the desktop bridge sees them reserved.
+  await guest.executeJavaScript(`document.cookie = 'kept=1'`)
+  assert.deepEqual((await guest.session.cookies.get({})).map(cookie => cookie.name), ['kept'])
+  const showMessageBox = dialog.showMessageBox
+  dialog.showMessageBox = async () => ({ response: 0 })
+  try { assert.equal(await evaluate('eduworkSidebarBrowser.clearData()'), true) } finally { dialog.showMessageBox = showMessageBox }
+  assert.deepEqual(await guest.session.cookies.get({}), [])
+  results.push('clearing the Sidebar browser data from settings clears a workspace partition DSH reserved, through the desktop bridge')
   // The Sidebar reports any rejected load as a failed page.
   const load = url => evaluate(`fixtureGuest.loadURL(${JSON.stringify(url)}).then(() => 'ended', () => 'failed')`)
   const stalled = load(`${protectedURL}stalled`)

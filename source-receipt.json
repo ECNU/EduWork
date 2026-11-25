@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-26T05:22:07.653Z",
-  "fileSetSHA256": "1068708d3a66bb2eb38cd87e98f30605077a42ffc7004d1251f85088fb82db20",
+  "createdAt": "2026-11-26T05:22:08.296Z",
+  "fileSetSHA256": "b0e7dc6504ecf9edb4907206bb86d755ea4e3946dc8be99cc42a822adeec8879",
   "files": [
     {
       "path": ".gitattributes",
@@ -1017,7 +1017,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "e55b804090c8a1a1289556b239d599dd85cf588e66a9f0b79cc039a2336789a1"
+      "sha256": "f5ddedb17fe5c3f0e44c8c4e8cd9ffc39c295af7a6b526a4ccfa9bc4c5429692"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1049,7 +1049,7 @@
     },
     {
       "path": "dsh-electron/scripts/probe-native-desktop.mjs",
-      "sha256": "e2117cd5dbd72b205fc1b02a8450228e6ed6f5ae2568c5ea86a151e3ab0419e6"
+      "sha256": "b52357a76aff7497b5b9692ed627531c5729e867dcd81bb75c6762688e0e1616"
     },
     {
       "path": "dsh-electron/scripts/relocate-macos-compositor.mjs",
@@ -1193,7 +1193,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "6be8081d4e96aba85906d33661f0d37255a14638eaf157c9b99d1d3e2d554c4e"
+      "sha256": "5b89239ee57ab92cfd0bea86bb0d0ad833201278ac98cd05a35bd861f476fcd9"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
@@ -1240,16 +1240,20 @@
       "sha256": "31dad8de173950b751b9a3c80b9b3aa355d6ff3614917a148fb553b31e132381"
     },
     {
+      "path": "dsh-electron/src/sidebar-browser-data.mjs",
+      "sha256": "22cc6fcad0747a61521a88b75872ad61a9653c5c60aa0fc1b8b899239c9ac0aa"
+    },
+    {
       "path": "dsh-electron/src/sidebar-browser-menu.mjs",
-      "sha256": "3e102f6e600cf7a0de7fda0f94da02f19b46079649de39196584b9b8076d6003"
+      "sha256": "20424a28c169df1cc1685a747645fe5f57d6e37d4e6aa0e0dac194b1170b6a71"
     },
     {
       "path": "dsh-electron/src/sidebar-browser-preload.cjs",
-      "sha256": "b82a5ac3a7cff626f623c978c6319ed0f605eb04f7f50efab4eccfaf5e438dca"
+      "sha256": "66cd262f13fffde0cd842da9c185dd5f2dda3ac10d25f103f14f3e5ea59ebe36"
     },
     {
       "path": "dsh-electron/src/sidebar-browser.mjs",
-      "sha256": "633c4e3c08609dc50a18a573ecb307b8a0fb18c679f59478df6cebb056fce11b"
+      "sha256": "12950958cc8c3d599419684558854d0c018149dbced4ede681ec92fc2f753c14"
     },
     {
       "path": "dsh-electron/src/software-update-control.mjs",
@@ -1405,7 +1409,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "b6b778767829fa9cfbfeb4f0982c8b972dbc75c47356072ffde5d210773437d9"
+      "sha256": "1af782d7068c3ff7915664e79a33b9971766f3efc9aace892185a66340a8bae6"
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.html",
@@ -1413,7 +1417,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.mjs",
-      "sha256": "ccb3f9f0e26c0d2dd138f50013677bf6bdf1c84306bb31fbc675345c08ab827c"
+      "sha256": "eb5305c00b0fb0e2785977fd0d9e4bc456f9b96933243bb81b15cca5e6cacbda"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1437,7 +1441,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "33e997286e26312aa6c639925b3c34ece7e25d2f8912e51641e10515ff7f9775"
+      "sha256": "3191491d1b898e56322903bba64360fe0c26903aa1258049c69d7853caa94c23"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1501,7 +1505,7 @@
     },
     {
       "path": "dsh-electron/tests/sidebar-browser.test.mjs",
-      "sha256": "5ef5710ed80c5208e5af01f5517ab0dd21b8c7d9c6e71c7be72b5f94b38f6380"
+      "sha256": "15dcd9f1907d0fcc82381e22cf344fe0f7612928c2fcae1682dcf2679a4cc3f0"
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",
@@ -2128,12 +2132,16 @@
       "sha256": "261cddd97ab1605a853fe4d06877ae8ddc6890eb08858abf61fc3cb56e73e0df"
     },
     {
+      "path": "dsh-plugins/browser-upstream/lib/clear-data.js",
+      "sha256": "210f6ca02882273ea7d697f1b366f28b3b8a415781bc8bc6aa17be8705607085"
+    },
+    {
       "path": "dsh-plugins/browser-upstream/lib/config.js",
       "sha256": "0ceee8216bf5b254c93d892cb77962438ba2adfd6ca8513e97b84b2999776e23"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/index.js",
-      "sha256": "05832d38a37b3a812790bf3fc936db327456c2f49682bd35854b5ef59fada5fb"
+      "sha256": "2bf1a5432732fa35c7124d07a05976edaf3b5810961f1caca1155578930206f3"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/page.js",
@@ -2141,11 +2149,11 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/permission.js",
-      "sha256": "38e07f3bf565969d56475b880005c12e67e42e3494d1a193200816de9d850e31"
+      "sha256": "3e8aaf52c05d6227834fc9b1ac36fa76e8a3ab510589a50880b136ea0d47d480"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/read-act.js",
-      "sha256": "9b908a2e4eda1bfd348171bb48b968a9dd65a07b6afb456548cdf6de58475b6a"
+      "sha256": "13a2934128b5dcb7dc8eba7d72c90ebfce0b40ba8279f4c919e82dce41a688cc"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/sidebar-client.js",
@@ -2157,19 +2165,19 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/package.json",
-      "sha256": "da253c78121ebe76d74ac0ee68e3f325324888cbfb3557195b6a1fe02bb316e1"
+      "sha256": "c44d3e2cb8008de189326fd238d0119fe57c59af0af4f096018a67cdc6ec672d"
     },
     {
       "path": "dsh-plugins/browser-upstream/README_EN.md",
-      "sha256": "925c4726b474088f0b3d8ff50b9e570261c71d9cd76f1ed8a9694bf92aa05e7c"
+      "sha256": "5b59144cab2cccfef7527aaf325c5976406d49f9515a8eaf0895960792f12db6"
     },
     {
       "path": "dsh-plugins/browser-upstream/README.md",
-      "sha256": "f30bf7fa24a4b919104666e3646dbb8566ef99c9b5a519a0946636f4e3e42308"
+      "sha256": "201ecbe59905cd362f9ebeb90cd2031e53386cfa5b74b9d5fec0d0bff129e75a"
     },
     {
       "path": "dsh-plugins/browser-upstream/src/client.ts",
-      "sha256": "ee8e6952badfb150b05d92de452c4c525c8cdc8dfaa26492f4e232c609f51642"
+      "sha256": "10a0287000b12557a16ad57ece51bbb7b75246989d5169f316b501d4b41adf61"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/page.test.mjs",
@@ -2181,7 +2189,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "42706e7f0b8b5f8d8cd7707f9d7e838f294d92b74e5734f78ed887f6f2d80749"
+      "sha256": "6dea269830a5a4b19e67b3c5500d754da8a7295428ca728d3ae611df60064709"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/sidebar.test.mjs",
@@ -9320,7 +9328,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "42706e7f0b8b5f8d8cd7707f9d7e838f294d92b74e5734f78ed887f6f2d80749",
+      "sha256": "6dea269830a5a4b19e67b3c5500d754da8a7295428ca728d3ae611df60064709",
       "kind": "synthetic-network-classification-test",
       "reason": "The private URLs are synthetic addresses in a browser approval classification test: entering a private network from another site asks, links within it do not. They are not configured service endpoints. Keys and all other private content are still audited."
     }
