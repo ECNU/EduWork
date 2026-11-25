@@ -20,7 +20,7 @@ import { redactDiagnostic } from './diagnostics.mjs'
 import { startupDiagnostic } from './startup-failure.mjs'
 import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
-import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
+import { configureEduworkPaths, activateEduworkPaths, resolveInstalledFirstRun, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
   showDesktopFailure, prepareDesktopRecovery, cancelDesktopStartup, isShutdownFailed, recordStartupStopFailureHealth, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand, desktopStartupHint,
   showHostStartupProgress, readInitialCloseAction, productUpdateObserver } from './product.mjs'
@@ -42,16 +42,30 @@ const backend = new DesktopBackendController(onFailure => new DesktopHostProcess
   { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure, environment: hostEnvironment }), state => {
   if (state.phase === 'error' && !isQuitting()) reportWindowFailure(state.failure, hostStarting ? 'host' : 'main')
 })
-async function closeBackend() {
+async function closeBackend(requireGraceful = false) {
   // Cancel shell preparation before the controller waits for startup to settle.
   loginShellRead.abort()
   // A drag cleanup failure must not leave the Host running during quit/restart.
+  if (requireGraceful) {
+    await bridge?.disposeFileDrags()
+    const host = backend.host
+    if (!host) throw new Error('Desktop Host task state is unavailable')
+    try { await host.stop(true) }
+    catch (error) { await backend.close().catch(() => {}); throw error }
+    await backend.close()
+    return
+  }
   await Promise.all([bridge?.disposeFileDrags(), backend.close()])
 }
-trackHost({ stop: closeBackend })
+trackHost({ stop: closeBackend, updateTasks: action => {
+  const host = backend.host
+  if (!host) return Promise.reject(new Error('Desktop Host task state is unavailable'))
+  return host.updateTasks(action)
+} })
 const quit = new DesktopQuitConfirmation({ locale, inspect: () => backend.host?.inspectQuit(),
   show: options => dialog.showMessageBox(options), focus: () => { if (process.platform === 'darwin') app.focus({ steal: true }) } })
-setDesktopQuitGuard(() => recoveryExit || sessionEnding ? Promise.resolve(true) : quit.confirm())
+setDesktopQuitGuard(() => recoveryExit || sessionEnding ? Promise.resolve(true) : quit.confirm(),
+  error => reportWindowFailure(error, 'host'))
 const recovery = new DesktopFatalRecovery({
   messages: () => locale().messages,
   show: options => dialog.showMessageBox(options),
@@ -193,7 +207,21 @@ async function handleStartupFailure(error, source = 'main') {
 }
 async function main() {
   if (await installEduworkFromDmg() || isQuitting()) return
+  // Lock stays in default userData: an early redirect would let Chromium bootstrap write the target before the choice.
   if (!claimDesktopSingleInstance(app, showDesktop)) return
+  // The installed first-run data choice precedes any target write, the browser
+  // profile and the Host; cancelling quits without creating the target.
+  const firstRunAction = await resolveInstalledFirstRun()
+  if (firstRunAction === 'cancel') { app.quit(); return }
+  if (firstRunAction === 'imported' || firstRunAction === 'fresh') {
+    // The choice settled while activation was deferred, so Chromium bound os_crypt
+    // to the default profile. Relaunch so the next process activates immediately
+    // and the browser profile (credential key included) binds to the chosen target.
+    app.relaunch()
+    app.quit()
+    return
+  }
+  activateEduworkPaths()
   // The early BootPage must obey the local close policy before preparation reads it.
   readInitialCloseAction()
   void pruneCrashReports(app.getPath('logs')).catch(() => {})

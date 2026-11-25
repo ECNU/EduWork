@@ -1,0 +1,8 @@
+{
+  "name": "eduwork-windows-installer-build",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "electron-builder": "26.17.0"
+  }
+}

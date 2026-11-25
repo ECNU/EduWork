@@ -16,6 +16,10 @@ on:
         description: 'Build a development artifact without release notes or publication (Node only)'
         type: boolean
         default: false
+      windows_installer:
+        description: 'Build and accept the standard Windows installer into the release (public EduWork Node releases only)'
+        type: boolean
+        default: false
       release_notes:
         description: 'Approved docs/releases/<version>.md file (release candidate only)'
         required: false
@@ -59,6 +63,7 @@ jobs:
         env:
           BUILD_MODE: ${{ inputs.build_mode }}
           DEVELOPMENT_BUILD: ${{ inputs.development }}
+          WINDOWS_INSTALLER: ${{ inputs.windows_installer }}
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
@@ -78,6 +83,9 @@ jobs:
             [[ "$RELEASE_NOTES_APPROVED" == true ]]
             [[ "$RELEASE_NOTES" == "docs/releases/$RELEASE_VERSION.md" ]]
             [[ -s "core/$RELEASE_NOTES" ]]
+          fi
+          if [[ "$WINDOWS_INSTALLER" == true ]]; then
+            [[ "$BUILD_MODE" == node ]]
           fi
           if [[ "$PUBLISH_RELEASE" == true ]]; then
             [[ "$GITHUB_REF" == refs/heads/main ]]
@@ -139,6 +147,7 @@ jobs:
         shell: bash
         env:
           DEVELOPMENT_BUILD: ${{ inputs.development }}
+          WINDOWS_INSTALLER: ${{ inputs.windows_installer }}
           RELEASE_VERSION: ${{ needs.policy.outputs.version }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
@@ -153,6 +162,7 @@ jobs:
           if [[ "$DEVELOPMENT_BUILD" == true ]]; then
             args+=(--development)
           else
+            if [[ "$WINDOWS_INSTALLER" == true ]]; then args+=(--windows-installer); fi
             args+=(--release-notes-file "$RELEASE_NOTES")
             if [[ "$RELEASE_NOTES_APPROVED" == true ]]; then args+=(--release-notes-approved); fi
             args+=(--delta-bases "$RUNNER_TEMP/delta-bases")

@@ -168,6 +168,8 @@ try {
  await page.screenshot({path:join(evidence,'software-enabled.png')})
  nativeDetails={busy:true};await page.reload();await software.waitFor();assert.equal(await software.isDisabled(),true)
  nativeDetails={installOnQuit:true};await page.reload();await software.waitFor();assert.equal(await software.isDisabled(),true)
+ shell='wails';state='ready';nativeDetails={canSchedule:false};await page.reload()
+ assert.equal(await page.getByRole('button',{name:'下次启动时安装',exact:true}).count(),0)
  assert.ok(actions.includes('disable-software-updates')&&actions.includes('enable-software-updates'))
  // Native Electron carrier: software reminders belong to the official
  // indicator/badge; the footer only carries configuration/Skills content.

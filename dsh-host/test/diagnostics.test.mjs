@@ -70,6 +70,19 @@ test('diagnostics survives broken configuration, oversized logs and redirected d
   await writeFile(join(outside,'package.json'),JSON.stringify({version:'sensitive-test'}))
   assert.doesNotMatch([...unzip((await exportDiagnostics(args)).archive).values()].join('\n'),/sensitive-test/)
 })
+test('diagnostics reads update preferences from the installed user data root',async t=>{
+  const args=await fixture(t)
+  const userRoot=await mkdtemp(join(tmpdir(),'eduwork-installed-user-'))
+  t.after(()=>rm(userRoot,{recursive:true,force:true}))
+  await mkdir(join(userRoot,'state'),{recursive:true})
+  await writeFile(join(userRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy:'development',source:'user'}))
+  await mkdir(join(args.root,'data/state'),{recursive:true})
+  await writeFile(join(args.root,'data/state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy:'stable',source:'legacy-program'}))
+  const installed=unzip((await exportDiagnostics({...args,updateDataRoot:userRoot})).archive)
+  assert.equal(JSON.parse(installed.get('metadata/update-preferences.json')).policy,'development')
+  const portable=unzip((await exportDiagnostics(args)).archive)
+  assert.equal(JSON.parse(portable.get('metadata/update-preferences.json')).policy,'stable')
+})
 test('log redaction handles header, multiline JSON, callback URL, JWT and UTF-8 paths',()=>{
   const text='Authorization: Bearer abc-example\n"refresh_token": "def-example",\nhttps://id.example/cb?code=code-example&state=state-example\nBearer xyz-example\n'+JSON.stringify({message:'invalid_request_error',messages:[{content:'private text'}],api_key:'key-example'})+'\nC:\\Users\\Test\\项目\\app.js'
   const result=redactDiagnostic(text,{PROGRAM:'C:\\Users\\Test\\项目'})

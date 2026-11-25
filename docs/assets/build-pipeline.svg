@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="2722" height="994" viewBox="0 0 2722 994" role="img" aria-label="EduWork 双平台桌面构建流程">
+<svg xmlns="http://www.w3.org/2000/svg" width="3024" height="994" viewBox="0 0 3024 994" role="img" aria-label="EduWork 双平台桌面构建流程">
 <style>
   .t{font:600 16px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Segoe UI",sans-serif;fill:#1f2328}
   .s{font:400 12px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Segoe UI",sans-serif;fill:#59636e}
   .h{font:600 17px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Segoe UI",sans-serif;fill:#1f2328}
   .p{font:400 11px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#8c959f}
 </style>
-<rect width="2722" height="994" fill="#ffffff"/>
-<rect x="31" y="18" width="2660" height="58" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+<rect width="3024" height="994" fill="#ffffff"/>
+<rect x="31" y="18" width="2962" height="58" rx="8" fill="#ffffff" stroke="#d0d7de"/>
 <circle cx="47" cy="41" r="5" fill="#1f883d"/>
 <text class="h" x="62" y="46">EduWork 双平台桌面构建流程</text>
 <text class="s" x="47" y="65">Windows x64 与 macOS arm64 / x64 共用主流程；蓝色步骤仅在 macOS 执行</text>
@@ -27,7 +27,9 @@
 <path d="M862 862 C937 862 1181 602 1256 602" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
 <path d="M1361 654 C1361 664 1361 670 1361 680" fill="none" stroke="#0969da" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ahm)"/>
 <path d="M2070 472 C2111.4 472 2120.6 472 2162 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
-<path d="M2372 472 C2413.4 472 2422.6 472 2464 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
+<path d="M2372 472 C2447 472 2691 472 2766 472" fill="none" stroke="#0969da" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ahm)"/>
+<path d="M2372 472 C2413.4 472 2422.6 602 2464 602" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
+<path d="M2674 602 C2715.4 602 2724.6 472 2766 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
 <path d="M1164 212 C1463.52 212 1488.48 472 1788 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round"/>
 <path d="M862 732 C1306.48 732 1343.52 472 1788 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round"/>
 <path d="M1466 732 C1620.56 732 1633.44 472 1788 472" fill="none" stroke="url(#macJoin)" stroke-width="1.7" stroke-linecap="round"/>
@@ -114,9 +116,14 @@
 <text class="s" x="2177" y="475">检查打包后的启动</text>
 <text class="p" x="2177" y="502">accept</text>
 </g>
-<g data-stage="publish"><rect x="2464" y="420" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
-<text class="t" x="2479" y="450">生成交付文件</text>
-<text class="s" x="2479" y="475">整理归档与构建回执</text>
-<text class="p" x="2479" y="502">publish</text>
+<g data-stage="publish"><rect x="2766" y="420" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="2781" y="450">生成交付文件</text>
+<text class="s" x="2781" y="475">整理归档与构建回执</text>
+<text class="p" x="2781" y="502">publish</text>
+</g>
+<g data-stage="installer"><rect x="2464" y="550" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="2479" y="580">验收 Windows 安装器</text>
+<text class="s" x="2479" y="605">公版发行：打包、安装、启动和卸载</text>
+<text class="p" x="2479" y="632">installer</text>
 </g>
 </svg>

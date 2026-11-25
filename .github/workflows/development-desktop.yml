@@ -14,10 +14,25 @@ on:
         default: both
         type: choice
         options: [both, windows, macos, macos-arm64, macos-x64]
+      windows_installed_candidate:
+        description: 'Also assemble a Windows installed-layout migration candidate (artifact only; manual acceptance required)'
+        required: false
+        default: false
+        type: boolean
+      windows_installer_candidate:
+        description: 'Also build a per-user Windows NSIS installer from the installed-layout candidate (artifact only; manual acceptance required)'
+        required: false
+        default: false
+        type: boolean
+      installed_update_url:
+        description: 'Optional HTTPS update source for installed-candidate acceptance; empty uses the public GitHub source'
+        required: false
+        default: ''
+        type: string
 permissions:
   contents: read
 concurrency:
-  group: desktop-apps-${{ github.sha }}-${{ inputs.platform || 'both' }}
+  group: desktop-apps-${{ github.sha }}-${{ inputs.platform || 'both' }}-${{ inputs.windows_installed_candidate || false }}-${{ inputs.windows_installer_candidate || false }}
   cancel-in-progress: false
 jobs:
   version:
@@ -110,6 +125,95 @@ jobs:
           name: ${{ matrix.platform }}-development
           path: ${{ runner.temp }}/ew-development/publish
           compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+      - name: Assemble Windows installed-layout candidate
+        if: matrix.script == 'windows' && (inputs.windows_installed_candidate || inputs.windows_installer_candidate)
+        shell: bash
+        env:
+          INSTALLED_UPDATE_URL: ${{ inputs.installed_update_url }}
+        run: |
+          node core/scripts/assemble-windows-installed-candidate.mjs \
+            --workspace "$RUNNER_TEMP/ew-development" --output "$RUNNER_TEMP/ew-installed" \
+            --installed-update-url "$INSTALLED_UPDATE_URL"
+          cd "$RUNNER_TEMP"
+          # Windows tar.exe cannot write ZIP (-a only selects compression and
+          # silently produced a ustar tar named .zip); the built-in .NET writer
+          # must also normalize separators because CreateFromDirectory emits
+          # backslash entry names, which violate the ZIP spec for POSIX tools.
+          powershell.exe -NoProfile -Command '
+            Add-Type -AssemblyName System.IO.Compression
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $src = (Resolve-Path "ew-installed").Path
+            $dst = Join-Path (Get-Location).Path "windows-installed-candidate.zip"
+            $zip = [System.IO.Compression.ZipFile]::Open($dst, [System.IO.Compression.ZipArchiveMode]::Create)
+            try {
+              Get-ChildItem -LiteralPath $src -Recurse -File -Force | ForEach-Object {
+                $rel = $_.FullName.Substring($src.Length + 1).Replace("\", "/")
+                [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, $rel, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+              }
+            } finally { $zip.Dispose() }
+            $check = [System.IO.Compression.ZipFile]::OpenRead($dst)
+            try {
+              $bad = $check.Entries | Where-Object { $_.FullName.Contains("\") } | Select-Object -First 1
+              $count = $check.Entries.Count
+            } finally { $check.Dispose() }
+            if ($bad) { throw "ZIP entry uses a backslash: $($bad.FullName)" }
+            $expected = (Get-ChildItem -LiteralPath $src -Recurse -File -Force).Count
+            if ($count -ne $expected) { throw "ZIP entry count $count differs from source file count $expected" }
+            Write-Output "ZIP entries: $count"
+          '
+          node -e '
+            const fs = require("fs");
+            const fd = fs.openSync("windows-installed-candidate.zip", "r");
+            const size = fs.fstatSync(fd).size;
+            const head = Buffer.alloc(4); fs.readSync(fd, head, 0, 4, 0);
+            const tail = Buffer.alloc(Math.min(size, 65557)); fs.readSync(fd, tail, 0, tail.length, size - tail.length);
+            fs.closeSync(fd);
+            if (head.readUInt32LE(0) !== 0x04034b50) throw new Error("candidate archive is not ZIP (missing local header)");
+            let eocd = -1; for (let i = tail.length - 22; i >= 0; i--) if (tail.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+            if (eocd < 0) throw new Error("candidate archive is not ZIP (missing end-of-central-directory)");
+            console.log("ZIP format verified, bytes:", size);
+          '
+          sha256sum windows-installed-candidate.zip > windows-installed-candidate.zip.sha256
+      - name: Retain Windows installed-layout candidate
+        if: matrix.script == 'windows' && inputs.windows_installed_candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installed-candidate
+          path: |
+            ${{ runner.temp }}/windows-installed-candidate.zip
+            ${{ runner.temp }}/windows-installed-candidate.zip.sha256
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+      - name: Install the locked electron-builder
+        if: matrix.script == 'windows' && inputs.windows_installer_candidate
+        shell: bash
+        run: npm ci --ignore-scripts --no-audit --no-fund --prefix core/scripts/electron-builder
+      - name: Test installer packaging contracts
+        if: matrix.script == 'windows' && inputs.windows_installer_candidate
+        shell: bash
+        run: node --test core/scripts/test/windows-installer.test.mjs
+      - name: Assemble Windows installer candidate
+        if: matrix.script == 'windows' && inputs.windows_installer_candidate
+        shell: bash
+        run: |
+          node core/scripts/pack-windows-installer.mjs \
+            --candidate "$RUNNER_TEMP/ew-installed/electron-candidate" \
+            --installed-receipt "$RUNNER_TEMP/ew-installed/installed-candidate-receipt.json" \
+            --output "$RUNNER_TEMP/ew-installer" \
+            --upstream "$RUNNER_TEMP/ew-development/upstream" \
+            --electron-builder-cli "$GITHUB_WORKSPACE/core/scripts/electron-builder/node_modules/electron-builder/cli.js" \
+            --icon "$GITHUB_WORKSPACE/core/assets/eduwork/icon.ico"
+      - name: Retain Windows installer candidate
+        if: matrix.script == 'windows' && inputs.windows_installer_candidate
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer-candidate
+          path: |
+            ${{ runner.temp }}/ew-installer/artifacts/*
+            ${{ runner.temp }}/ew-installer/installer-candidate-receipt.json
           retention-days: 7
           if-no-files-found: error
   result:
