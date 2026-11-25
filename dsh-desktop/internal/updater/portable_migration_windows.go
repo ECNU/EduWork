@@ -12,10 +12,12 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -26,6 +28,7 @@ import (
 
 var migrationDistribution = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,99}$`)
 var migrationID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+var migrationCacheEntry = regexp.MustCompile(`^installer-([1-9][0-9]{0,9})-[0-9A-Za-z]{6}$`)
 
 type migrationIdentity struct {
 	SchemaVersion     int    `json:"schemaVersion"`
@@ -215,9 +218,9 @@ func RunPortableMigration(args []string) (result error) {
 	if err := options.Parse(args); err != nil {
 		return err
 	}
-	needIntent := *mode != "redirect" || *intent != ""
+	needIntent := (*mode != "redirect" && *mode != "cleanup") || *intent != ""
 	detached := *mode == "install" || *mode == "redirect"
-	if options.NArg() != 0 || (!detached && *mode != "probe" && *mode != "withdraw") || (!detached && *worker) ||
+	if options.NArg() != 0 || (!detached && *mode != "probe" && *mode != "withdraw" && *mode != "cleanup") || (!detached && *worker) ||
 		!migrationDistribution.MatchString(*distribution) || (needIntent && !migrationID.MatchString(*intent)) ||
 		*parent <= 0 || *parent > 1<<31-1 || os.Getenv("EDUWORK_DESKTOP_TEST_DATA_ROOT") != "" {
 		return errors.New("invalid portable migration arguments")
@@ -247,6 +250,9 @@ func RunPortableMigration(args []string) (result error) {
 	directory := filepath.Join(local, "EduWork")
 	cache := filepath.Join(directory, *distribution+".portable-installers")
 	intentPath := filepath.Join(directory, *distribution+".portable-migration.json")
+	if *mode == "cleanup" {
+		return cleanMigrationInstallerCache(cache, intentPath)
+	}
 	if *mode == "withdraw" {
 		release, err := installguard.Acquire(cache)
 		if err != nil {
@@ -293,6 +299,44 @@ func showMigrationWorkerError(err error) {
 		caption := windows.StringToUTF16Ptr("EduWork 迁移未完成")
 		windows.NewLazySystemDLL("user32.dll").NewProc("MessageBoxW").Call(0, uintptr(unsafe.Pointer(message)), uintptr(unsafe.Pointer(caption)), 0x10)
 	}
+}
+
+func cleanMigrationInstallerCache(cache, intentPath string) error {
+	if err := requireMigrationPath(cache); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	release, err := installguard.Acquire(cache)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if _, err := os.Lstat(intentPath); !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	root, err := os.OpenRoot(cache)
+	if err != nil {
+		return err
+	}
+	defer root.Close()
+	entries, err := fs.ReadDir(root.FS(), ".")
+	if err != nil {
+		return err
+	}
+	var failures error
+	for _, entry := range entries {
+		match := migrationCacheEntry.FindStringSubmatch(entry.Name())
+		if !entry.IsDir() || match == nil || requireMigrationPath(filepath.Join(cache, entry.Name())) != nil {
+			continue
+		}
+		pid, err := strconv.ParseInt(match[1], 10, 32)
+		if err == nil && waitForProcessExit(int(pid), 0) == nil {
+			failures = errors.Join(failures, root.RemoveAll(entry.Name()))
+		}
+	}
+	return failures
 }
 
 func runMigrationInstaller(cache, intentPath, local, root string, desktop migrationIdentity, intentID, installer, algorithm, digest string, bytes int64) error {

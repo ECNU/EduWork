@@ -1,4 +1,6 @@
 import semver from 'semver'
+import { rm } from 'node:fs/promises'
+import { join } from 'node:path'
 import { firstRunPending } from './first-run.mjs'
 import { migrationIntentStore, readPortableMigrationReceipt, sameMigrationPath } from './first-run-migration-intent.mjs'
 import { importPortableData, inspectPortableSource } from './portable-import.mjs'
@@ -23,7 +25,10 @@ export async function resolveInstalledMigration({ targetRoot, version, intent, s
   }
   const decide = async () => {
     const receipt = readPortableMigrationReceipt(targetRoot, { ...intent, intentId: intent.id })
-    if (receipt) return settle(receipt)
+    if (receipt) {
+      await rm(join(targetRoot, '.eduwork-import-progress.json'), { force: true }).catch(() => {})
+      return settle(receipt)
+    }
     if (!await conflict()) return { action: 'cancel' }
     await clear()
     return { action: 'relaunch' }

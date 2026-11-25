@@ -97,15 +97,19 @@ test('a nonempty target created during copy follows the same decision; never mer
   assert.deepEqual(await readdir(targetRoot), ['racer'])
 })
 
-test('activation receipt resumes only the same intent without reading the source or copying again', async t => {
+test('activation receipt resumes only the same intent and removes its interrupted progress marker', async t => {
   const { options, targetRoot, receipt, events } = await fixture(t)
   await mkdir(targetRoot)
+  const progress = join(targetRoot, '.eduwork-import-progress.json')
+  await writeFile(progress, 'synthetic progress')
   await writeFile(join(targetRoot, '.eduwork-migration.json'), JSON.stringify({ ...receipt, intentId: 'older' }))
   assert.equal((await resolveInstalledMigration(options)).action, 'cancel')
+  assert.equal(await readFile(progress, 'utf8'), 'synthetic progress')
   await writeFile(join(targetRoot, '.eduwork-migration.json'), JSON.stringify(receipt))
   const result = await resolveInstalledMigration({ ...options, inspect: () => assert.fail('source not required after activation') })
   assert.deepEqual(result, { action: 'imported', receipt })
   assert.deepEqual(events, ['conflict', ['remove', 'intent']])
+  await assert.rejects(readFile(progress), { code: 'ENOENT' })
 })
 
 test('progress is a labeled native control without a value before copy and after final verification starts', () => {

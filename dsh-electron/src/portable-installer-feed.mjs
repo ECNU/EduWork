@@ -142,7 +142,7 @@ export async function downloadPortableInstaller({ installer, cache, signal, fetc
   signal = signal ? AbortSignal.any([signal, timeout]) : timeout
   signal.throwIfAborted()
   await mkdir(cache, { recursive: true })
-  const directory = await mkdtemp(join(cache, 'installer-'))
+  const directory = await mkdtemp(join(cache, `installer-${process.pid}-`))
   const output = join(directory, installer.fileName), part = `${output}.part`
   try {
     const url = new URL(installer.url)

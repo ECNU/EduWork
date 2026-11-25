@@ -5,7 +5,7 @@
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-25T06:56:00.681Z",
-  "fileSetSHA256": "83fe27141c5f20ebbc9abc374d8360dacdff190c6387c59bae320e6816e44976",
+  "fileSetSHA256": "52f0f85568e4e72b6f2e3426647bd75b2937bb766a7dcf7ad54bfe58dfa5ae7e",
   "files": [
     {
       "path": ".gitattributes",
@@ -881,11 +881,11 @@
     },
     {
       "path": "dsh-desktop/internal/updater/portable_migration_windows_test.go",
-      "sha256": "b414499cf8cf15e8c8e2bfb73af87eaceedb8dd1dafe0d63a392e1df1e9d2af5"
+      "sha256": "de12c3bb0598d2b8241e936c379f95c191b2c895fd0b17f607c27675717933bb"
     },
     {
       "path": "dsh-desktop/internal/updater/portable_migration_windows.go",
-      "sha256": "49edb15f523cfd0c13ec6bd1fff3ac0730491ee7cc73c3a2ec3f7111447d0acf"
+      "sha256": "7831c6fcf90b74b6c08943f76bfb6e8d00e929a3ba06335e074905c0bf7d5cec"
     },
     {
       "path": "dsh-desktop/internal/updater/process_other.go",
@@ -1165,11 +1165,11 @@
     },
     {
       "path": "dsh-electron/src/first-run-migration-intent.mjs",
-      "sha256": "4b0a689f33b1e24f7a4ed46a23643b626fe9ec796d60d26a19201fd5f7ceadba"
+      "sha256": "c0b011837eb2a7b95c79be7c53a46746b4cc1cd06eb680d3d8c474894c958ba0"
     },
     {
       "path": "dsh-electron/src/first-run-migration.mjs",
-      "sha256": "5f8482bcd417e287b168bd9fd04f118eae9699a1aaad9ecec4b7da7683ae305c"
+      "sha256": "f9f8a7bfeb46c07418266ada3fc6b7f7b62992053d51ec0fe00976ef9d0208d5"
     },
     {
       "path": "dsh-electron/src/first-run-progress.mjs",
@@ -1237,15 +1237,15 @@
     },
     {
       "path": "dsh-electron/src/portable-installer-feed.mjs",
-      "sha256": "c4e97310b8c7f8dadc2f4c8e4a67804d44d8c275d5370f0f95686dc345049893"
+      "sha256": "d7aceaf0e54fb2b485f91d4757185a0cca8d371b988e54f7c38e91f1ffb8873d"
     },
     {
       "path": "dsh-electron/src/portable-migrated-redirect.mjs",
-      "sha256": "7f036ea8f1a38c90a4f951a7dba04f33cb10205a8150c0462856b2679a4ee97d"
+      "sha256": "23f4f90b5451bf9272070676703e8ba4b4f4fa1fe39204d4f3000b6094939189"
     },
     {
       "path": "dsh-electron/src/portable-migration-upgrade.mjs",
-      "sha256": "1481756ba4f49bddb0d9c323a0b953f6d8a15d9b55008843cc7d0be9236479b2"
+      "sha256": "e18dba4f1f08183acf2acd5aece05b98657ba48bb21aa85c66b1c303edfc3946"
     },
     {
       "path": "dsh-electron/src/portable-source-hint.mjs",
@@ -1261,7 +1261,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "bdd62657ea4662d818f8e9231c4fefdcb735456bf2db2a4187986240921c170b"
+      "sha256": "d91285a71b49d67323ed4d8ec7a1d5cf9af1d69793247ff4eb1fa20962df5f1f"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1285,7 +1285,7 @@
     },
     {
       "path": "dsh-electron/src/software-update-control.mjs",
-      "sha256": "845702734db12af71ef47565fd244c9bb91b8604f034a9490377e039db000a8e"
+      "sha256": "a088ddeaf22bce435efc1042a16cf808e425b3cd10ddcb26e085324b1c55b52b"
     },
     {
       "path": "dsh-electron/src/software-update-scheduler.mjs",
@@ -1321,7 +1321,7 @@
     },
     {
       "path": "dsh-electron/src/update-coordinator.mjs",
-      "sha256": "8b7f45b037d501f1a2c5bc10a2ba7cfa8e64a4e0182180d517211b60156d2edd"
+      "sha256": "d84bfbc0d2284d032cc7ca41d1ab582e8b8f981f8eb24c5a82ce36b8d47036ea"
     },
     {
       "path": "dsh-electron/src/update-observer.mjs",
@@ -1361,7 +1361,7 @@
     },
     {
       "path": "dsh-electron/tests/content-coordinator.test.mjs",
-      "sha256": "d122a81feacb5660ec0b143edf0eca76ba42d25ad69531d72930e2ba69bd7a46"
+      "sha256": "c95b4dc5cc4179433d31abc9252d301a9fb6c1ab0191b686759afe94126215e5"
     },
     {
       "path": "dsh-electron/tests/create-macos-archive.test.mjs",
@@ -1437,7 +1437,7 @@
     },
     {
       "path": "dsh-electron/tests/first-run-migration.test.mjs",
-      "sha256": "79a128934011c47927d9c74cee3a8eda76668fc4a637bf5b0568d4e7516c50d9"
+      "sha256": "382b8489fc10b92e0b94a821850141e19315eb6f20fd89da086aa53bc2569c2c"
     },
     {
       "path": "dsh-electron/tests/first-run.test.mjs",
@@ -1513,11 +1513,11 @@
     },
     {
       "path": "dsh-electron/tests/portable-installer-feed.test.mjs",
-      "sha256": "9fa8b746f9ad7c672d74fb4a7a162159be7fb3983f86459066e6c544b57e5bab"
+      "sha256": "742a6c827fc7975b7998bbe3444568bd3a72d69058585d22ab44a4891a473e15"
     },
     {
       "path": "dsh-electron/tests/portable-migrated-redirect.test.mjs",
-      "sha256": "e9a904b27cac2d7c28a892e725d3a6a61a14f6316915a5341a606de71077209e"
+      "sha256": "faf0da3d94ad26e6b7b86b04ade8cc6a322e371659ac90bbc174e58c06e25771"
     },
     {
       "path": "dsh-electron/tests/portable-migration-upgrade.test.mjs",
@@ -1557,7 +1557,7 @@
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",
-      "sha256": "245acaf89b6f85941ebac27c4afb2e5490583a90d634623944fca7cb7919b6f7"
+      "sha256": "cb809da0d2e88392ad2aee002a7c885d03829bd4b79af065a687ed260e577b02"
     },
     {
       "path": "dsh-electron/tests/software-update-scheduler.test.mjs",
@@ -7933,7 +7933,7 @@
     },
     {
       "path": "scripts/pack-windows-installer.mjs",
-      "sha256": "9c3353bc689b21e6669256e7c2c25a3805c9636fa471544851f532f0e6e36c59"
+      "sha256": "d34a2ec21966d3a9238cde2904dc3aa503d4cb3d89c8e6e616631dc3f466f605"
     },
     {
       "path": "scripts/pack-windows-release.mjs",
@@ -8293,7 +8293,7 @@
     },
     {
       "path": "scripts/test/windows-installer.test.mjs",
-      "sha256": "88f2f21b8eef7d29fb0978cdc34230a9f27b1bf0e630db8714d0a7939a3e60f0"
+      "sha256": "7fa86f7c71f8cd1aa45ba9f15bacd668ec1abedd0eea8f60e909a2859b5aa095"
     },
     {
       "path": "scripts/test/windows-update-delta.test.mjs",

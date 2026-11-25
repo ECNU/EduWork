@@ -109,4 +109,5 @@ test('download verifies byte count and digest before renaming, and cleans its ow
   assert.deepEqual(await readdir(cache), [])
   const path = await downloadPortableInstaller({ installer, cache, fetch: fixtureFetch({ [installer.url]: bytes }) })
   assert.deepEqual(await readFile(path), bytes)
+  assert.match((await readdir(cache))[0], new RegExp(`^installer-${process.pid}-[a-zA-Z0-9]{6}$`))
 })

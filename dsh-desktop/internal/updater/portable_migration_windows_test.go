@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/installguard"
 	"golang.org/x/sys/windows"
 )
 
@@ -39,6 +40,57 @@ func TestPortableMigrationHandleRejectsDifferentExecutionPath(t *testing.T) {
 	}
 	if err := requireMigrationHandlePath(handle, other); err == nil {
 		t.Fatal("accepts execution path different from the verified handle")
+	}
+}
+
+func TestPortableMigrationCacheKeepsActiveAndUnrecognizedEntries(t *testing.T) {
+	directory, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	cache := filepath.Join(directory, "eduwork.portable-installers")
+	intent := filepath.Join(directory, "eduwork.portable-migration.json")
+	stale := "installer-2147483647-abcdef"
+	active := fmt.Sprintf("installer-%d-abcdef", os.Getpid())
+	for _, name := range []string{stale, active, "installer-legacy", "unrelated"} {
+		entry := filepath.Join(cache, name)
+		if err := os.MkdirAll(entry, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(entry, "synthetic.exe.part"), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	release, err := installguard.Acquire(cache)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cleanMigrationInstallerCache(cache, intent); err == nil {
+		t.Error("cleaned cache without its lease")
+	}
+	release()
+	if err := os.WriteFile(intent, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := cleanMigrationInstallerCache(cache, intent); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(cache, stale)); err != nil {
+		t.Fatal("cleanup touched a pending installer handoff", err)
+	}
+	if err := os.Remove(intent); err != nil {
+		t.Fatal(err)
+	}
+	if err := cleanMigrationInstallerCache(cache, intent); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(cache, stale)); !os.IsNotExist(err) {
+		t.Fatal("stale installer was not removed", err)
+	}
+	for _, name := range []string{active, "installer-legacy", "unrelated"} {
+		if _, err := os.Stat(filepath.Join(cache, name)); err != nil {
+			t.Fatalf("removed unconfirmed entry %s: %v", name, err)
+		}
 	}
 }
 
