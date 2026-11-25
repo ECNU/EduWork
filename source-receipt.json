@@ -5,7 +5,7 @@
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-25T06:56:00.681Z",
-  "fileSetSHA256": "09ea180342b4d1c83bdeb35ecdc9924574f4099eefbc76928ba0e28df69be57c",
+  "fileSetSHA256": "17269fc1be0e269f9f2bc8a339dd59ebd1cb28ca1de65e2f5e99579c4be4db30",
   "files": [
     {
       "path": ".gitattributes",
@@ -3041,7 +3041,7 @@
     },
     {
       "path": "dsh-plugins/desktop-services/lib/index.js",
-      "sha256": "a03038171207dfa2968c8fd37540115b4d6cb9e425d97217ceced5f13efeadaf"
+      "sha256": "098dec6689b10a920bb84d62fb5d63251c1bbaa8942f390c4c69984f25aed061"
     },
     {
       "path": "dsh-plugins/desktop-services/lib/workspace-access.js",
@@ -3489,7 +3489,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/lib/index.js",
-      "sha256": "138ab18060ca84edfa47da1af4d1a71a89fd5670764b734345cce3209b6ed358"
+      "sha256": "3d1463210c0f93a1d04be89e5a2b5020f66050bf2085354586a950a0abfa49de"
     },
     {
       "path": "dsh-plugins/workbench-native/lib/skill-display.js",
@@ -3501,7 +3501,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/lib/typert-schemas.js",
-      "sha256": "36bb742f56258cfb03ea3b445297c64878591f51685e35ee0a42197b2abe16dd"
+      "sha256": "15b8e8c90eb96479e9067cd2cb9af3da5163e2ae81fd6329390d9c555d34904d"
     },
     {
       "path": "dsh-plugins/workbench-native/lib/typert.host.js",
@@ -3617,7 +3617,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/test/updates.test.mjs",
-      "sha256": "3869e3dc5c4a804cc574845bed91cf2cbc6cf97c2fd115ae1d90899399de5c29"
+      "sha256": "b7b8cfb8a040c7ae74825839b261af52fb967ad9a02293a92f19683d15287648"
     },
     {
       "path": "dsh-plugins/workbench-native/test/window-drag.electron.mjs",

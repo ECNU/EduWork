@@ -479,3 +479,16 @@ for (const actionFinishes of ['before dispose', 'after dispose']) {
     assert.equal(notifications, published)
   })
 }
+
+test('every desktop action gate accepts the same actions as the native bridge', () => {
+  const actions = file => {
+    const list = readFileSync(new URL(file, import.meta.url), 'utf8').match(/\[('status',[^\]]*)\]/)?.[1]
+    assert.ok(list, file)
+    return [...list.matchAll(/'([a-z-]+)'/g)].map(match => match[1]).sort()
+  }
+  const bridge = actions('../../../dsh-electron/src/native-vault.mjs')
+  assert.ok(bridge.includes('start-portable-migration') && bridge.includes('dismiss-portable-migration'))
+  for (const gate of ['../lib/typert-schemas.js', '../lib/index.js', '../../desktop-services/lib/index.js']) {
+    assert.deepEqual(actions(gate), bridge, gate)
+  }
+})
