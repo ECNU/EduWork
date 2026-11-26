@@ -1,4 +1,5 @@
 import { createHash, createPublicKey, verify } from 'node:crypto'
+import { validateDataset } from './academic-calendar-model.mjs'
 
 export const CONTENT_LIMIT = 16 * 1024 * 1024
 export const digest = bytes => createHash('sha256').update(bytes).digest('hex')
@@ -73,6 +74,15 @@ export function verifiedManifest(envelope, source, channel) {
   const bundle=manifest.bundle
   if(!object(bundle)||!Number.isSafeInteger(bundle.bytes)||bundle.bytes<2||bundle.bytes>CONTENT_LIMIT||!/^[a-f0-9]{64}$/.test(bundle.sha256))throw Error('内容包摘要或大小无效')
   trustedBundleURL(source,bundle.url)
+  if (manifest.academicCalendars !== undefined) {
+    if (!manifest.components.configuration || !Array.isArray(manifest.academicCalendars) || !manifest.academicCalendars.length) throw Error('校历需要完整的配置快照')
+    const years = new Set()
+    for (const dataset of manifest.academicCalendars) {
+      validateDataset(dataset)
+      if (!dataset.revision || years.has(dataset.academicYear)) throw Error('每学年须有独立的校历和正整数修订号')
+      years.add(dataset.academicYear)
+    }
+  }
   return manifest
 }
 export function safeContentPath(value) {

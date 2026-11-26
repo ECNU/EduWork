@@ -30,7 +30,7 @@
     },
     "guide": {
       "title": "Want to learn more?",
-      "body": "The user guide covers common tasks and troubleshooting. Open it any time from the application menu."
+      "body": "Open User Guide from the application menu at the top left for help with common tasks and troubleshooting. Select Replay tour at the top right of the guide to see these steps again."
     }
   },
   "ui": {
@@ -38,7 +38,7 @@
     "back": "Back",
     "next": "Next",
     "done": "Done",
-    "openGuide": "Open user guide",
+    "macGuideMenu": "Menu bar at the top of the screen: {product} → User Guide",
     "offlineGuide": "View offline guide",
     "onlineGuide": "View online guide",
     "progress": "{current} / {total}",

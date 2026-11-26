@@ -574,6 +574,13 @@ type applyFixture struct {
 
 func newApplyFixture(t *testing.T, version, mode string) applyFixture {
 	t.Helper()
+	installDir := filepath.Join(t.TempDir(), "portable")
+	stateDir := filepath.Join(installDir, "data", "state")
+	return newApplyFixtureAt(t, version, mode, installDir, stateDir)
+}
+
+func newApplyFixtureAt(t *testing.T, version, mode, installDir, stateDir string) applyFixture {
+	t.Helper()
 	testExecutable, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -582,8 +589,6 @@ func newApplyFixture(t *testing.T, version, mode string) applyFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	installDir := filepath.Join(t.TempDir(), "portable")
-	stateDir := filepath.Join(installDir, "data", "state")
 	executableName := "ChatECNU-Work.exe"
 	writeFixtureFile(t, filepath.Join(installDir, executableName), executablePayload)
 	writeFixtureFile(t, filepath.Join(installDir, "resources", "version.txt"), []byte("old-version"))

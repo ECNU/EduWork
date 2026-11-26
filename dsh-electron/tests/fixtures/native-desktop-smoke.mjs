@@ -114,6 +114,7 @@ app.whenReady().then(async () => {
   bridge.attach(mainWindow)
   await mainWindow.loadURL('dsh-app://app/index.html')
   const evaluate = code => mainWindow.webContents.executeJavaScript(code, true)
+  assert.equal(await evaluate("'channels' in dshDesktop.updates"), false, 'EduWork provides the channel picker')
   const contract = await evaluate(`({platform:document.documentElement.dataset.platform,browser:typeof dshDesktop.browser.acquire,keyboard:typeof dshDesktop.keyboard.subscribe,shortcuts:typeof dshDesktop.shortcuts.get,locale:typeof __DSH_LOCALE__.read,paths:typeof __DSH_HOST_PATHS__.pathFor,account:typeof window.dshPlatform})`)
   assert.deepEqual(contract, { platform: process.platform, browser: 'function', keyboard: 'function', shortcuts: 'function', locale: 'function', paths: 'function', account: 'undefined' })
   const updateContract = await evaluate(`(async () => {
@@ -265,7 +266,9 @@ app.whenReady().then(async () => {
   host.fetch = async request => {
     guideRequests++
     assert.equal(request.method, 'HEAD')
-    assert.equal(request.url, 'app://app/eduwork-user-guide/')
+    assert.equal(new URL(request.url).pathname, '/eduwork-user-guide/')
+    const shellResponse = staticDesktopResponse(request, output)
+    if (shellResponse) return shellResponse
     if (guideFetchError) throw new Error('synthetic guide route failure')
     return new Response(null, { status: guideStatus })
   }

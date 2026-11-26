@@ -8,8 +8,8 @@
 | --- | --- |
 | `packages/` | 独立 npm 模块：OIDC、记忆、邮件、Studio 和共享成果服务。 |
 | `dsh-plugins/`、`dsh-skills/`、`dsh-presets/` | 产品插件、任务指引与 Agent 预设。 |
-| `dsh-host/` | 两种桌面壳共用的 Host、配置与系统能力边界。 |
-| `dsh-electron/`、`dsh-desktop/` | Electron 主线与 Go/Wails 过渡壳。 |
+| `dsh-host/` | 桌面 Host、配置与系统能力边界。 |
+| `dsh-electron/`、`dsh-desktop/` | Electron 桌面壳与 Windows Go 辅助程序。 |
 | `config/`、`scripts/` | 通用发行配置、组件锁、构建和装配脚本。 |
 | `tests/`、`docs/` | 产品检查、使用与维护文档；模块测试还保留在各自目录。 |
 

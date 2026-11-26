@@ -9,7 +9,9 @@ test('entry points cover installed npm packages with bilingual documentation', a
   const catalog = await loadPluginCatalog();
   assert.ok(catalog.some(plugin => plugin.package === '@eduwork/dsh-annotation'));
   assert.ok(catalog.some(plugin => plugin.package === '@eduwork/dsh-remote-access'));
-  assert.ok(!catalog.some(plugin => plugin.package === '@eduwork/dsh-calendar'));
+  const calendar = catalog.find(plugin => plugin.package === '@eduwork/dsh-calendar');
+  assert.ok(calendar);
+  assert.deepEqual(calendar.companions, ['@eduwork/dsh-calendar-subscriptions', '@eduwork/dsh-academic-calendar']);
   assert.ok(!catalog.some(plugin => plugin.package === '@eduwork/dsh-artifact-services'));
   assert.ok(catalog.find(plugin => plugin.package === '@eduwork/dsh-knowledge-studio').companions.includes('@eduwork/dsh-artifact-services'));
   await syncProjectDocs({ check: true });
@@ -18,7 +20,7 @@ test('entry points cover installed npm packages with bilingual documentation', a
 test('reject both unbundled advertisements and missing installed plugins', async () => {
   const catalog = await loadPluginCatalog();
   const locks = catalog.flatMap(plugin => [plugin.package, ...(plugin.companions ?? [])]).map(name => ({ name, publicationStatus: 'published' }));
-  const experiment = { ...catalog[0], package: '@eduwork/dsh-calendar' };
+  const experiment = { ...catalog[0], package: '@eduwork/dsh-unbundled-experiment' };
   assert.throws(() => validateCatalog([...catalog, experiment], locks), /must match public npm assembly inputs/);
   assert.throws(() => validateCatalog(catalog.slice(1), locks), /must match public npm assembly inputs/);
   assert.throws(() => validateCatalog(catalog, [...locks, { name: '@eduwork/dsh-new-plugin', publicationStatus: 'published' }]), /must match public npm assembly inputs/);

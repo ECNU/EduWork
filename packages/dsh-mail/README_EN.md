@@ -20,7 +20,9 @@ The plugin exposes exactly five agent tools:
 | `mail_get_attachment` | Save one attachment into the session workspace | Size cap, random name, no overwrite, workspace only |
 | `mail_send` | Send or reply with plain text and workspace attachments | Ordinary permissions ask each time; Full Access skips prompts; sending must still be enabled separately |
 
-It does not delete, move, archive, label, change flags, manage contacts or rules, poll in the background, wake agents, auto-reply, compose HTML, or provide a mailbox UI.
+New-mail reminders are off by default. Turn them on in **Settings → Mail assistant** to check the inbox periodically. Notifications show the sender, subject and an excerpt without changing read/unread status.
+
+It does not delete, move, archive, label, change flags, manage contacts or rules, wake agents, auto-reply, compose HTML, or provide a mailbox UI.
 
 ## Secure defaults
 

@@ -7,6 +7,7 @@ if (params.has('customLogin')) Object.assign(profile.brand, {
   loginTitle: '示例大学统一身份认证', loginButtonLabel: '统一认证登录', loginDescription: '使用学校账号连接校内服务。',
 })
 let onboarding = params.has('onboarding'), account = onboarding ? { profileID: profile.id, state: 'signed_out', credentialReady: false } : connected, modelReads = 0
+let extension = false, extensionClicks = 0
 const registrations = [], events = new Map()
 const ok = value => Promise.resolve({ ok: true, value })
 const ctx = {
@@ -43,18 +44,23 @@ window.__ModuleLoader__ = { load: definition => {
     const general = registrations.find(item => item.name === 'settings.general.item')
     const welcome = registrations.find(item => item.name === 'settings.onboarding')
     const root = ReactDOM.createRoot(document.getElementById('root'))
+    const renderSlot = (name, props, options) => name === 'oidc.account.footer.details' && extension
+      ? React.createElement('button', { type: 'button', 'aria-label': '账户扩展', onClick: () => { extensionClicks++ }, 'data-profile': props.profile.id,
+        style: { width: props.wide ? '100%' : 36, height: 36 } }, props.wide ? '账户扩展' : '+') : options?.fallback
     for (const entry of [footer, general, welcome]) {
       const inject = entry.inject
       entry.inject = () => ({ ...inject(), t: ctx.locale.bind(entry.locale) })
     }
     const render = wide => root.render(React.createElement(React.Fragment, null,
       onboarding && React.createElement(welcome.component, { ...welcome.inject(), complete: () => { onboarding = false; render(wide) } }),
-      React.createElement('aside', { style: { position: 'fixed', left: 0, bottom: 0, width: wide ? 240 : 48, overflow: 'hidden', padding: 4 } }, React.createElement(footer.component, { ...footer.inject(), wide })),
+      React.createElement('aside', { style: { position: 'fixed', left: 0, bottom: 0, width: wide ? 240 : 48, overflow: 'hidden', padding: 4 } }, React.createElement(footer.component, { ...footer.inject(), wide, renderSlot })),
       React.createElement('main', { id: 'general', style: { margin: '20px 260px' } }, React.createElement(general.component, general.inject())),
       React.createElement('button', { id: 'outside', style: { position: 'fixed', top: 20, right: 20 } }, 'Outside')))
     window.fixture = {
       render,
       modelReads: () => modelReads,
+      extension: enabled => { extension = enabled; render(true) },
+      extensionClicks: () => extensionClicks,
       reconnect: async () => { account = connected; await footer.inject().service.status(profile.id) },
     }
     render(true)

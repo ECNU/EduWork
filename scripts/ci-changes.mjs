@@ -62,7 +62,7 @@ export function selectChanges(directory = root, env = process.env, base) {
 }
 
 export function writeSelection(selection, output = process.env.GITHUB_OUTPUT) {
-  if (output) for (const name of ['build', 'integration', 'groups', 'packages']) appendFileSync(output, `${name}=${JSON.stringify(selection[name])}\n`)
+  if (output) for (const name of ['build', 'integration', 'groups', 'checks', 'packages']) appendFileSync(output, `${name}=${JSON.stringify(selection[name])}\n`)
   console.log(JSON.stringify(selection, null, 2))
 }
 

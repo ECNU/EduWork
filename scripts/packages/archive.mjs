@@ -45,11 +45,33 @@ export function inspectArchive(bytes, selected, expectedVersion) {
     assert.equal(typeof entry, 'string', 'Review new conditional exports before publishing')
     assert.ok(files.has(entry.replace(/^\.\//, '')), `Missing packed export ${entry}`)
   }
+  const calendarSkills = {
+    'dsh-calendar': 'calendar-management',
+    'dsh-calendar-subscriptions': 'calendar-subscriptions',
+    'dsh-academic-calendar': 'academic-calendar',
+  }
+  if (calendarSkills[selected.id]) {
+    assert.ok(!manifest.private, 'Calendar package must be publishable')
+    for (const file of ['LICENSE', 'lib/index.js', 'lib/tools.js', `skills/${calendarSkills[selected.id]}/SKILL.md`]) {
+      assert.ok(files.has(file), `Missing calendar package file ${file}`)
+    }
+    if (selected.id === 'dsh-academic-calendar') {
+      assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml')
+      assert.ok(files.has('cordis.patch.yml'), 'Missing calendar bundle registration')
+    }
+  }
   if (selected.id === 'dsh-decision') {
     assert.ok(!manifest.private, 'Decision plugin archive must be publishable')
     assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', 'Missing decision plugin bundle')
     for (const file of ['lib/index.js', 'lib/core.js', 'skills/decision/SKILL.md', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE']) {
       assert.ok(files.has(file), `Missing decision plugin file ${file}`)
+    }
+  }
+  if (selected.id === 'dsh-auto-approval') {
+    assert.ok(!manifest.private, 'Auto-approval plugin archive must be publishable')
+    assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', 'Missing auto-approval plugin bundle')
+    for (const file of ['lib/index.js', 'lib/review.js', 'lib/rules.js', 'lib/questions.js', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE']) {
+      assert.ok(files.has(file), `Missing auto-approval plugin file ${file}`)
     }
   }
   if (selected.id === 'dsh-side-chat' || selected.id === 'dsh-annotation') {
@@ -89,7 +111,7 @@ export function inspectArchive(bytes, selected, expectedVersion) {
       'lib/client.js', 'lib/page/pet.html', 'lib/page/pet.js', 'lib/page/pet.css', 'lib/pet-state.js', 'lib/skin-files.js']) {
       assert.ok(files.has(file), `Missing desktop pet runtime or license file ${file}`)
     }
-    for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi', 'ecnu-huashi-girl']) {
+    for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi', 'ecnu-huashi-boy', 'ecnu-huashi-girl']) {
       assert.ok(files.has(`skins/${id}/skin.json`), `Missing built-in character ${id}`)
       const references = value => {
         if (typeof value === 'string' && /\.(svg|png|webp)$/i.test(value)) {

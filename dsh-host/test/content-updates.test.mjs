@@ -11,6 +11,51 @@ import { createContentUpdate } from '../../scripts/create-content-update.mjs'
 import { writeBundledSkillsManifest } from '../../scripts/write-bundled-skills-manifest.mjs'
 import { desktopPaths } from '../../dsh-electron/src/desktop-paths.mjs'
 
+test('academic calendars follow signed configuration trials, revisions and offline restarts', async t => {
+  const f = await fixture(t)
+  const calendar = { schemaVersion: 2, academicYear: 'test-year', revision: 1,
+    terms: [{ id: 'spring', name: 'Spring', firstDay: '2027-03-01', lastDay: '2027-03-07',
+      phases: [{ kind: 'teaching', name: 'Teaching', firstDay: '2027-03-01', lastDay: '2027-03-07' }] }] }
+  const planFile = join(f.root, 'calendar-plan.json'), keyFile = join(f.root, 'key.pem')
+  await writeFile(keyFile, f.keys.privateKey.export({type: 'pkcs8', format: 'pem'}))
+  await writeFile(join(f.root, 'config.json'), JSON.stringify({features: {visionFallback: true}}))
+  await writeFile(join(f.root, 'year.json'), JSON.stringify(calendar))
+  const plan = { channel: 'development', revision: 1, requires,
+    configuration: { path: 'config.json', revision: 1, academicCalendars: ['year.json'] } }
+  await writeFile(planFile, JSON.stringify(plan))
+  const output = join(f.root, 'release')
+  const manifest = await createContentUpdate({config: f.configPath, planFile, keyFile, output})
+  const envelope = await readFile(join(output, 'development/latest.json'))
+  f.responses.set(f.source.baseURL + '/development/latest.json', envelope)
+  f.responses.set(manifest.bundle.url, await readFile(join(output, 'bundles', new URL(manifest.bundle.url).pathname.split('/').at(-1))))
+  let manager = await f.open()
+  await manager.check()
+  assert.equal((await manager.download()).state, 'ready')
+  const applied = await manager.prepare()
+  assert.deepEqual(JSON.parse(await readFile(applied.academicCalendarsFile)), [calendar])
+  await manager.ready()
+  f.responses.clear()
+  await writeFile(applied.academicCalendarsFile, 'stale file')
+  manager = await f.open()
+  assert.deepEqual(JSON.parse(await readFile((await manager.prepare()).academicCalendarsFile)), [calendar])
+  assert.equal(f.requests.length, 2)
+
+  const updated = {...calendar, revision: 2, breaks: [{id: 'vacation', name: 'Vacation', firstDay: '2027-03-08', lastDay: '2027-03-12'}]}
+  const changed = f.release(2, {configuration: 2}, undefined, {academicCalendars: [updated]})
+  await manager.importOffline(offlineBytes(changed))
+  assert.deepEqual(JSON.parse(await readFile((await manager.prepare()).academicCalendarsFile)), [updated])
+  await manager.rollback(Error('trial failed'))
+  assert.deepEqual(JSON.parse(await readFile((await manager.prepare()).academicCalendarsFile)), [calendar])
+  const replacement = f.release(2, {configuration: 2}, undefined, {academicCalendars: [calendar]})
+  await assert.rejects(manager.importOffline(offlineBytes(replacement), {retryFailed: true}), /不能替换/)
+  for (const [item, error] of [
+    [f.release(3), /遗漏/],
+    [f.release(3, undefined, undefined, { academicCalendars: [{...updated, revision: 1}] }), /修订号/],
+    [f.release(3, undefined, undefined, { academicCalendars: [calendar, calendar] }), /每学年/],
+    [f.release(3, undefined, undefined, { academicCalendars: [{...calendar, terms: []}] }), /缺少学期/],
+  ]) await assert.rejects(manager.importOffline(offlineBytes(item)), error)
+})
+
 const version='0.3.6-dev.20260916.1'
 const requires={minClient:version,dsh:'0.1.5-rc.2',capabilities:['package:@eduwork/dsh-oidc']}
 const skill=(body='---\nname: example\ndescription: Example skill\n---\nUse the installed tools.')=>{
@@ -326,6 +371,21 @@ test('macOS signed content uses external state and validates the packaged Skill 
   f.release(2,{configuration:2,skills:2},{schemaVersion:1,configuration:{features:{visionFallback:true}},skills:skill()})
   await manager.check();assert.equal((await manager.download()).state,'error')
   assert.match(manager.snapshot().message,/本地修改/)
+})
+
+test('configuration can update while Skills are opted out and locally edited', async t => {
+  const f = await fixture(t, { skills: false })
+  const local = join(f.product, 'skills/example/SKILL.md')
+  await writeFile(local, 'local edit')
+  f.release(1, { configuration: 1, skills: 1 }, { schemaVersion: 1, configuration: { features: { visionFallback: true } }, skills: skill() })
+  const manager = await f.open()
+  assert.equal((await manager.check()).state, 'available')
+  assert.equal((await manager.download()).state, 'ready')
+  const prepared = await manager.prepare()
+  assert.equal(prepared.configurationRevision, 1)
+  assert.equal(prepared.skillRoot, undefined)
+  await manager.ready()
+  assert.equal(await readFile(local, 'utf8'), 'local edit')
 })
 
 test('invalid signature, digest, dependencies and forbidden config never change installed content',async t=>{

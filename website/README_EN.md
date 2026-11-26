@@ -16,7 +16,7 @@ Page copy lives in `language.js`; dynamic messages use the same dictionary. Plug
 
 [`docs/plugin-catalog.json`](../docs/plugin-catalog.json) holds Chinese and English names, summaries, categories and GitHub documentation links. It is presentation metadata, checked against the npm inputs actually used by public assembly; a source directory alone does not qualify a plugin for display. Studio and its companion artifact service share one introduction, recorded with `companions`.
 
-After editing the catalog, run `node scripts/sync-project-docs.mjs` to update marked sections in both root READMEs and `index.html`. Do not edit generated sections directly. Installation guidance and site layout remain independently authored outside those sections. Detailed documentation stays on GitHub, and the roadmap links to its discussion.
+After editing the catalog, run `node scripts/sync-project-docs.mjs` to refresh the plugin sections in both root READMEs and `index.html`, and set the README DSH badges from the public runtime lock. Do not edit generated sections directly. Installation guidance and site layout remain independently authored outside those sections. Detailed documentation stays on GitHub, and the roadmap links to its discussion.
 
 CI and the site build check that the catalog covers installed packages, excludes unbundled ones, has both documentation languages and matches generated content. Update the catalog when assembly inputs change; introduce features according to the intended public release scope.
 

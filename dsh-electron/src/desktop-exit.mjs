@@ -31,7 +31,21 @@ export class DesktopExit {
     this.quit()
     return pending
   }
-  handoff() { this.installerOwnsQuit = true; this.relaunchRequested = false; this.quit() }
+  handoff({ requestQuit = true } = {}) {
+    this.installerOwnsQuit = true
+    this.relaunchRequested = false
+    if (requestQuit) this.quit()
+  }
+  async prepareInstaller(stop, failed) {
+    try { await stop() } catch (error) {
+      this.failure = error
+      this.failed(error)
+      failed?.(error)
+      throw error
+    }
+    this.handoff({ requestQuit: false })
+    return true
+  }
   request({ strict = false } = {}) {
     if (this.complete) return Promise.resolve()
     if (this.pending) return this.pending

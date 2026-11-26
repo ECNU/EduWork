@@ -1,5 +1,19 @@
 # 变更记录 / Changelog
 
+## 0.1.8 — Unreleased
+
+- 修复远程设备上机构模型一直加载失败（“Gateway authorization changed; start a new model request”），刷新页面也不恢复，电脑上却正常。中继与机构模型服务同域名时，电脑到中继的连接可能接着用一次模型请求留下的网络连接，那次请求的授权就带进了远程设备的所有请求，重新登录后它失效，模型列表随之失败。电脑到中继的连接现在不再沿用这份授权。只需更新电脑端，中继不用更新。
+
+- Fix organization models that kept failing to load on remote devices ("Gateway authorization changed; start a new model request"), even after reloading, while the computer listed them. With the relay on the domain of the organization's model service, the computer's connection to the relay could take over a network connection a model request had left open, and every request from a remote device then carried that request's authorization, which no longer held once the member signed in again. The computer's relay connections no longer carry it over. Only computers need updating; the relay does not.
+
+- 修复 iOS / iPadOS 16.4–18 上，远程界面里的菜单和卡片出现在窗口角落，而不在所点的按钮旁边：访问模式、模型选择、会话统计、Token 用量、上下文用量、本轮用量以及各处“更多”菜单都受影响。DSH 用 CSS 锚点定位摆放它们，Safari 从 iOS 26 才支持；远程网页现在会在浏览器不支持时自己把它们放到按钮旁边。只需更新中继，电脑端不用更新。
+
+- Fix menus and cards in the remote interface on iOS / iPadOS 16.4–18 that appeared in a corner of the window instead of next to the control that opened them: access mode, model selection, session statistics, token usage, context usage, turn usage and the "more" menus. DSH places them with CSS anchor positioning, which Safari supports only from iOS 26; the remote web page now places them next to their controls when the browser cannot. Only the relay needs updating; computers do not.
+
+- 远程设备现在可以使用侧边聊天。此前电脑拒绝远程设备开启和关闭侧边聊天，设备上反复提示“操作失败，请重试。”需要更新电脑端，中继不用更新；提示反复出现和提示文字看不清的问题由侧边聊天插件 `@eduwork/dsh-side-chat` 修复，电脑上的这个插件也要一并更新。
+
+- Remote devices can now use side chats. The computer used to refuse to open or close one for a remote device, which then kept showing "Something went wrong. Try again." Computers need updating; the relay does not. The repeated and hard-to-read notice is fixed in the side chat plugin `@eduwork/dsh-side-chat`, which computers need to update as well.
+
 ## 0.1.7 — 2026-11-15
 
 - 修复 iOS / iPadOS 16.4–17.3 上远程界面白屏：配对成功、电脑上也显示已连接，但设备上什么都不显示。远程网页现在会补上这些系统缺少的浏览器功能，DSH 界面也能正常加载。低于 16.4 的系统会提示版本过低，不再白屏。只需更新中继，电脑端不用更新。

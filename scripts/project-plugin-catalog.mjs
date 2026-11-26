@@ -26,7 +26,7 @@ export function validateCatalog(catalog, locks) {
     assert.ok(categories.includes(plugin.category), `Unknown category: ${plugin.category}`);
     assert.match(plugin.icon, /^[a-z-]+$/);
     assert.match(plugin.eyebrow, /^[A-Z &]+$/);
-    assert.match(plugin.docs, /^packages\/[a-z0-9-]+(?:\/[a-z0-9-]+)*$/);
+    assert.match(plugin.docs, /^(?:packages|dsh-plugins)\/[a-z0-9-]+(?:\/[a-z0-9-]+)*$/);
     for (const language of ['zh', 'en']) {
       for (const field of ['name', 'summary']) {
         assert.ok(typeof plugin[language]?.[field] === 'string' && plugin[language][field].trim(), `Missing ${language}.${field}: ${plugin.package}`);
@@ -36,8 +36,10 @@ export function validateCatalog(catalog, locks) {
   return catalog;
 }
 
-export async function loadPluginCatalog() {
-  const plan = await desktopBuildPlan({ core: projectRoot, version: '0.0.0' });
+export const readPublicPlan = () => desktopBuildPlan({ core: projectRoot, version: '0.0.0' });
+
+export async function loadPluginCatalog(plan) {
+  plan ??= await readPublicPlan();
   const [catalog, locks] = await Promise.all([
     readFile(join(projectRoot, 'docs/plugin-catalog.json'), 'utf8').then(JSON.parse),
     readPublishedPackageLocks(plan.candidate),

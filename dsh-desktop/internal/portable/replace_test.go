@@ -44,6 +44,53 @@ func replacementFixture(t *testing.T, content map[string]string) *Archive {
 	}
 	return a
 }
+func TestExistingInstallationReportsMissingManifest(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "自定义安装")
+	id := Identity{Distribution: "eduwork"}
+	if version, err := ExistingInstallation(target, id); err != nil || version != "" {
+		t.Fatalf("new target returned version %q and error %v", version, err)
+	}
+	if err := os.Mkdir(target, 0700); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ExistingInstallation(target, id)
+	if !errors.Is(err, ErrMissingInstallationManifest) {
+		t.Fatalf("expected a missing installation manifest, got %v", err)
+	}
+}
+
+func TestExistingInstallationChecksPresentManifest(t *testing.T) {
+	const mismatch = "已有应用的版本或发行标识不匹配，不能覆盖安装"
+	const desktopIdentity = `{"shell":"electron","distribution":"eduwork"}`
+	fixture := replacementFixture(t, map[string]string{})
+	target := t.TempDir()
+	app := filepath.Join(target, "resources", "app")
+	if err := os.MkdirAll(app, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(app, "eduwork.desktop.json"), []byte(desktopIdentity), 0600); err != nil {
+		t.Fatal(err)
+	}
+	manifest := filepath.Join(target, "RELEASE-MANIFEST.json")
+	if err := os.WriteFile(manifest, fixture.ManifestBytes, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if version, err := ExistingInstallation(target, fixture.Identity); err != nil || version != fixture.Identity.Version {
+		t.Fatalf("same edition: version %q, error %v", version, err)
+	}
+	otherEdition := fixture.Identity
+	otherEdition.Distribution = "eduwork-chatecnu"
+	if _, err := ExistingInstallation(target, otherEdition); err == nil || err.Error() != mismatch {
+		t.Fatalf("other edition: expected an identity mismatch, got %v", err)
+	}
+	if err := os.WriteFile(manifest, []byte("{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ExistingInstallation(target, fixture.Identity); err == nil || err.Error() != mismatch {
+		t.Fatalf("invalid manifest: expected an identity mismatch, got %v", err)
+	}
+}
+
 func TestReplacePreservesPrivateAndUnknownFiles(t *testing.T) {
 	old := replacementFixture(t, map[string]string{"old.txt": "old", "same.txt": "old", "config/user.json": "default", "data/sessions/a": "default"})
 	target := filepath.Join(t.TempDir(), "应用")

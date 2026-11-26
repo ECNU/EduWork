@@ -23,7 +23,7 @@ test('shared-service changes select Studio integration; unrelated packages and d
   assert.deepEqual(changedGroups(['packages/dsh-knowledge-studio/packages/artifact-services/lib/speech.js']), ['dsh-knowledge-studio'])
   assert.deepEqual(changedGroups(['packages/dsh-oidc/src/host/model-provider.ts']), ['dsh-oidc'])
   assert.deepEqual(changedGroups(['packages/dsh-mail/README.md', 'README.md']), [])
-  assert.equal(changedGroups(['scripts/packages/release.mjs']).length, 11)
+  assert.equal(changedGroups(['scripts/packages/release.mjs']).length, 15)
   assert.deepEqual(changedGroups(['packages/dsh-decision/src/core.js']), ['dsh-decision'])
   assert.deepEqual(changedGroups(['packages/dsh-annotation/src/client/selection-actions.js']), ['dsh-annotation', 'dsh-side-chat'])
   assert.equal(needsProductBuild(['packages/dsh-oidc/src/host/model-provider.ts', 'docs/PACKAGES.md']), false)
@@ -31,8 +31,8 @@ test('shared-service changes select Studio integration; unrelated packages and d
   assert.equal(needsProductBuild(['dsh-host/entry.mjs']), true)
   assert.throws(() => selectPackage('../../private'), /Unknown package/)
 })
-test('twelve separate package identities retain registry dependency contracts and product npm locks', async () => {
-  assert.equal(new Set(packages.map(p => p.name)).size, 12)
+test('independent package identities retain registry dependency contracts and product npm locks', async () => {
+  assert.equal(new Set(packages.map(p => p.name)).size, 16)
   for (const selected of packages) {
     const pkg = JSON.parse(await readFile(new URL(`../${selected.directory}/package.json`, import.meta.url)))
     assert.equal(pkg.name, selected.name)
@@ -44,7 +44,7 @@ test('twelve separate package identities retain registry dependency contracts an
   const assembly = JSON.parse(await readFile(new URL('../config/assembly.eduwork.json', import.meta.url)))
   for (const selected of packages) {
     const declaration = assembly.externalPackages.find(p => p.name === selected.name)
-    if (['dsh-external-agents', 'dsh-decision', 'dsh-desktop-pet', 'dsh-annotation', 'dsh-side-chat', 'dsh-remote-access'].includes(selected.id)) {
+    if (['dsh-calendar', 'dsh-calendar-subscriptions', 'dsh-academic-calendar', 'dsh-external-agents', 'dsh-decision', 'dsh-auto-approval', 'dsh-desktop-pet', 'dsh-annotation', 'dsh-side-chat', 'dsh-remote-access'].includes(selected.id)) {
       // DSH 0.2 packages; never add them to the legacy 0.1.x product.
       assert.equal(declaration, undefined)
       continue
@@ -149,6 +149,20 @@ test('decision publication requires both the native bundle and packaged skill', 
   assert.throws(() => inspectArchive(tarball(noBundle), selected, '0.1.0'), /Missing decision plugin bundle/)
 })
 
+test('auto-approval publication requires the native bundle and every review module', () => {
+  const selected = selectPackage('dsh-auto-approval')
+  const manifest = { name: selected.name, version: '0.1.0', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory }, dsh: { bundle: { patch: './cordis.patch.yml' } } }
+  const files = Object.fromEntries(['lib/index.js', 'lib/review.js', 'lib/rules.js', 'lib/questions.js', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE'].map(file => ['package/' + file, 'fixture']))
+  files['package/package.json'] = JSON.stringify(manifest)
+  assert.doesNotThrow(() => inspectArchive(tarball(files), selected, '0.1.0'))
+  for (const name of ['lib/rules.js', 'lib/questions.js', 'cordis.patch.yml']) {
+    const incomplete = { ...files }; delete incomplete['package/' + name]
+    assert.throws(() => inspectArchive(tarball(incomplete), selected, '0.1.0'), /Missing auto-approval plugin file/)
+  }
+  const noBundle = { ...files, 'package/package.json': JSON.stringify({ ...manifest, dsh: {} }) }
+  assert.throws(() => inspectArchive(tarball(noBundle), selected, '0.1.0'), /Missing auto-approval plugin bundle/)
+})
+
 test('desktop pet publication rejects a package missing a referenced character image', () => {
   const selected = selectPackage('dsh-desktop-pet')
   const manifest = { name: selected.name, version: '0.1.0', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' } }
@@ -156,13 +170,13 @@ test('desktop pet publication rejects a package missing a referenced character i
     'lib/index.js', 'lib/client.js', 'lib/page/pet.html', 'lib/page/pet.js', 'lib/page/pet.css', 'lib/pet-state.js', 'lib/skin-files.js']
     .map(file => ['package/' + file, 'fixture']))
   files['package/package.json'] = JSON.stringify(manifest)
-  for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi', 'ecnu-huashi-girl']) {
+  for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi', 'ecnu-huashi-boy', 'ecnu-huashi-girl']) {
     files[`package/skins/${id}/skin.json`] = JSON.stringify({ animations: { idle: { image: 'idle.svg' } } })
     files[`package/skins/${id}/idle.svg`] = '<svg/>'
   }
   assert.doesNotThrow(() => inspectArchive(tarball(files), selected, '0.1.0'))
-  delete files['package/skins/dafeiyu/idle.svg']
-  assert.throws(() => inspectArchive(tarball(files), selected, '0.1.0'), /Missing packed character image dafeiyu\/idle.svg/)
+  delete files['package/skins/ecnu-huashi-boy/idle.svg']
+  assert.throws(() => inspectArchive(tarball(files), selected, '0.1.0'), /Missing packed character image ecnu-huashi-boy\/idle\.svg/)
 })
 
 test('remote publication rejects a missing relay command, browser runtime or protocol', () => {

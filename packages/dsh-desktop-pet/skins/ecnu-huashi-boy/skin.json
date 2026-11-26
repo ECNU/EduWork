@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "id": "ecnu-huashi-boy",
+  "name": {
+    "zh-CN": "花狮郎",
+    "en": "Huashi Boy"
+  },
+  "description": {
+    "zh-CN": "戴着红色花瓣鬃圈、穿金色短裤的小花狮。",
+    "en": "A little lion boy with a red petal mane and golden shorts."
+  },
+  "author": "Michaelee",
+  "license": "CC-BY-SA-4.0",
+  "frame": {
+    "width": 416,
+    "height": 512
+  },
+  "anchors": {
+    "badge": [
+      321,
+      54
+    ]
+  },
+  "animations": {
+    "idle": {
+      "sheet": "idle.webp",
+      "frames": 2,
+      "frameMs": [
+        1000,
+        180
+      ],
+      "playback": "blink",
+      "columns": 2
+    },
+    "smile": {
+      "sheet": "smile.webp",
+      "frames": 1,
+      "frameMs": [
+        1800
+      ],
+      "repeat": 1,
+      "columns": 1
+    },
+    "done": {
+      "sheet": "done.webp",
+      "frames": 3,
+      "frameMs": [
+        320,
+        520,
+        900
+      ],
+      "columns": 3
+    },
+    "think": {
+      "sheet": "think.webp",
+      "frames": 2,
+      "frameMs": [
+        3200,
+        1600
+      ],
+      "columns": 2
+    },
+    "work": {
+      "sheet": "work.webp",
+      "frames": 3,
+      "frameMs": [
+        450,
+        450,
+        900
+      ],
+      "repeat": 3,
+      "columns": 3
+    },
+    "attention": {
+      "sheet": "attention.webp",
+      "frames": 2,
+      "frameMs": [
+        520,
+        520
+      ],
+      "columns": 2
+    },
+    "greet": {
+      "sheet": "greet.webp",
+      "frames": 2,
+      "frameMs": [
+        400,
+        400
+      ],
+      "repeat": 3,
+      "columns": 2
+    },
+    "failed": {
+      "sheet": "failed.webp",
+      "frames": 3,
+      "frameMs": [
+        450,
+        900,
+        1650
+      ],
+      "playback": "once",
+      "columns": 3
+    },
+    "sleep": {
+      "sheet": "sleep.webp",
+      "frames": 2,
+      "frameMs": [
+        1800,
+        1800
+      ],
+      "columns": 2
+    },
+    "react": {
+      "sheet": "react.webp",
+      "frames": 3,
+      "frameMs": [
+        260,
+        900,
+        700
+      ],
+      "playback": "once",
+      "columns": 3
+    },
+    "drag": {
+      "sheet": "drag.webp",
+      "frames": 1,
+      "motion": "dangle",
+      "columns": 1
+    },
+    "peek": {
+      "sheet": "peek.webp",
+      "frames": 1,
+      "columns": 1
+    }
+  },
+  "states": {
+    "idle": [
+      "idle",
+      "smile",
+      "greet"
+    ],
+    "working": [
+      "think",
+      "work"
+    ]
+  },
+  "lines": {
+    "done": {
+      "zh-CN": [
+        "做好啦，来看看！"
+      ],
+      "en": [
+        "All done! Come take a look."
+      ]
+    },
+    "attention": {
+      "zh-CN": [
+        "这里需要你帮个忙。"
+      ],
+      "en": [
+        "Could you help me here?"
+      ]
+    },
+    "failed": {
+      "zh-CN": [
+        "唔，遇到点麻烦。"
+      ],
+      "en": [
+        "Hmm, something went wrong."
+      ]
+    }
+  }
+}

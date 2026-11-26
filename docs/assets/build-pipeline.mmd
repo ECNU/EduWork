@@ -17,6 +17,7 @@ flowchart LR
   desktop["打包桌面应用<br/>生成目标系统的安装包<br/>desktop"]
   accept["验收桌面包<br/>检查打包后的启动<br/>accept"]
   publish["生成交付文件<br/>整理归档与构建回执<br/>publish"]
+  installer["验收 Windows 安装器<br/>公版发行：打包、安装、启动和卸载<br/>installer"]
   join(( ))
   source_audit --> upstream
   source_audit --> runtime
@@ -41,7 +42,10 @@ flowchart LR
   linkStyle 18 stroke:#0969da,stroke-width:2px
   desktop --> accept
   accept --> publish
+  linkStyle 20 stroke:#0969da,stroke-width:2px
   native_install --- join
+  accept --> installer
+  installer --> publish
   join --> desktop
   style join fill:transparent,stroke:transparent,color:transparent
   classDef macOnly fill:#ddf4ff,stroke:#0969da

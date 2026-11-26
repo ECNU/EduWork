@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -186,6 +187,14 @@ func chooseFolder() {
 		text(location, filepath.Join(windows.UTF16ToString(pathBuf[:]), identity.Root))
 	}
 }
+func checkInstallationTarget(target string, id portable.Identity, confirmed bool) (string, error) {
+	version, err := portable.ExistingInstallation(target, id)
+	if !confirmed && errors.Is(err, portable.ErrMissingInstallationManifest) {
+		return "", fmt.Errorf("目标目录已存在，请检查安装路径：\n%s", target)
+	}
+	return version, err
+}
+
 func begin() {
 	target := readText(location)
 	confirmed := feedbackMode == "confirm"
@@ -203,7 +212,7 @@ func begin() {
 	}
 	text(location, target)
 	overwrite := false
-	version, err := portable.ExistingInstallation(target, identity)
+	version, err := checkInstallationTarget(target, identity, confirmed)
 	if err != nil {
 		showFeedback("error", "无法安装到此位置", err.Error())
 		return

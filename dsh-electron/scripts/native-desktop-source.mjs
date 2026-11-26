@@ -32,6 +32,15 @@ export ${source.slice(start, end)}
     replace(navigation, '')
   }
   if (file.endsWith('/preload-app.ts')) {
+    // The settings UI registers its channel picker only when this bridge is
+    // exposed. EduWork manages channels in its own software update panel.
+    replace('function createProductApi(): DshDesktopProductApi {', `function createProductApi() {
+  const api = createUpstreamProductApi()
+  const { channels: _upstreamChannels, ...updates } = api.updates
+  return { ...api, updates }
+}
+
+function createUpstreamProductApi(): DshDesktopProductApi {`)
     replace("import { PLATFORM_IPC } from './platform-ipc.ts'\n", '')
     replace("import { installMandatoryUpdateOverlay } from './preload-mandatory-overlay.ts'\n", '')
     replace("  if (process.platform === 'win32') installMandatoryUpdateOverlay()\n", '')
@@ -55,6 +64,19 @@ export ${source.slice(start, end)}
     // Host inspection errors can contain private configuration values.
     replace("await inspection.catch((error: unknown) => {\n      console.warn('desktop quit: task inspection unavailable', error)",
       "await inspection.catch(() => {\n      console.warn('desktop quit: task inspection unavailable')")
+  }
+  if (file === 'apps/desktop/src/ipc.ts') {
+    replace("  readonly percent?: number\n  readonly failedOperation?: 'check' | 'download' | 'install'", "  readonly percent?: number\n  readonly downloadedBytes?: number\n  readonly totalBytes?: number\n  readonly failedOperation?: 'check' | 'download' | 'install'")
+  }
+  if (file === 'apps/desktop/src/updates/electron-updater/channel.ts') {
+    replace('updater.channel = channel', "updater.channel = channel === 'stable' ? 'latest' : 'dev'")
+    replace('updater.allowPrerelease = true', "updater.allowPrerelease = channel === 'nightly'")
+  }
+  if (file === 'apps/desktop/src/update-coordinator.ts') {
+    replace('this.setState({ phase: percent >= 100 ? \'verifying\' : \'downloading\', ...this.target(), percent })', 'this.setState({ phase: percent >= 100 ? \'verifying\' : \'downloading\', ...this.target(), percent, downloadedBytes: progress.transferred, totalBytes: progress.total })')
+    replace('    this.disposed = true\n    this.updater.off(\'download-progress\', this.onProgress)', '    this.disposed = true\n    this.cancellation?.cancel()\n    this.updater.off(\'download-progress\', this.onProgress)')
+    // Non-silent mode keeps NSIS installation progress visible.
+    replace('this.updater.quitAndInstall(true, true)', 'this.updater.quitAndInstall(false, true)')
   }
   return source
 }

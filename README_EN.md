@@ -8,15 +8,17 @@
 
 <div align="center">
 
-[![License: MulanPSL-2.0](https://img.shields.io/badge/license-MulanPSL--2.0-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#installation-and-use)
+[![License: MulanPSL-2.0](https://img.shields.io/badge/license-MulanPSL--2.0-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.2-rc.3](https://img.shields.io/badge/DSH-0.2.2--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#installation-and-use)
 
 [简体中文](README.md) | **English**
 
-[Website](https://ecnu.github.io/EduWork/?lang=en) · [Bundled plugins](#bundled-plugins) · [Installation & use](#installation-and-use) · [Documentation](#documentation) · [Roadmap discussion](https://github.com/ECNU/EduWork/issues/95)
+[Website](https://ecnu.github.io/EduWork/?lang=en) · [Bundled plugins](#bundled-plugins) · [Installation & use](#installation-and-use) · [Data & privacy](#data-and-privacy) · [Documentation](#documentation) · [Roadmap discussion](https://github.com/ECNU/EduWork/issues/95)
 
 </div>
 
 EduWork builds on [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness), combining plugins, skills and a desktop environment for teaching, research and office work. Chat, create and learn with local materials, using your own model service or a compatible school or organization account.
+
+**The public edition disables DSH's extra session-log uploads, product interaction and device analytics, plugin inventory reports, and official session-feedback uploads.** Normal model and tool calls still send task data to the services you choose. See [data and privacy](#data-and-privacy).
 
 ![EduWork workspace: conversations, materials and artifact previews](docs/images/workspace.png)
 
@@ -26,7 +28,7 @@ DSH provides the agent runtime and plugin system. EduWork reuses its conversatio
 
 ## Bundled plugins
 
-These plugins come with the public desktop edition. Follow each link for usage, service requirements and compatibility.
+These plugins ship with the public desktop edition. Under **Plugins → EduWork extensions** in the sidebar, you can turn annotations, side chat, literature search, mail, remote access and external agents on or off without losing their settings or data. Select a plugin below for instructions.
 
 <a id="knowledge-studio"></a>
 
@@ -40,10 +42,11 @@ These plugins come with the public desktop edition. Follow each link for usage, 
 | [Decision tools](packages/dsh-decision/README_EN.md) | Classify, estimate condition probabilities and score against rubrics through a SystemOne service, with a companion skill. Configure the endpoint, model and authentication before enabling it. |
 | [Literature search](packages/dsh-literature/README_EN.md) | Search DBLP and arXiv, retrieve BibTeX and available full text, and bring research sources into your next task. |
 | [Local memory](packages/dsh-memory/README_EN.md) | Manage local memory and search past conversations so new tasks can pick up existing context. Memories are managed on your machine. |
-| [Mail assistant](packages/dsh-mail/README_EN.md) | Connect your mailbox, read mail over IMAP and send through SMTP with authorization, bringing communication into your workflow. |
-| [Desktop pet](packages/dsh-desktop-pet/README_EN.md) | Show task and notification status through a choice of companions. Enable it in settings; this npm plugin requires the EduWork desktop bridge. |
+| [Mail assistant](packages/dsh-mail/README_EN.md) | Search mail over IMAP and send via SMTP with authorization. Turn on new-mail reminders to see the sender, subject and a short excerpt without marking messages as read. |
+| [Calendar & schedule](dsh-plugins/calendar/README_EN.md) | Plan events, recurrences and reminders in month or week view, or add an event in chat. Import, export or subscribe to ICS calendars. Connecting an institutional calendar adds teaching weeks and an academic-year overview. |
+| [Desktop pet](packages/dsh-desktop-pet/README_EN.md) | Choose a companion in Settings to see task updates and plugin notifications on your desktop. To show new mail, also enable reminders in the mail assistant. |
 | [External agents](packages/dsh-external-agents/README_EN.md) | Connect local Codex, Cursor or other ACP agents and delegate tasks from a conversation. Disabled by default; enable it and configure connections from the Plugins page. |
-| [Remote access](packages/dsh-remote-access/README_EN.md) | Pair another device to continue local sessions and handle approvals in its browser. Configure your own relay or a distribution-provided organization connection in settings, test it and enable access. |
+| [Remote access](packages/dsh-remote-access/README_EN.md) | Pair a phone or another computer to continue a desktop conversation and handle approvals in its browser. Configure and test a relay first; institutional editions can provide a relay and account sign-in. |
 <!-- END GENERATED PLUGINS -->
 
 Plugins are also maintained as independent npm packages for compatible DSH applications. Configure external models, mailboxes and media services as needed; the public edition does not include model credits or private credentials.
@@ -79,9 +82,11 @@ Use the configuration file opened from settings; changing an example alone has n
 
 ### 3. Start working
 
-Choose a local workspace, add your materials, select a model and describe your goal. Try: **“Create a study guide from these materials, then make a quiz to go with it.”** You can also open Studio on the right and choose an artifact type. Preview generated files, annotate passages in replies and ask follow-up questions.
+Choose a local folder as your workspace, add a set of lecture notes and ask: **“Make a study guide from these notes and write five practice questions.”** Preview the result in Studio on the right. Select a passage in a reply to annotate it or ask a separate question in side chat. For web tasks, the agent can read a page, click or fill in a form in the conversation’s sidebar browser, subject to your approval settings.
 
-Closing the window keeps the app in the tray by default; use the tray or application menu to quit fully. Software updates can be toggled in settings and preserve history and configuration. See the [Windows update guide](docs/UPDATES.md) and [macOS update guide](docs/MACOS_UPDATES.md).
+A tour introduces the workspace on first launch. To reopen the offline quick start, choose **Application → User guide** (in the system menu bar on macOS).
+
+Closing the window keeps the app in the tray by default; use the tray or application menu to quit fully. When software updates are enabled in Settings, the app checks the selected channel periodically and after waking or reconnecting. Updates preserve history and settings. See the [Windows update guide](docs/UPDATES.md) and [macOS update guide](docs/MACOS_UPDATES.md).
 
 <a id="school-and-enterprise-integration"></a>
 <a id="open-enterprise-integration"></a>
@@ -111,7 +116,18 @@ Contribute code, plugins, skills, documentation or practical experience. [Contri
 
 ## Data and privacy
 
-Conversations, workspace references and memories are managed locally. Remote models, search and media services receive the content needed for a task; their data policies apply. When moving to another computer, copy workspace files outside the client directory separately. For troubleshooting, export a diagnostic ZIP or session log as described in the [user guide](docs/USER_GUIDE.md). Screenshots use demo materials.
+Conversations, workspace references and memories are managed locally. The public distribution disables the following DSH reporting capabilities through its [distribution policy](dsh-host/distribution-policy.mjs). The policy applies at startup and on configuration reload, with no separate opt-out required:
+
+| Reporting capability | Public edition policy |
+| --- | --- |
+| Extra session logs | Disables session-log uploads attached to native DeepSeek model requests. |
+| Product interaction and device analytics | Disables official product behavior and device analytics reporting. |
+| Plugin inventory | Disables reports of plugin package names and versions. |
+| Official session feedback | Disables official feedback entry points and their session-context upload channel. |
+
+**Normal service calls still use the network.** Remote models, search, mail, media and other online tools receive the data needed for the task. Model adapters may still send request identifiers used by the selected protocol; this policy does not change normal API requests or guarantee anonymity. The selected service's data policies apply. Review the behavior of any plugins you add or distribution changes you make.
+
+**You decide whether to share diagnostic files.** Exporting a diagnostic ZIP or session log does not automatically submit it to maintainers. Session logs may contain conversations and tool results, so review them before sharing; see the [user guide](docs/USER_GUIDE.md#故障诊断). When moving to another computer, copy workspace files outside the client directory separately. Screenshots use demo materials.
 
 <a id="acknowledgments-and-license"></a>
 

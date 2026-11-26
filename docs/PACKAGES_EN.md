@@ -6,8 +6,12 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 
 | npm package | Source and documentation | Installation root |
 | --- | --- | --- |
+| `@eduwork/dsh-calendar` | [Calendar and schedule](../dsh-plugins/calendar/README_EN.md) | `dsh-plugins/calendar` |
+| `@eduwork/dsh-calendar-subscriptions` | [Calendar subscriptions](../dsh-plugins/calendar-subscriptions/README_EN.md) | `dsh-plugins/calendar-subscriptions` |
+| `@eduwork/dsh-academic-calendar` | [Academic calendar and data providers](../packages/dsh-academic-calendar/README_EN.md) | `packages/dsh-academic-calendar` |
 | `@eduwork/dsh-external-agents` | [外部智能体连接 / External agent connections](../packages/dsh-external-agents/README_EN.md) | `packages/dsh-external-agents` |
 | `@eduwork/dsh-decision` | [SystemOne decision tool and skill](../packages/dsh-decision/README_EN.md) | `packages/dsh-decision` |
+| `@eduwork/dsh-auto-approval` | [Command auto-approval](../packages/dsh-auto-approval/README_EN.md) | `packages/dsh-auto-approval` |
 | `@eduwork/dsh-annotation` | [Selection quotes and notes](../packages/dsh-annotation/README_EN.md) | `packages/dsh-annotation` |
 | `@eduwork/dsh-side-chat` | [Side conversations and selection questions](../packages/dsh-side-chat/README_EN.md) | `packages/dsh-side-chat` |
 | `@eduwork/dsh-desktop-pet` | [Desktop pet and host requirements](../packages/dsh-desktop-pet/README_EN.md) | `packages/dsh-desktop-pet` |
@@ -27,6 +31,8 @@ Side chat independently opens from message actions. With annotation `>=0.1.1 <0.
 
 The decision plugin uses native DSH bundles, tools and skills and is preinstalled from its published npm archive. The decision service remains disabled until configured and enabled. It supports explicit API-key, optional OIDC and unauthenticated service configuration. Checks use the locked rc.3 Runtime (`EDUWORK_DECISION_RUNTIME`) without live model requests.
 
+The command auto-approval plugin calls the decision service through the decision plugin's public `./core` export. It is disabled by default and not yet part of desktop assembly; enabling it also requires the matching preset in the permission plugin configuration. Checks run the real approval flow on the locked DSH `0.2.2-rc.3` Runtime (`EDUWORK_AUTO_APPROVAL_RUNTIME`) without live model requests.
+
 Use each manifest and lock for Node/DSH requirements; common CI uses Node 24.22.1. From the repository root:
 
 ```sh
@@ -40,7 +46,7 @@ Existing commands also work from each development root. Run `check` before `pack
 
 Studio/shared-service Node tests generate real Office files. Prepare a separate Python 3.12+ environment, run `python -m pip install -r packages/dsh-knowledge-studio/packages/artifact-services/python/requirements.txt` and set `DSH_OFFICE_PYTHON` to that interpreter's absolute path. CI performs this setup automatically, without a browser or enterprise login.
 
-CI selects affected development roots; shared-service changes also select Studio. Markdown/image-only changes run documentation and entry-point checks. Browser, real login/mail, Office and media acceptance remain targeted local work for relevant behavior changes. Ordinary CI does not install browsers, call real models or publish packages/desktop Releases.
+CI selects affected development roots and checks them on Linux; `dsh-auto-approval`, which handles host paths, is also checked on Windows. Shared-service changes also select Studio. Markdown/image-only changes run documentation and entry-point checks. Browser, real login/mail, Office and media acceptance remain targeted local work for relevant behavior changes. Ordinary CI does not install browsers, call real models or publish packages/desktop Releases.
 
 ## Localized approval prompts
 

@@ -99,7 +99,7 @@ const insert = [
 const exclusions = ['session-log-deepseek', 'deepseek-account', 'account-controller', 'ui-settings-account', 'plugin-package-inventory-deepseek'].map(id => ({ id, disabled: true }))
 // Provision the native settings entry once. The relay connection itself remains
 // off in remote-access's published patch until the user explicitly enables it.
-const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-memory', ...optionalBundles]
+const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-memory', '@eduwork/dsh-academic-calendar', ...optionalBundles]
 const require = createRequire(join(paths.output, 'd/package.json'))
 const boot = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
 const lowerLayers = await loadDistributionBundleLayers(join(paths.output, 'd'), bundles, boot)
