@@ -175,6 +175,10 @@ Provider 对象是由本地、经过审查的 adapter 解释的数据。
 
 Adapter 会保留 Profile 的 thinking 行为：忽略历史会话中用户选择的 effort，按该模型可用档位解析 Profile 默认值，仅向 PiAi 传递内部启用信号；`compat.supportsReasoningEffort: false` 保证 HTTP 请求不包含 `reasoning_effort`。该信号不会变成用户可选档位，Profile 的 `off` 仍可关闭支持关闭的模型。不会因为 Provider 不支持 effort 参数而拒绝整个请求。
 
+## 账号区域扩展
+
+机构插件可在 `oidc.account.footer.details` 单一插槽中提供头像下方的账户信息或操作。插槽参数为 `profile`、`status`、共享客户端 `service` 和 `wide`；折叠侧栏时 `wide=false`，扩展应适配 36px 宽度。扩展控件与账号菜单按钮并列，独立处理点击、键盘焦点和无障碍名称。未注册扩展时不增加任何账户请求。菜单内部原有的 `oidc.account.menu.details` 插槽保持可用。
+
 ## 禁止写入的秘密
 
 Profile 不得包含：
