@@ -4598,7 +4598,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				flexWrap: "wrap",
 				gap: 8,
 				marginTop: 10
-			} }, !s.installOnQuit && !s.installOnNextStart && h$4("button", {
+			} }, s.canSchedule !== false && !s.installOnQuit && !s.installOnNextStart && h$4("button", {
 				type: "button",
 				style: button,
 				onClick: () => controller.run("schedule-update")

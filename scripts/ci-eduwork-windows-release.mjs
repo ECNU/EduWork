@@ -30,7 +30,7 @@ const DEVELOPMENT_VERSION = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/
 
 const USAGE =
   'Use --core-root --edition-root --distribution-config --version --output [--release-notes-file <docs/releases/*.md>] ' +
-  '[--release-notes-approved] [--development] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] ' +
+  '[--release-notes-approved] [--development] [--windows-installer] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] ' +
   '[--jobs N] [--reuse-workspace] [--cache-root <dir>] [--digest-budget <bytes>] [--lock-wait <seconds>] ' +
   '[--recipe pinned-source] [--delta-bases <dir>] ' +
   '(--jobs 0 = as many as the graph allows)'
@@ -43,6 +43,7 @@ export async function ciEduworkWindowsRelease({
   releaseNotesFile = '',
   releaseNotesApproved = false,
   development = false,
+  windowsInstaller = false,
   verifySnapshot = true,
   runtimeSource = '',
   upstreamSource = '',
@@ -107,6 +108,7 @@ export async function ciEduworkWindowsRelease({
     edition: name,
     version,
     development,
+    windowsInstaller,
     forUpdate: true,
     distributionConfig,
     verifySnapshot,
@@ -201,6 +203,7 @@ if (isMainModule(import.meta.url)) {
       'release-notes-file': { type: 'string' },
       'release-notes-approved': { type: 'boolean' },
       development: { type: 'boolean' },
+      'windows-installer': { type: 'boolean' },
       'no-verify-snapshot': { type: 'boolean' },
       'runtime-source': { type: 'string' },
       'upstream-source': { type: 'string' },
@@ -225,6 +228,7 @@ if (isMainModule(import.meta.url)) {
     releaseNotesFile: values['release-notes-file'] ?? '',
     releaseNotesApproved: Boolean(values['release-notes-approved']),
     development: Boolean(values.development),
+    windowsInstaller: Boolean(values['windows-installer']),
     verifySnapshot: !values['no-verify-snapshot'],
     runtimeSource: values['runtime-source'] ?? '',
     upstreamSource: values['upstream-source'] ?? '',

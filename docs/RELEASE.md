@@ -6,7 +6,7 @@
 
 ## 发行分工
 
-GitHub 常规桌面 Release 面向长期维护的 Electron 公版和 ECNU 版，按已验收的 Windows/macOS 系统与架构构建。日常临时客户端、Go/Wails 过渡包及旧版升级演练由维护者在本地制作和验收，不加入 GitHub 桌面打包矩阵，不创建临时 Release。Go 壳源码和必要回归仍保留。
+GitHub 常规桌面 Release 面向长期维护的 Electron 公版和 ECNU 版，按已验收的 Windows/macOS 系统与架构构建。日常临时客户端和旧版升级演练不创建临时 Release。本分支不再装配 Go/Wails 桌面壳，仍保留旧版迁移兼容和回归测试。
 
 旧 ECNU 用户所需过渡包由维护者验收后通过原兼容分发渠道提供；后续衔接 Electron。GitHub 与旧更新渠道的实现分开维护，不能为了简化 GitHub 流程取消老用户升级要求。已有源码/Web CI 继续运行；Mac 适配所需 CI 构建和验证产物仍可使用，但不因此扩展为临时双壳发行体系。日常 PR/main CI 仍不发布。
 
@@ -61,13 +61,11 @@ Electron CI 必须从同一份装配身份生成文件名、更新元数据、�
 
 按 [SemVer 优先级](https://semver.org/#spec-item-11)，`0.3.0` 高于旧 `0.2.0-dev.*`、`0.2.0`、`0.3.0-rc.*` 和 `0.3.0-dev.*`。原来的版本号不重写。旧 Go 更新器及新壳的比较器都有这些回归用例；这仅证明版本比较，不等于证明整包自动迁移成功。
 
-公测更新清单拒绝带预发布后缀的构建。可在 `config/eduwork.jsonc` 配置更新地址，参考 `config/desktop/examples/updates.jsonc`。Windows Go 桥接和 Electron 现在共用经过校验的后台下载、进度及重启安装；安装前由用户选择时机。macOS 的更新与签名方案需单独真机验收，不将 Windows 验收结论外推。
+公测更新清单拒绝带预发布后缀的构建。可在 `config/eduwork.jsonc` 配置更新地址，参考 `config/desktop/examples/updates.jsonc`。macOS 的更新与签名方案需单独真机验收，不将 Windows 验收结论外推。
 
-旧 Go 自动更新使用旧清单格式，不能直接换成新壳的下载页清单。过渡发行先让旧用户升级到支持跨壳迁移的 Go 版，再由它验证 ZIP 和迁移握手，启动 Electron 导入历史。不得把 Electron ZIP 当作旧 Go ZIP 下发。普通启动不自动扫描别的安装目录；配置、会话与凭据的迁移应单独验收。完整迁移验收通过前保留双壳发行能力。
+旧 Go 自动更新使用旧清单格式，不能直接换成新壳的下载页清单。需要两跳迁移时，先使用支持跨壳迁移的 Go 过渡包，再由它验证 ZIP 和迁移握手，启动 Electron 导入历史。不得把 Electron ZIP 当作旧 Go ZIP 下发。普通启动不自动扫描别的安装目录；配置、会话与凭据的迁移应单独验收。
 
-`cmd/eduwork-wails-candidate` 已接入可选的过渡升级器。使用 `dsh-desktop/scripts/assemble-wails-bridge.ps1` 和 `pack-wails-bridge.ps1` 才会生成包含 `ChatECNU-Work.exe` 兼容入口、旧 `run` 参数、`apply-update`、健康确认及下载安装控制的过渡包。普通 Wails 候选仍不启用它。迁移渠道显式配置在 `config/update.bridge.json`，使用旧清单 schemaVersion 1、`allowShellMigration: true`、`target: windows-amd64` 和 `flavor: offline`。
-
-已发布 ECNU `0.2.0-dev.20260909.3` 应作为首跳验收基线；另选更早的代表版本验证旧渠道兼容。既有 `0.2.x → 0.2.x` 旧辅助程序验收、版本比较或模拟跨壳事务不能替代 `旧发布包 → 本次 Go 过渡包` 的真实下载、安装、启动、历史可见和失败恢复验收。第一跳必须在本次正式发行前完成，不能推迟到下一次 Electron 迁移发行。
+已发布 ECNU `0.2.0-dev.20260909.3` 可作为首跳验收基线；另选更早的代表版本验证旧渠道兼容。版本比较或模拟跨壳事务不能替代真实旧包的下载、安装、启动、历史可见和失败恢复验收。
 
 跨壳升级要求目标版本高于当前版本。例如旧 `0.2.0-dev.*` Go → `0.3.5-dev.*` Go 过渡版 → `0.3.5` Electron。不要依靠相同版本号触发换壳；每条路线都须使用实际发行包验证。
 
@@ -106,7 +104,7 @@ GitHub 托管的构建产物由 GitHub 托管的发布任务读取、校验和�
 | 构建方式 | 版本 | 产物与发布范围 |
 | --- | --- | --- |
 | `node`（默认） | `X.Y.Z` 及 alpha、beta、rc、dev 预发布版本 | Node 阶段编排、`config/desktop-build.json` 锁定的 DSH 候选组合；Windows ZIP 与安装包、macOS ZIP 与 DMG，以及校验和与平台回执。stable 另带 Windows 更新清单和两端的增量更新包。可发布双平台预发布或正式 Release。 |
-| `ps1` | 同一版本范围 | 旧 PowerShell 入口、锁定源码配方，暂供配方与回执对照。 |
+| `ps1` | 同一版本范围 | 旧 PowerShell 入口、锁定源码配方，仅供非公版 Windows 对照；不能发布公版 Windows。 |
 
 `node` 构建即使只保留 artifact，也要求已确认的版本说明，以便之后直接发布同一份产物。公开 Release 会再次核对运行来源、源码提交、版号、说明、两平台归档哈希、启动验收及安装包检查；已有同标签、同文件名但不同字节的资产不会被覆盖。macOS stable 包必须带 Sparkle 配置和公钥，DMG 从已验收 ZIP 的应用生成并进行只读镜像核对；当前仍为 ad-hoc 签名，Developer ID 签名、公证和 appcast 私钥签名须按独立发行验收流程完成。机构版需另按其私有发行配置和验收流程执行。
 

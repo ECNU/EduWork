@@ -170,13 +170,13 @@ test('desktop pet publication rejects a package missing a referenced character i
     'lib/index.js', 'lib/client.js', 'lib/page/pet.html', 'lib/page/pet.js', 'lib/page/pet.css', 'lib/pet-state.js', 'lib/skin-files.js']
     .map(file => ['package/' + file, 'fixture']))
   files['package/package.json'] = JSON.stringify(manifest)
-  for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi', 'ecnu-huashi-girl']) {
+  for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi', 'ecnu-huashi-boy', 'ecnu-huashi-girl']) {
     files[`package/skins/${id}/skin.json`] = JSON.stringify({ animations: { idle: { image: 'idle.svg' } } })
     files[`package/skins/${id}/idle.svg`] = '<svg/>'
   }
   assert.doesNotThrow(() => inspectArchive(tarball(files), selected, '0.1.0'))
-  delete files['package/skins/dafeiyu/idle.svg']
-  assert.throws(() => inspectArchive(tarball(files), selected, '0.1.0'), /Missing packed character image dafeiyu\/idle.svg/)
+  delete files['package/skins/ecnu-huashi-boy/idle.svg']
+  assert.throws(() => inspectArchive(tarball(files), selected, '0.1.0'), /Missing packed character image ecnu-huashi-boy\/idle\.svg/)
 })
 
 test('remote publication rejects a missing relay command, browser runtime or protocol', () => {

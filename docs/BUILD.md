@@ -15,6 +15,14 @@
 
 手动开发包验证不需要发行说明，也不会创建 Release。新 workflow 文件尚未进入仓库默认分支时，可运行已注册的 `desktop-candidates.yml`：选择 feature 分支、`build_mode=node`、`development=true`、开发版本及目标平台，并保持发布关闭、发行说明为空、审批未勾选。
 
+Windows 迁移开发可手动运行 `development-desktop.yml`，选择实现分支、`platform=windows` 并勾选 `windows_installed_candidate` 或 `windows_installer_candidate`。流水线先构建并检查便携包启动，再复用同一批输入组装 `installed` 布局。勾选 `windows_installed_candidate` 时，程序与源码身份回执上传为 `windows-installed-candidate` artifact（保留 7 天）。下载后运行 `electron-candidate/EduWork-Electron.exe`，验收旧数据迁入、凭据解密和冷启动。回执将这些安装版运行验收标为未执行。
+
+勾选 `windows_installer_candidate` 时，流水线用锁定的 electron-builder 和 NSIS 生成按用户安装的安装器，上传为 `windows-installer-candidate` artifact（保留 7 天）。开发和正式安装器打包前均检查 electron-builder 的实装版本、本地锁定版本和锁定 DSH 提交的 `pnpm-lock.yaml` 桌面条目一致。安装器默认装到 `%LOCALAPPDATA%\Programs\EduWork\<发行标识>`，数据存于 `%LOCALAPPDATA%\EduWork\<发行标识>`，默认卸载保留数据。验收可用 `installed_update_url` 指定 HTTPS 静态源；配置更新源后，artifact 另含通道文件和 `.blockmap`。
+
+Windows 安装版使用 `electron-updater`。正式公版 Windows 构建在便携启动验收后，用同一批输入生成安装器，再在同一 Windows runner 静默按用户安装、用隔离数据目录启动并卸载。构建校验对应的通道文件（稳定版为 `latest.yml`，`-dev` 版为 `dev.yml`）是否与实际安装器一致。学校版、Mac 和日常开发构建不变。
+
+Windows 便携版继续使用 Go 更新器，不会请求安装器通道文件或 `.blockmap`。公版 Windows 正式 Release 同时附带便携版和安装版更新资产；发布任务在无 npm 依赖的发布 job 校验固定文件名、回执字节数及 SHA-256。`ps1` 路径不能发布公版 Windows 候选。渠道和发布要求见[更新指南](UPDATES.md)。
+
 ## CI 检查范围
 
 PR 和 main push 共用 `scripts/ci-changes.mjs` 判断变更范围。普通文档、网站、更新清单、独立 npm 包源码，以及只刷新时间和源码哈希的 `source-receipt.json`，不会触发产品装配。产品锁、Host、桌面外壳、Skill、资源、构建脚本和 CI 配置变化仍执行构建；未知路径或无法取得比较基准时执行完整检查。
@@ -68,7 +76,7 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 
 当前内核、迁移规则及保留的适配见 [DSH 0.2.2 集成说明](CORE-022.md)。
 
-本机开发包、自动开发包和手动候选的 Node 入口都按 `config/desktop-build.json` 选择同一锁定组合：从已校验的 npm 包准备 DSH `0.2.2-rc.1` Runtime 和十二个独立插件包，从锁定的上游提交构建 Host、Electron 壳，并构建产品专属扩展，然后安装平台原生资源、打包并启动归档中的应用。独立插件不在产品装配时重建或覆盖；其版本、来源与内容校验见[包维护与发布](PACKAGES.md#客户端装配)。保留的 PowerShell 候选也使用该组合；Node 负责阶段依赖、缓存和回执，不调用 PowerShell 脚本。[流程图](assets/build-pipeline.svg)和[流水线提案](proposals/build-pipeline-stages/README.md)给出阶段关系。
+本机开发包、自动开发包和手动候选的 Node 入口都按 `config/desktop-build.json` 选择同一锁定组合：从已校验的 npm 包准备 DSH `0.2.2-rc.3` Runtime 和十二个独立插件包，从锁定的上游提交构建 Host、Electron 壳，并构建产品专属扩展，然后安装平台原生资源、打包并启动归档中的应用。独立插件不在产品装配时重建或覆盖；其版本、来源与内容校验见[包维护与发布](PACKAGES.md#客户端装配)。保留的 PowerShell 候选也使用该组合；Node 负责阶段依赖、缓存和回执，不调用 PowerShell 脚本。[流程图](assets/build-pipeline.svg)和[流水线提案](proposals/build-pipeline-stages/README.md)给出阶段关系。
 
 稳定版要求 Windows 更新契约及 macOS Sparkle 配置；用户可在设置中控制软件更新，预发布沿用用户选择。候选的 Windows ZIP 与安装包、macOS ZIP 与 DMG 都会校验哈希、归档内容和启动结果。macOS DMG 从通过 ZIP 验收的同一应用生成，挂载只读镜像后核对应用签名与内容。签名仍是 ad-hoc；系统权限、机构登录、升级体验等人工验收见 [发行指南](RELEASE.md)。
 
@@ -78,7 +86,7 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 
 ## 依赖与复用
 
-桌面开发包与发布候选默认使用同一 DSH `0.2.2-rc.1` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 `--recipe npm` 配方及 `ci-eduwork-windows-release.ps1` / `ci-eduwork-macos-release.ps1` 已退役，会在构建前报错；`build-desktop-candidate.ps1` 使用锁定源码路线，仍可使用。请使用本文的 Node.js 入口；不指定配方或使用 `--recipe pinned-source` 均可。当前路线仍通过 npm 装配锁定的 Runtime 和已发布插件。旧 `build-shell.mjs` 调用须改为带 `--pinned-dsh-source --runtime <目录>` 的入口。
+桌面开发包与发布候选默认使用同一 DSH `0.2.2-rc.3` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 `--recipe npm` 配方及 `ci-eduwork-windows-release.ps1` / `ci-eduwork-macos-release.ps1` 已退役，会在构建前报错；`build-desktop-candidate.ps1` 使用锁定源码路线，仍可使用。请使用本文的 Node.js 入口；不指定配方或使用 `--recipe pinned-source` 均可。当前路线仍通过 npm 装配锁定的 Runtime 和已发布插件。旧 `build-shell.mjs` 调用须改为带 `--pinned-dsh-source --runtime <目录> --desktop-tools <目录>` 的入口。
 
 候选流水线通过 `--reuse-workspace` 复用工作区，按阶段参数、输入和产物摘要决定是否重跑。`--jobs N` 控制并发，`--cache-root <目录>` 指定原生资源缓存；缓存命中后仍校验锁定哈希。上游升级需要同步更新依赖锁、Host 源码锚点、插件适配和验收回执，不能只修改版本字符串。
 

@@ -126,10 +126,9 @@ export class SideChatController {
       this.update({ chat, phase: 'open' })
       return chat
     } catch (error) {
-      if (this.snapshot.chat === pending) {
-        this.update({ phase: 'closing', error: 'failed' })
-        await this.close().catch(() => {})
-      }
+      // The caller reports the failure at once; cleanup continues on its own
+      // and, while it fails, stays closing for the cleanup polling.
+      if (this.snapshot.chat === pending) void this.close().catch(() => {})
       throw error
     } finally {
       this.pendingOpens--
@@ -143,8 +142,7 @@ export class SideChatController {
     if (this.cleanup) return this.cleanup
     this.update({ phase: 'closing' })
     this.cleanup = this.request({ action: 'close', owner: chat.owner, sessionId: chat.sessionId })
-      .then(() => { if (this.snapshot.chat === chat) this.update({ chat: undefined, phase: 'idle', references: [], error: undefined }) })
-      .catch(error => { this.update({ error: 'failed' }); throw error })
+      .then(() => { if (this.snapshot.chat === chat) this.update({ chat: undefined, phase: 'idle', references: [] }) })
       .finally(() => { this.cleanup = undefined })
     return this.cleanup
   }

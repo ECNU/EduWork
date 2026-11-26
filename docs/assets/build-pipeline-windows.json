@@ -1,7 +1,7 @@
 {
   "platform": "windows",
   "generatedFrom": "stage declarations in scripts/lib/*-stages.mjs",
-  "stages": 15,
+  "stages": 16,
   "maxParallelism": 4,
   "waves": [
     {
@@ -55,6 +55,12 @@
     },
     {
       "wave": 7,
+      "stages": [
+        "installer"
+      ]
+    },
+    {
+      "wave": 8,
       "stages": [
         "publish"
       ]
@@ -260,10 +266,25 @@
       "clean": []
     },
     {
+      "name": "installer",
+      "description": "Build and accept public Windows installer",
+      "requires": [
+        "accept",
+        "upstream"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "installer"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
       "name": "publish",
       "description": "Release ZIP, delta updates, receipt and update manifest",
       "requires": [
-        "accept"
+        "accept",
+        "installer"
       ],
       "dependsOn": [],
       "outputs": [

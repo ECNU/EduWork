@@ -51,6 +51,11 @@ export function editablePortableUpdateConfiguration({defaults={},updates={},prio
  return result
 }
 
+export function portableStartupUpdateConfiguration({platform=process.platform,dataLayout='portable',...options}) {
+ if(platform!=='win32'||dataLayout==='installed')return undefined
+ return editablePortableUpdateConfiguration(options)
+}
+
 export async function startPortableUpdates({root,updates={},defaults={},version,distribution,onQuit,enabled=true,applyScheduled=true,platform=process.platform,spawnProcess=spawn}) {
  // Callers may omit this backend entirely without touching pending installs.
  // The shared software-update controller owns the user's persisted choice.
