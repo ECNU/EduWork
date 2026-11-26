@@ -946,7 +946,8 @@ test('native desktop bridge restores the confirmed language without the Host', {
   mock('file-actions.ts', { installFileActions() {} })
   mock('file-drag.ts', { installDesktopFileDrag: () => ({ dispose() {} }) })
   mock('desktop-menu.mjs', { desktopEditMenu: () => ({ label: 'Edit', submenu: [] }), desktopViewMenu: () => ({ label: 'View', submenu: [] }), setDesktopApplicationMenu() {} })
-  mock('sidebar-browser.mjs', { SIDEBAR_BROWSER_IPC: { bind: 'bind', opened: 'opened' } })
+  mock('sidebar-browser.mjs', { SIDEBAR_BROWSER_IPC: { bind: 'bind', opened: 'opened', clearData: 'clearData' } })
+  mock('sidebar-browser-menu.mjs', { attachSidebarBrowserMenu() {} })
   mock('update-observer.mjs', { watchUpdateDocument: () => ({ bind() {}, release() {}, dispose() {} }) })
   let preference = null, hostUnavailable = false
   const { installNativeDesktopBridge } = await import(new URL('native-desktop-bridge.mjs?locale', source))

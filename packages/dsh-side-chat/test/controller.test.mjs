@@ -252,6 +252,36 @@ test('failed cleanup is retryable and cannot open a replacement chat', async () 
   assert.equal(controller.snapshot.chat, undefined)
 })
 
+test('a refused open leaves its notice to the caller and its cleanup retries quietly', async () => {
+  const controller = new SideChatController({ owner: () => 'g'.repeat(32), request: async () => { throw new Error('refused') } })
+  await assert.rejects(controller.open('source', 1), /refused/)
+  for (let poll = 0; poll < 3; poll++) await assert.rejects(controller.retryCleanup(), /refused/)
+  assert.equal(controller.snapshot.phase, 'closing')
+  assert.equal(controller.snapshot.error, undefined)
+  assert.equal(controller.snapshot.noticeSequence, undefined)
+})
+
+test('a refused open fails at once, and its notice outlives the cleanup until dismissed', async () => {
+  let finishClose
+  const registry = new SideChatRegistry({ owner: () => 'h'.repeat(32), request: input => input.action === 'open'
+    ? Promise.reject(new Error('refused')) : new Promise(resolve => { finishClose = resolve }) })
+  const owner = registry.forSource('source')
+  const outcome = await Promise.race([
+    owner.open('source', 1).then(() => 'opened', () => 'rejected'),
+    new Promise(resolve => setTimeout(resolve, 50, 'waiting for cleanup')),
+  ])
+  assert.equal(outcome, 'rejected')
+  assert.equal(owner.snapshot.phase, 'closing')
+  owner.update({ error: 'failed' })
+  finishClose({})
+  await owner.close()
+  assert.equal(owner.snapshot.chat, undefined)
+  assert.equal(owner.snapshot.error, 'failed')
+  assert.equal(registry.findSource('source'), owner)
+  owner.update({ error: undefined })
+  assert.deepEqual(registry.all(), [])
+})
+
 test('cleanup polling never renews or closes an open chat and preserves its draft', async () => {
   const requests = []
   const controller = new SideChatController({ owner: () => 'd'.repeat(32), request: async input => {

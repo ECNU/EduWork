@@ -87,7 +87,7 @@ for (const name of ['parser.js', 'scanner.js', 'string-intern.js', 'package.json
   await writeFile(join(output, 'src/eduwork-native-host-process.mjs'), adaptHostExit(await readFile(join(host, 'host-process.mjs'), 'utf8')))
   for (const name of ['node-environment.mjs', 'web-document.mjs', 'redacted-log.mjs']) await copyFile(join(host, name), join(output, 'src', name))
   await copyFile(join(repository, 'dsh-electron/src/native-web-host.mjs'), join(output, 'src/eduwork-host-process.mjs'))
-  for (const name of ['desktop-main.mjs', 'automation-browser.mjs', 'sidebar-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
+  for (const name of ['desktop-main.mjs', 'automation-browser.mjs', 'sidebar-browser.mjs', 'sidebar-browser-data.mjs', 'sidebar-browser-menu.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 }
 await copyFile(join(host, 'LICENSE-DeepSeek'), join(output, 'LICENSE-DeepSeek'))
 await writeFile(join(output, 'package.json'), JSON.stringify({ ...manifest, name: '@eduwork/desktop-electron', scripts: {}, devDependencies: {} }, null, 2))
@@ -110,7 +110,7 @@ for (const name of ['dock-theme-preload.cjs', 'boot-motion-preload.cjs', 'preloa
 for (const name of ['boot-brand-preload.cjs', 'boot-hint-preload.cjs', 'sidebar-browser-preload.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
 {
-  for (const name of ['native-web-host.mjs', 'desktop-main.mjs', 'automation-browser.mjs', 'sidebar-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
+  for (const name of ['native-web-host.mjs', 'desktop-main.mjs', 'automation-browser.mjs', 'sidebar-browser.mjs', 'sidebar-browser-data.mjs', 'sidebar-browser-menu.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
   adapters['dsh-electron/scripts/native-desktop-source.mjs'] = digest(await readFile(join(repository, 'dsh-electron/scripts/native-desktop-source.mjs')))
 }
 adapters['dsh-host/publisher-bootstrap.mjs'] = digest(await readFile(join(repository, 'dsh-host/publisher-bootstrap.mjs')))

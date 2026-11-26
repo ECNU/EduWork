@@ -1,9 +1,35 @@
 import assert from 'node:assert/strict'
-import { resolve } from 'node:path'
+import { once } from 'node:events'
+import { createServer } from 'node:http'
+import { registerHooks } from 'node:module'
+import { join, resolve } from 'node:path'
 import test from 'node:test'
-import { READ } from '../lib/page.js'
-import { browserPermission } from '../lib/permission.js'
-import { covered, noteSavedScreenshots, pageOf, registerPageTools } from '../lib/read-act.js'
+import { pathToFileURL } from 'node:url'
+
+// The tools run in DSH's own tool registry and executor, from the pinned
+// Runtime the product uses (EDUWORK_TEST_RUNTIME), so their MCP calls take the
+// path they take in the product; only Playwright MCP's tools are stand-ins.
+const runtime = process.env.EDUWORK_TEST_RUNTIME
+if (!runtime) throw new Error('Set EDUWORK_TEST_RUNTIME to the pinned DSH Runtime')
+const fromRuntime = pathToFileURL(join(runtime, 'package.json')).href
+const core = new URL('../../tool-browser/lib/core.js', import.meta.url).href
+// The browser-use provider that sidebar.js mounts is not in the Runtime; browser_clear_data takes only its rule for which Agents use the Sidebar.
+const provider = {
+  '@deepseek-ai/dsh-browser-use/brand': 'export const BrowserUseProviderName = name => name',
+  '@deepseek-ai/dsh-experimental-browser-use-runtime': 'export class SessionResources {}',
+}
+registerHooks({ resolve: (specifier, context, next) => specifier === '@chatecnu-work/dsh-tool-browser/core' ? { url: core, shortCircuit: true }
+  : provider[specifier] ? { url: `data:text/javascript,${provider[specifier]}`, shortCircuit: true }
+  : specifier.startsWith('@deepseek-ai/') ? next(specifier, { ...context, parentURL: fromRuntime }) : next(specifier, context) })
+const { Context } = await import('@deepseek-ai/cordis')
+const { defineTool } = await import('@deepseek-ai/dsh-tools')
+const { ToolExecutionPipeline } = await import('@deepseek-ai/dsh-tools/pipeline')
+const { createUserMessage } = await import('@deepseek-ai/dsh-llm')
+const dsh = await Promise.all(['@deepseek-ai/dsh-system-prompt', '@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-tool-executor-native'].map(async name => { const module = await import(name); return module.default ?? module }))
+const { READ } = await import('../lib/page.js')
+const { browserGuard, browserPermission } = await import('../lib/permission.js')
+const { covered, noteSavedScreenshots, pageOf, registerPageTools } = await import('../lib/read-act.js')
+const { registerClearData } = await import('../lib/clear-data.js')
 
 const line = (text, top = 0) => ({ text, top })
 const page = (url, title, lines, refs, extra = {}) => ({ url, title, alerts: [], lines, closed: [], refs, scrollY: 0, truncated: false, ...extra })
@@ -17,73 +43,126 @@ const site = () => ({
   book: page('https://library.example/book/1', '深度学习入门', [line('深度学习入门 馆藏：闵行')], {}),
   rules: page('https://library.example/rules', '借阅规则', [line('每人可借 20 册')], {}),
   notice: page('http://10.0.0.8/notice', '内网通知', [line('[#1 link "下一条"]')], { 1: { kind: 'link', name: '下一条', href: 'http://10.0.0.8/notice/2' } }),
+  blank: page('about:blank', '', [], {}),
+  long: page(`https://library.example/search/${'深度学习/'.repeat(400)}`, '检索结果', [], {}),
 })
+
+// The Playwright MCP tools the page tools use, and their arguments.
+const mcpTools = ['browser_evaluate', 'browser_navigate', 'browser_navigate_back', 'browser_tabs', 'browser_click', 'browser_type', 'browser_select_option',
+  'browser_press_key', 'browser_wait_for', 'browser_take_screenshot']
+const mcpArguments = Object.fromEntries([...['function', 'url', 'action', 'element', 'target', 'text', 'key', 'filename'].map(key => [key, { type: 'string' }]),
+  ['index', { type: 'integer' }], ['time', { type: 'number' }], ['submit', { type: 'boolean' }], ['values', { type: 'array', items: { type: 'string' } }]])
 
 // Tabs behind the Agent's Playwright MCP tools, answering browser_read's and
 // browser_act's page scripts from the pages above. routes: what clicking a
-// number does on a page, by page name, { newTab } for a page the page opens.
-function harness({ start = 'search', routes = {}, suggests = false } = {}) {
+// number does on a page, by page name, { newTab } for a page the page opens,
+// 'error' for a click that fails and 'stop' for one during which the user
+// stops the Agent. approve: the user's answer when the application asks.
+// sidebar: the desktop app's Sidebar endpoint, if any.
+async function harness({ start = 'search', routes = {}, suggests = false, approve = 'allowed-once', sidebar } = {}) {
   const pages = site()
   const tabs = [start]
-  let current = 0, used = false
-  const calls = []
-  const tools = {}
-  const text = value => ({ isError: false, value: { content: [{ type: 'text', text: value }] } })
+  // outer: the browser_read or browser_act call running.
+  let current = 0, used = false, outer
+  const calls = [], asked = []
+  const stop = new AbortController()
+  const text = value => ({ content: [{ type: 'text', text: value }] })
   const go = key => { tabs[current] = key; return text(`### Ran Playwright code\n### Page\n- Page URL: ${pages[key].url}`) }
   const list = () => tabs.map((key, i) => `- ${i}: ${i === current ? '(current) ' : ''}[${pages[key].title}](${pages[key].url})`).join('\n')
   const ref = target => Number(/"(\d+)"/u.exec(target)?.[1])
-  const middleware = []
-  const ctx = {
-    on: (event, handler) => { assert.equal(event, 'tools/execute'); middleware.push(handler) },
-    tools: {
-      register: definition => { tools[definition.name] = definition },
-      async execute(exec) {
-        assert.ok(covered.has(exec.parent), 'every MCP call runs under its tool\'s permission')
-        const name = exec.name.replace('mcp__playwright-mcp__', ''), args = exec.arguments
-        calls.push({ name, args })
-        const here = pages[tabs[current]]
-        if (name === 'browser_evaluate' && args.function === READ) { used = false; return text(`### Result\n${JSON.stringify(here)}`) }
-        if (name === 'browser_evaluate' && args.function.includes('went to another page')) {
-          const url = JSON.parse(/location\.href !== ("[^"]*")/u.exec(args.function)[1])
-          const next = /!same\(at\((\d+)\)\)/u.exec(args.function)?.[1]
-          const answer = url !== here.url ? 'went to another page' : used && /true && \(document\["__eduworkInput"\]/u.test(args.function) ? 'the user used the page'
-            : next && !here.refs[next] ? 'the page changed' : suggests && /at\(\d+\)\?\.getAttribute/u.test(args.function) ? 'suggestions opened under the field' : ''
-          return text(`### Result\n${JSON.stringify(answer)}`)
-        }
-        if (name === 'browser_evaluate') return text('### Result\nundefined')
-        if (name === 'browser_navigate') return go(Object.keys(pages).find(key => pages[key].url === args.url))
-        if (name === 'browser_tabs') {
-          if (args.action === 'select') current = args.index
-          if (args.action === 'new') { tabs.push(Object.keys(pages).find(key => pages[key].url === args.url)); current = tabs.length - 1 }
-          return text(`### Result\n${list()}`)
-        }
-        // The Agent's own input counts in the page as the user's would.
-        used = true
-        const route = routes[tabs[current]]?.[ref(args.target)]
-        if (route === 'error') return { isError: true, error: { message: '### Error\nTimeoutError: locator.click: Timeout 5000ms exceeded.' } }
-        if (route?.newTab) { tabs.push(route.newTab); return text(`### Ran Playwright code\n### Open tabs\n${list()}`) }
-        if (route) return go(route)
-        return text('### Ran Playwright code')
-      },
-    },
+  const answer = (name, args) => {
+    const here = pages[tabs[current]]
+    if (name === 'browser_evaluate' && args.function === READ) { used = false; return text(`### Result\n${JSON.stringify(here)}`) }
+    if (name === 'browser_evaluate' && args.function.includes('went to another page')) {
+      const url = JSON.parse(/location\.href !== ("[^"]*")/u.exec(args.function)[1])
+      const next = /!same\(at\((\d+)\)\)/u.exec(args.function)?.[1]
+      const answer = url !== here.url ? 'went to another page' : used && /true && \(document\["__eduworkInput"\]/u.test(args.function) ? 'the user used the page'
+        : next && !here.refs[next] ? 'the page changed' : suggests && /at\(\d+\)\?\.getAttribute/u.test(args.function) ? 'suggestions opened under the field' : ''
+      return text(`### Result\n${JSON.stringify(answer)}`)
+    }
+    if (name === 'browser_evaluate') return text('### Result\nundefined')
+    if (name === 'browser_navigate') return go(Object.keys(pages).find(key => pages[key].url === args.url))
+    if (name === 'browser_tabs') {
+      if (args.action === 'select') current = args.index
+      if (args.action === 'new') { tabs.push(Object.keys(pages).find(key => pages[key].url === args.url)); current = tabs.length - 1 }
+      return text(`### Result\n${list()}`)
+    }
+    if (name === 'browser_take_screenshot') return text(`### Result\n- [Screenshot of viewport](./${args.filename ?? 'page.png'})`)
+    // The Agent's own input counts in the page as the user's would.
+    used = true
+    const route = routes[tabs[current]]?.[ref(args.target)]
+    if (route === 'error') throw new Error('### Error\nTimeoutError: locator.click: Timeout 5000ms exceeded.')
+    if (route === 'stop') stop.abort()
+    if (route?.newTab) { tabs.push(route.newTab); return text(`### Ran Playwright code\n### Open tabs\n${list()}`) }
+    if (typeof route === 'string' && route in pages) return go(route)
+    return text('### Ran Playwright code')
   }
+  const agent = { session: { id: 'session-1', header: {} } }
+  const ctx = new Context()
+  for (const plugin of dsh) await ctx.plugin(plugin)
+  for (const name of ['sandboxPolicy', 'workingDirectory', 'approval']) ctx.provide(name)
+  ctx.set('sandboxPolicy', { resolve: () => ({ mode: 'workspace-write' }) })
+  ctx.set('workingDirectory', { get: session => { assert.equal(session, agent.session); return '/work/space' } })
+  ctx.set('approval', { request: async request => { asked.push(request.toolName); return approve } })
+  // MCP calls that do not go under the run making them, in its call tree.
+  const strays = []
+  // Registered under a condition, the MCP tools are found only through the tool set a model step admits.
+  for (const name of mcpTools) {
+    ctx.tools.register(defineTool({
+      name: `mcp__playwright-mcp__${name}`, description: `Playwright MCP ${name}`, parameters: mcpArguments,
+      output: { schema: { type: 'object', additionalProperties: true }, render: (_args, value) => value.content },
+      execute: (args, exec) => {
+        const under = outer ? exec.parent === outer.token && covered.has(exec.parent) && exec.rootCallId === outer.rootCallId && exec.agent === outer.agent
+          : exec.parent === undefined || covered.has(exec.parent)
+        if (!under) strays.push(name)
+        calls.push({ name, args })
+        return answer(name, args)
+      },
+    }), { when: () => true })
+  }
+  // The plugin's own parts, as its apply installs them, without the MCP server and the Sidebar.
+  ctx.tools.guard(exec => browserGuard(ctx, exec))
+  ctx.on('tools/pre-execute', (exec, next) => browserPermission(ctx, exec, next))
   registerPageTools(ctx)
-  const agent = { session: {} }
+  noteSavedScreenshots(ctx)
+  if (sidebar !== undefined) registerClearData(ctx, sidebar)
+  ctx.on('tools/execute', async (exec, next) => {
+    if (!exec.name.startsWith('browser_')) return next()
+    outer = exec
+    try { return await next() } finally { outer = undefined }
+  })
   let n = 0
-  const run = (tool, args) => tools[tool].execute(args, { callId: `call${++n}`, rootCallId: `call${n}`, token: Symbol(`call${n}`), agent, signal: new AbortController().signal })
-  // An MCP tool the Agent calls itself, or one a run calls under its token, as the tool middleware sees it.
-  const direct = (name, args = {}, parent) => middleware[0]({ name: `mcp__playwright-mcp__${name}`, arguments: args, agent, parent }, async () => text(''))
+  // A model step calling one tool: the batch's results.
+  const step = async (tool, args) => {
+    const toolSet = await ctx.tools.resolve({ agent, signal: stop.signal })
+    const batch = await ctx.tools.execute({ calls: [{ id: `call${++n}`, name: tool, arguments: JSON.stringify(args) }], signal: stop.signal, agent, toolSet }).finally(() => toolSet.dispose())
+    assert.deepEqual(strays, [], 'every MCP call of a run goes under its permission, in its call tree')
+    return batch
+  }
+  // The tool's text, or its error thrown.
+  const run = async (tool, args) => {
+    const [{ result }] = (await step(tool, args)).results
+    if (result.isError) throw new Error(result.error.message)
+    return result.value
+  }
+  // An MCP tool the Agent calls itself in a step, or one a run calls under its token.
+  const pipeline = new ToolExecutionPipeline(ctx)
+  const direct = async (name, args = {}, parent) => {
+    const toolSet = await ctx.tools.resolve({ agent, signal: stop.signal })
+    const prepared = await pipeline.prepare({ callId: `call${++n}`, name: `mcp__playwright-mcp__${name}`, arguments: args, agent, signal: stop.signal, toolSet, ...parent && { parent } })
+    return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared).finally(() => toolSet.dispose())
+  }
   // The current tab shows another page, as when the user takes over.
   const visit = key => { tabs[current] = key }
   // The user's own input in the page, which its next read no longer counts.
   const use = () => { used = true }
-  return { run, direct, visit, use, calls, agent, pages, tabs: () => tabs.map(key => pages[key].url), current: () => current }
+  return { ctx, step, run, direct, visit, use, calls, asked, agent, pages, tabs: () => tabs.map(key => pages[key].url), current: () => current }
 }
 
 const actions = calls => calls.filter(c => !['browser_evaluate', 'browser_tabs'].includes(c.name))
 
 test('browser_read opens an address and shows the page with its elements numbered', async () => {
-  const browser = harness()
+  const browser = await harness()
   const text = await browser.run('browser_read', { url: 'https://library.example/' })
   assert.deepEqual(browser.calls.map(c => c.name), ['browser_navigate', 'browser_evaluate'])
   assert.match(text, /^<untrusted_web_content>\nPage: 馆藏检索\nURL: https:\/\/library\.example\/\n/u)
@@ -95,7 +174,7 @@ test('browser_read opens an address and shows the page with its elements numbere
 })
 
 test('browser_act runs the actions in order on the numbered elements and shows the page after them', async () => {
-  const browser = harness({ routes: { search: { 2: 'results' } } })
+  const browser = await harness({ routes: { search: { 2: 'results' } } })
   await browser.run('browser_read', {})
   const text = await browser.run('browser_act', { actions: [
     { do: 'type', ref: 1, text: '深度学习' }, { do: 'select', ref: 3, option: '闵行' }, { do: 'click', ref: 2 },
@@ -110,39 +189,39 @@ test('browser_act runs the actions in order on the numbered elements and shows t
 })
 
 test('browser_act stops when the page moves on, and says what did not run', async () => {
-  const browser = harness({ routes: { search: { 1: 'results' } } })
+  const browser = await harness({ routes: { search: { 1: 'results' } } })
   await browser.run('browser_read', {})
   const text = await browser.run('browser_act', { actions: [{ do: 'click', ref: 1 }, { do: 'type', ref: 1, text: '深度学习' }, { do: 'click', ref: 2 }] })
   assert.deepEqual(actions(browser.calls).map(c => c.name), ['browser_click'])
   assert.match(text, /^1\. click \[#1 textbox "检索词"\]: done, went to another page\n\(2 more not run\. Decide again from the page below\.\)/u)
   assert.match(text, /Page: 检索结果/u)
   // Typing that opens suggestions under the field stops the list too.
-  const typed = harness({ suggests: true })
+  const typed = await harness({ suggests: true })
   await typed.run('browser_read', {})
   assert.match(await typed.run('browser_act', { actions: [{ do: 'type', ref: 1, text: '深度' }, { do: 'click', ref: 2 }] }), /done, suggestions opened under the field\n\(1 more not run/u)
 })
 
 test('a link is opened by its address, in a new tab when it says so, and the Agent goes on in a tab the page opens', async () => {
-  const browser = harness({ start: 'results', routes: { results: { 2: { newTab: 'rules' } } } })
+  const browser = await harness({ start: 'results', routes: { results: { 2: { newTab: 'rules' } } } })
   await browser.run('browser_read', {})
   const text = await browser.run('browser_act', { actions: [{ do: 'click', ref: 1 }] })
   assert.deepEqual(browser.calls.filter(c => c.name === 'browser_tabs' && c.args.action !== 'list'), [{ name: 'browser_tabs', args: { action: 'new', url: 'https://library.example/book/1' } }])
   assert.match(text, /^1\. click \[#1 link "深度学习入门"\]: done, opened a new tab, now the current one/u)
   assert.match(text, /Page: 深度学习入门/u)
   assert.equal(browser.current(), 1)
-  const popup = harness({ start: 'results', routes: { results: { 2: { newTab: 'rules' } } } })
+  const popup = await harness({ start: 'results', routes: { results: { 2: { newTab: 'rules' } } } })
   await popup.run('browser_read', {})
   assert.match(await popup.run('browser_act', { actions: [{ do: 'click', ref: 2 }] }), /^1\. click \[#2 button "在线试读"\]: done, opened a new tab, now the current one[\s\S]*Page: 借阅规则/u)
   assert.equal(popup.current(), 1)
   // A link in a closed menu opens the same way, in the current tab.
-  const menu = harness()
+  const menu = await harness()
   await menu.run('browser_read', {})
   assert.match(await menu.run('browser_act', { actions: [{ do: 'click', ref: 4 }] }), /Page: 借阅规则/u)
   assert.deepEqual(actions(menu.calls), [{ name: 'browser_navigate', args: { url: 'https://library.example/rules' } }])
 })
 
 test('browser_act checks the whole list before any of it runs, and reports a failure and a page that did not change', async () => {
-  const browser = harness({ routes: { search: { 2: 'error' } } })
+  const browser = await harness({ routes: { search: { 2: 'error' } } })
   await assert.rejects(browser.run('browser_act', { actions: [{ do: 'click', ref: 2 }] }), /Read the page with browser_read first/u)
   await browser.run('browser_read', {})
   await assert.rejects(browser.run('browser_act', { actions: [{ do: 'type', ref: 1, text: 'x' }, { do: 'click', ref: 9 }] }), /no \[#9\]; nothing was done/u)
@@ -154,7 +233,7 @@ test('browser_act checks the whole list before any of it runs, and reports a fai
 })
 
 test('browser_act does nothing on a page that is not the one read any more', async () => {
-  const browser = harness()
+  const browser = await harness()
   await browser.run('browser_read', {})
   browser.visit('results')
   const left = await browser.run('browser_act', { actions: [{ do: 'click', ref: 2 }] })
@@ -172,7 +251,7 @@ test('browser_act does nothing on a page that is not the one read any more', asy
 })
 
 test('a browser tool the Agent calls itself that may move it, or a read that fails, leaves no page read', async () => {
-  const browser = harness()
+  const browser = await harness()
   await browser.run('browser_read', {})
   // Looking keeps the page, and so do the calls of a run.
   await browser.direct('browser_take_screenshot')
@@ -190,7 +269,7 @@ test('a browser tool the Agent calls itself that may move it, or a read that fai
 })
 
 test('what appeared since the Agent last read the page is marked', async () => {
-  const browser = harness({ start: 'results' })
+  const browser = await harness({ start: 'results' })
   await browser.run('browser_read', {})
   browser.pages.results.lines.push(line('[#3 button "加入书架"]'))
   browser.pages.results.refs[3] = { kind: 'button', name: '加入书架' }
@@ -203,7 +282,7 @@ test('what appeared since the Agent last read the page is marked', async () => {
 test('browser_act asks only for what the Agent marks for confirmation, and the application only for what it tells is risky', async () => {
   const context = mode => ({ sandboxPolicy: { resolve: () => ({ mode }) } })
   const allow = () => ({ kind: 'allow' })
-  const browser = harness()
+  const browser = await harness()
   await browser.run('browser_read', {})
   const act = (actions, extra = {}, mode = 'workspace-write') => browserPermission(context(mode), { name: 'browser_act', agent: browser.agent, arguments: { actions, ...extra } }, allow)
   const form = [{ do: 'type', ref: 1, text: '深度学习', submit: true }, { do: 'scroll' }, { do: 'select', ref: 3, option: '闵行' }, { do: 'click', ref: 2 }, { do: 'press', key: 'Escape' }, { do: 'click', ref: 4 }]
@@ -220,7 +299,9 @@ test('browser_act asks only for what the Agent marks for confirmation, and the a
   assert.equal(read('https://library.example/').kind, 'allow')
   assert.equal(read(undefined).kind, 'allow')
   assert.equal(read('http://10.0.0.8/notice').kind, 'ask')
+  // The application asks once, before the read: its own MCP calls do not ask again.
   await browser.run('browser_read', { url: 'http://10.0.0.8/notice' })
+  assert.deepEqual(browser.asked, ['browser_read'])
   assert.equal(act([{ do: 'click', ref: 1 }]).kind, 'allow')
   // Only browser_act counts the page read as where it is, as it checks that before acting; an address typed in asks.
   assert.equal(read('http://10.0.0.8/notice/2').kind, 'ask')
@@ -228,23 +309,105 @@ test('browser_act asks only for what the Agent marks for confirmation, and the a
   await browser.direct('browser_navigate', { url: 'https://library.example/' })
   assert.equal(read('http://10.0.0.8/notice').kind, 'ask')
   // The MCP calls of a run go under its permission; a page script asked for directly asks.
-  const script = parent => browserPermission(context('workspace-write'), { name: 'mcp__playwright-mcp__browser_evaluate', agent: browser.agent, parent, arguments: { function: '() => 1' } }, allow).kind
   const token = Symbol('browser_act')
   covered.add(token)
-  try { assert.equal(script(token), 'allow') } finally { covered.delete(token) }
-  assert.equal(script(token), 'ask')
+  try { await browser.direct('browser_evaluate', { function: '() => 1' }, token) } finally { covered.delete(token) }
+  assert.deepEqual(browser.asked, ['browser_read'])
+  await browser.direct('browser_evaluate', { function: '() => 1' })
+  assert.deepEqual(browser.asked, ['browser_read', 'mcp__playwright-mcp__browser_evaluate'])
+})
+
+test('what the user turns down does not run', async () => {
+  const browser = await harness({ approve: 'rejected' })
+  await assert.rejects(browser.run('browser_read', { url: 'http://10.0.0.8/notice' }), /rejected/u)
+  assert.deepEqual([browser.asked, browser.calls], [['browser_read'], []])
+})
+
+test('what DSH hooks add for the model to a run\'s MCP calls comes with the run, a failed call\'s too', async () => {
+  const browser = await harness({ routes: { search: { 2: 'error' } } })
+  browser.ctx.on('tools/post-execute', async (exec, result, next) => exec.name.startsWith('mcp__')
+    ? { ...await next(), additionalContexts: [createUserMessage({ content: [{ type: 'text', text: `after ${exec.name.replace('mcp__playwright-mcp__', '')}` }], source: 'synthetic-hook' })] }
+    : next())
+  const added = async (tool, args) => (await browser.step(tool, args)).additionalContexts.map(context => context.content[0].text)
+  assert.deepEqual(await added('browser_read', {}), ['after browser_evaluate'])
+  assert.deepEqual(await added('browser_act', { actions: [{ do: 'click', ref: 2 }] }), ['after browser_tabs', 'after browser_evaluate', 'after browser_click', 'after browser_evaluate'])
+})
+
+test('a run the user stops goes no further', async () => {
+  const browser = await harness({ routes: { search: { 1: 'stop' } } })
+  await browser.run('browser_read', {})
+  const [{ result }] = (await browser.step('browser_act', { actions: [{ do: 'type', ref: 1, text: '深度学习' }, { do: 'click', ref: 2 }] })).results
+  assert.equal(result.isError, true)
+  assert.equal(browser.calls.at(-1).name, 'browser_type')
+  assert.equal(covered.size, 0)
 })
 
 test('a screenshot saved under a name says where the image went', async () => {
-  let middleware
-  const session = {}
-  const workingDirectory = { get: of => { assert.equal(of, session); return '/work/space' } }
-  noteSavedScreenshots({ get: name => name === 'workingDirectory' ? workingDirectory : undefined, on: (event, handler) => { assert.equal(event, 'tools/execute'); middleware = handler } })
-  const saved = { isError: false, value: { content: [{ type: 'text', text: '### Result\n- [Screenshot of viewport](./shots/chart.png)' }] } }
-  const result = await middleware({ name: 'mcp__playwright-mcp__browser_take_screenshot', arguments: { filename: 'shots/chart.png' }, agent: { session } }, async () => saved)
-  assert.deepEqual(result.value.content.map(block => block.text), [saved.value.content[0].text, `The image is not in this result: it was saved as ${resolve('/work/space', 'shots/chart.png')}. To see it, open that path with read_image.`])
+  const browser = await harness()
+  const texts = async (name, args) => (await browser.direct(name, args)).content.map(block => block.text)
+  assert.deepEqual(await texts('browser_take_screenshot', { filename: 'shots/chart.png' }), ['### Result\n- [Screenshot of viewport](./shots/chart.png)', `The image is not in this result: it was saved as ${resolve('/work/space', 'shots/chart.png')}. To see it, open that path with read_image.`])
   // Without a name the image is in the result, and other tools are left alone.
-  for (const exec of [{ name: 'mcp__playwright-mcp__browser_take_screenshot', arguments: {} }, { name: 'mcp__playwright-mcp__browser_snapshot', arguments: { filename: 'page.md' } }]) {
-    assert.equal(await middleware(exec, async () => saved), saved)
+  assert.deepEqual(await texts('browser_take_screenshot', {}), ['### Result\n- [Screenshot of viewport](./page.png)'])
+  assert.deepEqual(await texts('browser_evaluate', { function: '() => 1', filename: 'page.md' }), ['### Result\nundefined'])
+})
+
+test('browser_clear_data clears the website of the page read, or the whole workspace, at the conversation\'s Sidebar endpoint once the user allows it', async () => {
+  // The desktop app's endpoint, answering as sidebar-browser.mjs does.
+  const requests = []
+  const server = createServer((request, response) => {
+    let text = ''
+    request.setEncoding('utf8').on('data', chunk => { text += chunk }).on('end', () => {
+      const body = JSON.parse(text)
+      requests.push([request.method, request.url, body])
+      // A wrong secret, which the desktop app refuses without a word; and an answer that breaks off.
+      if (request.url.startsWith(`/${'b'.repeat(48)}/`)) return response.writeHead(404).end()
+      if (request.url.startsWith(`/${'c'.repeat(48)}/`)) {
+        response.writeHead(200).write('{"site')
+        return setTimeout(() => response.destroy(), 50)
+      }
+      if (body.url?.includes('10.0.0.8')) return response.writeHead(409).end(JSON.stringify({ error: 'No page is open in the browser' }))
+      response.writeHead(200).end(JSON.stringify(body.scope === 'site' ? { site: new URL(body.url).hostname } : {}))
+    })
+  }).listen(0, '127.0.0.1')
+  await once(server, 'listening')
+  try {
+    const browser = await harness({ sidebar: `ws://127.0.0.1:${server.address().port}/${'a'.repeat(48)}` })
+    // The website is that of the page read, as for browser_act.
+    await assert.rejects(browser.run('browser_clear_data', { scope: 'site' }), /Read a page of the website with browser_read first/u)
+    await browser.run('browser_read', {})
+    assert.equal(await browser.run('browser_clear_data', { scope: 'site' }), 'Cleared the data of library.example; the open pages concerned reload. Read the page again before acting on it.')
+    assert.equal(await browser.run('browser_clear_data', { scope: 'workspace' }), 'Cleared the data of every website in this workspace; the open pages concerned reload. Read the page again before acting on it.')
+    // The site is named by its origin, however long the page's address.
+    await browser.run('browser_read', { url: browser.pages.long.url })
+    await browser.run('browser_clear_data', { scope: 'site' })
+    await browser.run('browser_read', { url: 'http://10.0.0.8/notice' })
+    await assert.rejects(browser.run('browser_clear_data', { scope: 'site' }), /No page is open in the browser/u)
+    assert.deepEqual(requests, [
+      ['POST', `/${'a'.repeat(48)}/session-1/clear-data`, { scope: 'site', url: 'https://library.example' }],
+      ['POST', `/${'a'.repeat(48)}/session-1/clear-data`, { scope: 'workspace' }],
+      ['POST', `/${'a'.repeat(48)}/session-1/clear-data`, { scope: 'site', url: 'https://library.example' }],
+      ['POST', `/${'a'.repeat(48)}/session-1/clear-data`, { scope: 'site', url: 'http://10.0.0.8' }],
+    ])
+    assert.deepEqual(browser.asked, ['browser_clear_data', 'browser_clear_data', 'browser_clear_data', 'browser_read', 'browser_clear_data'])
+    // The question says what is cleared, and that the workspace's other conversations lose it too; full access does not ask.
+    const permission = (scope, mode = 'workspace-write') => browserPermission({ sandboxPolicy: { resolve: () => ({ mode }) } }, { name: 'browser_clear_data', agent: browser.agent, arguments: { scope } }, () => ({ kind: 'allow' }))
+    assert.equal(permission('site').displayReason.zh, '允许智能体清除侧边栏浏览器里 10.0.0.8 所在网站在本工作区的数据：登录状态、Cookie、网站存储和缓存。同一工作区其他对话里的这个网站也会退出登录，打开着的这个网站的网页会重新加载')
+    assert.equal(permission('workspace').reason, 'Allow the Agent to clear all data of this workspace\'s Sidebar browser: sign-ins, cookies, site storage and cache of every website. They are signed out in the workspace\'s other conversations too, and its open pages reload')
+    assert.equal(permission('workspace', 'danger-full-access').kind, 'allow')
+    // A subagent keeps a browser of its own, without the tool.
+    const tools = async agent => (await browser.ctx.tools.resolve({ agent, signal: AbortSignal.timeout(5000) })).view(agent).get('browser_clear_data') !== undefined
+    assert.deepEqual([await tools(browser.agent), await tools({ session: { id: 'session-2', header: { origin: 'subagent' } } })], [true, false])
+    // A page that is no website's has no site to clear, and the user is not asked about one.
+    const endpoint = secret => `ws://127.0.0.1:${server.address().port}/${secret.repeat(48)}`
+    const blank = await harness({ start: 'blank', sidebar: endpoint('b') })
+    await blank.run('browser_read', {})
+    await assert.rejects(blank.run('browser_clear_data', { scope: 'site' }), /Read a page of the website with browser_read first/u)
+    // An answer that says nothing, or breaks off, fails the call and nothing else.
+    await assert.rejects(blank.run('browser_clear_data', { scope: 'workspace' }), { message: 'The Sidebar browser answered 404 without saying why' })
+    const broken = await harness({ sidebar: endpoint('c') })
+    await assert.rejects(broken.run('browser_clear_data', { scope: 'workspace' }), { message: /^(aborted|socket hang up)$/u })
+    assert.deepEqual([blank.asked, broken.asked], [['browser_clear_data'], ['browser_clear_data']])
+  } finally {
+    server.close()
   }
 })

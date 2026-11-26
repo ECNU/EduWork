@@ -10,6 +10,7 @@ import { installFileActions } from './file-actions.ts'
 import { installDesktopFileDrag } from './file-drag.ts'
 import { desktopEditMenu, desktopViewMenu, setDesktopApplicationMenu } from './desktop-menu.mjs'
 import { SIDEBAR_BROWSER_IPC } from './sidebar-browser.mjs'
+import { attachSidebarBrowserMenu } from './sidebar-browser-menu.mjs'
 import { watchUpdateDocument } from './update-observer.mjs'
 
 export const USER_GUIDE_ROUTE = '/eduwork-user-guide'
@@ -138,7 +139,13 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     } catch { /* A hint failure must never block the page. */ }
     event.returnValue = value
   })
-  ipcMain.handle(DESKTOP_IPC.browserAcquire, (event, workspace) => { owner(event); return guests.acquire(event.sender, workspace) })
+  // Each workspace's partition, as DSH reserves it, for clearing what the Sidebar browser keeps.
+  ipcMain.handle(DESKTOP_IPC.browserAcquire, (event, workspace) => {
+    owner(event)
+    const reservation = guests.acquire(event.sender, workspace)
+    sidebarBrowser.data.reserved(reservation.partition)
+    return reservation
+  })
   ipcMain.handle(DESKTOP_IPC.browserRelease, (event, lease) => { owner(event); return guests.release(event.sender, lease) })
   ipcMain.on(SIDEBAR_BROWSER_IPC.bind, (event, guestId, sessionId, tabId) => {
     try { void sidebarBrowser.bind(owner(event), guestId, sessionId, tabId).catch(() => {}) } catch { /* Not the application page. */ }
@@ -147,6 +154,8 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     try { owner(event) } catch { return }
     sidebarBrowser.opened(request, result)
   })
+  ipcMain.handle(SIDEBAR_BROWSER_IPC.clearData, event => sidebarBrowser.data.confirmAll(owner(event), locale)
+    .catch(error => { dialog.showErrorBox(app.getName(), error.message); return false }))
   session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ['ws://127.0.0.1/*'] }, (details, callback) => {
     callback(getHost()?.socketHeaders(details, getWindow()?.webContents.id) ?? {})
   })
@@ -217,7 +226,14 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
       return available
     },
     attach(window) {
-      guests.bind(window, (guest, lease) => shortcuts.attachGuest(window, guest, lease))
+      guests.bind(window, (guest, lease) => {
+        const releaseShortcuts = shortcuts.attachGuest(window, guest, lease)
+        const releaseData = sidebarBrowser.data.attach(guest)
+        const clearSite = () => void sidebarBrowser.data.confirmSite(window, locale, guest).catch(error => dialog.showErrorBox(app.getName(), error.message))
+        const releaseMenu = attachSidebarBrowserMenu(window, guest, () => locale,
+          { byAgent: () => sidebarBrowser.byAgent(guest), website: () => sidebarBrowser.website(guest), clearSite })
+        return () => { releaseShortcuts(); releaseData(); releaseMenu() }
+      })
       // After bind, which replaces a guest's preferences: Sidebar pages paint
       // the browser's own background, as in Chrome, rather than letting the
       // application show through, so the Agent's screenshots show what the user sees.

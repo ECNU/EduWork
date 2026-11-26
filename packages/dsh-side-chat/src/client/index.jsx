@@ -322,7 +322,7 @@ export function apply(ctx) {
   }), 'side-chat: native Sidebar type')
   ctx.effect(() => ctx.sidebarRight.registerCloseHandler(SIDE_KIND, (_sessionId, tab) => {
     const owner = controller.findAddress(tab.contentId)
-    if (owner) void owner.close().catch(() => {})
+    if (owner) void owner.close().catch(() => owner.update({ error: 'failed' }))
   }), 'side-chat: explicit tab close')
   ctx.effect(() => ctx.resources.register({
     protocol: 'sidechat',
