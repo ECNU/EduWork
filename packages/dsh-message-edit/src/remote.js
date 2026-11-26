@@ -8,16 +8,10 @@ const parameter = (name, typeSymbol, schema) => ({
   name, wire: name, source: 'json', codec: strict(typeSymbol, schema), strictCodec: strict(typeSymbol, schema),
 })
 
-const file = z.object({ attachmentId: z.string(), name: z.string(), bytes: z.number().int().nonnegative() })
-const image = z.object({
-  attachmentId: z.string(),
-  mediaType: z.enum(['image/png', 'image/jpeg', 'image/webp', 'image/gif']),
-  bytes: z.number().int().nonnegative(),
-  width: z.number().int().positive(),
-  height: z.number().int().positive(),
-  name: z.string().optional(),
-  originalDimensions: z.object({ width: z.number().int().positive(), height: z.number().int().positive() }).optional(),
-})
+// A stored reference belongs to DSH: check the fields this method reads and
+// pass the rest through to the attachment store as they are.
+const file = z.looseObject({ attachmentId: z.string(), name: z.string() })
+const image = z.looseObject({ attachmentId: z.string(), mediaType: z.string(), name: z.string().optional() })
 const attachment = z.discriminatedUnion('type', [
   z.object({ type: z.literal('file'), attachment: file }),
   z.object({ type: z.literal('image'), attachment: image }),
