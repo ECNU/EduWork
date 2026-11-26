@@ -283,8 +283,8 @@ async function prepareDesktop() {
   if (migrationLaunch) showStartupProgress('正在迁移旧版历史数据…')
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
   // Portable Windows keeps its editable config inside the program directory;
-  // macOS and the installed layout need the user copy seeded before first use.
-  if (settings.configurationOwnership === 'user' && (process.platform === 'darwin' || settings.dataLayout === 'installed'))
+  // Linux, macOS and the installed layout need the user copy seeded before first use.
+  if (settings.configurationOwnership === 'user' && (process.platform === 'darwin' || process.platform === 'linux' || settings.dataLayout === 'installed'))
     await initializeUserConfig({ product: paths.product, config: paths.config })
   const identity = JSON.parse(await readFile(join(paths.product,'assembly.json'),'utf8'))
   publisher = await publisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product,
