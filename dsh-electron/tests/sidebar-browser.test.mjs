@@ -6,7 +6,7 @@ import test, { after, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
-import { createServer } from 'node:http'
+import { createServer, request } from 'node:http'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -42,9 +42,23 @@ const pages = {
     addEventListener('contextmenu', () => { window.menus = (window.menus ?? 0) + 1 })</script>`,
   '/framed': '<body style="margin: 0"><img src="/image.svg" width="60" height="30"></body>',
   '/image.svg': '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="30"><rect width="60" height="30" fill="#2a7"/></svg>',
+  // A page of a.site1.test, answered slowly, with a frame of b.site1.test, another origin of the
+  // same site, a frame of other.test and a script of assets.site1.test, which no page loads;
+  // or of other.test, with a frame of a.site1.test.
+  '/store': `<title>Store</title><iframe id="sub" width="200" height="40"></iframe><iframe id="cross" width="200" height="40"></iframe>
+    <script>const at = host => location.protocol + '//' + host + ':' + location.port
+    const site1 = location.hostname.endsWith('site1.test')
+    sub.src = at(site1 ? 'b.site1.test' : location.hostname) + '/plain'
+    cross.src = at(site1 ? 'other.test' : 'a.site1.test') + '/plain'
+    if (site1) document.head.append(Object.assign(document.createElement('script'), { src: at('assets.site1.test') + '/cached.js' }))</script>`,
+  '/plain': '<title>Plain</title>',
+  '/cached.js': 'window.cached = true',
+  // Answers again with no content.
+  '/kept': '<title>Kept</title>',
 }
 
 let app, origin, endpoint, server
+let cachedLoads = 0, keptLoads = 0
 const replies = new Map()
 let next = 0
 const run = code => new Promise((resolve, reject) => {
@@ -100,8 +114,14 @@ before(async () => {
   server = createServer((request, response) => {
     const path = new URL(request.url, 'http://x').pathname, body = pages[path]
     if (path === '/never') return
+    if (path === '/kept' && keptLoads++ > 0) return response.writeHead(204).end()
+    if (path === '/cached.js') {
+      cachedLoads++
+      return response.writeHead(200, { 'content-type': 'text/javascript', 'cache-control': 'max-age=3600' }).end(body)
+    }
     const type = path.endsWith('.svg') ? 'image/svg+xml' : 'text/html; charset=utf-8'
-    setTimeout(() => response.writeHead(body ? 200 : 404, { 'content-type': type }).end(body ?? ''), ['/held', '/popup'].includes(path) ? 1000 : 0)
+    const slow = ['/held', '/popup'].includes(path) ? 1000 : path === '/store' && request.headers.host.startsWith('a.') ? 500 : 0
+    setTimeout(() => response.writeHead(body ? 200 : 404, { 'content-type': type }).end(body ?? ''), slow)
   }).listen(0, '127.0.0.1')
   await once(server, 'listening')
   origin = `http://127.0.0.1:${server.address().port}`
@@ -400,7 +420,7 @@ test('a right click on a page opens the menu for what was clicked, and the Agent
     .find(frame => frame.getURL() === ${JSON.stringify(`${origin}/menu`)}).closest('[data-sidebar-right-tab]').getAttribute('data-sidebar-right-tab'))`)
   await takesInput()
   // Links the page may not open, such as javascript:, show no link items; others can still be copied.
-  assert.deepEqual(await rightClick('#script'), [['后退', '(前进)', '刷新']])
+  assert.deepEqual(await rightClick('#script'), [['后退', '(前进)', '刷新', '-', '清除此网站的数据…']])
   assert.deepEqual(await rightClick('#mail'), [['复制链接地址']])
   // An image's pixels when the image has loaded and its frame is in the top document's process.
   assert.deepEqual(await rightClick('#broken'), [['(复制图片)', '复制图片地址']])
@@ -426,7 +446,10 @@ test('a right click on a page opens the menu for what was clicked, and the Agent
   assert.deepEqual(await rightClick('#text'), [['复制']])
   await choose('复制')
   assert.equal(await clipboard('Selected words'), 'Selected words')
-  assert.deepEqual(await rightClick('#blank'), [['后退', '(前进)', '刷新']])
+  assert.deepEqual(await rightClick('#blank'), [['后退', '(前进)', '刷新', '-', '清除此网站的数据…']])
+  await choose('清除此网站的数据…')
+  assert.deepEqual(await run('return clearings'), [`${origin}/menu`])
+  await rightClick('#blank')
   await choose('后退')
   await tab.waitForURL(`${origin}/`)
   await tab.goForward()
@@ -460,6 +483,110 @@ test('a right click on a page opens the menu for what was clicked, and the Agent
   const inner = tab.frames().find(frame => frame.url().includes('/inner'))
   await inner.waitForSelector('#field')
   await keys(inner, ['Shift+F10', 'ContextMenu'])
+  await browser.close()
+})
+
+test('clearing a website clears its sign-ins and storage on every subdomain the workspace loaded, wherever they were kept, and reloads its pages; clearing the workspace clears every website', live, async () => {
+  const data = `await import(${JSON.stringify(new URL('../src/sidebar-browser-data.mjs', import.meta.url).href)})`
+  // A website is what Chromium takes as one for cookies: from the public suffix list, its private entries too.
+  assert.deepEqual(await run(`const { siteOf } = ${data}
+    return Promise.all(['http://a.b.example.co.uk/', 'https://www.example.com/x', 'https://pages.github.io/', 'http://a.site1.test:8080/', 'http://127.0.0.1:8080/', 'http://localhost/', 'http://[::1]/'].map(siteOf))`),
+  ['example.co.uk', 'example.com', 'pages.github.io', 'site1.test', '127.0.0.1', 'localhost', '::1'])
+  const at = host => `http://${host}:${new URL(origin).port}`
+  const { browser, context } = await connect('session-a')
+  const [tab] = context.pages()
+  await tab.goto(`${at('a.site1.test')}/store`)
+  const other = await context.newPage()
+  // The Sidebar's own new-tab page is no website's, so its menu has nothing to clear.
+  const website = url => run(`return broker.website(webContents.getAllWebContents().find(guest => guest.getType() === 'webview' && guest.getURL() === ${JSON.stringify(url)}))`)
+  const newTab = other.url()
+  assert.equal(await website(newTab), false)
+  // A broker that does not listen, as in the desktop's native smoke, has no new-tab page to tell apart.
+  assert.deepEqual(await run(`const { createSidebarBrowser } = await import(${JSON.stringify(new URL('../src/sidebar-browser.mjs', import.meta.url).href)})
+    const idle = createSidebarBrowser({ getWindow: () => window })
+    return [${JSON.stringify(newTab)}, 'about:blank'].map(url => idle.website({ getURL: () => url }))`), [true, false])
+  await other.goto(`${at('other.test')}/store`)
+  assert.equal(await website(other.url()), true)
+  const cookies = () => run('return (await webContents.getAllWebContents().find(guest => guest.getType() === "webview").session.cookies.get({})).map(cookie => cookie.name).sort()')
+  // Each page's frames, the page's own first, by host; the other site's frame in each keeps its storage in a partition of that page's site.
+  const frames = async page => {
+    await page.waitForFunction(() => [...document.querySelectorAll('iframe')].every(frame => frame.contentDocument === null || frame.contentDocument.readyState === 'complete'))
+    for (const deadline = Date.now() + 5000; page.frames().some(frame => frame.url() === 'about:blank' || frame.url() === '');) {
+      assert.ok(Date.now() < deadline, 'the page\'s frames load')
+      await wait(50)
+    }
+    return page.frames()
+  }
+  const kept = async page => [...await Promise.all((await frames(page)).map(frame => frame.evaluate(() => localStorage.getItem('kept')))), await page.evaluate(() => window.marker ?? null)]
+  const keep = async () => {
+    for (const page of [tab, other]) for (const frame of await frames(page)) await frame.evaluate(() => { localStorage.setItem('kept', location.hostname); window.marker = 'before' })
+    await tab.evaluate(() => { document.cookie = 'host=1'; document.cookie = 'shared=1; domain=site1.test' })
+    await other.evaluate(() => { document.cookie = 'other=1' })
+    assert.deepEqual(await cookies(), ['host', 'other', 'shared'])
+  }
+  // The Agent clears through its conversation's endpoint, as browser_clear_data does.
+  const clear = (body, { session = 'session-a', secret = endpoint.split('/').at(-1), headers = {} } = {}) => new Promise((resolve, reject) => {
+    const url = `${endpoint.replace(/^ws:/u, 'http:').replace(/[0-9a-f]{48}$/u, secret)}/${session}/clear-data`
+    request(url, { method: 'POST', agent: false, headers }, response => {
+      let text = ''
+      response.setEncoding('utf8').on('data', chunk => { text += chunk }).on('end', () => resolve([response.statusCode, text && JSON.parse(text)]))
+    }).on('error', reject).end(typeof body === 'string' ? body : JSON.stringify(body))
+  })
+  await keep()
+  assert.equal(cachedLoads, 1)
+  assert.deepEqual(await clear({ scope: 'site', url: `${at('a.site1.test')}/store` }), [200, { site: 'site1.test' }])
+  // The site's page has reloaded when the Agent hears back, though it answers slowly; the other site's has not.
+  assert.equal(await tab.evaluate(() => window.marker ?? null), null)
+  assert.deepEqual(await cookies(), ['other'])
+  assert.deepEqual([await kept(tab), await kept(other)], [[null, null, 'other.test', null], ['other.test', 'other.test', null, 'before']])
+  // A script the site's page loads from an origin of the site no page loaded comes anew.
+  assert.equal(cachedLoads, 2)
+  // So does one a page that was not reloaded left in the HTTP cache, for the next page that loads it.
+  await run(`const { BrowserWindow, session } = await import('electron')
+    const { createSidebarBrowserData } = ${data}
+    const partition = session.fromPartition('sidebar-cache'), url = ${JSON.stringify(`${at('a.site1.test')}/store`)}
+    const load = async () => { const window = new BrowserWindow({ show: false, webPreferences: { session: partition } }); await window.loadURL(url); return window }
+    const pages = [await load()]
+    await createSidebarBrowserData().clearSite(partition, url)
+    pages.push(await load())
+    for (const page of pages) page.destroy()`)
+  assert.equal(cachedLoads, 4)
+  await keep()
+  assert.deepEqual(await clear({ scope: 'workspace' }), [200, {}])
+  assert.deepEqual(await Promise.all([tab, other].map(page => page.evaluate(() => window.marker ?? null))), [null, null])
+  assert.deepEqual([await cookies(), await kept(tab), await kept(other)], [[], [null, null, null, null], [null, null, null, null]])
+  assert.equal(cachedLoads, 5)
+  // Only the Host, for a conversation with a page open, and for a website or the workspace.
+  assert.deepEqual(await clear({ scope: 'workspace' }, { secret: '0'.repeat(48) }), [404, ''])
+  assert.deepEqual(await clear({ scope: 'workspace' }, { headers: { origin: 'https://example.org' } }), [404, ''])
+  assert.deepEqual(await clear({ scope: 'workspace' }, { session: 'session-without-pages' }), [409, { error: 'No page is open in the browser' }])
+  assert.deepEqual(await clear({ scope: 'everything' }), [400, { error: 'scope is site or workspace' }])
+  for (const url of ['about:blank', newTab, new URL(newTab).origin]) assert.deepEqual(await clear({ scope: 'site', url }), [400, { error: 'The page is no website\'s: there is no site to clear' }])
+  assert.deepEqual(await clear(JSON.stringify({ scope: 'site', url: `${at('a.site1.test')}/${'页'.repeat(1400)}` })), [413, { error: 'The request is too large' }])
+  // A page whose site answers its reload with no content keeps showing, and the clearing ends with it.
+  await tab.goto(`${at('a.site1.test')}/kept`)
+  const started = Date.now()
+  assert.deepEqual(await clear({ scope: 'site', url: at('a.site1.test') }), [200, { site: 'site1.test' }])
+  assert.ok(Date.now() - started < 5000)
+  assert.equal(await tab.evaluate(() => document.title), 'Kept')
+  // The user clears once they confirm, a website from its page's menu and everything from settings.
+  await keep()
+  const confirm = (response, call) => run(`const { dialog } = await import('electron')
+    const show = dialog.showMessageBox, asked = []
+    dialog.showMessageBox = async (_window, options) => { asked.push([options.message, options.buttons]); return { response: ${response} } }
+    const locale = { id: 'zh-CN', messages: { cancel: '取消' } }
+    try { const page = webContents.getAllWebContents().find(guest => guest.getType() === 'webview' && guest.getURL().startsWith(${JSON.stringify(at('a.site1.test'))}))
+      return [await ${call}, asked] }
+    finally { dialog.showMessageBox = show }`)
+  assert.deepEqual(await confirm(1, 'broker.data.confirmSite(window, locale, page)'), [null, [['清除 site1.test 的数据？', ['清除', '取消']]]])
+  assert.deepEqual(await confirm(1, 'broker.data.confirmAll(window, locale)'), [false, [['清除侧边栏浏览器的所有数据？', ['清除', '取消']]]])
+  assert.deepEqual(await cookies(), ['host', 'other', 'shared'])
+  await confirm(0, 'broker.data.confirmSite(window, locale, page)')
+  assert.deepEqual(await cookies(), ['other'])
+  // The workspaces DSH reserved, as the desktop bridge reports them.
+  assert.deepEqual(await confirm(0, '(broker.data.reserved("sidebar-workspace"), broker.data.confirmAll(window, locale))'), [true, [['清除侧边栏浏览器的所有数据？', ['清除', '取消']]]])
+  assert.deepEqual(await cookies(), [])
+  await other.close()
   await browser.close()
 })
 
