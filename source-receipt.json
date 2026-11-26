@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-25T14:43:19.943Z",
-  "fileSetSHA256": "9f4d3b05989bc8d9624f653a8ee45d77875a2d125174610d9b5aa277e878f787",
+  "createdAt": "2026-11-25T16:33:05.652Z",
+  "fileSetSHA256": "b0bd6f1ba4f3d766428020f6e6efb64a0734c564d12802c7df25f53b07eae1a9",
   "files": [
     {
       "path": ".gitattributes",
@@ -7053,7 +7053,7 @@
     },
     {
       "path": "packages/dsh-remote-access/CHANGELOG.md",
-      "sha256": "74e7ac83ae0c851c08ac33ae6b7323fc25e3ffd1d23f8f3d27b08f84a77f8dbc"
+      "sha256": "f32cea1817a69a0fae11566463b8bd523b773fc5a6ed6eed94193c39d0c5ed0f"
     },
     {
       "path": "packages/dsh-remote-access/cordis.patch.yml",
@@ -7173,7 +7173,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/gate/gate.ts",
-      "sha256": "460bce4a89f0cc59dc36c2519c83827eb18a717522e15c989617cf1dd7e608a9"
+      "sha256": "119df0dce59f3ad93c357a2fc3d0e247a1a2797a0abfbfc38c78f2992679e8f9"
     },
     {
       "path": "packages/dsh-remote-access/src/host/adapter.ts",
@@ -7260,6 +7260,10 @@
       "sha256": "949215af8ade09d6a15b619a14970cd7a6a0cc7e63e2fd3154c5f5f50f4aa7fc"
     },
     {
+      "path": "packages/dsh-remote-access/src/web/anchors.ts",
+      "sha256": "5b05261eb520478f8ad3deef9c2a950392393af83ee46b886899c794c5b53012"
+    },
+    {
       "path": "packages/dsh-remote-access/src/web/bridge.ts",
       "sha256": "2d3448162b5b44f7c48e4cc809baff4f1ffe0157334e49683c063b60a0cac2b8"
     },
@@ -7281,7 +7285,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/web/preamble.ts",
-      "sha256": "4cffd4208ba032567a38715ab55b855c8808e365ed5b4a458cc1c07a501f8e60"
+      "sha256": "dcee273c5bb3a8f929c16beb0afaa44f022847d0b34fbb7a284064e5bd0925c6"
     },
     {
       "path": "packages/dsh-remote-access/src/web/static/icon.png",
@@ -7333,7 +7337,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/gate/gate.test.ts",
-      "sha256": "1ed041108c56734e8e86d7e6fee0df177a84883e6953ed8b517df14d81f1f36b"
+      "sha256": "0e66029b843787864822164a5e055257b5c1a548ffae6072e789bba7fbfdc75b"
     },
     {
       "path": "packages/dsh-remote-access/test/harness.ts",
@@ -7390,6 +7394,10 @@
     {
       "path": "packages/dsh-remote-access/test/remote-access.test.ts",
       "sha256": "60b0c80b92ba25141360eff50ee178fc062674bc0fa8d878806522f3437c88bd"
+    },
+    {
+      "path": "packages/dsh-remote-access/test/web/anchors.test.ts",
+      "sha256": "c176520d5c82d4812eda7eb342ec1ee5c91a258d2e9f79b5f644883df1688713"
     },
     {
       "path": "packages/dsh-remote-access/test/web/fallbacks.test.ts",
@@ -7457,11 +7465,11 @@
     },
     {
       "path": "packages/dsh-side-chat/src/client/controller.js",
-      "sha256": "49af213378f0de3af861b77b04578735055143b681858170f328779183a1aa36"
+      "sha256": "5c5aca5369461e66f5463c3530bb4d801815818cdf6fa885d06a7e1c6a52d923"
     },
     {
       "path": "packages/dsh-side-chat/src/client/index.jsx",
-      "sha256": "9f6624b0c52bbcb5c839691a609994979d71963c0cf84af41071ca2feddd0894"
+      "sha256": "2011a2aad31a08007e4f9afcf6f92486447cc37a1bbaa525fc2a0c067fd0f3e8"
     },
     {
       "path": "packages/dsh-side-chat/src/client/inherited-history.js",
@@ -7469,11 +7477,11 @@
     },
     {
       "path": "packages/dsh-side-chat/src/client/navigation.js",
-      "sha256": "5c56161111ec57f8e2ac6cd11a1f4b464c0bb039d1050a0ce966344e31cf0075"
+      "sha256": "4126ea169f3a8c7c1c491b5b38ba3fc98d7d83a1e9764b33bc79c87aa14e1ff1"
     },
     {
       "path": "packages/dsh-side-chat/src/client/primitives.jsx",
-      "sha256": "f7b96400748bfd6afcd12dc7a6850363827da136c44a0181b7e052e844055208"
+      "sha256": "9149395b82f0379ba3999c0298ad559c58621793e7a0be020d4198a9818f7844"
     },
     {
       "path": "packages/dsh-side-chat/src/index.js",
@@ -7493,7 +7501,7 @@
     },
     {
       "path": "packages/dsh-side-chat/test/controller.test.mjs",
-      "sha256": "52ae8802768ac479aa3a154e0367368486cf900c5cba56865e72fca7c923c46a"
+      "sha256": "6bf5cf3786ffc37e712e820bf023b75e7e05e7f6ae64a96d0fd4c0dca76c8a8d"
     },
     {
       "path": "packages/dsh-side-chat/test/inherited-history.test.mjs",
@@ -7501,11 +7509,15 @@
     },
     {
       "path": "packages/dsh-side-chat/test/navigation.test.mjs",
-      "sha256": "7c9185f32c4466d5d41d9f41d8be391b19ba13b42ee8e9641093fff3b2b949a8"
+      "sha256": "e38d7bedda0f777db0d588a13c28fe666b5c418798b4b3c257ec96477936c59e"
     },
     {
       "path": "packages/dsh-side-chat/test/runtime.test.mjs",
       "sha256": "2de3402eaeeba34cc1f68065128a7568000d95a36308962927ccfa96b670fd7f"
+    },
+    {
+      "path": "packages/dsh-side-chat/test/theme.test.mjs",
+      "sha256": "10ab6a7e04b35e5fa0095108160ccff363f53dbf6f14c933d09ef0539ec34eeb"
     },
     {
       "path": "packages/dsh-side-chat/test/title.test.mjs",

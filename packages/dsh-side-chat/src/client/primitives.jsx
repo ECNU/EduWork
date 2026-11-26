@@ -33,7 +33,7 @@ export function Toast({ text, icon, holdMs = 2000, onDone, actions = [] }) {
       position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
       display: 'flex', alignItems: 'center', gap: 12, maxWidth: 420,
       padding: '10px 14px', borderRadius: 10, zIndex: 9999,
-      background: 'var(--dsw-alias-bg-elevated, #2b2b2b)', color: 'var(--dsw-alias-label-primary, #fff)',
+      background: 'var(--dsw-alias-toast-bg)', color: 'var(--dsw-alias-toast-label)',
       boxShadow: '0 6px 24px rgba(0,0,0,.28)', fontSize: 13, lineHeight: 1.5,
       opacity: leaving ? 0 : 1, transition: 'opacity 1s ease',
     },
@@ -44,7 +44,7 @@ export function Toast({ text, icon, holdMs = 2000, onDone, actions = [] }) {
     key: action.label, type: 'button', onClick: action.onClick,
     style: {
       flex: 'none', border: 0, cursor: 'pointer', borderRadius: 6, padding: '2px 8px',
-      background: 'transparent', color: 'var(--dsw-alias-label-secondary, #bbb)', font: 'inherit',
+      background: 'transparent', color: 'var(--dsw-alias-toast-action, var(--dsw-alias-toast-label))', font: 'inherit',
     },
   }, action.label)))
 }

@@ -42,6 +42,12 @@ test('API requests are judged by method and exact path', () => {
   }
 })
 
+test('a device may open and close side chats', () => {
+  assert.ok(allowsApiRequest('POST', '/api/eduwork/side-chat'))
+  assert.ok(!allowsApiRequest('GET', '/api/eduwork/side-chat'))
+  assert.ok(!allowsApiRequest('POST', '/api/eduwork/side-chat/'))
+})
+
 test('rc.2 session and task UI remains accessible without administering the Host', () => {
   for (const endpoint of ['web/listProviders', 'subagents/interruptByUser',
     'session/events', 'session/observeEvent', 'session/observeProjections', 'session/observeState', 'session/state', 'session/wait',

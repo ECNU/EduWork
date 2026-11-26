@@ -53,7 +53,9 @@ export class SideChatNavigation {
         const hasTab = chat?.sessionId && this.sidebar.tabsIn(sourceSessionId).some(tab => tab.contentId === addressOf(chat.sessionId))
         // The user navigated away before this newly created chat could be
         // placed. Do not close an existing tab or a shared in-flight owner.
-        if (current.created && chat && !hasTab && owner.snapshot.phase === 'open') await owner.close()
+        // A failed close stays closing for the cleanup polling to retry; the
+        // user's navigation keeps its own outcome.
+        if (current.created && chat && !hasTab && owner.snapshot.phase === 'open') await owner.close().catch(() => {})
       }
     }
   }
