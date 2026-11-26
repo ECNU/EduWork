@@ -1,0 +1,197 @@
+{
+  "schemaVersion": 1,
+  "id": "ecnu-huashi-dumpling",
+  "name": {
+    "zh-CN": "小狮",
+    "en": "Xiaoshi"
+  },
+  "description": {
+    "zh-CN": "戴红色花瓣头套、抱着花狮抱枕的金发小花狮。",
+    "en": "A blond little lion boy with a red petal hood and a soft lion pillow."
+  },
+  "author": "arwen",
+  "license": "CC-BY-SA-4.0",
+  "frame": {
+    "width": 416,
+    "height": 512
+  },
+  "anchors": {
+    "badge": [
+      325,
+      52
+    ]
+  },
+  "animations": {
+    "idle": {
+      "sheet": "idle.webp",
+      "frames": 2,
+      "frameMs": [
+        1000,
+        150
+      ],
+      "playback": "blink",
+      "columns": 2
+    },
+    "smile": {
+      "sheet": "smile.webp",
+      "frames": 1,
+      "frameMs": [
+        1600
+      ],
+      "repeat": 1,
+      "columns": 1
+    },
+    "hug": {
+      "sheet": "hug.webp",
+      "frames": 1,
+      "frameMs": [
+        3600
+      ],
+      "repeat": 1,
+      "columns": 1
+    },
+    "desk-peek": {
+      "sheet": "desk-peek.webp",
+      "frames": 1,
+      "frameMs": [
+        2000
+      ],
+      "repeat": 1,
+      "columns": 1
+    },
+    "think": {
+      "sheet": "think.webp",
+      "frames": 1,
+      "frameMs": [
+        2500
+      ],
+      "motion": "breathe",
+      "columns": 1
+    },
+    "work": {
+      "sheet": "work.webp",
+      "frames": 2,
+      "frameMs": [
+        550,
+        550
+      ],
+      "repeat": 3,
+      "columns": 2
+    },
+    "attention": {
+      "sheet": "attention.webp",
+      "frames": 1,
+      "frameMs": [
+        650
+      ],
+      "motion": "sway",
+      "columns": 1
+    },
+    "done": {
+      "sheet": "done.webp",
+      "frames": 2,
+      "frameMs": [
+        580,
+        1050
+      ],
+      "columns": 2
+    },
+    "failed": {
+      "sheet": "failed.webp",
+      "frames": 2,
+      "frameMs": [
+        1250,
+        1200
+      ],
+      "playback": "once",
+      "columns": 2
+    },
+    "sleep": {
+      "sheet": "sleep.webp",
+      "frames": 1,
+      "frameMs": [
+        1800
+      ],
+      "columns": 1
+    },
+    "react": {
+      "sheet": "react.webp",
+      "frames": 2,
+      "frameMs": [
+        360,
+        620
+      ],
+      "playback": "once",
+      "columns": 2
+    },
+    "greet": {
+      "sheet": "greet.webp",
+      "frames": 1,
+      "frameMs": [
+        1550
+      ],
+      "repeat": 1,
+      "columns": 1
+    },
+    "drag": {
+      "sheet": "drag.webp",
+      "frames": 1,
+      "motion": "dangle",
+      "columns": 1
+    },
+    "peek": {
+      "sheet": "peek.webp",
+      "frames": 1,
+      "columns": 1
+    },
+    "yawn": {
+      "sheet": "yawn.webp",
+      "frames": 1,
+      "frameMs": [
+        1400
+      ],
+      "repeat": 1,
+      "columns": 1
+    }
+  },
+  "states": {
+    "idle": [
+      "idle",
+      "smile",
+      "greet",
+      "hug",
+      "desk-peek",
+      "yawn"
+    ],
+    "working": [
+      "think",
+      "work"
+    ]
+  },
+  "lines": {
+    "done": {
+      "zh-CN": [
+        "做好啦，来看看！"
+      ],
+      "en": [
+        "All done! Come take a look."
+      ]
+    },
+    "attention": {
+      "zh-CN": [
+        "等你来帮个忙。"
+      ],
+      "en": [
+        "Could you help me here?"
+      ]
+    },
+    "failed": {
+      "zh-CN": [
+        "唔，遇到点麻烦。"
+      ],
+      "en": [
+        "Hmm, something went wrong."
+      ]
+    }
+  }
+}

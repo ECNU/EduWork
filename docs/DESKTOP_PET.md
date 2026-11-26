@@ -4,7 +4,7 @@
 
 Electron 客户端可以在桌面上显示一只小宠物。它随会话状态变化：会话进行中会思考，完成或需要你处理时头上出现标记，点击它打开对应会话。桌宠和[桌面通知](DESKTOP_NOTIFICATIONS.md)使用同一份事项数据，只是多了一个展示入口；授权和回答仍在应用内完成。
 
-公版默认关闭，在“设置 → 桌面宠物”中开启。内置六款形象：纸页精灵“小页”（红、蓝两种配色）、DeepSeek 社区二创的鲸鱼娘“大肥鱼”、华东师范大学吉祥物“小花狮”及其拟人形象“花狮娘”和“花狮郎”。所有形象共用同一套窗口、状态、动画播放和点击逻辑，切换形象后行为不变。
+公版默认关闭，在“设置 → 桌面宠物”中开启。内置七款形象：纸页精灵“小页”（红、蓝两种配色）、DeepSeek 社区二创的鲸鱼娘“大肥鱼”、华东师范大学吉祥物“小花狮”及其拟人形象“花狮娘”、“花狮郎”和“小狮”。所有形象共用同一套窗口、状态、动画播放和点击逻辑，切换形象后行为不变。
 
 ## 状态
 
@@ -49,7 +49,7 @@ Electron 客户端可以在桌面上显示一只小宠物。它随会话状态�
   "desktop": {
     "pet": {
       "enabled": false,         // 公版默认关闭
-      "skin": "eduwork-page",   // 内置：eduwork-page、eduwork-page-blue、dafeiyu、ecnu-huashi、ecnu-huashi-boy、ecnu-huashi-girl
+      "skin": "eduwork-page",   // 内置：eduwork-page、eduwork-page-blue、dafeiyu、ecnu-huashi、ecnu-huashi-boy、ecnu-huashi-dumpling、ecnu-huashi-girl
       "size": 100,              // 大小百分比，50–200，10 的倍数；100 约 128 像素高
       "bubbles": true,          // 状态变化时显示简短气泡
       "sleep": true             // 离开或长时间没有活动时打盹
@@ -75,7 +75,7 @@ Electron 客户端可以在桌面上显示一只小宠物。它随会话状态�
 
 ## 形象包
 
-形象包只含数据：清单 `skin.json` 和图片，不含脚本或样式。图片可以是 SVG、PNG 或 WebP。小页和小花狮使用 SVG，花狮娘和花狮郎使用 WebP 精灵图。
+形象包只含数据：清单 `skin.json` 和图片，不含脚本或样式。图片可以是 SVG、PNG 或 WebP。小页和小花狮使用 SVG，花狮娘、花狮郎和小狮使用 WebP 精灵图。
 
 ```jsonc
 {
@@ -113,6 +113,7 @@ Electron 客户端可以在桌面上显示一只小宠物。它随会话状态�
 | 小花狮 | `ecnu-huashi` | 早期原型及素材整理由 xhan51 贡献（[ECNU/EduWork-ECNU#18](https://github.com/ECNU/EduWork-ECNU/pull/18)）；本次由 JunieXD 重绘 SVG 并接入公共桌宠底座，`scripts/build-huashi-skin.mjs` 生成 | 形象及校徽版权归华东师范大学 |
 | 花狮娘 | `ecnu-huashi-girl` | Emily 创作，JunieXD 用 ChatGPT 生图适配为 WebP 精灵图 | CC BY-SA 4.0 |
 | 花狮郎 | `ecnu-huashi-boy` | Michaelee 参考 Emily 的花狮娘，使用 GPT 生成形象和动作，整理为 WebP 精灵图 | CC BY-SA 4.0 |
+| 小狮 | `ecnu-huashi-dumpling` | arwen 参考花狮郎和花狮娘，使用 ECNU Image 与 GPT 创作 | CC BY-SA 4.0 |
 
 形象由贡献者通过 Pull Request 添加和维护，应用内不提供导入。添加一款形象：在 `skins/<id>/` 放入 `skin.json` 和图片，提供上面列出的全部动画；在 `skins/LICENSE` 写明来源、署名和许可；更新插件测试里的形象列表。内置形象按严格模式校验，缺动画或图片不合规时该形象不会出现。
 
