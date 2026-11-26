@@ -23,8 +23,8 @@ const pages = {
     <p id="result">-</p><a href="/second">Second</a> <a href="/popup" target="_blank">Popup</a>
     <select id="pick"><option>A</option><option>B</option></select>`,
   '/second': '<title>Second</title><p>second page</p>',
-  // The width a page sees as it first loads.
-  '/first': '<title>First</title><script>window.first = innerWidth</script>',
+  // The widths a page sees: at its first script and at each resize.
+  '/first': '<title>First</title><script>window.widths = [innerWidth]; addEventListener("resize", () => widths.push(innerWidth))</script>',
   '/popup': '<title>Popup</title>',
   // What only a page laid out wider than a phone shows, near its right edge: a button and a red square.
   // A button it always shows, a field and room to right-click.
@@ -163,6 +163,9 @@ const layout = async (tab, expected) => {
   for (const deadline = Date.now() + 3000; (seen = await now()).join() !== [expected, true].join() && Date.now() < deadline;) await wait(50)
   return seen
 }
+// The widths a page has seen since its first script ran, but 0: a Sidebar tab's new document may run
+// that script before Chromium gives it its size.
+const widthsSeen = async tab => (await tab.waitForFunction(() => window.widths !== undefined && innerWidth > 0 && [...new Set([...widths, innerWidth].filter(Boolean))])).jsonValue()
 const tabWidth = () => page('document.querySelector("[data-sidebar-right-session=session-a] .cell:not([hidden])").getBoundingClientRect().width')
 // The mark browser_layout has Playwright evaluate in the page of the Agent's current tab.
 const marked = async tab => {
@@ -669,11 +672,10 @@ test('a page lays out at the Sidebar\'s width, or at desktop width scaled down t
   assert.ok(narrow < 1280)
   // By default a page follows the Sidebar's width.
   assert.deepEqual([await layout(second, narrow), await layout(tab, narrow)], [[narrow, true], [narrow, true]])
-  // The user's setting for every page. At desktop width, a tab DSH opens on an address loads its page at that width from the start.
+  // The user's setting for every page. At desktop width, a tab DSH opens on an address loads its page at that width: the first the page sees.
   await page('fixture.desktopWidth(true)')
   const [first] = await Promise.all([context.waitForEvent('page'), opened('session-a', '/first')])
-  await first.waitForFunction(() => window.first !== undefined)
-  assert.equal(await first.evaluate(() => window.first), 1280)
+  assert.deepEqual(await widthsSeen(first), [1280])
   await first.close()
   assert.deepEqual([await layout(second, 1280), await layout(tab, 1280)], [[1280, true], [1280, true]])
   await page('fixture.desktopWidth(false)')
@@ -711,8 +713,8 @@ test('a page lays out at the Sidebar\'s width, or at desktop width scaled down t
     const frame = document.createElement('webview'); frame.setAttribute('partition', 'sidebar-workspace'); frame.setAttribute('src', ${JSON.stringify(`${origin}/second?unmarked`)}); frame.style.flex = '1'
     holder.append(frame); document.body.append(holder) })()`)
   const unmarked = `webContents.getAllWebContents().find(guest => guest.getType() === 'webview' && guest.hostWebContents && guest.getURL() === ${JSON.stringify(`${origin}/second?unmarked`)})`
-  for (const deadline = Date.now() + 5000; !await run(`const guest = ${unmarked}; return guest !== undefined && !guest.isLoading()`);) {
-    assert.ok(Date.now() < deadline, 'the unmarked guest loads')
+  for (const deadline = Date.now() + 5000; !await run(`const guest = ${unmarked}; return guest !== undefined && !guest.isLoading() && await guest.executeJavaScript('innerWidth') > 0`);) {
+    assert.ok(Date.now() < deadline, 'the unmarked guest loads and has its size')
     await wait(50)
   }
   assert.deepEqual(await run(`const guest = ${unmarked}; menus.length = 0
@@ -796,10 +798,10 @@ test('the Agent lays the tab it acts on out at desktop width and back, that tab 
   assert.equal(await tab.textContent('#clicks'), '2')
   assert.equal((await screenshot(tab))[0], narrow)
   assert.deepEqual(await layOut('session-a', tab, 'sidebar'), [200, { width: narrow, settled: true }])
-  // The choice holds for the next page in the tab, which loads at that width from the start.
+  // The choice holds for the next page in the tab, which loads at that width: the first the page sees.
   assert.deepEqual(await layOut('session-a', tab, 'desktop'), [200, { width: 1280, settled: true }])
   await tab.goto(`${origin}/first`)
-  assert.equal(await tab.evaluate(() => window.first), 1280)
+  assert.deepEqual(await widthsSeen(tab), [1280])
   // Once the user turns to another tab, the Agent's layout of the tab it acts on leaves the user's choice on screen, as its other actions there do.
   await page(`fixture.focus('session-a', ${frameOf(other)}.closest('[data-sidebar-right-tab]').getAttribute('data-sidebar-right-tab'))`)
   assert.deepEqual(await layOut('session-a', tab, 'sidebar'), [200, { width: narrow, settled: true }])

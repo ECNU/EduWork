@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-26T16:51:39.590Z",
-  "fileSetSHA256": "cf2530f0662bf2bad09d58bdd8081cde53d82bd00e0651941d59fb3e61071b15",
+  "createdAt": "2026-11-26T18:14:04.776Z",
+  "fileSetSHA256": "493b9b4a7196848ef0e4564378a8917b096dd9bb2c24aa36454215ee5b66fb41",
   "files": [
     {
       "path": ".gitattributes",
@@ -1365,7 +1365,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-smoke.mjs",
-      "sha256": "bb72049ed4bcf7fe5d972843ca06b70c0ace389fdfc672d0663ea979c9b53ff7"
+      "sha256": "cf9e8e09e5b615605f19a27d7864f3c90566515703a37e25e0b3e6cf4a2688fd"
     },
     {
       "path": "dsh-electron/tests/desktop-web-paths.test.mjs",
@@ -1505,7 +1505,7 @@
     },
     {
       "path": "dsh-electron/tests/sidebar-browser.test.mjs",
-      "sha256": "ee29bd95790c8e8b9d2e3b3b826e3e4b5eeb8d593a4efbaa3759b0c855e62448"
+      "sha256": "91397dc5c107938ea6b1c2eb82a28aa0cb9db1256476f33b6eaaba0d137ac16f"
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",

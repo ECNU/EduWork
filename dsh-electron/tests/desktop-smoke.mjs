@@ -119,7 +119,7 @@ try {
   })
   if (values.shell === 'electron' && sidebarBrowser) await check('sidebar-page-at-desktop-width', async () => {
     // A page whose button shows only when it lays out at desktop width, past the Sidebar's width; it counts the clicks on it.
-    const site = createServer((_request, response) => response.end('<!doctype html><body style="margin:0"><script>window.firstWidth = innerWidth; window.clicks = 0</script>'
+    const site = createServer((_request, response) => response.end('<!doctype html><body style="margin:0"><script>window.widths = [innerWidth]; addEventListener("resize", () => widths.push(innerWidth)); window.clicks = 0</script>'
       + '<button id="go" style="position:absolute;left:1100px;top:40px;width:120px;height:40px" onclick="clicks++">go</button>'))
     await new Promise(resolve => site.listen(0, '127.0.0.1', resolve))
     const address = `http://127.0.0.1:${site.address().port}/`
@@ -138,11 +138,12 @@ try {
       await until(async () => (await rpc('settings/describe')).namespaces.find(row => row.ns === sidebarBrowser.id).value.sidebarWidth === value, 'the chosen width')
       await page.keyboard.press('Escape')
     }
-    // The page's guest element and its tab in the application page, and the page's own layout.
+    // The page's guest element and its tab in the application page, and the page's own layout once it has
+    // its size, which Chromium may give a new document only after its first script: first is the first width it saw.
     const shown = () => page.evaluate(async address => {
       const opened = frame => { try { return frame.checkVisibility() && frame.getURL().startsWith(address) } catch { return false } }
       const frame = [...document.querySelectorAll('webview[data-sidebar-browser-frame]')].find(opened)
-      const layout = await frame?.executeJavaScript('document.readyState === "complete" && (r => ({ first: firstWidth, width: innerWidth, button: [r.x, r.y, r.width, r.height], clicks }))(go.getBoundingClientRect())').catch(() => false)
+      const layout = await frame?.executeJavaScript('document.readyState === "complete" && innerWidth > 0 && (r => ({ first: [...widths, innerWidth].find(Boolean), width: innerWidth, button: [r.x, r.y, r.width, r.height], clicks }))(go.getBoundingClientRect())').catch(() => false)
       if (!layout) return null
       const box = element => (r => ({ x: r.x, y: r.y, width: r.width, height: r.height }))(element.getBoundingClientRect())
       return { ...layout, element: box(frame), elementWidth: frame.offsetWidth, tab: box(frame.parentElement) }
