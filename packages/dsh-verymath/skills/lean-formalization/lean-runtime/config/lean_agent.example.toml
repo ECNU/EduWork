@@ -1,0 +1,28 @@
+[lean]
+default_cwd = "."
+validate_command = "lake build"
+single_file_check_template = "lake env lean {file}"
+workspace_mode = "reuse-managed"
+managed_workspace_path = "~/.ai4math/lean-workspace"
+managed_workspace_root = "~/.ai4math/lean-workspaces"
+managed_workspace_template = "math"
+reuse_managed_workspace = true
+workspace_key = "lean-toolchain"
+align_workspace_versions = true
+preferred_toolchain = "leanprover/lean4:v4.28.0"
+preferred_mathlib_rev = "auto"
+allow_user_project_version_changes = false
+
+[agent]
+mode = "coding-agent"
+backend = "none"
+max_local_iterations = 5
+require_user_statement_confirmation = true
+
+[policy]
+no_sorry = true
+no_admit = true
+no_axiom = true
+do_not_change_statement = true
+allow_new_lemmas = true
+default_max_rounds = 5

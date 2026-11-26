@@ -1,0 +1,18 @@
+name: information-coding-crypto-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+description: Template for information theory, coding theory, and cryptography talks.
+best_for:
+  - information theory
+  - coding theory
+  - cryptography
+  - security reductions
+source_checks:
+  - alphabet or channel
+  - rate or security parameter
+  - adversary model
+  - asymptotic regime
+when_not_to_use:
+  - Use probability-statistics-talk for general stochastic modeling without codes, channels, or security claims.
+requires: [beamer, amsmath, amssymb, booktabs]

@@ -1,0 +1,235 @@
+source_grounding_required:
+- Every theorem, result, algorithm, data, or figure frame must map to a ledger row.
+- Result frames should expose Source and Status in text or speaker notes.
+- Institutional templates are references until license and branding checks pass.
+templates:
+- name: seminar-minimal-en
+  language: en
+  engine: pdflatex
+  best_for:
+  - seminar
+  - general mathematics
+  - short research talk
+  preview: templates/previews/seminar-minimal-en-cover.png
+  content_preview: templates/previews/seminar-minimal-en-content.png
+- name: seminar-minimal-zh
+  language: zh
+  engine: xelatex
+  best_for:
+  - Chinese seminar
+  - bilingual math talk
+  preview: templates/previews/seminar-minimal-zh-cover.png
+  content_preview: templates/previews/seminar-minimal-zh-content.png
+- name: theorem-proof-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - pure mathematics
+  - theorem exposition
+  - proof sketch
+  preview: templates/previews/theorem-proof-talk-cover.png
+  content_preview: templates/previews/theorem-proof-talk-content.png
+- name: reading-group-paper
+  language: en
+  engine: pdflatex
+  best_for:
+  - paper reading
+  - literature discussion
+  - result map
+  preview: templates/previews/reading-group-paper-cover.png
+  content_preview: templates/previews/reading-group-paper-content.png
+- name: optimization-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - optimization
+  - algorithms
+  - convergence
+  - experiments
+  preview: templates/previews/optimization-talk-cover.png
+  content_preview: templates/previews/optimization-talk-content.png
+- name: numerical-analysis-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - numerical analysis
+  - scientific computing
+  - discretization
+  preview: templates/previews/numerical-analysis-talk-cover.png
+  content_preview: templates/previews/numerical-analysis-talk-content.png
+- name: algorithm-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - algorithms
+  - complexity
+  - pseudocode
+  preview: templates/previews/algorithm-talk-cover.png
+  content_preview: templates/previews/algorithm-talk-content.png
+- name: probability-statistics-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - probability
+  - statistics
+  - stochastic processes
+  - data
+  preview: templates/previews/probability-statistics-talk-cover.png
+  content_preview: templates/previews/probability-statistics-talk-content.png
+- name: geometry-topology-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - geometry
+  - topology
+  - diagrams
+  - invariants
+  preview: templates/previews/geometry-topology-talk-cover.png
+  content_preview: templates/previews/geometry-topology-talk-content.png
+- name: algebra-number-theory-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - algebra
+  - number theory
+  - examples
+  - structure
+  preview: templates/previews/algebra-number-theory-talk-cover.png
+  content_preview: templates/previews/algebra-number-theory-talk-content.png
+- name: combinatorics-graph-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - combinatorics
+  - graph theory
+  - extremal methods
+  - random graphs
+  preview: templates/previews/combinatorics-graph-talk-cover.png
+  content_preview: templates/previews/combinatorics-graph-talk-content.png
+- name: logic-foundations-category-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - logic
+  - foundations
+  - category theory
+  - formal systems
+  preview: templates/previews/logic-foundations-category-talk-cover.png
+  content_preview: templates/previews/logic-foundations-category-talk-content.png
+- name: analysis-core-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - real analysis
+  - complex analysis
+  - functional analysis
+  - harmonic analysis
+  - operator theory
+  preview: templates/previews/analysis-core-talk-cover.png
+  content_preview: templates/previews/analysis-core-talk-content.png
+- name: pde-analysis-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - PDE
+  - estimates
+  - regularity
+  - boundary value problems
+  preview: templates/previews/pde-analysis-talk-cover.png
+  content_preview: templates/previews/pde-analysis-talk-content.png
+- name: dynamical-systems-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - dynamical systems
+  - stability
+  - bifurcation
+  preview: templates/previews/dynamical-systems-talk-cover.png
+  content_preview: templates/previews/dynamical-systems-talk-content.png
+- name: control-systems-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - control theory
+  - stability
+  - controllability
+  - feedback design
+  preview: templates/previews/control-systems-talk-cover.png
+  content_preview: templates/previews/control-systems-talk-content.png
+- name: information-coding-crypto-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - information theory
+  - coding theory
+  - cryptography
+  - security reductions
+  preview: templates/previews/information-coding-crypto-talk-cover.png
+  content_preview: templates/previews/information-coding-crypto-talk-content.png
+- name: data-experiment-results
+  language: en
+  engine: pdflatex
+  best_for:
+  - experiments
+  - ablation
+  - plots
+  - reproducibility
+  preview: templates/previews/data-experiment-results-cover.png
+  content_preview: templates/previews/data-experiment-results-content.png
+- name: course-lecture-zh
+  language: zh
+  engine: xelatex
+  best_for:
+  - Chinese lecture
+  - teaching
+  - worked examples
+  preview: templates/previews/course-lecture-zh-cover.png
+  content_preview: templates/previews/course-lecture-zh-content.png
+- name: thesis-defense
+  language: en
+  engine: pdflatex
+  best_for:
+  - thesis defense
+  - contribution summary
+  - committee talk
+  preview: templates/previews/thesis-defense-cover.png
+  content_preview: templates/previews/thesis-defense-content.png
+- name: workshop-tutorial
+  language: en
+  engine: pdflatex
+  best_for:
+  - tutorial
+  - long lecture
+  - hands-on workshop
+  preview: templates/previews/workshop-tutorial-cover.png
+  content_preview: templates/previews/workshop-tutorial-content.png
+- name: backup-heavy-talk
+  language: en
+  engine: pdflatex
+  best_for:
+  - conference talk
+  - short main line
+  - detailed backup
+  preview: templates/previews/backup-heavy-talk-cover.png
+  content_preview: templates/previews/backup-heavy-talk-content.png
+- name: beamerposter-a0
+  language: en
+  engine: pdflatex
+  best_for:
+  - poster
+  - conference poster
+  - visual summary
+  preview: templates/previews/beamerposter-a0-cover.png
+  content_preview: templates/previews/beamerposter-a0-content.png
+external_sources:
+- name: Pan Jianyu ECNU LaTeX page
+  status: indexed-reference
+  url: https://math.ecnu.edu.cn/jypan/Latex/index.html
+  license: review-required
+  note: Downloaded templates require license and institutional-brand review before
+    vendoring.
+- name: Overleaf ECNU gallery
+  status: indexed-reference
+  url: https://cn.overleaf.com/gallery/tagged/ecnu
+  license: per-template-review-required
+  note: Check per-template license before reuse.

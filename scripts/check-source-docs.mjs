@@ -4,7 +4,15 @@ import { resolve, join, dirname, relative, basename } from 'node:path'
 const root = resolve(process.argv[2] || '.')
 const files = [], broken = [], readmeIssues = []
 // Preserve the README shipped with this unmodified third-party dependency.
-const upstreamReadmes = new Set(['dsh-host/vendor/jsonc-parser/README.md'])
+const upstreamReadmes = new Set([
+  'dsh-host/vendor/jsonc-parser/README.md',
+  // Shipped verbatim from the VeryMath MIT repositories (see NOTICE.md and
+  // UPSTREAM.json); translating them in place would break byte-identity with
+  // the documented upstream commits.
+  'packages/dsh-verymath/skills/least-squares/README.md',
+  'packages/dsh-verymath/skills/math-paper-reading/README.md',
+  'packages/dsh-verymath/skills/matlab-runner/examples/README.md',
+])
 let readmePairs = 0
 async function walk(directory) {
   for(const entry of await readdir(directory,{withFileTypes:true})) {

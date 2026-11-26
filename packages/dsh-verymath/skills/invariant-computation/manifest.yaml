@@ -1,0 +1,46 @@
+schema_version: 1
+skill: invariant-computation
+workflow_scope:
+  version: 0.1.0
+  supported_input:
+    - finite complexes
+    - filtrations and point clouds
+    - triangulated manifolds and knots
+    - groups and CW complexes
+    - polynomial ideals and modules
+    - cones, monoids, and toric data
+    - paper excerpts, LaTeX, code, and data artifacts
+  route_families:
+    - finite_complexes
+    - persistent_homology
+    - low_dimensional_topology
+    - group_cw_homological_algebra
+    - algebraic_geometry_commutative_algebra
+    - toric_polyhedral_semigroup
+    - numerical_algebraic_geometry
+approval_policy:
+  ask_before:
+    - installing dependencies
+    - changing environments
+    - running long computations
+    - editing source files
+    - using remote APIs
+    - making final mathematical claims
+output_artifacts:
+  - input_summary.md
+  - representation_checkpoint.md
+  - route_plan.md
+  - logs/
+  - results/invariant_summary.json
+  - validation_report.md
+  - RUN_SUMMARY.md
+validation_contract:
+  required:
+    - source representation
+    - coefficient ring or field
+    - convention notes
+    - backend version evidence
+    - structural checks
+    - invariant cross-checks
+    - remaining uncertainty
+

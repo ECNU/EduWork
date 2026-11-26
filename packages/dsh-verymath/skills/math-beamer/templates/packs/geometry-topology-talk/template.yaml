@@ -1,0 +1,9 @@
+name: geometry-topology-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - geometry
+  - topology
+  - diagrams and invariants
+requires: [beamer, amsmath, amssymb, tikz]

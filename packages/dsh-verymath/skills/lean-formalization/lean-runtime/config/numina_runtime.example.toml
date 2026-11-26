@@ -1,0 +1,12 @@
+[numina]
+upstream_url = "https://github.com/project-numina/numina-lean-agent"
+runtime_home = "~/.ai4math/numina-runtime"
+default_project_name = "myproofs"
+default_prompt_file = "prompts/autosearch/main_entry.md"
+default_max_rounds = 10
+store_secrets_here = false
+
+[policy]
+require_user_approval_before_setup = true
+require_user_approval_before_run = true
+validate_outputs_with_local_lean = true
