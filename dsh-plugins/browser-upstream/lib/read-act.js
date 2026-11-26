@@ -8,6 +8,7 @@
 // model turn instead of one per action, and no snapshot file to read.
 import { resolve } from 'node:path'
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import { READ, REF, STILL, fingerprint, render } from './page.js'
 
 const mcp = name => `mcp__playwright-mcp__${name}`
@@ -81,13 +82,20 @@ const tabCount = text => /### (?:Open tabs|Result)\n((?:- \d+: .*(?:\n|$))+)/u.e
 const firstLine = message => message.split('\n').find(line => line.trim() && !line.startsWith('###')) ?? message
 const untrusted = text => `<untrusted_web_content>\n${text}\n</untrusted_web_content>`
 
+// Each MCP call goes through DSH's tool pipeline under this run, as a program
+// tool call's do (tool-executor-ptc): its permission sees the run as its parent,
+// and what its hooks add for the model comes with the run's result.
 function runner(ctx, exec) {
+  const pipeline = new ToolExecutionPipeline(ctx)
   let calls = 0
   return async (name, input) => {
-    const result = await ctx.tools.execute({
+    const prepared = await pipeline.prepare({
       callId: `${exec.callId}:${++calls}`, rootCallId: exec.rootCallId, name: mcp(name), arguments: input,
-      agent: exec.agent, parent: exec.token, signal: exec.signal,
+      agent: exec.agent, ...exec.toolSet !== undefined && { toolSet: exec.toolSet }, parent: exec.token, signal: exec.signal,
     })
+    const result = await pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+    for (const context of result.additionalContexts ?? []) exec.deferContext(context)
+    if (result.concludesTurn) exec.concludeTurn()
     if (result.isError) throw new Error(result.error.message)
     return result.value.content.map(block => block.text ?? '').join('\n')
   }
