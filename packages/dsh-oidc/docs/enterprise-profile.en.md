@@ -175,6 +175,10 @@ If a model supports thinking but not selectable reasoning effort, set:
 
 The adapter preserves the profile's thinking behavior: historical user-selected efforts are ignored, the profile default is resolved against that model's supported levels, and only an internal enabling signal is passed to PiAi. `compat.supportsReasoningEffort: false` keeps `reasoning_effort` out of the HTTP request. This signal does not create selectable UI efforts; a profile default of `off` still disables models that support it. The request is not rejected merely because the provider lacks an effort parameter.
 
+## Account area extensions
+
+Institution plugins may register the single `oidc.account.footer.details` slot for account information or actions below the avatar. It receives `profile`, `status`, the shared client `service`, and `wide`. A collapsed sidebar sets `wide=false`; the extension must fit a 36px width. Extension controls are siblings of the account menu trigger and handle their own clicks, keyboard focus and accessible names. An unregistered slot adds no account requests. The existing `oidc.account.menu.details` slot remains available inside the menu.
+
 ## Secret prohibition
 
 Profiles MUST NOT contain:
