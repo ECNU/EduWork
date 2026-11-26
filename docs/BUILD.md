@@ -1,12 +1,13 @@
 # 构建 EduWork
 
-本指南面向本机开发和桌面候选构建。桌面包由 Node.js 阶段流水线统一编排；Windows x64、macOS arm64 与 macOS x64 分别使用对应平台的工具和原生资源。
+本指南面向本机开发和桌面候选构建。桌面包由 Node.js 阶段流水线统一编排；Windows x64、Linux x64、macOS arm64 与 macOS x64 分别使用对应平台的工具和原生资源。
 
 ## 选择入口
 
 | 场景 | 入口 | 产物 |
 | --- | --- | --- |
 | 本机开发 | `node scripts/local-desktop-pipeline.mjs` | 当前平台的开发包，可选择安装 |
+| Linux 原型 | `node scripts/ci-eduwork-linux-release.mjs` | Linux x64 AppImage 与校验和 |
 | main 产品输入更新后的 CI | `development-desktop.yml` | 双平台开发包 artifact |
 | feature 分支验证 | 手动运行 `development-desktop.yml`，选择分支和 `platform` | 所选平台的开发包与验收报告 artifact |
 | 手动候选 | `desktop-candidates.yml`，选择 `node` | 双平台候选 artifact；经授权可发布 GitHub Release |
@@ -57,7 +58,19 @@ Node 安全版本以 [运行时清单](../dsh-desktop/internal/productruntime/bu
 node scripts/local-desktop-pipeline.mjs
 ```
 
-入口从 `source-receipt.json` 取得基础版本并生成开发版，构建、检查并安装当前平台应用。`--skip-install` 只构建，`--install-root <目录>` 改变安装位置，`--workspace <目录>` 指定构建工作区。Linux 当前只做 Web 验证。
+入口从 `source-receipt.json` 取得基础版本并生成开发版，构建、检查并安装当前平台应用。`--skip-install` 只构建，`--install-root <目录>` 改变安装位置，`--workspace <目录>` 指定构建工作区。
+
+Linux x64 AppImage 原型使用相同的锁定源码和 Electron shell，产物为 `EduWork-<版本>-linux-x86_64.AppImage` 及其 `.sha256` 文件。AppImage 打包工具按 `config/appimage.lock.json` 下载并校验；Linux 暂不启用软件更新，也不计入 Windows 与 macOS 发布门槛：
+
+```sh
+node scripts/ci-eduwork-linux-release.mjs \
+  --core-root . --edition-root . \
+  --distribution-config config/distributions/generic.json \
+  --version 0.4.13-dev.20261117.1 --development \
+  --no-verify-snapshot --output ../eduwork-linux-dev
+```
+
+AppImage 运行目录只读，用户数据写入 `~/.config/eduwork-electron`；Ubuntu 23.10 及更新版本限制用户命名空间时，启动器会自动加入 `--no-sandbox`。
 
 macOS 开发包安装为 `EduWork Alpha.app`（机构版为 `EduWork-ECNU Alpha.app`），与归档中的应用名称一致，已有安装不会被覆盖。开发时可使用 `--no-verify-snapshot` 构建未提交工作树；该选项仅跳过冻结 receipt 的一致性校验，源码与私有配置审计仍会执行，回执记录快照校验未执行。正式候选要求已校验的源码快照。
 

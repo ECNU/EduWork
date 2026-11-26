@@ -26,7 +26,13 @@ if (['runtime', 'source', 'dependencies', 'host', 'output'].some(key => !values[
 const repository = fileURLToPath(new URL('../', import.meta.url))
 const paths = Object.fromEntries(Object.entries(values).map(([key, value]) => [key, resolve(value)]))
 const inside = (root, child) => { const path = relative(root, child); return !isAbsolute(path) && path !== '..' && !path.startsWith('..' + (process.platform === 'win32' ? '\\' : '/')) }
+// Desktop builds keep disposable qualification products under the repository's
+// ignored `dist/` directory. Permit that generated workspace while preserving
+// the separation check for every actual source or input tree.
+const generatedRoot = resolve(repository, 'dist')
+const generatedOutput = paths.output !== generatedRoot && inside(generatedRoot, paths.output)
 for (const source of [repository, paths.runtime, paths.source, paths.dependencies, paths.host, paths.edition].filter(Boolean)) {
+  if (source === repository && generatedOutput) continue
   if (inside(source, paths.output) || inside(paths.output, source)) throw new Error('Source qualification output must be separate from every input')
 }
 const json = async file => JSON.parse(await readFile(file, 'utf8'))

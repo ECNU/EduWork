@@ -163,7 +163,7 @@ export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
   if (settings.schemaVersion !== 1 || settings.shell !== 'electron' || !/^[a-z0-9.-]+$/u.test(settings.appId)) throw new Error('Invalid EduWork desktop identity')
-  paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : process.env.LOCALAPPDATA,
+  paths = desktopPaths({ appRoot, settings, appData: ['darwin', 'linux'].includes(process.platform) ? app.getPath('appData') : process.env.LOCALAPPDATA,
     testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, configOverride: process.env.EDUWORK_CONFIG_FILE })
   // Successful sandboxed startup is the capability check. Lack of WRITE_DAC
   // or one expected ACE does not prove Electron cannot run. Installation and
@@ -283,8 +283,8 @@ async function prepareDesktop() {
   if (migrationLaunch) showStartupProgress('正在迁移旧版历史数据…')
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
   // Portable Windows keeps its editable config inside the program directory;
-  // macOS and the installed layout need the user copy seeded before first use.
-  if (settings.configurationOwnership === 'user' && (process.platform === 'darwin' || settings.dataLayout === 'installed'))
+  // Linux, macOS and the installed layout need the user copy seeded before first use.
+  if (settings.configurationOwnership === 'user' && (process.platform === 'darwin' || process.platform === 'linux' || settings.dataLayout === 'installed'))
     await initializeUserConfig({ product: paths.product, config: paths.config })
   const identity = JSON.parse(await readFile(join(paths.product,'assembly.json'),'utf8'))
   publisher = await publisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product,
@@ -444,7 +444,8 @@ async function prepareDesktop() {
       showMessageBox: options => mainWindow && !mainWindow.isDestroyed() ? dialog.showMessageBox(mainWindow, options) : dialog.showMessageBox(options) }) : undefined,
     workbench,
     openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path),
-      process.platform === 'darwin' ? path => new Promise((resolve, reject) => execFile('/usr/bin/open', ['-t', path], error => error ? reject(error) : resolve())) : undefined) })
+      process.platform === 'darwin' ? path => new Promise((resolve, reject) => execFile('/usr/bin/open', ['-t', path], error => error ? reject(error) : resolve())) : undefined,
+      process.platform === 'linux' ? path => shell.openPath(path) : undefined) })
   lifecycle.trackBridge(bridge)
   nativeBridge = bridge
   bootstrap = bridge.bootstrap

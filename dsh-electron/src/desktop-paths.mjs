@@ -13,6 +13,7 @@ export function assertSeparateRoots(programRoot, userRoot, platform = process.pl
 /** Keep the signed app bundle separate from per-user mutable state on macOS. */
 export function desktopPaths({ appRoot, appData, settings, platform = process.platform, testRoot, configOverride, exists = existsSync }) {
   const mac = platform === 'darwin'
+  const linux = platform === 'linux'
   const root = resolve(appRoot, mac ? '../../..' : '../..')
   const installed = !mac && settings.dataLayout === 'installed'
   let namespace = settings.distribution + '-electron' + (mac && settings.sourceAlpha === true ? '-alpha' : '')
@@ -22,7 +23,7 @@ export function desktopPaths({ appRoot, appData, settings, platform = process.pl
     && !exists(join(appData, namespace)) && exists(join(appData, namespace + '-alpha'))) namespace += '-alpha'
   if (testRoot && (!isAbsolute(testRoot) || /(?:^|[\\/])current(?:[\\/]|$)/iu.test(testRoot))) throw new Error('Test data requires an isolated absolute directory')
   let writableRoot
-  if (mac) writableRoot = join(appData, namespace)
+  if (mac || linux) writableRoot = join(appData, namespace)
   else if (installed) {
     // Installed candidates keep personal state outside the program directory so
     // program replacement and uninstall never touch it.
@@ -35,7 +36,7 @@ export function desktopPaths({ appRoot, appData, settings, platform = process.pl
   } else writableRoot = root
   const dataRoot = testRoot
     ? (installed ? join(writableRoot, 'data', namespace) : resolve(testRoot))
-    : mac ? writableRoot : join(writableRoot, 'data', namespace)
+    : (mac || linux) ? writableRoot : join(writableRoot, 'data', namespace)
   const config = desktopConfigurationPath({ root: writableRoot, version: settings.productVersion, ownership: settings.configurationOwnership, override: configOverride })
   if (installed) {
     // A file, not a directory: only "inside the program root" is forbidden.

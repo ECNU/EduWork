@@ -1,5 +1,5 @@
-// Downloads and verifies the pinned Electron runtime for the current platform
-// (Windows and macOS only). Node.js port of prepare-electron.ps1.
+// Downloads and verifies the pinned Electron runtime for the current platform.
+// Node.js port of prepare-electron.ps1.
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
@@ -16,7 +16,8 @@ export async function prepareElectron({ upstream, output } = {}) {
   let platform
   if (isWindows) platform = 'win32'
   else if (isMacOS) platform = 'darwin'
-  else throw new Error('Electron preparation supports Windows and macOS only')
+  else if (process.platform === 'linux') platform = 'linux'
+  else throw new Error('Electron preparation supports Windows, macOS and Linux only')
   const arch = process.arch
   if (!['x64', 'arm64'].includes(arch)) throw new Error('Electron preparation requires Node x64 or arm64')
   const archiveName = `electron-v${manifest.version}-${platform}-${arch}.zip`
@@ -26,20 +27,22 @@ export async function prepareElectron({ upstream, output } = {}) {
   await ensureDir(output)
   const archive = join(output, archiveName)
   if (!await pathExists(archive)) {
-    await download(`https://github.com/electron/electron/releases/download/v${manifest.version}/${archiveName}`, archive)
+    await download(`https://github.com/electron/electron/releases/download/v${manifest.version}/${archiveName}`, archive, { sha256: expected, retries: 6 })
   }
   if (await sha256File(archive) !== expected) throw new Error('Electron archive checksum mismatch')
   const runtime = join(output, 'runtime')
   if (!await isDirectory(runtime)) {
     await mkdir(runtime, { recursive: true })
-    await run('tar', ['-xf', archive, '-C', runtime])
+    await run(platform === 'linux' ? 'unzip' : 'tar', platform === 'linux'
+      ? ['-q', '-o', archive, '-d', runtime]
+      : ['-xf', archive, '-C', runtime])
       .catch(() => { throw new Error('Electron extraction failed') })
   }
   let actualVersion
   if (isWindows) {
     if (!await isFile(join(runtime, 'electron.exe'))) throw new Error('Electron runtime executable is missing')
     actualVersion = (await readFile(join(runtime, 'version'), 'utf8')).trim().replace(/^v/, '')
-  } else {
+  } else if (isMacOS) {
     const electronApp = join(runtime, 'Electron.app')
     const executable = join(electronApp, 'Contents/MacOS/Electron')
     const plist = join(electronApp, 'Contents/Info.plist')
@@ -49,6 +52,10 @@ export async function prepareElectron({ upstream, output } = {}) {
     const architectures = (await capture('lipo', ['-archs', executable])).trim().split(/\s+/)
     const expectedArch = macosArchitecture(arch).machoArch
     if (!architectures.includes(expectedArch)) throw new Error(`Electron runtime architecture mismatch: expected ${expectedArch}, found ${architectures.join(', ')}`)
+  } else {
+    const executable = join(runtime, 'electron')
+    if (!await isFile(executable)) throw new Error('Electron runtime executable is missing')
+    actualVersion = (await readFile(join(runtime, 'version'), 'utf8')).trim().replace(/^v/, '')
   }
   if (actualVersion !== manifest.version) throw new Error(`Electron runtime version mismatch: expected ${manifest.version}, found ${actualVersion}`)
   await writeJSON(join(output, 'receipt.json'), {

@@ -17,6 +17,12 @@ const locales = {
     required: ['en-US.pak', 'zh-CN.pak'],
     folders: app => [join(app, 'locales')],
   },
+  linux: {
+    suffix: '.pak',
+    kept: /^(?:en-US|en-GB|zh-CN|zh-TW)\.pak$/,
+    required: ['en-US.pak', 'zh-CN.pak'],
+    folders: app => [join(app, 'locales')],
+  },
 }
 
 async function size(path) {
