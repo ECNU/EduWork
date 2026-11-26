@@ -90,7 +90,7 @@ app.whenReady().then(async () => {
       await mainWindow.webContents.executeJavaScript("window.dispatchEvent(new Event('eduwork:open-updates'));")
     },
     updates: updateObserver, pickDirectory: signal => picker.pick(signal),
-    bootBrand: () => bootBrand })
+    bootBrand: () => bootBrand, sidebarBrowser: { byAgent: () => false } })
   const visibilityRoles = () => Menu.getApplicationMenu().items[0].submenu.items
     .map(item => item.role).filter(role => ['hide', 'hideothers', 'unhide'].includes(role))
   const expectedVisibilityRoles = process.platform === 'darwin' ? ['hide', 'hideothers', 'unhide'] : []
@@ -474,6 +474,22 @@ app.whenReady().then(async () => {
   // The page sets no background: the guest paints white, as in Chrome, rather than see-through.
   assert.deepEqual([...(await guest.capturePage({ x: 0, y: 0, width: 1, height: 1 })).toBitmap().subarray(0, 4)], [255, 255, 255, 255])
   results.push('leased native guest opens a CSP/XFO-protected page, opaque and without desktop privileges')
+  // The desktop bridge's menu is the page's only one: a menu DSH added would show in the same event.
+  // Its words follow the application's language, not the English it falls back to.
+  await evaluate(`__DSH_LOCALE__.onChange('zh')`)
+  await until(() => bridge.locale().id.startsWith('zh'))
+  const popup = Menu.prototype.popup, menus = []
+  Menu.prototype.popup = function () { menus.push(this.items.map(item => item.label)) }
+  try {
+    guest.debugger.attach('1.3')
+    for (const type of ['mousePressed', 'mouseReleased']) await guest.debugger.sendCommand('Input.dispatchMouseEvent', { type, x: 5, y: 5, button: 'right', clickCount: 1 })
+    guest.debugger.detach()
+    await until(() => menus.length > 0)
+  } finally { Menu.prototype.popup = popup }
+  assert.deepEqual(menus, [['后退', '前进', '刷新']])
+  await evaluate(`__DSH_LOCALE__.onChange('en')`)
+  await until(() => bridge.locale().id.startsWith('en'))
+  results.push('the user\'s right click on a leased guest opens the desktop bridge\'s page menu in the application language')
   // The Sidebar reports any rejected load as a failed page.
   const load = url => evaluate(`fixtureGuest.loadURL(${JSON.stringify(url)}).then(() => 'ended', () => 'failed')`)
   const stalled = load(`${protectedURL}stalled`)

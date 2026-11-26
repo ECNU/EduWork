@@ -242,7 +242,7 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
       if (!carrier) throw failure('Session with given id not found.')
       touch(target, carrier, visibleOnPage.has(method))
       const input = method.startsWith('Input.')
-      if (input) carrier.inputs++
+      if (input) { carrier.inputs++; carrier.byAgent = true }
       try {
         const result = page && await pageCommand(page, method, params)
         if (result !== undefined) return reply({ result })
@@ -323,7 +323,11 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
       }
       if (guest.isDestroyed()) return
       const target = group(sessionId)
-      const page = { guest, group: target, tabId, targetId, sessions: new Set(), frames: new Map(), attached: false, inputs: 0 }
+      // byAgent: whether the Agent gave the page input since the user last did,
+      // so that a menu the page opens now is the Agent's. The two do not take
+      // turns within one gesture: while the Agent acts on a tab, the tab takes
+      // no input from the user (sidebar-client.js).
+      const page = { guest, group: target, tabId, targetId, sessions: new Set(), frames: new Map(), attached: false, inputs: 0, byAgent: false }
       pages.set(guest.id, page)
       // A press or key the user gives the page, in any of its frames, as against
       // the Agent's input, which comes through here, counts in its top document:
@@ -332,7 +336,9 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
       // command the Agent sends after the input; a page that is leaving refuses
       // it, and is not the page read anyway.
       const used = () => {
-        if (page.inputs === 0 && page.attached) void guest.debugger.sendCommand('Runtime.evaluate', { expression: `document.${SIDEBAR_INPUT_COUNT} = (document.${SIDEBAR_INPUT_COUNT} || 0) + 1` }).catch(() => {})
+        if (page.inputs > 0) return
+        page.byAgent = false
+        if (page.attached) void guest.debugger.sendCommand('Runtime.evaluate', { expression: `document.${SIDEBAR_INPUT_COUNT} = (document.${SIDEBAR_INPUT_COUNT} || 0) + 1` }).catch(() => {})
       }
       guest.on('before-mouse-event', (_event, mouse) => { if (mouse.type === 'mouseDown') used() })
       guest.on('before-input-event', (_event, input) => { if (input.type === 'keyDown') used() })
@@ -370,6 +376,11 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
         if (target.autoAttach) attachSession(page)
       }
       arrivals.get(`${sessionId} ${tabId}`)?.(page)
+    },
+
+    /** Whether the Agent gave a Sidebar guest input since the user last did. */
+    byAgent(guest) {
+      return pages.get(guest.id)?.byAgent === true
     },
 
     /** The renderer's answer to an open request: the new tab, or why not. */

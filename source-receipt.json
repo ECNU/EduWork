@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-26T05:21:41.049Z",
-  "fileSetSHA256": "0be175e597659c8e9e634493d264ab0f722c8aa3d42c43f98aec4c200f710b5e",
+  "createdAt": "2026-11-26T10:23:01.800Z",
+  "fileSetSHA256": "5c3487c36f2f75a879a3aadcf33616d09a0ab92d94d0fbdfdfc71f6cb9ded8fc",
   "files": [
     {
       "path": ".gitattributes",
@@ -1017,7 +1017,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "82d98c5f20bf2a05af0c729eb4be1a5a1c14a09f95e3e6bdec2715e941431716"
+      "sha256": "e55b804090c8a1a1289556b239d599dd85cf588e66a9f0b79cc039a2336789a1"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1193,7 +1193,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "3aedaecf25cc9d6d96f2ba1306a1a49edd87d3f73690919cc32092a491b53558"
+      "sha256": "6be8081d4e96aba85906d33661f0d37255a14638eaf157c9b99d1d3e2d554c4e"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
@@ -1240,12 +1240,16 @@
       "sha256": "31dad8de173950b751b9a3c80b9b3aa355d6ff3614917a148fb553b31e132381"
     },
     {
+      "path": "dsh-electron/src/sidebar-browser-menu.mjs",
+      "sha256": "3e102f6e600cf7a0de7fda0f94da02f19b46079649de39196584b9b8076d6003"
+    },
+    {
       "path": "dsh-electron/src/sidebar-browser-preload.cjs",
       "sha256": "b82a5ac3a7cff626f623c978c6319ed0f605eb04f7f50efab4eccfaf5e438dca"
     },
     {
       "path": "dsh-electron/src/sidebar-browser.mjs",
-      "sha256": "dd144946d2a0244cd51c2731031a0d94db738d9fd805b65e08333436c3977d28"
+      "sha256": "633c4e3c08609dc50a18a573ecb307b8a0fb18c679f59478df6cebb056fce11b"
     },
     {
       "path": "dsh-electron/src/software-update-control.mjs",
@@ -1401,7 +1405,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "8825c51271665fa1fcfa97a89d3a435afb8386d7d35c5697ce4ed570b9409572"
+      "sha256": "b6b778767829fa9cfbfeb4f0982c8b972dbc75c47356072ffde5d210773437d9"
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.html",
@@ -1409,7 +1413,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.mjs",
-      "sha256": "486ed4c26ea9279b3ff54d80c87e7bbf5f3222b95d4434bb1b6cf832e41b451f"
+      "sha256": "ccb3f9f0e26c0d2dd138f50013677bf6bdf1c84306bb31fbc675345c08ab827c"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1433,7 +1437,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "c5cc601f9f593c3e7469b2b9ccf120cc5961e27c7a00c7fc6d2e03151842020f"
+      "sha256": "33e997286e26312aa6c639925b3c34ece7e25d2f8912e51641e10515ff7f9775"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1497,7 +1501,7 @@
     },
     {
       "path": "dsh-electron/tests/sidebar-browser.test.mjs",
-      "sha256": "60bab4e2ff3aa16e9028fe1ec2489603ce504d04dc8ff8038c7f4b8324fc43d3"
+      "sha256": "5ef5710ed80c5208e5af01f5517ab0dd21b8c7d9c6e71c7be72b5f94b38f6380"
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",
@@ -2157,11 +2161,11 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/README_EN.md",
-      "sha256": "2e5a08736e8c13d5a3e3ec342c0678c5ac70ec9de0ec01d4a2240b65e147ae94"
+      "sha256": "925c4726b474088f0b3d8ff50b9e570261c71d9cd76f1ed8a9694bf92aa05e7c"
     },
     {
       "path": "dsh-plugins/browser-upstream/README.md",
-      "sha256": "ccce6d9cf4f26d8a3f21cce97b551d7102aa9461955b7e06370ae852ba21c827"
+      "sha256": "f30bf7fa24a4b919104666e3646dbb8566ef99c9b5a519a0946636f4e3e42308"
     },
     {
       "path": "dsh-plugins/browser-upstream/src/client.ts",
@@ -6545,11 +6549,11 @@
     },
     {
       "path": "packages/dsh-oidc/docs/account-extensions.en.md",
-      "sha256": "a7c57cf5e411ef2b6547356d5579d2c922c9adb1b14b258539423d9b9b9e7e16"
+      "sha256": "c314179e3e4af13d747b4b0dcde6325ae0fde51217ef248fff3bf299c8b7504e"
     },
     {
       "path": "packages/dsh-oidc/docs/account-extensions.md",
-      "sha256": "3be6cfebef382538d65719635338774dfcb4219d2e0311683934565a146e83d1"
+      "sha256": "61726b77b0d4c6f0e5d5ee313fc61f08103a8a1dbd7b7ba9bdafaec573ee5ebd"
     },
     {
       "path": "packages/dsh-oidc/docs/architecture.en.md",
@@ -6577,11 +6581,11 @@
     },
     {
       "path": "packages/dsh-oidc/docs/decisions/0002-host-service-reads.en.md",
-      "sha256": "8057caadd30077784e1e5662cadb29a09c166f4442d194fdda037655497cb02d"
+      "sha256": "454db707076477f204c5097f64ae4f4212bdf4dff85318c9d9d7d33e87a8d1ea"
     },
     {
       "path": "packages/dsh-oidc/docs/decisions/0002-host-service-reads.md",
-      "sha256": "5a8efa7b66dd40449bf2a2513b4167801e3f44498f01c8b6327b1c5a5bd89a9f"
+      "sha256": "bfe740b78f7fe897f5c12a453881ccf9e99416b5bea927605b1291688954e2fa"
     },
     {
       "path": "packages/dsh-oidc/docs/desktop-host.en.md",
@@ -6625,11 +6629,11 @@
     },
     {
       "path": "packages/dsh-oidc/docs/enterprise-profile.en.md",
-      "sha256": "d14271ac3a9e8388cf5913c2cf4f6a5abb21b2501441d7df94a0395af6b7c722"
+      "sha256": "7514c200f23d52c112a99ddd29a64612a9079c016b5ca8bf6674fadf4886cef3"
     },
     {
       "path": "packages/dsh-oidc/docs/enterprise-profile.md",
-      "sha256": "d821456a3bb66dfc7f14aa6dfa397acd78410eadb633fe7ffb5fee928f29780e"
+      "sha256": "781ebc232d8405fcdb2ec28dffc12cf979647c0f71151a6acef585645f7e3236"
     },
     {
       "path": "packages/dsh-oidc/docs/gateway-auth/experimental-oidc-llm.en.md",
@@ -6825,7 +6829,7 @@
     },
     {
       "path": "packages/dsh-oidc/scripts/check-account-menu-browser.mjs",
-      "sha256": "d86639f5ad1a87b36427f243176d03d80a4821bbb9c2a754d2f92dccae0faca1"
+      "sha256": "e5ad50d8f9ad76be7193ec3f7bfb5bd1da79f8b70169d76faa979eb0955d7e0b"
     },
     {
       "path": "packages/dsh-oidc/scripts/check-dependency-lock.mjs",
@@ -6861,7 +6865,7 @@
     },
     {
       "path": "packages/dsh-oidc/scripts/smoke-build.mjs",
-      "sha256": "08dfc2ebdf52db034028d9d8be1abb342c5e8294d9d22f05fd2a574326c55d7f"
+      "sha256": "7569f25bf571bad32f46bda9e1a68992a609b909e5a4a77357debb798309deaf"
     },
     {
       "path": "packages/dsh-oidc/SECURITY.en.md",
@@ -6881,7 +6885,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/client/index.ts",
-      "sha256": "216f8186a505fe5d4040be1e31907f9dd64590d753ce198ee42a31f4bb20845c"
+      "sha256": "f7c157bf95d131b536b2f4a990dd489a4c78409c9ddb68b178a5d84c7ef63025"
     },
     {
       "path": "packages/dsh-oidc/src/client/locale.ts",
@@ -6981,7 +6985,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/host/service-authorization.js",
-      "sha256": "3bebceb7dc452763ff63617421815a4f5706b579665c248e83fb335e72a1ffc2"
+      "sha256": "879508a04f58ab09481403c062c746b76a6d0319d493e6b21dd4ed2e5571c0b9"
     },
     {
       "path": "packages/dsh-oidc/src/host/token-lifetime.js",
@@ -7037,7 +7041,7 @@
     },
     {
       "path": "packages/dsh-oidc/test/helpers/account-menu-browser.js",
-      "sha256": "69cbbfbf49bcfc4c75707d7ebbe2536e89006af474e07506b57165378cd71720"
+      "sha256": "14c53df6ecbcb96603742123b99cb80b184afa4e8ec38c057634d4296380e451"
     },
     {
       "path": "packages/dsh-oidc/test/helpers/desktop-fixture.js",
@@ -7077,7 +7081,7 @@
     },
     {
       "path": "packages/dsh-oidc/test/service-authorization.test.js",
-      "sha256": "83f0b52f43c1a85857589e7c281a59bafead29f49cdec2f6c73a362d078ecd96"
+      "sha256": "67f9d73610085e908577de569c0388de31732e15d2601ca6040b866bce404e34"
     },
     {
       "path": "packages/dsh-oidc/test/transport.test.js",

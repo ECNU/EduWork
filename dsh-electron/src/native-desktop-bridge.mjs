@@ -10,6 +10,7 @@ import { installFileActions } from './file-actions.ts'
 import { installDesktopFileDrag } from './file-drag.ts'
 import { desktopEditMenu, desktopViewMenu, setDesktopApplicationMenu } from './desktop-menu.mjs'
 import { SIDEBAR_BROWSER_IPC } from './sidebar-browser.mjs'
+import { attachSidebarBrowserMenu } from './sidebar-browser-menu.mjs'
 import { watchUpdateDocument } from './update-observer.mjs'
 
 export const USER_GUIDE_ROUTE = '/eduwork-user-guide'
@@ -217,7 +218,11 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
       return available
     },
     attach(window) {
-      guests.bind(window, (guest, lease) => shortcuts.attachGuest(window, guest, lease))
+      guests.bind(window, (guest, lease) => {
+        const releaseShortcuts = shortcuts.attachGuest(window, guest, lease)
+        const releaseMenu = attachSidebarBrowserMenu(window, guest, () => locale, () => sidebarBrowser.byAgent(guest))
+        return () => { releaseShortcuts(); releaseMenu() }
+      })
       // After bind, which replaces a guest's preferences: Sidebar pages paint
       // the browser's own background, as in Chrome, rather than letting the
       // application show through, so the Agent's screenshots show what the user sees.
