@@ -29,7 +29,7 @@ await build({ entryPoints: [fileURLToPath(new URL('../tests/fixtures/native-desk
     'fixture-backend': join(shell, 'src/backend-controller.ts'), 'fixture-quit': join(shell, 'src/quit-confirmation.ts'),
     'fixture-recovery': join(shell, 'src/fatal-recovery.ts'), 'fixture-locale': join(shell, 'src/locale.ts'),
     'fixture-permissions': join(shell, 'src/microphone-permissions.ts'),
-    'fixture-menu': join(shell, 'src/desktop-menu.mjs'),
+    'fixture-menu': join(shell, 'src/desktop-menu.mjs'), 'fixture-sidebar-browser': join(shell, 'src/sidebar-browser.mjs'),
     'fixture-static': join(shell, 'src/eduwork-host-process.mjs'),
   } })
 await writeFile(join(output, 'package.json'), JSON.stringify({ name: 'eduwork-native-desktop-probe', version: '0.0.0', main: 'main.cjs' }))

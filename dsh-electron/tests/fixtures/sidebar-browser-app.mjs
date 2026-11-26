@@ -1,9 +1,10 @@
 // Electron application for sidebar-browser.test.mjs: the real broker, preload
 // and renderer half around a stand-in Sidebar (sidebar-browser-app.html).
 // Over Node's IPC channel it sends {ready} once, then runs the code of each
-// {id, code} message as an async function of { window, broker, menus, externals }
-// and replies. The menus guests would show are kept in menus instead, and the
-// links the system browser would open in externals.
+// {id, code} message as an async function of { window, broker, menus, externals, clearings }
+// and replies. The menus guests would show are kept in menus instead, the
+// links the system browser would open in externals, and the pages whose site
+// the user asks to clear from their menu in clearings.
 import { app, BrowserWindow, Menu, ipcMain, protocol, webContents } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { createRequire, registerHooks } from 'node:module'
@@ -18,10 +19,13 @@ registerHooks({ resolve(specifier, context, next) {
 const { createSidebarBrowser, SIDEBAR_BROWSER_ENV, SIDEBAR_BROWSER_IPC } = await import('../../src/sidebar-browser.mjs')
 const { attachSidebarBrowserMenu } = await import('../../src/sidebar-browser-menu.mjs')
 
+// Sites under .test are names for the test server, with no system proxy between.
+app.commandLine.appendSwitch('host-resolver-rules', 'MAP *.test 127.0.0.1')
+app.commandLine.appendSwitch('no-proxy-server')
 protocol.registerSchemesAsPrivileged([{ scheme: 'dsh-app', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 let window
 const broker = createSidebarBrowser({ getWindow: () => window, idleMs: 1500 })
-const menus = [], externals = []
+const menus = [], externals = [], clearings = []
 Menu.prototype.popup = function () { menus.push(this) }
 // The desktop locale's editing commands, as DSH names them in Chinese.
 const locale = { id: 'zh-CN', messages: { undo: '撤销', redo: '重做', cut: '剪切', copy: '复制', paste: '粘贴', selectAll: '全选' } }
@@ -51,10 +55,11 @@ void app.whenReady().then(async () => {
     // As DesktopBrowserGuests, a guest's first page names its lease, and
     // popups go to the page that holds it; the desktop bridge adds the menu then.
     let lease
+    broker.data.attach(guest)
     guest.once('dom-ready', () => {
       lease = new URL(guest.getURL()).hash.slice(1)
       attachSidebarBrowserMenu(window, guest, () => locale, { byAgent: () => broker.byAgent(guest),
-        desktopWidth: () => broker.desktopWidth(guest), chooseWidth: desktop => broker.chooseWidth(guest, desktop) })
+        desktopWidth: () => broker.desktopWidth(guest), chooseWidth: desktop => broker.chooseWidth(guest, desktop), website: () => broker.website(guest), clearSite: () => clearings.push(guest.getURL()) })
     })
     guest.setWindowOpenHandler(({ url }) => {
       void window.webContents.executeJavaScript(`fixture.popup(${JSON.stringify(lease)}, ${JSON.stringify(url)})`)
@@ -66,7 +71,7 @@ void app.whenReady().then(async () => {
   })
   const environment = await broker.listen()
   process.on('message', async ({ id, code }) => {
-    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker, webContents, menus, externals }) => { ${code} })(scope)`)({ window, broker, webContents, menus, externals }) }) }
+    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker, webContents, menus, externals, clearings }) => { ${code} })(scope)`)({ window, broker, webContents, menus, externals, clearings }) }) }
     catch (error) { process.send({ id, error: error.message }) }
   })
   await window.loadURL('dsh-app://app/index.html')

@@ -1,5 +1,6 @@
 import * as PlaywrightBrowser from '@deepseek-ai/dsh-experimental-browser-use-playwright-mcp'
 import z from '@deepseek-ai/schemastery'
+import { registerClearData } from './clear-data.js'
 import { browserConfig } from './config.js'
 import { registerLayout } from './layout.js'
 import { browserGuard, browserPermission } from './permission.js'
@@ -25,5 +26,8 @@ export function apply(ctx, config = {}) {
   registerPageTools(ctx)
   noteSavedScreenshots(ctx)
   mountBrowser(ctx, browser, sidebar)
-  if (sidebar !== undefined) registerLayout(ctx, sidebar)
+  if (sidebar !== undefined) {
+    registerClearData(ctx, sidebar)
+    registerLayout(ctx, sidebar)
+  }
 }

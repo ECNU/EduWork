@@ -13,7 +13,7 @@ const runtime = process.env.EDUWORK_TEST_RUNTIME
 if (!runtime) throw new Error('Set EDUWORK_TEST_RUNTIME to the pinned DSH Runtime')
 const fromRuntime = pathToFileURL(join(runtime, 'package.json')).href
 const core = new URL('../../tool-browser/lib/core.js', import.meta.url).href
-// The browser-use provider that sidebar.js mounts is not in the Runtime; browser_layout takes only its rule for which Agents use the Sidebar.
+// The browser-use provider that sidebar.js mounts is not in the Runtime; browser_clear_data and browser_layout take only its rule for which Agents use the Sidebar.
 const provider = {
   '@deepseek-ai/dsh-browser-use/brand': 'export const BrowserUseProviderName = name => name',
   '@deepseek-ai/dsh-experimental-browser-use-runtime': 'export class SessionResources {}',
@@ -29,6 +29,7 @@ const dsh = await Promise.all(['@deepseek-ai/dsh-system-prompt', '@deepseek-ai/d
 const { READ } = await import('../lib/page.js')
 const { browserGuard, browserPermission } = await import('../lib/permission.js')
 const { covered, noteSavedScreenshots, pageOf, registerPageTools } = await import('../lib/read-act.js')
+const { registerClearData } = await import('../lib/clear-data.js')
 const { registerLayout } = await import('../lib/layout.js')
 
 const line = (text, top = 0) => ({ text, top })
@@ -43,6 +44,8 @@ const site = () => ({
   book: page('https://library.example/book/1', '深度学习入门', [line('深度学习入门 馆藏：闵行')], {}),
   rules: page('https://library.example/rules', '借阅规则', [line('每人可借 20 册')], {}),
   notice: page('http://10.0.0.8/notice', '内网通知', [line('[#1 link "下一条"]')], { 1: { kind: 'link', name: '下一条', href: 'http://10.0.0.8/notice/2' } }),
+  blank: page('about:blank', '', [], {}),
+  long: page(`https://library.example/search/${'深度学习/'.repeat(400)}`, '检索结果', [], {}),
 })
 
 // The Playwright MCP tools the page tools use, and their arguments.
@@ -126,7 +129,10 @@ async function harness({ start = 'search', routes = {}, suggests = false, approv
   ctx.on('tools/pre-execute', (exec, next) => browserPermission(ctx, exec, next))
   registerPageTools(ctx)
   noteSavedScreenshots(ctx)
-  if (sidebar !== undefined) registerLayout(ctx, sidebar)
+  if (sidebar !== undefined) {
+    registerClearData(ctx, sidebar)
+    registerLayout(ctx, sidebar)
+  }
   ctx.on('tools/execute', async (exec, next) => {
     if (!exec.name.startsWith('browser_')) return next()
     outer = exec
@@ -350,6 +356,67 @@ test('a screenshot saved under a name says where the image went', async () => {
   // Without a name the image is in the result, and other tools are left alone.
   assert.deepEqual(await texts('browser_take_screenshot', {}), ['### Result\n- [Screenshot of viewport](./page.png)'])
   assert.deepEqual(await texts('browser_evaluate', { function: '() => 1', filename: 'page.md' }), ['### Result\nundefined'])
+})
+
+test('browser_clear_data clears the website of the page read, or the whole workspace, at the conversation\'s Sidebar endpoint once the user allows it', async () => {
+  // The desktop app's endpoint, answering as sidebar-browser.mjs does.
+  const requests = []
+  const server = createServer((request, response) => {
+    let text = ''
+    request.setEncoding('utf8').on('data', chunk => { text += chunk }).on('end', () => {
+      const body = JSON.parse(text)
+      requests.push([request.method, request.url, body])
+      // A wrong secret, which the desktop app refuses without a word; and an answer that breaks off.
+      if (request.url.startsWith(`/${'b'.repeat(48)}/`)) return response.writeHead(404).end()
+      if (request.url.startsWith(`/${'c'.repeat(48)}/`)) {
+        response.writeHead(200).write('{"site')
+        return setTimeout(() => response.destroy(), 50)
+      }
+      if (body.url?.includes('10.0.0.8')) return response.writeHead(409).end(JSON.stringify({ error: 'No page is open in the browser' }))
+      response.writeHead(200).end(JSON.stringify(body.scope === 'site' ? { site: new URL(body.url).hostname } : {}))
+    })
+  }).listen(0, '127.0.0.1')
+  await once(server, 'listening')
+  try {
+    const browser = await harness({ sidebar: `ws://127.0.0.1:${server.address().port}/${'a'.repeat(48)}` })
+    // The website is that of the page read, as for browser_act.
+    await assert.rejects(browser.run('browser_clear_data', { scope: 'site' }), /Read a page of the website with browser_read first/u)
+    await browser.run('browser_read', {})
+    assert.equal(await browser.run('browser_clear_data', { scope: 'site' }), 'Cleared the data of library.example; the open pages concerned reload. Read the page again before acting on it.')
+    assert.equal(await browser.run('browser_clear_data', { scope: 'workspace' }), 'Cleared the data of every website in this workspace; the open pages concerned reload. Read the page again before acting on it.')
+    // The site is named by its origin, however long the page's address.
+    await browser.run('browser_read', { url: browser.pages.long.url })
+    await browser.run('browser_clear_data', { scope: 'site' })
+    await browser.run('browser_read', { url: 'http://10.0.0.8/notice' })
+    await assert.rejects(browser.run('browser_clear_data', { scope: 'site' }), /No page is open in the browser/u)
+    assert.deepEqual(requests, [
+      ['POST', `/${'a'.repeat(48)}/session-1/clear-data`, { scope: 'site', url: 'https://library.example' }],
+      ['POST', `/${'a'.repeat(48)}/session-1/clear-data`, { scope: 'workspace' }],
+      ['POST', `/${'a'.repeat(48)}/session-1/clear-data`, { scope: 'site', url: 'https://library.example' }],
+      ['POST', `/${'a'.repeat(48)}/session-1/clear-data`, { scope: 'site', url: 'http://10.0.0.8' }],
+    ])
+    assert.deepEqual(browser.asked, ['browser_clear_data', 'browser_clear_data', 'browser_clear_data', 'browser_read', 'browser_clear_data'])
+    // The question says what is cleared, and that the workspace's other conversations lose it too; full access does not ask.
+    const permission = (scope, mode = 'workspace-write') => browserPermission({ sandboxPolicy: { resolve: () => ({ mode }) } }, { name: 'browser_clear_data', agent: browser.agent, arguments: { scope } }, () => ({ kind: 'allow' }))
+    assert.equal(permission('site').displayReason.zh, '允许智能体清除侧边栏浏览器里 10.0.0.8 所在网站在本工作区的数据：登录状态、Cookie、网站存储和缓存。同一工作区其他对话里的这个网站也会退出登录，打开着的这个网站的网页会重新加载')
+    assert.equal(permission('workspace').reason, 'Allow the Agent to clear all data of this workspace\'s Sidebar browser: sign-ins, cookies, site storage and cache of every website. They are signed out in the workspace\'s other conversations too, and its open pages reload')
+    assert.equal(permission('workspace', 'danger-full-access').kind, 'allow')
+    // A subagent keeps a browser of its own, without the tool.
+    const tools = async agent => (await browser.ctx.tools.resolve({ agent, signal: AbortSignal.timeout(5000) })).view(agent).get('browser_clear_data') !== undefined
+    assert.deepEqual([await tools(browser.agent), await tools({ session: { id: 'session-2', header: { origin: 'subagent' } } })], [true, false])
+    // A page that is no website's has no site to clear, and the user is not asked about one.
+    const endpoint = secret => `ws://127.0.0.1:${server.address().port}/${secret.repeat(48)}`
+    const blank = await harness({ start: 'blank', sidebar: endpoint('b') })
+    await blank.run('browser_read', {})
+    await assert.rejects(blank.run('browser_clear_data', { scope: 'site' }), /Read a page of the website with browser_read first/u)
+    // An answer that says nothing, or breaks off, fails the call and nothing else.
+    await assert.rejects(blank.run('browser_clear_data', { scope: 'workspace' }), { message: 'The Sidebar browser answered 404 without saying why' })
+    const broken = await harness({ sidebar: endpoint('c') })
+    await assert.rejects(broken.run('browser_clear_data', { scope: 'workspace' }), { message: /^(aborted|socket hang up)$/u })
+    assert.deepEqual([blank.asked, broken.asked], [['browser_clear_data'], ['browser_clear_data']])
+  } finally {
+    server.close()
+  }
 })
 
 test('browser_layout lays the current tab out at the width asked for, at the conversation\'s Sidebar endpoint, and shows the page as it is then', async () => {
