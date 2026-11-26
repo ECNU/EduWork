@@ -1,8 +1,8 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Executable, [ValidateSet('wails','electron')][string]$Shell)
+param([Parameter(Mandatory)][string]$Executable, [ValidateSet('electron')][string]$Shell)
 $ErrorActionPreference='Stop'
 $Executable=[IO.Path]::GetFullPath($Executable)
-if ($Executable -match '(?i)(^|[\\/])current([\\/]|$)' -or $Executable -notmatch '\\(?:wails(?:-candidate)?|electron-candidate|electron-ready)\\(?:EduWork(?:-Electron)?|ChatECNU-Work)\.exe$') {throw 'Icon replacement is limited to isolated EduWork candidate executables'}
+if ($Executable -match '(?i)(^|[\\/])current([\\/]|$)' -or $Executable -notmatch '\\(?:electron-candidate|electron-ready)\\(?:EduWork(?:-Electron)?|ChatECNU-Work)\.exe$') {throw 'Icon replacement is limited to isolated EduWork candidate executables'}
 $icon=Join-Path $PSScriptRoot '../assets/eduwork/icon.ico'
 if (-not ('EduworkIconResource' -as [type])) {
 Add-Type -TypeDefinition @'
@@ -55,9 +55,7 @@ public static class EduworkIconResource {
 }
 '@
 }
-# Wails loads IDI_APPLICATION (32512) explicitly for both native window icons.
-# Explorer can display any first icon group, so its extraction alone missed this.
-$groupId = if ($Shell -eq 'wails' -or (-not $Shell -and $Executable -match '\\wails(?:-candidate)?\\')) { 32512 } else { 1 }
+$groupId = 1
 [EduworkIconResource]::Apply($Executable,[IO.Path]::GetFullPath($icon),$groupId)
 Add-Type -AssemblyName System.Drawing
 $actual=[Drawing.Icon]::ExtractAssociatedIcon($Executable).ToBitmap()

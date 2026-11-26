@@ -46,7 +46,7 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
   const requireIdle = async () => {
     const current = backend ? (await backend.action('status')).update : null
     if (current?.busy || current?.installOnNextStart || current?.installOnQuit
-      || ['checking', 'downloading', 'ready', 'applying'].includes(current?.state)) throw Error('更新正在处理，请完成后再修改软件更新设置')
+      || ['checking', 'downloading', 'verifying', 'ready', 'applying'].includes(current?.state)) throw Error('更新正在处理，请完成后再修改软件更新设置')
   }
   const act = async action => {
     if (closed) throw Error('软件更新服务已关闭')
@@ -74,7 +74,7 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
     }
     if (!enabled || !supported) {
       if (action === 'check-updates' || action === 'check-updates-background') return snapshot()
-      throw Error('软件更新已关闭，请先在设置中开启')
+      throw Error(supported ? '软件更新已关闭，请先在设置中开启' : '当前安装包未配置软件更新')
     }
     const result = await (await open(false)).action(action)
     return { ...result, update: { ...result.update, userEnabled: enabled, canToggle: supported } }

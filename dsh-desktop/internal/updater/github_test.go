@@ -24,7 +24,7 @@ func githubFixture(t *testing.T, payload []byte) (Config, *Manifest, *githubRele
 	return githubVersionFixture(t, payload, "0.3.7")
 }
 
-func githubVersionFixture(t *testing.T, payload []byte, version string) (Config, *Manifest, *githubRelease, *int) {
+func githubVersionFixture(t *testing.T, payload []byte, version string, extraAssets ...githubAsset) (Config, *Manifest, *githubRelease, *int) {
 	t.Helper()
 	repo := "ECNU/EduWork"
 	name := "EduWork-" + version + "-windows-x64-electron.zip"
@@ -53,6 +53,7 @@ func githubVersionFixture(t *testing.T, payload []byte, version string) (Config,
 			if release.Assets != nil {
 				assets = release.Assets
 			}
+			assets = append(assets, extraAssets...)
 			copy := *release
 			copy.Assets = assets
 			body, _ = json.Marshal(copy)
@@ -83,7 +84,12 @@ func githubVersionFixture(t *testing.T, payload []byte, version string) (Config,
 
 func TestGitHubDiscoveryDownloadResumeAndCache(t *testing.T) {
 	payload := bytes.Repeat([]byte("release data"), 1024)
-	config, _, _, calls := githubFixture(t, payload)
+	installer := "EduWork-Setup-0.3.7-x64.exe"
+	extraAssets := []githubAsset{}
+	for _, name := range []string{installer, "latest.yml", installer + ".blockmap"} {
+		extraAssets = append(extraAssets, githubAsset{Name: name, URL: githubAssetURL("ECNU/EduWork", "0.3.7", name), State: "uploaded", Size: 1})
+	}
+	config, _, _, calls := githubVersionFixture(t, payload, "0.3.7", extraAssets...)
 	config.CacheDir = t.TempDir()
 	status, err := CheckBest(context.Background(), config, []string{"stable"})
 	if err != nil || status.State != "available" {

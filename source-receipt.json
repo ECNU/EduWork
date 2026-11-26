@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-19T15:03:53.375Z",
-  "fileSetSHA256": "2eebe5da44053d1c816609af460c8f02fb07c33c896cd192fd532b9bfd1032f0",
+  "createdAt": "2026-11-25T14:43:19.943Z",
+  "fileSetSHA256": "9f4d3b05989bc8d9624f653a8ee45d77875a2d125174610d9b5aa277e878f787",
   "files": [
     {
       "path": ".gitattributes",
@@ -25,11 +25,11 @@
     },
     {
       "path": ".github/workflows/desktop-candidates.yml",
-      "sha256": "da6bd943de5be80022bf9c0ef76185cf3a211ee844acac4d3d7ef574f3b40a16"
+      "sha256": "b388fee2a32d2d63ccb4ec9227b8bea81314db7dd76fe3def762f67b8bb97317"
     },
     {
       "path": ".github/workflows/development-desktop.yml",
-      "sha256": "cc34947b27142132d7f352acd802eca49c9a21e7d21035d9abb68198494ef990"
+      "sha256": "cea470c0e22c9ffb005ee46daf5f0ebdcf21c0b4df6f68d87301361fc7b4c8ae"
     },
     {
       "path": ".github/workflows/packages-release.yml",
@@ -45,7 +45,7 @@
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
-      "sha256": "285c58412b5fae0a7ca3659d46fda37fa4fb9adc6ee92da38261e347b2a336d1"
+      "sha256": "044a8eb7b2f993e879ba165e6713021c8e029e31d524f85b3160357bcd343aa1"
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "aa35184c7c835dc859a1c4eafc0bb5b765f17fcd8385f6337bc3315c1f11b3fe"
+      "sha256": "3e2dc3026ba935a62c322a735474148d1cc903eaf6f6de858029a86858cb5239"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -77,7 +77,7 @@
     },
     {
       "path": "AGENTS.md",
-      "sha256": "54cf301aadcebd1d6fd738e26ae0cbec603cf99aa92378a9394c0ef989475466"
+      "sha256": "80672c8b63365394cdb44dc3cfc8de89746eb91f498e0c9f17aaeb86d977a7ca"
     },
     {
       "path": "assets/eduwork/dock-blue-1024.png",
@@ -229,7 +229,7 @@
     },
     {
       "path": "CONTRIBUTING.md",
-      "sha256": "fa411dcf4204053037883e05ef0e0a2aa14b02b97d1f288d3f5150645ac9b9a6"
+      "sha256": "70bddf1655484d974b5412b52f95c6fc9182c20c762250680cf64e4e09dbf68b"
     },
     {
       "path": "docs/assets/build-pipeline-macos.json",
@@ -237,23 +237,23 @@
     },
     {
       "path": "docs/assets/build-pipeline-windows.json",
-      "sha256": "fa0bc48941c0a375b4bb2f8ab09579339c194c501c988b8b216d0a1ac245f056"
+      "sha256": "0ad5e817a1e2a9c2b98d0ad58823247a2a3fab1c24162698e5a95ba7f60e0ae6"
     },
     {
       "path": "docs/assets/build-pipeline.drawio",
-      "sha256": "6509a97463986933033bec8142b1c3f8d88e344924453b2d605e88593bc1902f"
+      "sha256": "334e25928410599e13b607ca91f1f3f469f385f84d18d7c856859b4651e44abf"
     },
     {
       "path": "docs/assets/build-pipeline.mmd",
-      "sha256": "851a924f024e3949070e0587073872ecc5c1fa0209e7fea7c9af86a34ff4f923"
+      "sha256": "bafa596aa03bbabf682838469e164cf2109b8c966abbc0d57ba6023830e9a57d"
     },
     {
       "path": "docs/assets/build-pipeline.svg",
-      "sha256": "0d24eea9ca618cc91b0d1f5332d458391505e9aed8fffc541cc7d15390a38682"
+      "sha256": "53bfcefd3eac8ed4c6576176e6f0df1da9f35a98e62b3e699d5dcb140b749102"
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "e21ef63ffd4e630e37ad0efde68eb1ea59f2966b60185d5923bd03d34a563b69"
+      "sha256": "3e888cd881090da646ca8e8f617814df23f25cb778980a7a837e03a2062f6f6e"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -497,7 +497,7 @@
     },
     {
       "path": "docs/RELEASE.md",
-      "sha256": "b36ed793f5559fd3652b45b8767a88532f088395f983e224da54fb243a9dabe0"
+      "sha256": "824a2b9cd64e86e724c44dbd6a886dcfd316ed906732c5ec27837eceddd7e186"
     },
     {
       "path": "docs/releases/0.3.5.md",
@@ -605,7 +605,7 @@
     },
     {
       "path": "docs/UPDATES.md",
-      "sha256": "9ee38af0de126e4abd3259fa5edfdd9643a7ecdcdbc9d4d6120613875a049712"
+      "sha256": "14d51186ecc2f68d55cb8e77c67d48a0f85d231015263809d53fede8fddfd88b"
     },
     {
       "path": "docs/USER_GUIDE.md",
@@ -628,8 +628,12 @@
       "sha256": "93b29357318e06c8d12ded84223ca16dca468d6116e8f887eaa092745007aa46"
     },
     {
+      "path": "dsh-desktop/cmd/eduwork-extract/ui_windows_test.go",
+      "sha256": "b8001ddccbb7603496bf12899568f5f63fb1fa27645ddae4b9b762f356dcd975"
+    },
+    {
       "path": "dsh-desktop/cmd/eduwork-extract/ui_windows.go",
-      "sha256": "94b6048c389fd3835a3a8c112883e124eeacde683b7043683287b94be275c277"
+      "sha256": "0790c2cd73f8d6835171b737dae7442256b63264be3a5dbee550f9acbbc54fbc"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-launch/child_windows_test.go",
@@ -676,128 +680,12 @@
       "sha256": "753b894cb9e73c1d20395197521d19a0fd8cfc91b550c5c9045eea1d5ce80fa8"
     },
     {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/configuration_other.go",
-      "sha256": "fd44999c736be6e2ef2139cb699ccd2ccec71b61fa92b7c1d23128d2fba2f8c7"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/configuration_test.go",
-      "sha256": "f3eefa9763ece6685bd1ed7779c85c7148508e80756f64383260554c0048abda"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/configuration_windows.go",
-      "sha256": "e9fce8075dbdbf437b7128945db237231c541fefadc920873872b53bf84df60c"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/configuration.go",
-      "sha256": "3be9a03d2fc4288ac08b0d3c5bb6565cd6a1125096edb63d1b19d77d905ed201"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/instance_other.go",
-      "sha256": "821a02026d3d6eb1524a2076aa530b6b53fe57f0da830c0b2ce3566c1a658453"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/instance_test.go",
-      "sha256": "b539d3a5ae1c748c2ca68840c1b9c421d12a036493636a2d2e301f79b1fc56bd"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/instance_windows.go",
-      "sha256": "56748db671a561a4f28db98923cbf1b59c0b2dcacc4f4347c2e194205b3070b6"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/instance.go",
-      "sha256": "4c3643f6d805f70a2debcc708a5928232a5cac54ebf4b6fa85330d490af29e22"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/main.go",
-      "sha256": "e928631682c90775148cbba7e653dbbeb714b249f5ccdf696128df4651ddc852"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/prepare.go",
-      "sha256": "3adad116e0117729e4430c7e982b32f0c3fddf75f4fad874901bd09c85bd740f"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/process_other.go",
-      "sha256": "e48858524006d97b484ddcd14c8ddc547f5dc8b6e002ccb5b05e8890d799c193"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/process_windows.go",
-      "sha256": "54bbb05281132ed0ffa32c09cef0e13b7c95f8270066ce9e4867c426d566346c"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/startup_paths_test.go",
-      "sha256": "a832349751bbb105e1fc2db2a6c6bd74e98fce967a9b4cd3f9452d1cb24af18d"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/startup_paths.go",
-      "sha256": "d66271da2ec79380280247ba5ae6a024bab43cb37f8866617d6d1b531cdefd29"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/startup.go",
-      "sha256": "3c8c0664a3c25f31db9880715b1d307bd9b8a6cfb35f07f6e70d4ba1be94f21b"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/tray_actions.go",
-      "sha256": "4a2b0e9240bbf7a6c33e6aef2c7720b465968645c6d697352fc4cce448d5eb5b"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/update_window.go",
-      "sha256": "4ece27b52fb513abeabdf807f4a1d4e29c0ff9c8b0070be3a851b2e18806a340"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/updates_test.go",
-      "sha256": "66fde1b6a25587733a7803e281175971459566828fa974ebd70857b2ba22d748"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/updates.go",
-      "sha256": "5e51dddfa21709cc3813e770c41fe8ca003fbfdd123a47d873af66df04c62d14"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/window.go",
-      "sha256": "2d7d2051903f562ed8400a09e30ede49a8e9ac41889c156228d1893c7e3aae52"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/workbench_test.go",
-      "sha256": "1f254bee2d76f4487923f25e355051a3c80159557d8d43fc702434134324c245"
-    },
-    {
-      "path": "dsh-desktop/cmd/eduwork-wails-candidate/workbench.go",
-      "sha256": "d67caf19e84506c140a3fb98249dcc9374090b6f15a9ef675e6b27d493c2660a"
-    },
-    {
       "path": "dsh-desktop/go.mod",
-      "sha256": "b1b1d803697c6db000c7712be92477b1b5827a874892fbaccd00c930b69433ee"
+      "sha256": "b4695f4711d4b7b7c1bca9326381cb7908c77b880a2a9b04b6f453b0996d1845"
     },
     {
       "path": "dsh-desktop/go.sum",
-      "sha256": "376e2e1a692814c347544e87b866a23f7c6cc6ffffaf280face165ab20a65c52"
-    },
-    {
-      "path": "dsh-desktop/internal/desktoptransport/client_test.go",
-      "sha256": "147f4fc982ba2d06544c0f98e88cf975c20c76feb77077982ffb5af9c69c33c7"
-    },
-    {
-      "path": "dsh-desktop/internal/desktoptransport/client.go",
-      "sha256": "dd8b3fab2f9608c0b2268ed2bf56cbf85df16763f106fc63e994529ea00de5bd"
-    },
-    {
-      "path": "dsh-desktop/internal/desktoptransport/events.go",
-      "sha256": "40ca08941dd03dcf6601b6ae15029d27397d5714861e94981a6175abba4d85ea"
-    },
-    {
-      "path": "dsh-desktop/internal/desktoptransport/media.go",
-      "sha256": "b775f732e56cd21854c22f902a6e6f186f9fe6742519152ec9c1827e6576ad44"
-    },
-    {
-      "path": "dsh-desktop/internal/desktoptransport/process_other.go",
-      "sha256": "61a17489fe681fe07a8116bf0dd435af84c56d77afe391fe990aefd70f9cef82"
-    },
-    {
-      "path": "dsh-desktop/internal/desktoptransport/process_windows.go",
-      "sha256": "6f12143db808fe7dd1588fa38e53bed46d280ee22b47fd9b445c5c055d71ca05"
-    },
-    {
-      "path": "dsh-desktop/internal/desktoptransport/wire.go",
-      "sha256": "e72d85ddcfcd99532138a540d1674ac3601a559cf14b457a0666354e27ac3c1b"
+      "sha256": "79d5eefc5f8e0a281fbb1a19f631fda9c13f34fb59988966ea1dfc77b9f34b99"
     },
     {
       "path": "dsh-desktop/internal/electronaccess/access_other.go",
@@ -893,7 +781,7 @@
     },
     {
       "path": "dsh-desktop/internal/portable/replace_test.go",
-      "sha256": "35587fd44824ac9f5ec39fb77d2dac819b42f695876f389bffa104ac7a8bae10"
+      "sha256": "69df87d80d84a5b7af7c952dc5535d6f107f15b97b69c6bfebed77ee4bff181a"
     },
     {
       "path": "dsh-desktop/internal/portable/replace_windows_test.go",
@@ -901,7 +789,7 @@
     },
     {
       "path": "dsh-desktop/internal/portable/replace.go",
-      "sha256": "1c812364d17880a06fa039844122f26bec61d11d02b470ba31e07f05d5be18f8"
+      "sha256": "a0737aec410795ab122c2e1fd54044d00addbfcdd6fcfac8fed7e93b2791f92c"
     },
     {
       "path": "dsh-desktop/internal/portable/running_other.go",
@@ -929,7 +817,7 @@
     },
     {
       "path": "dsh-desktop/internal/productruntime/builtin/builtin.go",
-      "sha256": "a13d2588d85590c6f68381dde2adb926486269c911b60373fc757414fcb5f8b9"
+      "sha256": "be61bd16254aad80b9fda8a9378fd8841789343b3a4d0a2b0ef9484d28da7325"
     },
     {
       "path": "dsh-desktop/internal/productruntime/builtin/node-runtime-manifest.json",
@@ -946,42 +834,6 @@
     {
       "path": "dsh-desktop/internal/productruntime/builtin/resources.go",
       "sha256": "4214d2ff972617202607b391580c56a803563cad13ef6907c14ddc32a99b3a2d"
-    },
-    {
-      "path": "dsh-desktop/internal/productruntime/builtin/webview2-runtime-manifest.json",
-      "sha256": "3a3d5884fe9fb75c8392ad07b9d2e504aa4f2e25f7aa4decd5d4dbfc0fe921c0"
-    },
-    {
-      "path": "dsh-desktop/internal/productruntime/webviewruntime/access_other.go",
-      "sha256": "55ba6fddd36a8ab08a507a4025ec30f8b9030d05bd315bf722b217fdfd139b85"
-    },
-    {
-      "path": "dsh-desktop/internal/productruntime/webviewruntime/access_windows.go",
-      "sha256": "d792d2edcaf9abc9a621996488707cec2ddb346a99c2bc784b97d467d0fa4761"
-    },
-    {
-      "path": "dsh-desktop/internal/productruntime/webviewruntime/loader_windows_test.go",
-      "sha256": "7e6cbafaa809203bafe03e413e999a245745da7dc4ad490cabde8389c4171384"
-    },
-    {
-      "path": "dsh-desktop/internal/productruntime/webviewruntime/runtime_test.go",
-      "sha256": "76270ec0443cb298beba0bd9b50e8fc7e1811fa08ffed525e39bee462c536a9c"
-    },
-    {
-      "path": "dsh-desktop/internal/productruntime/webviewruntime/runtime.go",
-      "sha256": "327b23c06e99d86b612275323ed571228e67d22abc597676d41776a84758b0be"
-    },
-    {
-      "path": "dsh-desktop/internal/tray/tray_other.go",
-      "sha256": "2fb6287cb78a27727840073eca35dcd918e2d5175f26816cdfe4d03b1dcdd4d8"
-    },
-    {
-      "path": "dsh-desktop/internal/tray/tray_windows.go",
-      "sha256": "d3c4693242a1bfa0809851edd9f7779f01c28ebc3d27d5326a8d4489c422fbd3"
-    },
-    {
-      "path": "dsh-desktop/internal/tray/tray.go",
-      "sha256": "33b8d7ae3ea5a97723c123f583afd17f479c60df801530816b42639a1727f4f7"
     },
     {
       "path": "dsh-desktop/internal/updatecontrol/manager_test.go",
@@ -1017,7 +869,7 @@
     },
     {
       "path": "dsh-desktop/internal/updater/github_test.go",
-      "sha256": "4e258ca18288bc6e4ca895683a2cab6314c4e3928093bd84a4fc7caac6d07019"
+      "sha256": "90cddad232d092d02d1012ea1458b3283286eca88ac7e6755401a1a8f7a4dcdb"
     },
     {
       "path": "dsh-desktop/internal/updater/github.go",
@@ -1057,7 +909,7 @@
     },
     {
       "path": "dsh-desktop/internal/updater/updater_test.go",
-      "sha256": "561e970973fa9f050a66b78b9452c2cf44d720211e00dc693f1e9dd3831e82e6"
+      "sha256": "c5eb641c1a143fbc214ea8c371fb0e7ac03f23ca589e43a70de5c0c448b0f75c"
     },
     {
       "path": "dsh-desktop/internal/updater/updater.go",
@@ -1084,30 +936,6 @@
       "sha256": "1501a227d3e9b6790ea1e017010faf786fb6fb7e51a4ee1497f21de600686e84"
     },
     {
-      "path": "dsh-desktop/scripts/assemble-official-host.mjs",
-      "sha256": "09892e40b09ff23871332d7b472c928a2648e86353b9946a9402389086fb2c48"
-    },
-    {
-      "path": "dsh-desktop/scripts/assemble-official-host.ps1",
-      "sha256": "b110b9fa7d906489120791f6f2e7eb57507c91edfec546955d2e564f83a75012"
-    },
-    {
-      "path": "dsh-desktop/scripts/assemble-wails-bridge.ps1",
-      "sha256": "4fa32965eb4283450266acf586f7555dfa1568a3af328ccff9c455b87d077dec"
-    },
-    {
-      "path": "dsh-desktop/scripts/build-official-host.mjs",
-      "sha256": "4ede840c8c725287331dad507216e8e4fb15efc4049101d214dbe1e0c7eb1325"
-    },
-    {
-      "path": "dsh-desktop/scripts/build-official-host.ps1",
-      "sha256": "605440ff707c95fe0ff6cb1f01de8d563cd2b52acbe7a8923c1145c0c8e0b7d1"
-    },
-    {
-      "path": "dsh-desktop/scripts/pack-wails-bridge.ps1",
-      "sha256": "2c663c54b88103d77bcda136979f02d66cffa65358b2faa8e517503befb86ca6"
-    },
-    {
       "path": "dsh-desktop/scripts/patch-dsh-windows-runtime.mjs",
       "sha256": "9665996e2fa874aee9abeccb58ebdaf4279d9884a36c9202b5337af6e0b599cb"
     },
@@ -1118,10 +946,6 @@
     {
       "path": "dsh-desktop/scripts/prepare-dsh-runtime.mjs",
       "sha256": "4c9abb39552597b3ff36e4f6e46f2be77a3bda858ebb5a392eb48852276f17f2"
-    },
-    {
-      "path": "dsh-desktop/scripts/prepare-webview-candidate.mjs",
-      "sha256": "5c41b14f72030bb791b06bd8ca1adb452856de0d8ac0ee8168e87999a8a9ec30"
     },
     {
       "path": "dsh-desktop/scripts/sync-dsh-upstream.mjs",
@@ -1165,11 +989,11 @@
     },
     {
       "path": "dsh-electron/README_EN.md",
-      "sha256": "ee40ef0686acbecffc09618326b22ee78c1b777f3f48dee861b2e0cf433a7a27"
+      "sha256": "80ef2b43691b1c5d45b31f9a3bb2c1834cc12f9c1464f08a376857fde2c3f58c"
     },
     {
       "path": "dsh-electron/README.md",
-      "sha256": "e4e12c283414b2f427babd558cad82dfa9be33c006f5fb184f0f549886cb827e"
+      "sha256": "4644d7e558b45388aa53b8acd4154c3183759016a9c723b3dfc35c069ced6fb7"
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.mjs",
@@ -1181,11 +1005,11 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.mjs",
-      "sha256": "73794b4f8667fd6176c0bcac05295d5b14bdd819ed8921438ea4c25e1b8d1571"
+      "sha256": "b2e8f07ce81f92a9a8b7ca57e6383ddf7d4f3d7c6838903ff7c5957d97909e98"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
-      "sha256": "015261d689b4747bbf65fff33fa939bbd8d2fc0a1c2fff2ae40f17be676bd611"
+      "sha256": "e388b6b2e4ea7331b54f1ba3aa4cf11c293f9fe997b087ef2a3e0601f4090830"
     },
     {
       "path": "dsh-electron/scripts/build-dock-plugin.mjs",
@@ -1193,7 +1017,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "d928d89a6817b7c8640fa0d89efeb45465f7cdfab0845acd77457cb776e2170e"
+      "sha256": "82d98c5f20bf2a05af0c729eb4be1a5a1c14a09f95e3e6bdec2715e941431716"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1209,7 +1033,7 @@
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
-      "sha256": "853dcda8e538485fc2f1209c680b254f1e55efb29bbd271f5dc2943f9da63b64"
+      "sha256": "818b0f4ec37905bbba0658e7a0b0db7fafd669e4d64dbaacdd8b7892fcf05ce1"
     },
     {
       "path": "dsh-electron/scripts/pack-migration-release.ps1",
@@ -1285,7 +1109,7 @@
     },
     {
       "path": "dsh-electron/src/desktop-exit.mjs",
-      "sha256": "76b744601eea9651268b5f8d297545fc515a76b64ef061300b0e1da37d6b6b3d"
+      "sha256": "2e10323bf05ae6eb01c2fdfa8f7bbf088df9a56ab07b986d3edb02e04f4dd616"
     },
     {
       "path": "dsh-electron/src/desktop-locale.mjs",
@@ -1301,7 +1125,7 @@
     },
     {
       "path": "dsh-electron/src/desktop-paths.mjs",
-      "sha256": "bbe15e78df44dd385a079180356f0af1dbdc8fe78a33facc44b392eb962ec55b"
+      "sha256": "8291fece8c40f2363532d356ee4d801bcb9a0f65fd1bd25d67326eb6cd644429"
     },
     {
       "path": "dsh-electron/src/desktop-pet-core.mjs",
@@ -1332,6 +1156,10 @@
       "sha256": "d1db936c9b08f891b90a5df868875f3e410b6b2dafb4f3cb27f5f28ec2eff176"
     },
     {
+      "path": "dsh-electron/src/first-run.mjs",
+      "sha256": "58821bbcf8180817050d27451a3a63e616da2f534d636fceac30705919e17df8"
+    },
+    {
       "path": "dsh-electron/src/host-git-identity.mjs",
       "sha256": "d36b85ce8761d6ef21ec98ec4baefb3ec8cce5e7ef5b21005e18d9c06cb05cee"
     },
@@ -1340,16 +1168,20 @@
       "sha256": "be8bcfb65f7e1af3f0c7dbaa70fc603f3e5756aea225009ec881e6b51cf5307c"
     },
     {
+      "path": "dsh-electron/src/installed-updates.mjs",
+      "sha256": "0633a37a7ca0750e45383e6c1816e39718f622d783e7b82794202108f902fce5"
+    },
+    {
       "path": "dsh-electron/src/installer-cleanup.mjs",
       "sha256": "79545050011152ed695cc6c0155b877619344e17e2a2d31168690b7aef46a2b2"
     },
     {
       "path": "dsh-electron/src/legacy-migration.mjs",
-      "sha256": "221cd5c3ecd07d8340663c75108fec4027f87621fedbeff101761aae970ebdec"
+      "sha256": "e1400c6612f4fbbf60b6345968fcb450e8463b7b336307d14854c9f2fb105d0d"
     },
     {
       "path": "dsh-electron/src/lifecycle.mjs",
-      "sha256": "d9900aab80f2403891f69e05b9e318c9689a7da6d2fe73e7626c86a6ec4e182a"
+      "sha256": "7df6f90757a0e498773f997c8e9823957dfb24aaf5ba9002dd3cf8c0f53e405a"
     },
     {
       "path": "dsh-electron/src/mac-sparkle-updates.mjs",
@@ -1365,7 +1197,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "cd6d1b2ba9e87246a98326a4ea6ddfba4742c1389e296b30e14a8cd011018cb6"
+      "sha256": "d516f7cb21f0ea4ac934801ad79f3ca87090d73d96183bb01c2dd7c6ec4804e0"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1373,11 +1205,19 @@
     },
     {
       "path": "dsh-electron/src/native-web-host.mjs",
-      "sha256": "ec64b9322652764ad6ac500e3bf1d6dce9ed1268b40f09791cdbb8be00bc8e20"
+      "sha256": "f132523621b55977bc9422625f87c2e4e969aa44cdf3c5e9140c51358ca64429"
+    },
+    {
+      "path": "dsh-electron/src/portable-import.mjs",
+      "sha256": "313f28f112b4088c52d272d8a55c99e0e2b95bc247dc962a49e4b6caef6b02ad"
+    },
+    {
+      "path": "dsh-electron/src/portable-source-hint.mjs",
+      "sha256": "75ed36f5d3632a63101ff53e36fffd486df81373a52795a2f32f16adbe11a34c"
     },
     {
       "path": "dsh-electron/src/portable-updates.mjs",
-      "sha256": "1e55409f936dffd4968367fd0a21f07a77539761bf98f7ebb92ce53f35ae4354"
+      "sha256": "1f78c631e9f145439659fbce7a6a6e20097fac048bdf06b2ffc3ecd5c845143f"
     },
     {
       "path": "dsh-electron/src/preload-pet.cjs",
@@ -1385,11 +1225,15 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "2168d6d974cb548304e4626485392d7108c5535b3393de270af2a2d4206b235a"
+      "sha256": "77dbccf3984d9d867bb0852317067ac1707768b70c397be34d23509b98d8b0a5"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
       "sha256": "e1737b7b654c7d8a83bf56be9e7e44556b066051a4c60cbe7bf9c641ee85d08f"
+    },
+    {
+      "path": "dsh-electron/src/session-header-remap.mjs",
+      "sha256": "5a4182076c3bfa883e926d1533730641ca403e459e52a3a3ee38b54636b7bdf3"
     },
     {
       "path": "dsh-electron/src/settings-open-request.mjs",
@@ -1405,7 +1249,7 @@
     },
     {
       "path": "dsh-electron/src/software-update-control.mjs",
-      "sha256": "0e7c4d2359e444fc7cbc5b0de90c44cc5ce1b8e047bd204315e45829703cc1d7"
+      "sha256": "2155f0d2b60e582716aeb2ac9ced11064dc7ed30874d12249e805dee90d024f3"
     },
     {
       "path": "dsh-electron/src/software-update-scheduler.mjs",
@@ -1441,7 +1285,7 @@
     },
     {
       "path": "dsh-electron/src/update-coordinator.mjs",
-      "sha256": "a7800aed537e0826653bfc3c63470e550a88479ef73fed0546747aaa07ca479d"
+      "sha256": "a61f4b1a3d84fc719ffafefe338f6b32eefca939383c4a5fddd6b83a73707c72"
     },
     {
       "path": "dsh-electron/src/update-observer.mjs",
@@ -1489,7 +1333,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-exit.test.mjs",
-      "sha256": "622d80af4ad69112f1ef2d64c60bf44b2df484eb03ca5321753a49cb75735625"
+      "sha256": "5cbfcdea9446ec802e09f03c24b670406a76035ddeec798d077ea95a3f4df583"
     },
     {
       "path": "dsh-electron/tests/desktop-locale.test.mjs",
@@ -1497,7 +1341,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-paths.test.mjs",
-      "sha256": "5a4d4d46eff6b06ed29786ae1a954c4e4e83b8f0054f71bce5c1f9f970fff601"
+      "sha256": "3c5b4af4dd6c6814a135ea3ca126a9b87bc9332a37a3082f047cd7e9559d5dc2"
     },
     {
       "path": "dsh-electron/tests/desktop-pet-core.test.mjs",
@@ -1552,6 +1396,10 @@
       "sha256": "7f08b6d7e95a47462f3e0f741cbbaaec9096e6d724d3153e8277e1cef44b247e"
     },
     {
+      "path": "dsh-electron/tests/first-run.test.mjs",
+      "sha256": "72ef2681a91115f4b61af45d9c48b2976e0aae2e7caf7bb67df0e577da70fad0"
+    },
+    {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
       "sha256": "8825c51271665fa1fcfa97a89d3a435afb8386d7d35c5697ce4ed570b9409572"
     },
@@ -1576,8 +1424,16 @@
       "sha256": "8523f087e7c598551dd12590a15f9d647148ad0bebbb795ca2fb45617bbe1a01"
     },
     {
+      "path": "dsh-electron/tests/installed-manifest.test.mjs",
+      "sha256": "3e5ddcbd22802dffa113d8e4d4e860db09a9c7dab6cd8e8ce7924b100bd63b59"
+    },
+    {
+      "path": "dsh-electron/tests/installed-updates.test.mjs",
+      "sha256": "1c3785457b92cb488a4ad06573098ac5cb86bf03e556c166fcc8c0d7f3c0cbc3"
+    },
+    {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "61e509e5fc55378b3a8886b681a1473b602170cd0e876598c9bec9680903ffc4"
+      "sha256": "c5cc601f9f593c3e7469b2b9ccf120cc5961e27c7a00c7fc6d2e03151842020f"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1608,6 +1464,14 @@
       "sha256": "a3ad69d62b6c5e79113f7f4e65053077510463dc5b64a3aa9ddd75ac3d2fe786"
     },
     {
+      "path": "dsh-electron/tests/portable-import.test.mjs",
+      "sha256": "100c5eefbca861522623d38b5b5711f1ed3e49b7abfd5d4430fd5539f3ce41ca"
+    },
+    {
+      "path": "dsh-electron/tests/portable-source-hint.test.mjs",
+      "sha256": "ec95c96bd54dbc3b379c136a32acd5a036bae75af9b23975781f0b80060b9355"
+    },
+    {
       "path": "dsh-electron/tests/portable-updates-startup.test.mjs",
       "sha256": "618d6a1908fcb41cd3b6178464e7cc57233867b3864cb9ef0e79fca00e38d619"
     },
@@ -1624,16 +1488,20 @@
       "sha256": "614927fc10da0158a820c1d540832c888ef8c765955b27cc20c5d040739a54d2"
     },
     {
+      "path": "dsh-electron/tests/session-header-remap.test.mjs",
+      "sha256": "39201151964486fb4dcdd6bcd596fea86084dbea22b51f279488c46801ece243"
+    },
+    {
       "path": "dsh-electron/tests/settings-open-request.test.mjs",
       "sha256": "ecb285ab59860a39a39b3e50fcfea397d4a7a07bab437db65ae3ed6760c399ab"
     },
     {
       "path": "dsh-electron/tests/sidebar-browser.test.mjs",
-      "sha256": "d466bafbffc45e49b3f0b6eeddbc673310d37c1a4fc07a2ffb235ba14471fcb7"
+      "sha256": "60bab4e2ff3aa16e9028fe1ec2489603ce504d04dc8ff8038c7f4b8324fc43d3"
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",
-      "sha256": "f9992f4a3e0a04888f0585844bb6ca15cb16f3e779508f9c1ad326213dc38327"
+      "sha256": "3e93adcd0d87351996b08587f022f5674de9c9888df99990420ff934e96751ce"
     },
     {
       "path": "dsh-electron/tests/software-update-scheduler.test.mjs",
@@ -1680,6 +1548,10 @@
       "sha256": "82e0fb57034483ba778b69c49fc8354f6353289e7d09cc9d775ff8bd9c66e7c6"
     },
     {
+      "path": "dsh-electron/tests/update-channel-adaptation.test.mjs",
+      "sha256": "b47f6e8df1e5cf9fdea706ff15d07ddde6415a45398f45222bec8148a00c54fb"
+    },
+    {
       "path": "dsh-electron/tests/update-channel-migration.test.mjs",
       "sha256": "56e250c86e9e377a6b25fcad30a40fd751675333acc0b9089998948d51ab6b42"
     },
@@ -1689,7 +1561,7 @@
     },
     {
       "path": "dsh-electron/tests/update-policy.test.mjs",
-      "sha256": "2216fdd397ece65d2287e1f1eacb99f2c2ad2ce348f916624065a635f82afc0e"
+      "sha256": "f9795b30fad625b6575321b6c14d1092d1c52fb79420524b6615e3b5783304b7"
     },
     {
       "path": "dsh-electron/tests/update-presentation.test.mjs",
@@ -1733,15 +1605,11 @@
     },
     {
       "path": "dsh-electron/upstream-inputs-pinned-source.json",
-      "sha256": "bc4fb7e14179c98270e9a267331f8dc3535011933d96989a422050e1d1bde1bf"
+      "sha256": "6727199ec984c7768a457a2e7a9c53d230360b0a0cd7ea044546f1b03e2e2ebc"
     },
     {
       "path": "dsh-host/academic-calendar-model.mjs",
       "sha256": "cc06ba23832289cc2998dbaa1fe9125897dfe1a0c9a35bd5ccab59f86894de3c"
-    },
-    {
-      "path": "dsh-host/bridge.mjs",
-      "sha256": "383a08172c8f006a24d0e03d254ecb5d0f042ef6c642779b0adc28ea747761d5"
     },
     {
       "path": "dsh-host/configuration-documentation.mjs",
@@ -1777,7 +1645,7 @@
     },
     {
       "path": "dsh-host/diagnostics.mjs",
-      "sha256": "2269f5154fc9a192c3c6f1e36d390d067c9c4b268157eab237a5f6f13c32a32c"
+      "sha256": "9e8a151037699a192d1cebd9729f53f329f5b52251f28d174e2306d2fcc0265f"
     },
     {
       "path": "dsh-host/distribution-policy.mjs",
@@ -1841,11 +1709,11 @@
     },
     {
       "path": "dsh-host/README_EN.md",
-      "sha256": "59bb439fb070adc5f90d4695e6284969698a297fd44fd5d81e6f5773e80100af"
+      "sha256": "bebb8e0400e08df73456a429e216c32261a5d293703bbf58c3c5e8772625a388"
     },
     {
       "path": "dsh-host/README.md",
-      "sha256": "1a13272183a40e072db6f09b1d13d98fa84e36ce0350b5a8939d798faae70adc"
+      "sha256": "39562861a6e0846ba114e653254830f75c64bf744b71d1c2bc86867a3b367159"
     },
     {
       "path": "dsh-host/redacted-log.mjs",
@@ -1881,7 +1749,7 @@
     },
     {
       "path": "dsh-host/test/diagnostics.test.mjs",
-      "sha256": "cbe7cd3697fdd737bbefb0809a0b4b0b2a394c6995454cfc0d5c7710199c81f8"
+      "sha256": "f8c8a50370a235e18cc844a85820335e214b6939f8738a6cb6b063530eae9f04"
     },
     {
       "path": "dsh-host/test/dsh-compatibility.test.mjs",
@@ -1933,7 +1801,7 @@
     },
     {
       "path": "dsh-host/test/prepare.test.mjs",
-      "sha256": "8a1e52c537ec903de831dfd09d794a07f51c723f4f5badad4421fd0215875adf"
+      "sha256": "2a4b1ec97e8d2c142146c7a5ba58394531c448b11e548eb3bf445e6684e48c0a"
     },
     {
       "path": "dsh-host/test/product-concurrency.test.mjs",
@@ -2012,12 +1880,8 @@
       "sha256": "ddbd5c76d950a1beca9621ec6409da555cf6610aaef41e8bb88ff90d8da35c83"
     },
     {
-      "path": "dsh-host/wire.mjs",
-      "sha256": "5f1ecd94b3eead1031a9826985feb7c2350d04e07b30df3b056035e9d7f17765"
-    },
-    {
       "path": "dsh-host/workbench-support.mjs",
-      "sha256": "168ce77c006a451633196b2cbc45458e392b0c642d8510869b035d0210427bd5"
+      "sha256": "d6cc32244a4355ae1db9832966ae1be7131528c2cf731ec44262cbcdf113e2ab"
     },
     {
       "path": "dsh-plugins/activity-insights-native/build-client.mjs",
@@ -3541,7 +3405,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/lib/client.js",
-      "sha256": "cd8433dac64352dbff29bf3f5a1ddfc5510958613674653ed84a576beb7b205d"
+      "sha256": "47603fad34e50501f099f26b9ca9630a4b30f941b31ffab8e6131c34cf7b8c2c"
     },
     {
       "path": "dsh-plugins/workbench-native/lib/data-import.js",
@@ -3621,7 +3485,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/src/client.ts",
-      "sha256": "d467c8caeadce33ef1fac7a04baa0410ba6d0ec50fc21c2be829af499c891e3d"
+      "sha256": "685f1cc6692228939c847f9f5228792a05261d09d4be9301ce21ca566c8b4753"
     },
     {
       "path": "dsh-plugins/workbench-native/src/concurrency.ts",
@@ -3637,7 +3501,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/src/updates.ts",
-      "sha256": "fd0673d03e7a916893efadb605d8dd2e8ab886490d7ef0cc5e17b345722a6a14"
+      "sha256": "0b373267999fe45486d630ce273fbd5d8912484f9904a38f97b1410b02359759"
     },
     {
       "path": "dsh-plugins/workbench-native/test/build-client.test.mjs",
@@ -3689,7 +3553,19 @@
     },
     {
       "path": "dsh-plugins/workbench-native/test/updates-browser.mjs",
-      "sha256": "f9a9eaaffb3ebfeed76870ee6706401912089fa89574b2b2ff52b9b8bfdf045e"
+      "sha256": "ea451daaa7d422364c3b9c1585a8b2af365dbeba32a587bda76aef42e7917a6f"
+    },
+    {
+      "path": "dsh-plugins/workbench-native/test/updates.test.mjs",
+      "sha256": "906ec9a7696cd40d6c545c1467e6cdd9d3d927944787f51295ce3c6c32688ce0"
+    },
+    {
+      "path": "dsh-plugins/workbench-native/test/window-drag.electron.mjs",
+      "sha256": "007cda9f0c84ec72910dd155489b1f510dd09c1784b4681e7cdf7abad1ca7355"
+    },
+    {
+      "path": "dsh-plugins/workbench-native/test/window-drag.test.mjs",
+      "sha256": "ac9860dbfb3e34889b3c8964ece705919a067be8386309a6d0edeb941423e3f8"
     },
     {
       "path": "dsh-plugins/workbench-native/tsconfig.json",
@@ -7641,19 +7517,19 @@
     },
     {
       "path": "README_EN.md",
-      "sha256": "8f2a3f3b97df850cf4cc6b80f94ae0783edaca1eb4d50dcb050a0cf2984dabcb"
+      "sha256": "9dff6e9917282de79720e06b04a8df479deabcea9f97c8a5488f91be6971b0df"
     },
     {
       "path": "README.md",
-      "sha256": "88b7c782e42eb32133becc50c033f856be2cb65b871ae8d3d2b925d27e802809"
+      "sha256": "e1e3faf7163abb78c3d6579162187e2668c3c7bfc1f631edaa00d93212d2f4b6"
     },
     {
       "path": "RELEASE-CHECKLIST_EN.md",
-      "sha256": "247f038a8926a7f7e4783f712b7a5f41be7cd7645eaf1eccdb74401bb43cbe75"
+      "sha256": "e844d79f99100989cb4a0293afda6a0c99fd159663ee5be225d67fc600b426dd"
     },
     {
       "path": "RELEASE-CHECKLIST.md",
-      "sha256": "19bdca559a9cbf94d25d30c4d3d14f4274ec99e1e906784ec8de6ff178605bba"
+      "sha256": "22172b8d61bd54f55922a48e76f779bd188459b796ee34d502789769f2bfe657"
     },
     {
       "path": "scripts/accept-macos-candidate.mjs",
@@ -7662,14 +7538,6 @@
     {
       "path": "scripts/accept-pinned-dsh-desktop.ps1",
       "sha256": "c63e4bbed1c11769ca87863c7d22544698f1bfb23cdefa02a4df0719b6c1b35e"
-    },
-    {
-      "path": "scripts/assemble-desktop-candidate.mjs",
-      "sha256": "6934cdde4bd06359eeaf2631cb94f2ddd90573a5f26eaff55e825f9f0433ac8e"
-    },
-    {
-      "path": "scripts/assemble-desktop-candidate.ps1",
-      "sha256": "fff55b2c85dc82bca36ad0d70b16b75a06164f6c95dff07c9c888e9aaedce14b"
     },
     {
       "path": "scripts/assemble-eduwork-web.mjs",
@@ -7682,6 +7550,10 @@
     {
       "path": "scripts/assemble-pinned-dsh-source-product.mjs",
       "sha256": "536184115a51569f83bdb1decfbc3a88dc511c7cdfd4916fa4a8bcf070cf6380"
+    },
+    {
+      "path": "scripts/assemble-windows-installed-candidate.mjs",
+      "sha256": "3c86da3b509dc3bab3852b86bced35ee5cd1a5546a2b6ee4a40b74ed5140da76"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
@@ -7701,7 +7573,7 @@
     },
     {
       "path": "scripts/build-pipeline-diagram.mjs",
-      "sha256": "bcc18ae1926b01e73e56e70b43335ba08ceb1937eef2ddc6e3b11d3368bcfc70"
+      "sha256": "38134a8fda136db0b7a338b190bf46895cec36917d79f7ae4f2164e38eebce06"
     },
     {
       "path": "scripts/check-bundled-configuration.mjs",
@@ -7741,7 +7613,7 @@
     },
     {
       "path": "scripts/ci-eduwork-windows-release.mjs",
-      "sha256": "8e9903d699b95fbf86f93d30dd6fb3ec7de589ce0854185fff04e52d163e58e7"
+      "sha256": "57236dc296ffa911b17bdc775959c0d634c9c988d173e5a5fa1067249d48f49c"
     },
     {
       "path": "scripts/ci-eduwork-windows-release.ps1",
@@ -7749,7 +7621,7 @@
     },
     {
       "path": "scripts/ci-pinned-dsh-desktop.ps1",
-      "sha256": "de98a54901c56bbade4743b7e46c46a69685877e3c479cc2f0137f9aaa501045"
+      "sha256": "d41f0b6027f846d2332dc12bb8c4be5cfe823c22cead6d826373001b3a529b80"
     },
     {
       "path": "scripts/ci-result.mjs",
@@ -7806,6 +7678,14 @@
     {
       "path": "scripts/distribution-config-patches.mjs",
       "sha256": "cf95217b3202d1d01248109b8601d8e9b34a671c75725691f5fec7252b7df01a"
+    },
+    {
+      "path": "scripts/electron-builder/package-lock.json",
+      "sha256": "26057f05d8c17df1a25ba0af4b8711bf2cbc5c48f46557695145fb6f820e95f6"
+    },
+    {
+      "path": "scripts/electron-builder/package.json",
+      "sha256": "55d3cb9a21780d6c89b7f52c6231a13dd4219eeb2e34803a5d382ead22bb4f33"
     },
     {
       "path": "scripts/github-update-manifest.mjs",
@@ -7881,7 +7761,7 @@
     },
     {
       "path": "scripts/lib/pinned-source-stages.mjs",
-      "sha256": "8a40618c306c19a5df063c6c342c504edf4b43313f135cbbabfeb1bca006b023"
+      "sha256": "5ec5825f1f9ca1e6d2efe1b81ddf5a841ea5db22aca9b7d76814c83db7212be9"
     },
     {
       "path": "scripts/lib/preflight.mjs",
@@ -7909,7 +7789,7 @@
     },
     {
       "path": "scripts/lib/windows-stages.mjs",
-      "sha256": "56229a1e5f8e326545f0a39d567c9feaadaed68328dec4216120e4990e1a2adc"
+      "sha256": "61a91a5e3934e0f6b6de4926969fe0a383f895d0f98a4f315a30e777b1f3eaea"
     },
     {
       "path": "scripts/lib/zip.mjs",
@@ -7990,6 +7870,10 @@
     {
       "path": "scripts/pack-portable-extractor.ps1",
       "sha256": "d2e7d364fd15e1c6a53691db6132233d8e371e7c838d7353be618573562856da"
+    },
+    {
+      "path": "scripts/pack-windows-installer.mjs",
+      "sha256": "b816137a118b2e63b4f9a908ace9054adfa271f6b30651210be97e1e48fc6c2f"
     },
     {
       "path": "scripts/pack-windows-release.mjs",
@@ -8209,11 +8093,11 @@
     },
     {
       "path": "scripts/publish-desktop-candidate.mjs",
-      "sha256": "79dfefa96803bc5b9d22a02d48e2cd3c44a86796343e7ea710273681b745f44b"
+      "sha256": "b77d2f862a262ef87925a9be07dc6b7c9987cd2f297ecb0906ab164c3a3cb9fd"
     },
     {
       "path": "scripts/publish-windows-release.mjs",
-      "sha256": "b30c1d11fb6432c971ba20e6d45d5773152bc1e9851c8564a5b090b76cdacc09"
+      "sha256": "cdb300750785ea02d46be3213195b7dc8896a1e0f0c8522be3e8a4ef2ab84965"
     },
     {
       "path": "scripts/published-package-inputs.mjs",
@@ -8229,11 +8113,11 @@
     },
     {
       "path": "scripts/set-desktop-icon.mjs",
-      "sha256": "65fa593d2e43fe78292b7497babb522ac8250e218b043b40ebb3f9c6f992b376"
+      "sha256": "b0c975b101e28f24fd10fa522a4960f4cc09a0754adc5235b1b8192ad7eaf8ef"
     },
     {
       "path": "scripts/set-desktop-icon.ps1",
-      "sha256": "720e007ae5a5213df6fe0d3800f846df40f4876dc7dd2bd7c215faee64c40291"
+      "sha256": "210558c3b4e7421002d10cd73bc76b6856ffef22dafd4cf1309fafd5bdbb302a"
     },
     {
       "path": "scripts/settings-navigation-icons.mjs",
@@ -8348,6 +8232,10 @@
       "sha256": "4b34bb1405e9ea84b594751a50e310f0628412cb7e8bc8bdcce1e102235d9138"
     },
     {
+      "path": "scripts/test/windows-installer.test.mjs",
+      "sha256": "db60e82cc6352d5938b1bc1a485362cc5317925b249e43c9d8a9f71607aa6d71"
+    },
+    {
       "path": "scripts/test/windows-update-delta.test.mjs",
       "sha256": "b9de0bd2108646acecf4aa6a3a8481fd15887104827f2b69d4e84420feb6a241"
     },
@@ -8389,7 +8277,7 @@
     },
     {
       "path": "tests/build-pipeline-diagram.test.mjs",
-      "sha256": "dc74c67fa0eef81ce252a0df0eaa9bbbb0ad0d9db2027be5acbf626a3cd930a2"
+      "sha256": "9507f330b99937e711842a69fb80b93a867d12a55473afa5571ba51d72b8ccae"
     },
     {
       "path": "tests/build-script-entry.test.mjs",
@@ -8409,7 +8297,7 @@
     },
     {
       "path": "tests/desktop-candidate-publication.test.mjs",
-      "sha256": "2958be15eb721b7722950a4ac3c1b50f120f2c3ff99c0830ead5ceca299d2b8a"
+      "sha256": "2f836d9a89487eedf8d3bac81999641074638c387725aeab3872094c5eb68dd7"
     },
     {
       "path": "tests/desktop-enterprise-ui-acceptance.mjs",
@@ -8481,7 +8369,7 @@
     },
     {
       "path": "tests/eduwork-windows-release.test.mjs",
-      "sha256": "71f19f62ccbd03f5e9c276eafaa3f2951d73c1b9187f85e50e2c945ae0aad7bb"
+      "sha256": "d5288270aa1258889408198668a11fcb53788c0944c33d6ff08e34bf67a12fad"
     },
     {
       "path": "tests/fixtures/audit-stack-probe.mjs",
@@ -8506,6 +8394,10 @@
     {
       "path": "tests/github-update-package.test.mjs",
       "sha256": "8798ca6d7bfe6b78947ce954e9a680bd8456f2d5d4e98c880c57a9946a63807f"
+    },
+    {
+      "path": "tests/installed-candidate.test.mjs",
+      "sha256": "8f5970500758d20e8a9b62d82566cb4311413a7cf54784f4965f33d6a49f0265"
     },
     {
       "path": "tests/local-desktop-install.test.mjs",
@@ -9041,11 +8933,11 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/desktop-probe/package-lock.json",
-      "sha256": "81d59f522355f883c98f7d30a02a149f0277f182d48cac28b4bb9bf4df159f2f"
+      "sha256": "b4ada8564a8a69fbd54afceadc9cb4e3515663036d3e2c2a4a900c487bc5d410"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/desktop-probe/package.json",
-      "sha256": "e43ce4b11070e035712b5db694a2ebf90462d8b8236427c022d400b1c235ddd7"
+      "sha256": "30c9a2d3d4feca00fed7bba2863fef2b6f143f43c876cbfc355184f87d2a11dd"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/external-agents.json",
@@ -9237,11 +9129,11 @@
     },
     {
       "path": "website/index.html",
-      "sha256": "d81807a14f4d671ad4b385762abc22969e1576b1593187e7bacf46d865a37846"
+      "sha256": "36197f8c1f024e8908e1c0145e138c7b8af1c3835a3dc4d8b9f9190fcad67eea"
     },
     {
       "path": "website/language.js",
-      "sha256": "042f1f0b38697f7656f2dc576e2a77544e42b1d06a1ba9cdd34a8b13ed06dde3"
+      "sha256": "3ba94802cf746b988c883521af6038a95ea1c492b67802b228692829e4fe2431"
     },
     {
       "path": "website/project.css",

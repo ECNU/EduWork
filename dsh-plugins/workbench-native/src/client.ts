@@ -211,7 +211,7 @@ function SkillCenter({ service, standalone = false }) {
         )),
       ))),
     ))),
-    createOpen && h('div', { style: panelStyle, role: 'presentation', onMouseDown: event => { if (event.target === event.currentTarget && busy !== 'create') setCreateOpen(false) } },
+    createOpen && h('div', { style: panelStyle, role: 'presentation', 'data-window-drag-exclude': true, onMouseDown: event => { if (event.target === event.currentTarget && busy !== 'create') setCreateOpen(false) } },
       h('form', { role: 'dialog', 'aria-modal': 'true', 'aria-label': '创建个人技能', style: cardStyle, onSubmit: createSkill },
         h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: 12 } },
           h('div', null,
@@ -250,7 +250,7 @@ function SkillCenter({ service, standalone = false }) {
       ),
     ),
     pendingRemoval && h('div', {
-      style: panelStyle, role: 'presentation',
+      style: panelStyle, role: 'presentation', 'data-window-drag-exclude': true,
       onMouseDown: event => { if (event.target === event.currentTarget && busy === '') setPendingRemoval(null) },
     },
     h('section', { role: 'dialog', 'aria-modal': 'true', 'aria-label': '移除个人技能', style: cardStyle },
@@ -296,12 +296,16 @@ function DesktopSettings({service,controller}) {
 }
 const skillsPanelId = 'eduwork-skills'
 
+// The top strip drags the window on macOS. It stays out of the scrolling list:
+// window drag regions are whole boxes, so list content scrolled under a drag
+// strip would drag the window instead of taking clicks.
 function SkillsPage({ service }) {
-  return h('div', { style: {
-    display: 'flex', justifyContent: 'center', boxSizing: 'border-box', height: '100%', overflow: 'auto',
-    padding: 'calc(28px + var(--dsh-frame-top-clearance, 0px)) clamp(24px, 4vw, 48px) 48px',
-    color: 'var(--dsw-alias-label-primary, #222)',
-  } }, h(SkillCenter, { service, standalone: true }))
+  return h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%', color: 'var(--dsw-alias-label-primary, #222)' } },
+    h('div', { 'data-window-drag': true, 'aria-hidden': true, style: { flex: 'none', height: 'calc(28px + var(--dsh-frame-top-clearance, 0px))' } }),
+    h('div', { style: {
+      flex: 1, minHeight: 0, display: 'flex', justifyContent: 'center', boxSizing: 'border-box', overflow: 'auto',
+      padding: '0 clamp(24px, 4vw, 48px) 48px',
+    } }, h(SkillCenter, { service, standalone: true })))
 }
 
 // DSH's skill outline, kept inline because the legacy and native runtimes
