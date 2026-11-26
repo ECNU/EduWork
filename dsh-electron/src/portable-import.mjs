@@ -90,23 +90,15 @@ export async function inspectPortableSource({ sourceRoot, distribution }) {
   return { root, version: release.version, dshVersion: release.dshVersion, dataRoot, home, browser: join(dataRoot, 'browser'), config: join(root, 'config/eduwork.jsonc') }
 }
 
-// Executables under the source root plus any process whose command line names
-// it (the Host node runs from the product tree but serves the source data).
+// Executables under the source root. Command lines only count when the
+// executable path is unreadable (an elevated process): a bystander that merely
+// mentions the folder — an editor on a log, a scan with a path argument — does
+// not keep the old client alive and must not block the import.
 // The importer's own process chain is excluded; never a global process kill.
-export function windowsSourceProcessLister(sourceRoot, selfPid = process.pid) {
+export function windowsSourceProcessLister(sourceRoot, selfPid = process.pid, enumerate = windowsProcessRows) {
   const root = resolve(sourceRoot)
   return async () => {
-    const { spawn } = await import('node:child_process')
-    // PowerShell 5.1 pipes OEM (GBK) text by default; force UTF-8 or Chinese
-    // paths arrive mojibaked and the running-source check silently misses.
-    const child = spawn('powershell', ['-NoProfile', '-Command', '[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine | ConvertTo-Json -Compress'], { stdio: ['ignore', 'pipe', 'pipe'] })
-    const out = [], err = []
-    child.stdout.on('data', chunk => out.push(chunk)); child.stderr.on('data', chunk => err.push(chunk))
-    const code = await new Promise((done, fail) => { child.once('error', fail); child.once('close', done) })
-    if (code !== 0) throw Error(`无法枚举进程（exit ${code}）：${Buffer.concat(err).toString('utf8').slice(-500)}`)
-    const text = Buffer.concat(out).toString('utf8').trim()
-    const rows = text ? JSON.parse(text) : []
-    const list = Array.isArray(rows) ? rows : [rows]
+    const list = await enumerate()
     const excluded = new Set([selfPid])
     for (let pid = selfPid; ;) {
       const row = list.find(item => item.ProcessId === pid)
@@ -121,9 +113,23 @@ export function windowsSourceProcessLister(sourceRoot, selfPid = process.pid) {
       if (excluded.has(row.ProcessId)) return false
       const exe = typeof row.ExecutablePath === 'string' ? row.ExecutablePath.toLowerCase() : ''
       const command = typeof row.CommandLine === 'string' ? row.CommandLine.toLowerCase() : ''
-      return exe.startsWith(prefix) || rootPattern.test(command)
+      return exe.startsWith(prefix) || (!exe && rootPattern.test(command))
     }).map(row => ({ pid: row.ProcessId, name: row.Name }))
   }
+}
+
+async function windowsProcessRows() {
+  const { spawn } = await import('node:child_process')
+  // PowerShell 5.1 pipes OEM (GBK) text by default; force UTF-8 or Chinese
+  // paths arrive mojibaked and the running-source check silently misses.
+  const child = spawn('powershell', ['-NoProfile', '-Command', '[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine | ConvertTo-Json -Compress'], { stdio: ['ignore', 'pipe', 'pipe'] })
+  const out = [], err = []
+  child.stdout.on('data', chunk => out.push(chunk)); child.stderr.on('data', chunk => err.push(chunk))
+  const code = await new Promise((done, fail) => { child.once('error', fail); child.once('close', done) })
+  if (code !== 0) throw Error(`无法枚举进程（exit ${code}）：${Buffer.concat(err).toString('utf8').slice(-500)}`)
+  const text = Buffer.concat(out).toString('utf8').trim()
+  const rows = text ? JSON.parse(text) : []
+  return Array.isArray(rows) ? rows : [rows]
 }
 
 async function walkTree(base, rel, visit) {
