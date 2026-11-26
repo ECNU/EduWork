@@ -53,6 +53,8 @@ export function callFor(action, element = {}) {
 export const elementOf = (agent, ref) => seenBy.get(agent)?.refs[ref]
 /** The address of the page an Agent last read. */
 export const pageOf = agent => seenBy.get(agent)?.url
+/** The page an Agent last read, when it is a website's. */
+export const websitePageOf = agent => /^https?:/u.test(pageOf(agent) ?? '') ? new URL(pageOf(agent)) : undefined
 
 const needs = { click: ['ref'], type: ['ref', 'text'], select: ['ref', 'option'], press: ['key'] }
 function check(actions, seen) {

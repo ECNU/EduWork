@@ -7,16 +7,18 @@
 // automation-browser.mjs. Page sessions cannot reach other targets, and
 // keyboard input goes to the focused frame's own widget: Chromium otherwise
 // routes a guest's CDP keys to whatever the application window has focused.
+// The conversation's Agent clears its workspace's data at <endpoint>/<session id>/clear-data.
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { once } from 'node:events'
 import { createServer } from 'node:http'
 import { webContents } from 'electron'
 import { WebSocketServer } from 'ws'
+import { createSidebarBrowserData } from './sidebar-browser-data.mjs'
 
 export const SIDEBAR_BROWSER_ENV = 'EDUWORK_SIDEBAR_BROWSER_SECRET'
 // The user's presses and keys a Sidebar page has had, in its top document (lib/page.js of browser-upstream reads it).
 export const SIDEBAR_INPUT_COUNT = '__eduworkInput'
-export const SIDEBAR_BROWSER_IPC = { bind: 'eduwork:sidebar-browser:bind', opened: 'eduwork:sidebar-browser:opened', request: 'eduwork:sidebar-browser:request' }
+export const SIDEBAR_BROWSER_IPC = { bind: 'eduwork:sidebar-browser:bind', opened: 'eduwork:sidebar-browser:opened', request: 'eduwork:sidebar-browser:request', clearData: 'eduwork:sidebar-browser:clear-data' }
 
 const OPEN_TIMEOUT_MS = 20_000
 // Domains Playwright uses on a page. The rest reach past the page: other
@@ -48,6 +50,7 @@ const newTabPage = language => {
  */
 export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
   const secret = randomBytes(24).toString('hex')
+  const data = createSidebarBrowserData()
   const groups = new Map()  // session id -> one conversation's endpoint
   const pages = new Map()   // guest webContents id -> page
   const opening = new Map() // open request id -> { resolve, reject, timer }
@@ -242,7 +245,7 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
       if (!carrier) throw failure('Session with given id not found.')
       touch(target, carrier, visibleOnPage.has(method))
       const input = method.startsWith('Input.')
-      if (input) carrier.inputs++
+      if (input) { carrier.inputs++; carrier.byAgent = true }
       try {
         const result = page && await pageCommand(page, method, params)
         if (result !== undefined) return reply({ result })
@@ -256,9 +259,37 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
     }
   }
 
-  const sessionOf = url => {
-    const match = /^\/([0-9a-f]{48})\/([\w-]{1,200})$/u.exec(url ?? '')
-    return match && timingSafeEqual(Buffer.from(match[1]), Buffer.from(secret)) ? match[2] : undefined
+  // A conversation's endpoint, /<secret>/<session id>, or one of its actions after that.
+  const sessionOf = (url, action = '') => {
+    const match = /^\/([0-9a-f]{48})\/([\w-]{1,200})(\/[\w-]+)?$/u.exec(url ?? '')
+    return match && (match[3] ?? '') === action && timingSafeEqual(Buffer.from(match[1]), Buffer.from(secret)) ? match[2] : undefined
+  }
+
+  // A website's page, rather than none or the Sidebar's own new-tab page,
+  // which nothing else shares the origin of, once the broker listens.
+  const website = url => /^https?:/u.test(url) && (newTabUrl === undefined || new URL(url).origin !== new URL(newTabUrl).origin)
+
+  // The Agent clears what its conversation's workspace keeps, a site of it or
+  // all of it, as the user does from a page's menu: the workspace of its open
+  // pages; a site by an address of it. It answers once the pages concerned
+  // have reloaded (sidebar-browser-data.mjs).
+  async function clearData(sessionId, request, response) {
+    const reply = (status, body) => response.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify(body))
+    try {
+      const chunks = []
+      let size = 0
+      for await (const chunk of request) if ((size += chunk.length) <= 4096) chunks.push(chunk)
+      if (size > 4096) return reply(413, { error: 'The request is too large' })
+      const { scope, url } = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+      const page = [...groups.get(sessionId)?.pages.values() ?? []].find(page => !page.guest.isDestroyed())
+      if (!page) return reply(409, { error: 'No page is open in the browser' })
+      if (scope === 'workspace') { await data.clearWorkspace(page.guest.session); return reply(200, {}) }
+      if (scope !== 'site') return reply(400, { error: 'scope is site or workspace' })
+      if (!website(url)) return reply(400, { error: 'The page is no website\'s: there is no site to clear' })
+      reply(200, { site: await data.clearSite(page.guest.session, url) })
+    } catch (error) {
+      reply(400, { error: error.message })
+    }
   }
 
   return {
@@ -266,7 +297,9 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
     async listen() {
       server ??= await new Promise((resolve, reject) => {
         const http = createServer((request, response) => {
+          const clearing = request.method === 'POST' && request.headers.origin === undefined ? sessionOf(request.url, '/clear-data') : undefined
           if (request.method === 'GET' && request.url === '/new-tab') response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }).end(newTabPage(request.headers['accept-language']))
+          else if (clearing !== undefined) void clearData(clearing, request, response)
           else response.writeHead(404).end()
         })
         // A browser page's WebSocket always carries an Origin; the Host's client does not.
@@ -323,7 +356,11 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
       }
       if (guest.isDestroyed()) return
       const target = group(sessionId)
-      const page = { guest, group: target, tabId, targetId, sessions: new Set(), frames: new Map(), attached: false, inputs: 0 }
+      // byAgent: whether the Agent gave the page input since the user last did,
+      // so that a menu the page opens now is the Agent's. The two do not take
+      // turns within one gesture: while the Agent acts on a tab, the tab takes
+      // no input from the user (sidebar-client.js).
+      const page = { guest, group: target, tabId, targetId, sessions: new Set(), frames: new Map(), attached: false, inputs: 0, byAgent: false }
       pages.set(guest.id, page)
       // A press or key the user gives the page, in any of its frames, as against
       // the Agent's input, which comes through here, counts in its top document:
@@ -332,7 +369,9 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
       // command the Agent sends after the input; a page that is leaving refuses
       // it, and is not the page read anyway.
       const used = () => {
-        if (page.inputs === 0 && page.attached) void guest.debugger.sendCommand('Runtime.evaluate', { expression: `document.${SIDEBAR_INPUT_COUNT} = (document.${SIDEBAR_INPUT_COUNT} || 0) + 1` }).catch(() => {})
+        if (page.inputs > 0) return
+        page.byAgent = false
+        if (page.attached) void guest.debugger.sendCommand('Runtime.evaluate', { expression: `document.${SIDEBAR_INPUT_COUNT} = (document.${SIDEBAR_INPUT_COUNT} || 0) + 1` }).catch(() => {})
       }
       guest.on('before-mouse-event', (_event, mouse) => { if (mouse.type === 'mouseDown') used() })
       guest.on('before-input-event', (_event, input) => { if (input.type === 'keyDown') used() })
@@ -370,6 +409,19 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
         if (target.autoAttach) attachSession(page)
       }
       arrivals.get(`${sessionId} ${tabId}`)?.(page)
+    },
+
+    /** What the Sidebar browser keeps, and its clearing (sidebar-browser-data.mjs). */
+    data,
+
+    /** Whether a Sidebar guest shows a website's page, rather than none or the Sidebar's own new-tab page. */
+    website(guest) {
+      return website(guest.getURL())
+    },
+
+    /** Whether the Agent gave a Sidebar guest input since the user last did. */
+    byAgent(guest) {
+      return pages.get(guest.id)?.byAgent === true
     },
 
     /** The renderer's answer to an open request: the new tab, or why not. */
