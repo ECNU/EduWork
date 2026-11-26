@@ -5,7 +5,7 @@
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-26T05:21:41.049Z",
-  "fileSetSHA256": "6acdc008c0178874609d03e8a8f937f60fdf04eb576aea887e76585d4cf9ad1e",
+  "fileSetSHA256": "0d90d70736748b9a0b9eb6c47d100ccd7689c3a8d8ec9effafbfd65801bde6b6",
   "files": [
     {
       "path": ".gitattributes",
@@ -1105,7 +1105,7 @@
     },
     {
       "path": "dsh-electron/src/configuration-files.mjs",
-      "sha256": "ebe38191c2b9b28f7f9b6a711563f2ba8f64e6c92a89bf4d377f4f6cce1353b0"
+      "sha256": "f0071ff44f7e20b01615ddce831af84dd3e3b83e7f14ddd8f83a6756420a42c8"
     },
     {
       "path": "dsh-electron/src/configuration-policy.mjs",
@@ -1233,7 +1233,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "0e9a63acc02ab17a34f3c1b4869641cd2fcf8bd10736002db6dff331859ce3f8"
+      "sha256": "f566a1e0b860a251c391b0d7cceea351d1c1f1235409819bd61fb103ea595d04"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1325,7 +1325,7 @@
     },
     {
       "path": "dsh-electron/tests/configuration-files.test.mjs",
-      "sha256": "224b2afd27a3c4acd003369b930dbe078c6c9d5335612df6b1ca0b2464654394"
+      "sha256": "f60ece355f70b85a3d8e42bc4c0d7a6d73a8e4b6a4a3338e3f15a556b5848124"
     },
     {
       "path": "dsh-electron/tests/configuration-policy.test.mjs",
