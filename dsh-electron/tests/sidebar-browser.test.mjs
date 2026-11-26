@@ -608,9 +608,20 @@ test('clearing a website clears its sign-ins and storage on every subdomain the 
     pages.push(await load())
     for (const page of pages) page.destroy()`)
   assert.equal(cachedLoads, 4)
+  // A tab laid out at desktop width alone keeps it as clearing reloads its page, and its menu still shows it; the other tab still follows the Sidebar.
+  const narrow = await tabWidth()
+  assert.deepEqual(await layOut('session-a', other, 'desktop'), [200, { width: 1280, settled: true }])
   await keep()
   assert.deepEqual(await clear({ scope: 'workspace' }), [200, {}])
   assert.deepEqual(await Promise.all([tab, other].map(page => page.evaluate(() => window.marker ?? null))), [null, null])
+  assert.deepEqual(await layout(other, 1280), [1280, true])
+  // So it does once the setting applies to every tab anew, from each tab's choice.
+  await page('fixture.settingsChanged()')
+  assert.deepEqual([await layout(other, 1280), await layout(tab, narrow)], [[1280, true], [narrow, true]])
+  assert.deepEqual(await run(`menus.length = 0
+    const guests = ${JSON.stringify([tab.url(), other.url()])}.map(url => webContents.getAllWebContents().find(guest => guest.getType() === 'webview' && guest.getURL() === url))
+    guests[1].emit('context-menu', {}, { linkURL: '', srcURL: '', mediaType: 'none', isEditable: false, selectionText: '', editFlags: {}, x: 10, y: 10 })
+    return [menus.at(-1)?.items.find(item => item.label === '按桌面宽度显示此网页')?.checked, guests.map(guest => broker.desktopWidth(guest))]`), [true, [false, true]])
   assert.deepEqual([await cookies(), await kept(tab), await kept(other)], [[], [null, null, null, null], [null, null, null, null]])
   assert.equal(cachedLoads, 5)
   // Only the Host, for a conversation with a page open, and for a website or the workspace.

@@ -372,6 +372,7 @@ test('browser_clear_data clears the website of the page read, or the whole works
         response.writeHead(200).write('{"site')
         return setTimeout(() => response.destroy(), 50)
       }
+      if (request.url.endsWith('/layout')) return response.writeHead(200).end(JSON.stringify({ width: 1280, settled: true }))
       if (body.url?.includes('10.0.0.8')) return response.writeHead(409).end(JSON.stringify({ error: 'No page is open in the browser' }))
       response.writeHead(200).end(JSON.stringify(body.scope === 'site' ? { site: new URL(body.url).hostname } : {}))
     })
@@ -401,6 +402,12 @@ test('browser_clear_data clears the website of the page read, or the whole works
     assert.equal(permission('site').displayReason.zh, '允许智能体清除侧边栏浏览器里 10.0.0.8 所在网站在本工作区的数据：登录状态、Cookie、网站存储和缓存。同一工作区其他对话里的这个网站也会退出登录，打开着的这个网站的网页会重新加载')
     assert.equal(permission('workspace').reason, 'Allow the Agent to clear all data of this workspace\'s Sidebar browser: sign-ins, cookies, site storage and cache of every website. They are signed out in the workspace\'s other conversations too, and its open pages reload')
     assert.equal(permission('workspace', 'danger-full-access').kind, 'allow')
+    // The page browser_layout shows counts as read too, here the one the user went back to meanwhile.
+    browser.visit('search')
+    await browser.run('browser_layout', { mode: 'desktop' })
+    assert.match(permission('site').displayReason.zh, /清除侧边栏浏览器里 library\.example 所在网站/u)
+    await browser.run('browser_clear_data', { scope: 'site' })
+    assert.deepEqual(requests.slice(-2).map(([, url, body]) => [url.split('/').at(-1), body.url]), [['layout', undefined], ['clear-data', 'https://library.example']])
     // A subagent keeps a browser of its own, without the tool.
     const tools = async agent => (await browser.ctx.tools.resolve({ agent, signal: AbortSignal.timeout(5000) })).view(agent).get('browser_clear_data') !== undefined
     assert.deepEqual([await tools(browser.agent), await tools({ session: { id: 'session-2', header: { origin: 'subagent' } } })], [true, false])

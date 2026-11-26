@@ -12,7 +12,7 @@ export function registerClearData(ctx, sidebar) {
   const endpoint = sidebar.replace(/^ws:/u, 'http:')
   ctx.tools.register(defineTool({
     name: 'browser_clear_data',
-    description: 'Clear what the browser keeps for websites: sign-ins, cookies, site storage and cache. scope site clears the website of the page you last read with browser_read, with all its subdomains; scope workspace clears every website. Every conversation in this workspace shares the browser\'s data, so they are signed out too. Open pages concerned reload: read the page again before acting on it. Use it when the user asks to sign out, switch accounts or start a website afresh.',
+    description: 'Clear what the browser keeps for websites: sign-ins, cookies, site storage and cache. scope site clears the website of the page you last read, as the last result of browser_read, browser_act or browser_layout showed it, with all its subdomains; scope workspace clears every website. Every conversation in this workspace shares the browser\'s data, so they are signed out too. Open pages concerned reload: read the page again before acting on it. Use it when the user asks to sign out, switch accounts or start a website afresh.',
     parameters: {
       scope: { type: 'string', required: true, enum: ['site', 'workspace'], description: 'site: the website of the page you last read; workspace: every website.' },
     },
