@@ -86,6 +86,9 @@ const ALLOWED_ROUTES = new Map([
   ['/api/session.export', ['GET', 'HEAD']],
   ['/api/session.markdown', ['GET', 'HEAD']],
   ['/api/artifactPreview/file', ['GET', 'HEAD']],
+  // EduWork's side chat forks an existing session at a message, names the fork
+  // and archives it on close: session/fork and workspace/archiveSession work.
+  ['/api/eduwork/side-chat', ['POST']],
 ])
 
 /**
