@@ -92,7 +92,7 @@ export async function startPortableUpdates({root,updates={},defaults={},version,
  })
  const call=action=>new Promise((resolve,reject)=>{if(exited||closing){reject(Error(lastError||'更新服务已退出'));return};const id=++sequence;pending.set(id,{resolve,reject});child.stdin.write(JSON.stringify({id,action})+'\n',error=>{if(error){pending.delete(id);reject(error)}})})
  const format=s=>({shell:'electron',version,phase:s.state,message:s.enabled?'自动检查更新；下载后可立即重启或下次启动安装。':'当前未配置更新渠道，请检查 config/eduwork.jsonc 的 updates。',update:s})
- try {if(applyScheduled)await call('apply-scheduled');await call('check-updates')}
+ try {await call(applyScheduled?'apply-scheduled':'status')}
  catch(error){child.stdin.end();await done;lines.close();throw error}
  return {action:async action=>format(await call(action)),async close(){closing=true;child.stdin.end();await done;lines.close()}}
 }

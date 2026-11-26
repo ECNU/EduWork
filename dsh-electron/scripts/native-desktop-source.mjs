@@ -76,7 +76,8 @@ function createUpstreamProductApi(): DshDesktopProductApi {`)
     replace('this.setState({ phase: percent >= 100 ? \'verifying\' : \'downloading\', ...this.target(), percent })', 'this.setState({ phase: percent >= 100 ? \'verifying\' : \'downloading\', ...this.target(), percent, downloadedBytes: progress.transferred, totalBytes: progress.total })')
     replace('    this.disposed = true\n    this.updater.off(\'download-progress\', this.onProgress)', '    this.disposed = true\n    this.cancellation?.cancel()\n    this.updater.off(\'download-progress\', this.onProgress)')
     // Non-silent mode keeps NSIS installation progress visible.
-    replace('this.updater.quitAndInstall(true, true)', 'this.updater.quitAndInstall(false, true)')
+    replace('async install(version: string, revision = this.generation)', 'async install(version: string, revision = this.generation, relaunch = true)')
+    replace('this.updater.quitAndInstall(true, true)', 'if (relaunch) this.updater.quitAndInstall(false, true)\n          else this.updater.quitAndInstall(true, false)')
   }
   return source
 }

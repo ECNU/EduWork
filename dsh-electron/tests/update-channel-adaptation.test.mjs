@@ -35,6 +35,8 @@ test('the locked upstream coordinator shows install progress and cancels its act
   assert.match(original, /downloadUpdate\(this\.cancellation\)/)
   const source = adaptNativeDesktopSource(file, original)
   assert.match(source, /this\.updater\.quitAndInstall\(false, true\)/)
+  assert.match(source, /relaunch = true\): Promise<DesktopUpdateState>/)
+  assert.match(source, /else this\.updater\.quitAndInstall\(true, false\)/)
   assert.doesNotMatch(source, /this\.updater\.quitAndInstall\(true, true\)/)
   assert.throws(() => adaptNativeDesktopSource(file, original.replace('quitAndInstall(true, true)', 'quitAndInstall(true, false)')),
     /Native desktop anchor changed in .*: .*quitAndInstall/)

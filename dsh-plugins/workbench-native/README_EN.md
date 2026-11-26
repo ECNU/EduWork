@@ -14,7 +14,7 @@ Distributions can set `metadata.eduwork.displayName` and `displayDescription` in
 
 A small blue button appears at the lower left when an update is available, shows download progress, and offers restart/install when ready. Settings and tray actions open the same panel; closing it does not stop a download.
 
-Under General Settings → Software Updates, you can see the installed version, manage software updates, and select the public-beta or development channel. Check for updates is to the right of the heading. The automatic download option appears on supported installations. The channel selector is locked during download, verification, and pending installation. The development channel also receives newer public-beta releases. Switching channels never downgrades the app. Diagnostic exports include component, startup and update information plus redacted logs. Conversation bodies are exported separately.
+Under General Settings → Software Updates, you can see the installed version, select the public-beta or development channel, and configure startup checks, periodic checks, automatic downloads, and automatic installation. Check for updates is to the right of the heading. Settings are locked during download, verification, and pending installation. The development channel also receives newer public-beta releases. Switching channels never downgrades the app. Diagnostic exports include component, startup and update information plus redacted logs. Conversation bodies are exported separately.
 
 ## Import history
 

@@ -8,8 +8,8 @@ export class DesktopExit {
   pending
   relaunchRequested = false
   installerOwnsQuit = false
-  constructor({ confirm, close, relaunch, quit, failed }) {
-    Object.assign(this, { confirm, close, relaunch, quit, failed })
+  constructor({ confirm, close, relaunch, quit, failed, installOnQuit }) {
+    Object.assign(this, { confirm, close, relaunch, quit, failed, installOnQuit })
   }
   async restart({ strict = false } = {}) {
     if (this.closing || this.complete) return
@@ -57,6 +57,7 @@ export class DesktopExit {
       }
       phase = 'close'
       this.closing = true
+      if (!strict && !this.installerOwnsQuit && !this.relaunchRequested) await this.installOnQuit?.()
       await this.close()
       // Let the cancelled native quit event unwind before requesting quit again.
       await new Promise(resolve => setImmediate(resolve))

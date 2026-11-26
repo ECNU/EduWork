@@ -2,7 +2,7 @@
 
 [简体中文](MACOS_UPDATES.md) | **English**
 
-Sparkle owns downloads, verification and installation; EduWork shows their status in its shared update panel without a second updater window. Checks run in the background. Users can enable automatic downloads, receive an in-app reminder when ready, and install on normal application exit without a forced restart. Manual download and immediate restart remain available; cancelling the task exit confirmation leaves installation retryable. Closing a window does not quit the application. macOS may still request authorization for a protected destination. Windows retains its portable updater. Configuration, sessions, credentials and Skills remain outside the app, and content updates remain available in the shared settings panel.
+Sparkle owns downloads, verification and installation. EduWork shows their status in its shared update panel. After enabling automatic downloads, users can also enable automatic installation on normal application quit. With download only, the downloaded package waits for the user to install it. Manual download and immediate restart remain available. Cancelling the task exit confirmation leaves installation retryable. The app keeps running when its window closes. macOS may request authorization for a protected destination. Windows portable builds use the Go updater. Configuration, sessions, credentials and Skills remain outside the app, and content updates stay available in Settings.
 
 Older Mac builds without Sparkle require one manual replacement before this update path becomes available.
 

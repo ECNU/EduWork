@@ -104,3 +104,33 @@ test('installed package verification blocks software opt-out and channel changes
   assert.equal((await control.action('disable-software-updates')).update.userEnabled, false)
   assert.deepEqual(policies, ['development'])
 })
+
+test('quit installation only hands a ready package to the native coordinator and suppresses relaunch', async t => {
+  const resourcesPath = await mkdtemp(join(tmpdir(), 'eduwork-install-on-quit-'))
+  t.after(() => rm(resourcesPath, { recursive: true, force: true }))
+  await writeFile(join(resourcesPath, 'app-update.yml'), 'provider: github\nowner: example\nrepo: product\n')
+  const state = { phase: 'idle', version: '1.1.0' }, requests = []
+  class Coordinator {
+    state = state
+    constructor(_publish, prepare) { this.prepare = prepare }
+    async install(version, revision, relaunch) {
+      await this.prepare()
+      requests.push([version, revision, relaunch])
+      return { phase: 'installing' }
+    }
+    dispose() {}
+  }
+  const control = await softwareUpdateControl({ dataRoot: resourcesPath, version: '1.0.0',
+    start: ({ policy }) => startInstalledUpdates({ app: { isPackaged: true }, resourcesPath, version: '1.0.0',
+      policy, Coordinator, stopBeforeInstall: onQuit => assert.equal(onQuit, true) }) })
+  t.after(() => control.close())
+  await control.prepareForQuit()
+  await control.action('enable-automatic-install')
+  state.phase = 'verifying'
+  await control.prepareForQuit()
+  assert.deepEqual(requests, [])
+  state.phase = 'ready'
+  assert.equal((await control.action('status')).update.installOnQuit, true)
+  await control.prepareForQuit()
+  assert.deepEqual(requests, [['1.1.0', undefined, false]])
+})

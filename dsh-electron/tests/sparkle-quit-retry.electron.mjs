@@ -43,7 +43,7 @@ export async function verifyQuitRetry({ software, version, evidence }) {
         await software.action('install-update')
       } else if (cancelledAt && Date.now() - cancelledAt > 1000 && !retried) {
         assert.equal(update.state, 'ready', 'Cancellation must leave installation retryable')
-        assert.equal(update.installOnQuit, true)
+        assert.equal(update.installOnQuit, false, 'An explicit retry does not schedule a background installation')
         record('cancelled-but-retryable', {update})
         retried = true
         await software.action('install-update')

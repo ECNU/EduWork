@@ -90,8 +90,8 @@ test('enabling updates during a running session never applies a scheduled packag
   createInterface({input:child.stdout}).on('line',line=>actions.push(JSON.parse(line).status.action))
   return child
  }})
- assert.deepEqual(actions,['check-updates'])
- await bridge.close()
+ t.after(()=>bridge.close())
+ assert.deepEqual(actions,['status'])
 })
 
 test('configuration errors retain their own diagnosis before spawning a helper',async t=>{
@@ -120,14 +120,15 @@ test('successful process creation keeps the real pipe protocol and scheduled-ins
   createInterface({input:child.stdout}).on('line',line=>actions.push(JSON.parse(line)))
   return child
  }})
- assert.deepEqual(actions.slice(0,2).map(row=>row.status.action),['apply-scheduled','check-updates'])
+ t.after(()=>bridge.close())
+ assert.deepEqual(actions.map(row=>row.status.action),['apply-scheduled'])
  assert.equal((await bridge.action('status')).phase,'idle')
  await bridge.action('install-update')
  await bridge.close()
  assert.equal(quit.length,1)
 })
 
-test('errors reported after the helper has launched remain fatal instead of bypassing update checks',async t=>{
+test('errors reported during helper initialization remain fatal',async t=>{
  const options=await fixture(t),script=join(options.root,'reject-helper.mjs')
  await writeFile(script,`import {createInterface} from 'node:readline';
  createInterface({input:process.stdin}).on('line',line=>{

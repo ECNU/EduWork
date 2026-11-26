@@ -22,9 +22,9 @@ const unsupportedMessage = '当前安装包未配置软件更新'
 for (const [canToggle, userEnabled, contentEnabled, description] of [
   [false, true, true, unsupportedMessage],
   [false, false, true, unsupportedMessage],
-  [true, true, true, '启动时及运行期间自动检查新版，发现后通知。'],
-  [true, false, true, '软件更新已关闭。重新开启后沿用所选渠道。'],
-  [true, false, false, '软件更新已关闭。重新开启后沿用所选渠道。'],
+  [true, true, true, '允许检查、下载和安装软件更新。'],
+  [true, false, true, '软件更新已关闭。重新开启后沿用所选渠道和设置。'],
+  [true, false, false, '软件更新已关闭。重新开启后沿用所选渠道和设置。'],
 ]) {
   test(`software update description with canToggle=${canToggle}, userEnabled=${userEnabled}, contentEnabled=${contentEnabled}`, () => {
     const React = { createElement: (type, props, ...children) => ({ type, props, children }) }

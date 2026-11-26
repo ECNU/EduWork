@@ -13,7 +13,10 @@ const component=ts.transpileModule(await readFile(new URL('../src/updates.ts',im
  .replace(/import \{ createPortal \} from ['"]react-dom['"];?/,'const {createPortal}=ReactDOM;')
 assert.doesNotMatch(component,/from ['"]react/)
 let policy='stable',state='up_to_date',downloaded=0,scheduled=false,shell='wails'
-let content=null,softwareEnabled=true,nativeUI=false,nativeUpdater=false,automaticDownload=false
+let content=null,softwareEnabled=true,nativeUI=false,nativeUpdater=false
+const preferences={checkOnStartup:true,periodicChecks:true,automaticDownload:false,automaticInstall:false}
+const preferenceKeys={'startup-update-check':'checkOnStartup','periodic-update-check':'periodicChecks',
+ 'automatic-download':'automaticDownload','automatic-install':'automaticInstall'}
 let nativeDetails={},canToggle=false,failNextSwitch=false
 const actions=[]
 const url='https://eduwork-update.test'
@@ -40,13 +43,14 @@ const routeFixture=route=>{
   if(action==='download-content-update')content={...content,state:'downloading',downloadedBytes:512}
   if(action==='restart-content-update')content={...content,state:'current',configurationRevision:2,skillsRevision:3}
   if(action==='download-update'){state='downloading';downloaded=524288}
-  if(action==='enable-automatic-download')automaticDownload=true
-  if(action==='disable-automatic-download')automaticDownload=false
+  const toggle=/^(enable|disable)-(.+)$/.exec(action)
+  const key=preferenceKeys[toggle?.[2]]
+  if(key)preferences[key]=toggle[1]==='enable'
   if(action==='enable-software-updates'){softwareEnabled=true;state='up_to_date'}
   if(action==='disable-software-updates'){softwareEnabled=false;state='disabled'}
   if(action==='schedule-update')scheduled=true
   if(action==='install-update')state='applying'
-  return route.fulfill({json:{version:'0.3.5-dev.20260912.1',shell,phase:state,update:{nativeUI,nativeUpdater,...(canToggle?{canToggle:true,userEnabled:softwareEnabled}:{}),...(nativeUI||nativeUpdater?{automaticDownload,installOnQuit:automaticDownload&&state==='ready'}:{}),policies:['stable','development'],state,policy,enabled:softwareEnabled,latestVersion:'0.3.5',downloadedBytes:downloaded,totalBytes:1048576,installOnNextStart:scheduled,...nativeDetails},contentUpdate:content}})
+  return route.fulfill({json:{version:'0.3.5-dev.20260912.1',shell,phase:state,update:{nativeUI,nativeUpdater,...(canToggle?{canToggle:true,userEnabled:softwareEnabled,...preferences}:{}),...(nativeUI||nativeUpdater?{canSchedule:false,installOnQuit:preferences.automaticDownload&&preferences.automaticInstall&&state==='ready'}:{}),policies:['stable','development'],state,policy,enabled:softwareEnabled,latestVersion:'0.3.5',downloadedBytes:downloaded,totalBytes:1048576,installOnNextStart:scheduled,...nativeDetails},contentUpdate:content}})
  }
  return route.fulfill({contentType:'text/html; charset=utf-8',body:html})
 }
@@ -60,6 +64,13 @@ try {
  await page.goto(url);await page.getByText('当前已是最新版本',{exact:true}).waitFor()
  const panel=page.locator('[data-eduwork-update-panel]')
  const channel=panel.getByRole('combobox',{name:'更新渠道'})
+ const changePreference=async (label,checked)=>{
+  await panel.getByRole('checkbox',{name:label,exact:true}).click()
+  await page.waitForFunction(({label,checked})=>{
+   const input=document.querySelector(`input[aria-label="${label}"]`)
+   return input?.checked===checked&&!input.disabled
+  },{label,checked})
+ }
  assert.equal(await page.getByRole('combobox',{name:'更新渠道'}).count(),1)
  assert.deepEqual(await channel.locator('option').allTextContents(),['公测版','开发版'])
  assert.equal(await page.locator('[data-eduwork-content-update]').count(),0)
@@ -144,11 +155,19 @@ try {
  assert.equal(await dialog.isVisible(),true)
  await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'})
  await page.screenshot({path:join(evidence,'mac-software-and-content.png')})
- nativeUI=false;nativeUpdater=true;state='up_to_date';await page.reload()
- const automatic=page.getByRole('checkbox',{name:/自动下载，退出时安装/})
- await automatic.click()
- await page.waitForFunction(()=>document.querySelector('input[type="checkbox"]')?.checked===true)
+ nativeUI=false;nativeUpdater=true;state='up_to_date';canToggle=true;scheduled=false;await page.reload()
+ const automatic=page.getByRole('checkbox',{name:'自动下载更新包'})
+ const autoInstall=page.getByRole('checkbox',{name:'自动安装更新包'})
+ await automatic.waitFor()
+ assert.equal(await autoInstall.isDisabled(),true)
+ await changePreference('自动下载更新包',true)
  await page.reload();await automatic.waitFor();assert.equal(await automatic.isChecked(),true)
+ assert.equal(await autoInstall.isChecked(),false)
+ state='ready';await page.reload()
+ await page.getByText('版本 0.3.5 已下载并校验。',{exact:true}).waitFor()
+ assert.equal(await page.getByText(/将在退出应用时安装/).count(),0)
+ state='up_to_date';await page.reload()
+ await changePreference('自动安装更新包',true)
  state='ready';await page.reload()
  await page.getByText(/将在退出应用时安装/).waitFor()
  assert.equal(await page.getByRole('button',{name:'下次启动时安装',exact:true}).count(),0)
@@ -178,9 +197,10 @@ try {
  const software=page.getByRole('checkbox',{name:'启用软件更新',exact:false})
  await software.waitFor();assert.equal(await software.isChecked(),true)
  await software.focus();await page.keyboard.press('Space')
- await page.getByText('软件更新已关闭。重新开启后沿用所选渠道。',{exact:true}).waitFor()
+ await page.getByText('软件更新已关闭。重新开启后沿用所选渠道和设置。',{exact:true}).waitFor()
  await page.reload();await software.waitFor();assert.equal(await software.isChecked(),false)
  assert.equal(await page.getByRole('button',{name:'检查更新',exact:true}).isDisabled(),true)
+ assert.equal(await page.getByRole('checkbox',{name:'启动时检查更新'}).isDisabled(),true)
  assert.equal(await channel.count(),1)
  const checksWhileDisabled=actions.filter(action=>action==='check-updates').length
  await channel.selectOption('development')
@@ -193,6 +213,17 @@ try {
  await software.focus();await page.keyboard.press('Space')
  await page.getByText('当前已是最新版本',{exact:true}).waitFor()
  await page.waitForFunction(()=>!document.querySelector('input[type="checkbox"]').disabled)
+ const startup=page.getByRole('checkbox',{name:'启动时检查更新'})
+ const periodic=page.getByRole('checkbox',{name:'定时检查更新'})
+ await changePreference('启动时检查更新',false)
+ assert.equal(await periodic.isChecked(),true)
+ await changePreference('定时检查更新',false)
+ await changePreference('自动下载更新包',false)
+ assert.equal(await autoInstall.isChecked(),true)
+ await page.reload()
+ await startup.waitFor()
+ assert.deepEqual(await Promise.all([startup,periodic,automatic,autoInstall].map(option=>option.isChecked())),[false,false,false,true])
+ assert.equal(await page.getByRole('button',{name:'检查更新',exact:true}).isEnabled(),true)
  await page.screenshot({path:join(evidence,'software-enabled.png')})
  nativeDetails={busy:true};await page.reload();await software.waitFor();assert.equal(await software.isDisabled(),true)
  nativeDetails={installOnQuit:true};await page.reload();await software.waitFor();assert.equal(await software.isDisabled(),true)
@@ -243,6 +274,6 @@ try {
  assert.deepEqual(desktopErrors,[])
  await desktop.close()
  assert.deepEqual(errors,[])
- await writeFile(join(evidence,'update-browser.json'),JSON.stringify({passed:true,channelSwitch:true,keyboardSwitch:true,failedSwitchSkipsCheck:true,themes:['blue','red'],persisted:true,bluePill:true,downloadProgress:50,progressAfterReloadAndModalClose:true,scheduleNextStart:true,channelLockedDuringDownload:true,contentOnlyFooter:true,actions:actions.filter(a=>a!=='status'),errors},null,2))
+ await writeFile(join(evidence,'update-browser.json'),JSON.stringify({passed:true,channelSwitch:true,keyboardSwitch:true,failedSwitchSkipsCheck:true,themes:['blue','red'],persisted:true,automationOptions:true,bluePill:true,downloadProgress:50,progressAfterReloadAndModalClose:true,scheduleNextStart:true,channelLockedDuringDownload:true,contentOnlyFooter:true,actions:actions.filter(a=>a!=='status'),errors},null,2))
  console.log('Shared update UI acceptance passed')
 } finally {await browser?.close()}

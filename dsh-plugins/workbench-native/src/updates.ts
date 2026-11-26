@@ -52,7 +52,7 @@ export function createUpdateController(service) {
  const poll=async()=>{await read();if(!stopped)timer=setTimeout(poll,!view.statusError&&[view.status?.update?.state,view.status?.contentUpdate?.state].some(state=>['checking','downloading','verifying','applying'].includes(state))?350:2500)}
  const run=async(action)=>{
   if(view.working)return
-  const started=Date.now(),working=action==='check-updates'?'checking':action==='download-update'?'downloading':action.startsWith('use-')?'switching':action.endsWith('software-updates')||action.endsWith('automatic-download')?'settings':''
+  const started=Date.now(),working=action==='check-updates'?'checking':action==='download-update'?'downloading':action.startsWith('use-')?'switching':/^(enable|disable)-/.test(action)?'settings':''
   publish({error:'',working})
   try {
    const status=await service(action)
@@ -72,6 +72,12 @@ export function createUpdateController(service) {
  return {subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)},getSnapshot:()=>view,run,open,close,retry:read,dispose:()=>{stopped=true;clearTimeout(timer);waits.forEach(settle=>settle());window.removeEventListener('eduwork:open-updates',event)}}
 }
 function useUpdates(controller){return useSyncExternalStore(controller.subscribe,controller.getSnapshot,controller.getSnapshot)}
+const checkboxStyle={display:'flex',gap:8,alignItems:'flex-start',marginTop:12,fontSize:13}
+function updateOption({controller,action,label,description,checked,disabled}) {
+ return h('label',{style:checkboxStyle},
+  h('input',{type:'checkbox','aria-label':label,checked,disabled,onChange:e=>controller.run(`${e.currentTarget.checked?'enable':'disable'}-${action}`)}),
+  h('span',null,label,h('span',{style:{...note,display:'block'}},description)))
+}
 const percent=s=>s?.downloadStage==='verifying'?(s.totalFiles>0?Math.min(100,Math.floor(s.checkedFiles/s.totalFiles*100)):0):s?.totalBytes>0?Math.min(100,Math.floor(s.downloadedBytes/s.totalBytes*100)):0
 const size=n=>n<1048576?Math.ceil(Math.max(0,n||0)/1024)+' KB':(Math.max(0,n||0)/1048576).toFixed(1)+' MB'
 const softwareAvailable=status=>Boolean(status&&status.shell!=='web'&&status.update?.enabled!==false)
@@ -108,6 +114,8 @@ export function UpdatePanel({controller}) {
  const enabled=softwareAvailable(status)
  const softwareEnabled=s?.userEnabled??s?.enabled
  const toggleLocked=Boolean(working||statusError)||s?.busy||s?.installOnQuit||s?.installOnNextStart||['checking','downloading','verifying','ready','applying'].includes(s?.state)
+ const optionLocked=toggleLocked||!softwareEnabled||!enabled
+ const macInstallNeedsDownload=s?.nativeUpdater&&s.automaticDownload!==true
  const policy=s?.policy||c?.policy||'stable',locked=Boolean(statusError)||busy||state==='ready'||s?.busy||contentBusy(c)
  const channels=[['stable','公测版'],['development','开发版']].filter(([value])=>!s?.policies||s.policies.includes(value))
  const setPolicy=async value=>{
@@ -129,12 +137,17 @@ export function UpdatePanel({controller}) {
    h('div',{style:{display:'grid',justifyItems:'end',gap:8,flexShrink:0}},
     h('button',{type:'button',style:button,disabled:!statusError&&(locked||!enabled),onClick:statusError?controller.retry:()=>controller.run('check-updates')},statusError?'重试读取状态':state==='checking'?'检查中…':'检查更新'),
     s?.releaseNotesURL&&h('a',{href:s.releaseNotesURL,target:'_blank',rel:'noopener noreferrer',style:button},'查看发行说明'))),
-  s?.canToggle&&h('label',{style:{display:'flex',gap:8,alignItems:'flex-start',marginTop:12,fontSize:13}},
-   h('input',{type:'checkbox',checked:Boolean(softwareEnabled),disabled:toggleLocked,onChange:e=>controller.run(e.target.checked?'enable-software-updates':'disable-software-updates')}),
-   h('span',null,'启用软件更新',h('p',{style:note},statusError?'恢复连接后可修改此设置。':working==='settings'?'正在保存设置…':toggleLocked?'更新完成后可修改此设置。':!softwareEnabled?'软件更新已关闭。重新开启后沿用所选渠道。':status.shell==='electron'?'启动时及运行期间自动检查新版，发现后通知。':'启动时自动检查新版，发现后通知。'))),
-  s?.enabled&&typeof s.automaticDownload==='boolean'&&h('label',{style:{display:'flex',gap:8,alignItems:'flex-start',marginTop:12,fontSize:13}},
-   h('input',{type:'checkbox',checked:s.automaticDownload,disabled:locked||Boolean(working),onChange:e=>controller.run(e.target.checked?'enable-automatic-download':'disable-automatic-download')}),
-   h('span',null,'自动下载，退出时安装',h('p',{style:note},'下载完成后提醒；不会强制重启。关闭窗口不等于退出应用。'))),
+  s?.canToggle&&updateOption({controller,action:'software-updates',label:'启用软件更新',checked:Boolean(softwareEnabled),disabled:toggleLocked,
+   description:statusError?'恢复连接后可修改此设置。':working==='settings'?'正在保存设置…':toggleLocked?'更新完成后可修改此设置。':!softwareEnabled?'软件更新已关闭。重新开启后沿用所选渠道和设置。':'允许检查、下载和安装软件更新。'}),
+  s?.canToggle&&typeof s.checkOnStartup==='boolean'&&h(React.Fragment,null,
+   updateOption({controller,action:'startup-update-check',label:'启动时检查更新',checked:s.checkOnStartup,disabled:optionLocked,
+    description:'每次启动应用后检查一次新版。'}),
+   updateOption({controller,action:'periodic-update-check',label:'定时检查更新',checked:s.periodicChecks,disabled:optionLocked,
+    description:'运行期间每 4 小时检查一次，驻留托盘时也生效。'}),
+   updateOption({controller,action:'automatic-download',label:'自动下载更新包',checked:s.automaticDownload,disabled:optionLocked,
+    description:'发现新版本后在后台下载。'}),
+   updateOption({controller,action:'automatic-install',label:'自动安装更新包',checked:s.automaticInstall,disabled:optionLocked||macInstallNeedsDownload,
+    description:s.nativeUpdater?'开启自动下载后，可在正常退出应用时安装。':s.canSchedule===false?'正常退出应用时安装已校验的更新。':'已校验的更新将在下次启动时安装。'})),
   (enabled||s?.canToggle)&&s&&channels.length>0&&h('label',{style:optionRow},
    h('span',null,'更新渠道',h('span',{style:{...note,display:'block'}},policy==='development'?'接收开发版及更新的公测版。':'仅接收公测版。切换渠道不会降级。')),
    h('select',{'aria-label':'更新渠道',value:policy,disabled:locked||channels.length===1,

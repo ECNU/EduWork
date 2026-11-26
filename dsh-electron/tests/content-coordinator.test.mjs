@@ -39,3 +39,18 @@ test('only an explicit check authorizes retrying a previously failed signed revi
   await coordinator.close()
   assert.deepEqual(checks,[{retryFailed:false},{retryFailed:true}])
 })
+
+test('startup can check signed content without requesting a software check', async () => {
+  const softwareActions = [], contentChecks = []
+  const software = {
+    async action(action) { softwareActions.push(action); return { update: { state: 'idle' } } },
+    async close() {},
+  }
+  const content = { snapshot: () => ({ state: 'current' }),
+    async check(options) { contentChecks.push(options) }, async close() {} }
+  const coordinator = updateCoordinator({ software, content, version: '1.0.0' })
+  await coordinator.action('check-content-updates-background')
+  await coordinator.close()
+  assert.deepEqual(softwareActions, ['status'])
+  assert.deepEqual(contentChecks, [undefined])
+})

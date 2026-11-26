@@ -32,7 +32,7 @@ export default class Workbench extends TypertRemoteService {
     return { skills: [...skills, ...personal.skills.map(row => ({ ...row, available: true, requirement: '', removable: true }))] }
   }
   async desktop(action) {
-    if (!['status', 'check-updates', 'diagnostics', 'download-update', 'schedule-update', 'install-update','use-stable-updates','use-development-updates','download-content-update','restart-content-update','enable-automatic-download','disable-automatic-download','enable-software-updates','disable-software-updates'].includes(action)) throw new Error('Unsupported desktop action')
+    if (!['status', 'check-updates', 'diagnostics', 'download-update', 'schedule-update', 'install-update','use-stable-updates','use-development-updates','download-content-update','restart-content-update','enable-automatic-download','disable-automatic-download','enable-software-updates','disable-software-updates','enable-startup-update-check','disable-startup-update-check','enable-periodic-update-check','disable-periodic-update-check','enable-automatic-install','disable-automatic-install'].includes(action)) throw new Error('Unsupported desktop action')
     const desktop = this.ctx.get('desktopServices')
     if (desktop?.workbench) return desktop.workbench(action)
     return { shell: 'web', phase: 'web', message: '浏览器用于功能验证；更新与桌面诊断请在客户端中使用。' }
