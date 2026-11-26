@@ -11,7 +11,7 @@ Host 专属 `authorizedFetch(profileID, endpoint, init, { serviceURL })` 增加�
 
 该选项只能由受信 Host 插件根据机构配置生成，不能直接透传浏览器、模型或来源响应里的授权目标。订阅插件先检查机构 `authorizedServices: [{ profileID, url }]` 精确白名单，模型只能选择已批准的 profile/地址组合。加载任意 Host 代码本身属于受信边界，OIDC 不把一个恶意 Host 插件当作沙盒内的不可信程序。
 
-测试服务沿用显式 `allowInsecureDevelopment` 约定：订阅 Host 配置与 OIDC Profile 都开启时，仅额外允许字面 IP `127.0.0.1` 或 `[::1]` 的 HTTP 精确地址。不接受普通主机名、localhost、非回环 IP；生产配置默认关闭。此例外不允许把 HTTP 地址扩充为通配 origin。
+测试服务沿用显式 `allowInsecureDevelopment` 约定：业务 Host 配置与 OIDC Profile 都开启时，额外允许字面 IP `127.0.0.1`、`[::1]`，或与 Profile 明确配置的 `auth.expectedIssuer`／`oidc.issuer` 同源的 HTTP 精确地址。发行者匹配包含协议、主机和端口，不接受其他 HTTP 主机或端口。没有明确配置发行者时，仅保留回环例外。生产配置默认关闭；每次请求仍必须提供精确 `serviceURL`，不能将 HTTP 地址扩充为通配 origin。
 
 Host 专属 `accountIdentity(profileID)` 返回 `{ profileID, accountID }` 或未登录时的 null；accountID 是 profile、issuer 和已验证 subject 的 SHA256 摘要，不返回 subject、Token 或其他凭据。插件据此隔离本地缓存，它不是服务端的登录证明。相同身份续期保持摘要，换账号产生新摘要。
 
