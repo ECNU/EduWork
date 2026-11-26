@@ -50,6 +50,16 @@ try {
     assert.equal(await mark.evaluate(node => getComputedStyle(node).backgroundColor), expected)
   }
   checks.push('account mark follows blue/red/dark accent changes without reload')
+  await page.evaluate(() => window.fixture.extension(true))
+  const extra = page.getByRole('button', { name: '账户扩展', exact: true })
+  await extra.waitFor()
+  assert.equal(await extra.getAttribute('data-profile'), 'example')
+  assert.equal(await extra.evaluate(node => node.parentElement.closest('button') === null), true)
+  await extra.click(); await waitClosed()
+  await extra.focus(); await page.keyboard.press('Enter')
+  assert.equal(await page.evaluate(() => window.fixture.extensionClicks()), 2)
+  assert.equal(await page.evaluate(() => window.fixture.modelReads()), 0)
+  checks.push('account extension is independently clickable and keyboard accessible without opening the account menu')
   await trigger.click()
   await menu.getByRole('menuitem', { name: '刷新账户' }).waitFor()
   assert.doesNotMatch(await menu.innerText(), /配额|额度|资源包/)
@@ -73,6 +83,7 @@ try {
   await trigger.click(); await menu.waitFor()
   const anchor = await trigger.boundingBox(), bounds = await menu.boundingBox()
   assert.equal(anchor.width, 36); assert.ok(bounds.width > 240 && bounds.x >= 0 && bounds.y >= 0)
+  assert.equal((await extra.boundingBox()).width, 36)
   await menu.getByRole('menuitem', { name: '刷新账户', exact: true }).click()
   assert.equal(await page.evaluate(() => window.fixture.modelReads()), 0)
   await page.screenshot({ path: fileURLToPath(new URL('account-menu.png', output)) })
@@ -101,7 +112,7 @@ try {
   checks.push('custom and default login wording is consistent across onboarding, settings and account menu; other models stay available')
   for (const outcome of ['success', 'failure']) {
     await page.goto(`${origin}/callback-${outcome}`)
-    await page.getByRole('heading', { name: outcome === 'success' ? '身份认证已完成' : '此次登录未完成' }).waitFor()
+    await page.getByRole('heading', { name: outcome === 'success' ? '登录成功' : '此次登录未完成' }).waitFor()
     assert.ok(await page.locator('.card').evaluate(node => node.getBoundingClientRect().width <= window.innerWidth))
     await page.screenshot({ path: fileURLToPath(new URL(`callback-${outcome}.png`, output)) })
   }

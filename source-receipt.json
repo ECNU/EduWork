@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-26T05:34:01.251Z",
-  "fileSetSHA256": "17a6038a8aaf6179e2683a74f016c0cb1691f0aabd2eb2994345335d6dd3a1e3",
+  "createdAt": "2026-11-26T10:38:33.555Z",
+  "fileSetSHA256": "7a5688b05d698a69a6682dbd4035b78901ea1906f702edece6938bf440521724",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "3e2dc3026ba935a62c322a735474148d1cc903eaf6f6de858029a86858cb5239"
+      "sha256": "4ad38d8ef705084bbcd722012fa3b4ab147866c9e7694ae3edea1bd0f5b7c0bc"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -2145,7 +2145,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/read-act.js",
-      "sha256": "d04cdeb6a45872430511aba74ec2928940e1a0e0bced47476188b9e1b62643dc"
+      "sha256": "9b908a2e4eda1bfd348171bb48b968a9dd65a07b6afb456548cdf6de58475b6a"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/sidebar-client.js",
@@ -2181,7 +2181,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "60ed7f9a995e5d699840354fcc68e9a80cef22a4526d723ae6dea3c21a71c5eb"
+      "sha256": "42706e7f0b8b5f8d8cd7707f9d7e838f294d92b74e5734f78ed887f6f2d80749"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/sidebar.test.mjs",
@@ -6549,11 +6549,11 @@
     },
     {
       "path": "packages/dsh-oidc/docs/account-extensions.en.md",
-      "sha256": "a7c57cf5e411ef2b6547356d5579d2c922c9adb1b14b258539423d9b9b9e7e16"
+      "sha256": "c314179e3e4af13d747b4b0dcde6325ae0fde51217ef248fff3bf299c8b7504e"
     },
     {
       "path": "packages/dsh-oidc/docs/account-extensions.md",
-      "sha256": "3be6cfebef382538d65719635338774dfcb4219d2e0311683934565a146e83d1"
+      "sha256": "61726b77b0d4c6f0e5d5ee313fc61f08103a8a1dbd7b7ba9bdafaec573ee5ebd"
     },
     {
       "path": "packages/dsh-oidc/docs/architecture.en.md",
@@ -6581,11 +6581,11 @@
     },
     {
       "path": "packages/dsh-oidc/docs/decisions/0002-host-service-reads.en.md",
-      "sha256": "8057caadd30077784e1e5662cadb29a09c166f4442d194fdda037655497cb02d"
+      "sha256": "454db707076477f204c5097f64ae4f4212bdf4dff85318c9d9d7d33e87a8d1ea"
     },
     {
       "path": "packages/dsh-oidc/docs/decisions/0002-host-service-reads.md",
-      "sha256": "5a8efa7b66dd40449bf2a2513b4167801e3f44498f01c8b6327b1c5a5bd89a9f"
+      "sha256": "bfe740b78f7fe897f5c12a453881ccf9e99416b5bea927605b1291688954e2fa"
     },
     {
       "path": "packages/dsh-oidc/docs/desktop-host.en.md",
@@ -6629,11 +6629,11 @@
     },
     {
       "path": "packages/dsh-oidc/docs/enterprise-profile.en.md",
-      "sha256": "d14271ac3a9e8388cf5913c2cf4f6a5abb21b2501441d7df94a0395af6b7c722"
+      "sha256": "7514c200f23d52c112a99ddd29a64612a9079c016b5ca8bf6674fadf4886cef3"
     },
     {
       "path": "packages/dsh-oidc/docs/enterprise-profile.md",
-      "sha256": "d821456a3bb66dfc7f14aa6dfa397acd78410eadb633fe7ffb5fee928f29780e"
+      "sha256": "781ebc232d8405fcdb2ec28dffc12cf979647c0f71151a6acef585645f7e3236"
     },
     {
       "path": "packages/dsh-oidc/docs/gateway-auth/experimental-oidc-llm.en.md",
@@ -6829,7 +6829,7 @@
     },
     {
       "path": "packages/dsh-oidc/scripts/check-account-menu-browser.mjs",
-      "sha256": "d86639f5ad1a87b36427f243176d03d80a4821bbb9c2a754d2f92dccae0faca1"
+      "sha256": "e5ad50d8f9ad76be7193ec3f7bfb5bd1da79f8b70169d76faa979eb0955d7e0b"
     },
     {
       "path": "packages/dsh-oidc/scripts/check-dependency-lock.mjs",
@@ -6865,7 +6865,7 @@
     },
     {
       "path": "packages/dsh-oidc/scripts/smoke-build.mjs",
-      "sha256": "08dfc2ebdf52db034028d9d8be1abb342c5e8294d9d22f05fd2a574326c55d7f"
+      "sha256": "7569f25bf571bad32f46bda9e1a68992a609b909e5a4a77357debb798309deaf"
     },
     {
       "path": "packages/dsh-oidc/SECURITY.en.md",
@@ -6885,7 +6885,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/client/index.ts",
-      "sha256": "216f8186a505fe5d4040be1e31907f9dd64590d753ce198ee42a31f4bb20845c"
+      "sha256": "f7c157bf95d131b536b2f4a990dd489a4c78409c9ddb68b178a5d84c7ef63025"
     },
     {
       "path": "packages/dsh-oidc/src/client/locale.ts",
@@ -6985,7 +6985,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/host/service-authorization.js",
-      "sha256": "3bebceb7dc452763ff63617421815a4f5706b579665c248e83fb335e72a1ffc2"
+      "sha256": "879508a04f58ab09481403c062c746b76a6d0319d493e6b21dd4ed2e5571c0b9"
     },
     {
       "path": "packages/dsh-oidc/src/host/token-lifetime.js",
@@ -7041,7 +7041,7 @@
     },
     {
       "path": "packages/dsh-oidc/test/helpers/account-menu-browser.js",
-      "sha256": "69cbbfbf49bcfc4c75707d7ebbe2536e89006af474e07506b57165378cd71720"
+      "sha256": "14c53df6ecbcb96603742123b99cb80b184afa4e8ec38c057634d4296380e451"
     },
     {
       "path": "packages/dsh-oidc/test/helpers/desktop-fixture.js",
@@ -7081,7 +7081,7 @@
     },
     {
       "path": "packages/dsh-oidc/test/service-authorization.test.js",
-      "sha256": "83f0b52f43c1a85857589e7c281a59bafead29f49cdec2f6c73a362d078ecd96"
+      "sha256": "67f9d73610085e908577de569c0388de31732e15d2601ca6040b866bce404e34"
     },
     {
       "path": "packages/dsh-oidc/test/transport.test.js",
@@ -9320,7 +9320,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "60ed7f9a995e5d699840354fcc68e9a80cef22a4526d723ae6dea3c21a71c5eb",
+      "sha256": "42706e7f0b8b5f8d8cd7707f9d7e838f294d92b74e5734f78ed887f6f2d80749",
       "kind": "synthetic-network-classification-test",
       "reason": "The private URLs are synthetic addresses in a browser approval classification test: entering a private network from another site asks, links within it do not. They are not configured service endpoints. Keys and all other private content are still audited."
     }
