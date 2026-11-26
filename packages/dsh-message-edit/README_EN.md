@@ -17,7 +17,7 @@ A pencil button sits next to the copy button under each user message. Clicking i
 
 Particular cases:
 
-- While a reply is generating, the pencil is unavailable; it works again once the reply finishes or is stopped.
+- While a reply is generating, the pencil is unavailable and an open editor cannot send; both work again once the reply finishes or is stopped.
 - A message sent while a reply was generating (a steered message) cannot be edited on its own. It joined the turn partway, possibly after tools had run, and a turn cannot be restarted from its middle. Its row shows an unavailable pencil that points to the message that started the turn. Editing that message warns "This turn has N more message(s) sent mid-reply; sending replaces them too".
 - Several messages of one conversation can be edited at once. When one edit is sent, drafts of messages the new conversation still has move to it, uploads in flight included; drafts of messages it no longer has close. One edit of a conversation is sent at a time; the other editors wait.
 - Drafts and uploads survive scrolling the editor out of view and switching conversations.
@@ -60,10 +60,11 @@ npm run check
 The browser acceptance starts a separate DSH web app from that Runtime with a synthetic model and runs the main scenarios in headless Chromium:
 
 - editing a middle message;
-- generating and steered messages;
+- generating, steered and queued messages;
 - removing and adding attachments;
 - referencing other conversations;
 - several editors;
+- a pinned conversation with a title the user set;
 - a reload afterwards.
 
 It makes no live model requests and keeps the DSH data, HOME and default workspace inside its output directory. It needs a Chromium matching the Runtime's `playwright-core`:

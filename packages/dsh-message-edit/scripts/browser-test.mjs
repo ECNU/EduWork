@@ -27,7 +27,10 @@ const result = { schemaVersion: 1, kind: 'message-edit-browser-acceptance', synt
 
 // A Messages-compatible model: the reply names every user text starting with
 // "Q", the images and files of the last user message, and how many referenced
-// conversation snapshots the request carried. "SLOW" holds the reply.
+// conversation snapshots the request carried. "SLOW" holds the reply; "HOLD"
+// holds it until the test calls `release()`.
+let release
+const held = new Promise(settle => { release = settle })
 const blocks = message => (typeof message.content === 'string' ? [{ type: 'text', text: message.content }] : message.content)
 const model = createServer(async (request, response) => {
   let raw = ''
@@ -40,6 +43,7 @@ const model = createServer(async (request, response) => {
   const last = blocks(users.at(-1) ?? { content: [] })
   const lastText = last.filter(block => block.type === 'text').map(block => block.text)
   if (lastText.join('').includes('SLOW')) await new Promise(settle => setTimeout(settle, 4000))
+  if (lastText.join('').includes('HOLD')) await held
   const files = lastText.map(text => text.match(/^\[File "([^"]+)"/)?.[1]).filter(Boolean)
   const snapshots = texts.filter(text => text.includes('Referenced sessions')).length
   const text = `模型看到：${texts.filter(text => text.startsWith('Q')).join(' | ') || '（无）'}；最后一条带图 ${last.filter(block => block.type === 'image').length} 张`
@@ -186,6 +190,52 @@ try {
   await sendEdit(target, /^模型看到：Q3 SLOW 被插话的问题；/)
   check('the steered message is replaced with its Turn', !(await transcript()).includes('Q2 插话'))
 
+  // Input queued while a Turn runs is recorded in that Turn and opens the
+  // next one; editing it must not replay the old text in the branch.
+  // An editor opened before the Turn began holds its send as well. The reply
+  // is held until the second message has queued behind the running Turn.
+  await newSession()
+  await send('Q0 先问一句')
+  target = await open('Q0 先问一句')
+  await send('Q1 HOLD 排队前的问题', { wait: false })
+  await target.locator('.eduwork-message-editor-note').filter({ hasText: '对话进行中，结束后再发送' }).waitFor({ timeout: 10_000 })
+  check('an open editor holds its send while the conversation runs', await target.locator('.eduwork-message-editor button[data-primary]').isDisabled())
+  await target.locator('.eduwork-message-editor button:not([data-primary])').filter({ hasText: '取消' }).click()
+  await send('Q2 排队的问题', { wait: false })
+  // The dock echoes a submission at once; a removable row is the Host's queue entry.
+  await page.locator('[data-queue-dock] li:not([data-submission-echo])').filter({ hasText: 'Q2 排队的问题' })
+    .getByRole('button', { name: '删除排队消息' }).waitFor({ timeout: 10_000 })
+  release()
+  await reply(/^模型看到：Q0 先问一句 \| Q1 HOLD 排队前的问题 \| Q2 排队的问题；/)
+  await page.waitForTimeout(1500)
+  target = await open('Q2 排队的问题')
+  await retag(target.locator('textarea'), 'Q3')
+  await sendEdit(target, /^模型看到：Q0 先问一句 \| Q1 HOLD 排队前的问题 \| Q3 排队的问题；/)
+  await page.waitForTimeout(3000)
+  const branch = await transcript()
+  check('a queued message is edited without replaying the old one', !branch.includes('Q2 排队的问题') && branch.match(/模型看到：/g).length === 3, branch.match(/模型看到：/g).length)
+
+  // The replacement keeps the pin and a title the user set.
+  await newSession()
+  await send('Q1 置顶并改名')
+  const named = await current()
+  const sidebarRow = page.locator(`[data-row-key="${named}"]`)
+  await sidebarRow.hover()
+  await sidebarRow.getByRole('button', { name: '置顶会话' }).click()
+  await sidebarRow.click({ button: 'right' })
+  await page.getByRole('menuitem', { name: '重命名' }).click()
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.keyboard.type('用户起的标题')
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(800)
+  target = await open('Q1 置顶并改名')
+  await retag(target.locator('textarea'), 'Q2')
+  await sendEdit(target, '模型看到：Q2 置顶并改名；')
+  const replacement = await current()
+  const pinned = JSON.parse(await readFile(join(home, 'storages/workspace.json'), 'utf8')).global.pinnedSessionIds
+  check('the replacement keeps the pin and the title the user set', replacement !== named && pinned.includes(replacement.slice('session:'.length))
+    && (await page.locator(`[data-row-key="${replacement}"]`).innerText()).split('\n')[0] === '用户起的标题', await page.locator(`[data-row-key="${replacement}"]`).innerText())
+
   // Stored attachments carry over, removable; new ones upload while editing.
   await newSession()
   await page.locator('input[type="file"]:not(.eduwork-message-editor *)').first().setInputFiles([
@@ -198,13 +248,19 @@ try {
   target = await open('Q1 带图和文件')
   const chips = () => target.locator('.eduwork-message-editor-attachment').evaluateAll(nodes => nodes.map(node => `${node.dataset.kind}:${node.dataset.state}:${node.title}`))
   check('editor lists the stored image and file', JSON.stringify(await chips()) === '["image:ready:red.png","file:ready:notes.txt"]', JSON.stringify(await chips()))
-  await target.locator('.eduwork-message-editor-attachment[data-kind="image"]').hover()
-  await target.locator('.eduwork-message-editor-attachment[data-kind="image"] .eduwork-message-editor-remove').click()
+  await target.locator('.eduwork-message-editor-attachment[data-kind="file"]').hover()
+  await target.locator('.eduwork-message-editor-attachment[data-kind="file"] .eduwork-message-editor-remove').click()
   await target.locator('.eduwork-message-editor input[type="file"]').setInputFiles({ name: 'added.txt', mimeType: 'text/plain', buffer: Buffer.from('added while editing') })
   await page.locator('.eduwork-message-editor-attachment[data-state="ready"][title="added.txt"]').waitFor({ timeout: 15_000 })
   await retag(target.locator('textarea'), 'Q2')
-  await sendEdit(target, '模型看到：Q2 带图和文件；最后一条带图 0 张、文件 notes.txt+added.txt')
-  check('the resend drops the removed image and carries the stored and added files', true)
+  await sendEdit(target, '模型看到：Q2 带图和文件；最后一条带图 1 张、文件 added.txt')
+  check('the resend keeps the stored image, drops the removed file and carries the added one', true)
+  // What the branch stored is carried again, the image and the file alike.
+  target = await open('Q2 带图和文件')
+  check('the branch message lists what it stored', JSON.stringify(await chips()) === '["image:ready:red.png","file:ready:added.txt"]', JSON.stringify(await chips()))
+  await retag(target.locator('textarea'), 'Q3')
+  await sendEdit(target, '模型看到：Q3 带图和文件；最后一条带图 1 张、文件 added.txt')
+  check('a second resend carries the stored image and file', true)
 
   // A referenced conversation stays referenced while its mention is left alone.
   await newSession()

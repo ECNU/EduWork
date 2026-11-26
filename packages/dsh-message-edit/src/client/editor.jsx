@@ -167,7 +167,8 @@ export function MessageEditSeat({ useChat, useSession, useAccess, useProjection,
   const empty = text.trim() === '' && kept.length === 0 && added.length === 0
   const canAdd = canUpload && !sending
   const othersSending = sessionSending && !sending
-  const blocked = sending || othersSending || empty || uploading || failed
+  // The pencil waits for a running Turn; so does an editor opened before it began.
+  const blocked = sending || othersSending || running || empty || uploading || failed
 
   const cancel = () => { if (!sending) drafts.close(key) }
   const send = async () => {
@@ -177,7 +178,7 @@ export function MessageEditSeat({ useChat, useSession, useAccess, useProjection,
       drafts.close(key)
     } catch (cause) {
       const reason = cause?.copy ? t(cause.copy) : cause?.reason !== undefined ? refusalText(t, cause.reason, limits) : cause instanceof Error ? cause.message : String(cause)
-      drafts.update(key, () => ({ sending: false, notice: cause?.branch && !cause.copy ? t('branchFailed', { message: reason }) : reason }))
+      drafts.update(key, () => ({ sending: false, notice: cause?.branch && cause.copy !== 'unconfirmed' ? t('branchFailed', { message: reason }) : reason }))
     }
   }
   const intake = (files, directories) => {
@@ -225,7 +226,7 @@ export function MessageEditSeat({ useChat, useSession, useAccess, useProjection,
   }
   const labels = name => ({ remove: t('remove', { name }), retry: t('retry', { name }), uploading: t('uploading') })
   // Like the native composer, a failed upload holds the send and says why.
-  const status = notice ?? (failed ? (failed.reason ? refusalText(t, failed.reason, limits) : t('uploadFailed')) : uploading ? t('uploadingHold') : othersSending ? t('othersSending') : t('hint'))
+  const status = notice ?? (failed ? (failed.reason ? refusalText(t, failed.reason, limits) : t('uploadFailed')) : uploading ? t('uploadingHold') : othersSending ? t('othersSending') : running ? t('runningHold') : t('hint'))
 
   return h(React.Fragment, null,
     h('span', { ref: anchor, hidden: true }),

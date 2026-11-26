@@ -16,6 +16,7 @@ const COPY = {
     uploading: '上传中…', uploadFailed: '上传失败，点击重试',
     uploadingHold: '附件还在上传，上传完成后才能发送',
     othersSending: '这个对话里另一条编辑正在发送，发送完成后再发',
+    runningHold: '对话进行中，结束后再发送',
     folder: '不能添加文件夹，请添加单个文件',
     tooMany: '一条消息最多添加 {count} 张图片', imageTooLarge: '单张图片不能超过 {size}', imagesTooLarge: '图片总大小超过 {size}，请移除部分图片',
     modelUnsupported: '当前模型不支持图片，请切换支持图片的模型', tooManyPixels: '图片分辨率过大，请压缩后重试',
@@ -37,6 +38,7 @@ const COPY = {
     uploading: 'Uploading…', uploadFailed: 'Upload failed; click to retry',
     uploadingHold: 'Attachments are still uploading; send after they finish',
     othersSending: 'Another edit of this conversation is being sent; send after it finishes',
+    runningHold: 'The conversation is running; send when it finishes',
     folder: 'Folders cannot be added; add individual files',
     tooMany: 'A message can include up to {count} images', imageTooLarge: 'Each image must be smaller than {size}', imagesTooLarge: 'Images exceed {size} in total; remove some',
     modelUnsupported: 'The current model does not support images; switch to a model that does', tooManyPixels: 'Image resolution is too high; compress it and try again',
@@ -189,7 +191,7 @@ export async function apply(ctx) {
       let childId
       let userTitle
       try {
-        // Hold the source while its history loads: the user may leave it meanwhile.
+        // Hold the source throughout: the user may leave it meanwhile.
         await using(sessionId, async source => {
           const events = await historyFrom(source, previousEnd ?? 0)
           const atSeq = forkBoundary(events, turnStart)
@@ -201,21 +203,24 @@ export async function apply(ctx) {
           if (title?.seq > atSeq && title.data.source.kind === 'user') userTitle = title.data.title
           // `onCreated` names the child before the title rename that may still fail.
           await surface.sessions.fork({ sessionId, atSeq, increaseTitle: false, onCreated: id => { childId = id } })
-        })
-        await using(childId, async child => {
-          if (userTitle !== undefined) await unwrap(child.rename(userTitle))
-          // Input queued while an earlier Turn ran is part of the inherited prefix;
-          // the edited message replaces it, so drop it before anything wakes the
-          // branch. Removal alone does not start a Turn.
-          const inbox = child.projections.get('inbox')
-          for (const item of [...inbox?.['next-turn'] ?? [], ...inbox?.['next-step'] ?? []]) await unwrap(child.updateQueue(item.id, { kind: 'remove' }))
-          const receipts = attachments.length === 0 ? [] : await unwrap(surface.remote.eduworkMessageEdit.stageAttachments(sessionId, childId, attachments))
-          const content = receipts.map(receiptId => ({ type: 'file', receiptId }))
-          if (text.trim() !== '') content.push({ type: 'text', text: restoreMentions(text, mentions) })
-          // Only a Host reply proves the prompt was refused; a throw or a lost
-          // connection leaves it unknown, and that branch may already be running.
-          const result = await child.prompt(content, 'queue').catch(() => ({ ok: false, error: { code: 'connection/unknown' } }))
-          if (!result.ok) throw result.error.code.startsWith('connection/') ? failure('unconfirmed', { branch: childId }) : refusal(result.error)
+          await using(childId, async child => {
+            if (userTitle !== undefined) await unwrap(child.rename(userTitle))
+            // Input queued while an earlier Turn ran is part of the inherited prefix;
+            // the edited message replaces it, so drop it before anything wakes the
+            // branch. Removal alone does not start a Turn.
+            const inbox = child.projections.get('inbox')
+            for (const item of [...inbox?.['next-turn'] ?? [], ...inbox?.['next-step'] ?? []]) await unwrap(child.updateQueue(item.id, { kind: 'remove' }))
+            const receipts = attachments.length === 0 ? [] : await unwrap(surface.remote.eduworkMessageEdit.stageAttachments(sessionId, childId, attachments))
+            const content = receipts.map(receiptId => ({ type: 'file', receiptId }))
+            if (text.trim() !== '') content.push({ type: 'text', text: restoreMentions(text, mentions) })
+            // A Turn the source started since Send was pressed would keep running
+            // beside its replacement.
+            if (source.getSnapshot().running) throw failure('runningHold')
+            // Only a Host reply proves the prompt was refused; a throw or a lost
+            // connection leaves it unknown, and that branch may already be running.
+            const result = await child.prompt(content, 'queue').catch(() => ({ ok: false, error: { code: 'connection/unknown' } }))
+            if (!result.ok) throw result.error.code.startsWith('connection/') ? failure('unconfirmed', { branch: childId }) : refusal(result.error)
+          })
         })
       } catch (cause) {
         childId ??= strandedChild(cause)
