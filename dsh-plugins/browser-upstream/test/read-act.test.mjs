@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { once } from 'node:events'
+import { createServer } from 'node:http'
 import { registerHooks } from 'node:module'
 import { join, resolve } from 'node:path'
 import test from 'node:test'
@@ -11,7 +13,13 @@ const runtime = process.env.EDUWORK_TEST_RUNTIME
 if (!runtime) throw new Error('Set EDUWORK_TEST_RUNTIME to the pinned DSH Runtime')
 const fromRuntime = pathToFileURL(join(runtime, 'package.json')).href
 const core = new URL('../../tool-browser/lib/core.js', import.meta.url).href
+// The browser-use provider that sidebar.js mounts is not in the Runtime; browser_layout takes only its rule for which Agents use the Sidebar.
+const provider = {
+  '@deepseek-ai/dsh-browser-use/brand': 'export const BrowserUseProviderName = name => name',
+  '@deepseek-ai/dsh-experimental-browser-use-runtime': 'export class SessionResources {}',
+}
 registerHooks({ resolve: (specifier, context, next) => specifier === '@chatecnu-work/dsh-tool-browser/core' ? { url: core, shortCircuit: true }
+  : provider[specifier] ? { url: `data:text/javascript,${provider[specifier]}`, shortCircuit: true }
   : specifier.startsWith('@deepseek-ai/') ? next(specifier, { ...context, parentURL: fromRuntime }) : next(specifier, context) })
 const { Context } = await import('@deepseek-ai/cordis')
 const { defineTool } = await import('@deepseek-ai/dsh-tools')
@@ -21,6 +29,7 @@ const dsh = await Promise.all(['@deepseek-ai/dsh-system-prompt', '@deepseek-ai/d
 const { READ } = await import('../lib/page.js')
 const { browserGuard, browserPermission } = await import('../lib/permission.js')
 const { covered, noteSavedScreenshots, pageOf, registerPageTools } = await import('../lib/read-act.js')
+const { registerLayout } = await import('../lib/layout.js')
 
 const line = (text, top = 0) => ({ text, top })
 const page = (url, title, lines, refs, extra = {}) => ({ url, title, alerts: [], lines, closed: [], refs, scrollY: 0, truncated: false, ...extra })
@@ -47,7 +56,8 @@ const mcpArguments = Object.fromEntries([...['function', 'url', 'action', 'eleme
 // number does on a page, by page name, { newTab } for a page the page opens,
 // 'error' for a click that fails and 'stop' for one during which the user
 // stops the Agent. approve: the user's answer when the application asks.
-async function harness({ start = 'search', routes = {}, suggests = false, approve = 'allowed-once' } = {}) {
+// sidebar: the desktop app's Sidebar endpoint, if any.
+async function harness({ start = 'search', routes = {}, suggests = false, approve = 'allowed-once', sidebar } = {}) {
   const pages = site()
   const tabs = [start]
   // outer: the browser_read or browser_act call running.
@@ -68,6 +78,9 @@ async function harness({ start = 'search', routes = {}, suggests = false, approv
         : next && !here.refs[next] ? 'the page changed' : suggests && /at\(\d+\)\?\.getAttribute/u.test(args.function) ? 'suggestions opened under the field' : ''
       return text(`### Result\n${JSON.stringify(answer)}`)
     }
+    // browser_layout's mark, which the page answers with.
+    const mark = /^\(\) => '(eduwork-layout:[0-9a-f]{32})'$/u.exec(args.function ?? '')?.[1]
+    if (name === 'browser_evaluate' && mark) return text(`### Result\n${JSON.stringify(mark)}`)
     if (name === 'browser_evaluate') return text('### Result\nundefined')
     if (name === 'browser_navigate') return go(Object.keys(pages).find(key => pages[key].url === args.url))
     if (name === 'browser_tabs') {
@@ -85,7 +98,7 @@ async function harness({ start = 'search', routes = {}, suggests = false, approv
     if (typeof route === 'string' && route in pages) return go(route)
     return text('### Ran Playwright code')
   }
-  const agent = { session: {} }
+  const agent = { session: { id: 'session-1', header: {} } }
   const ctx = new Context()
   for (const plugin of dsh) await ctx.plugin(plugin)
   for (const name of ['sandboxPolicy', 'workingDirectory', 'approval']) ctx.provide(name)
@@ -113,6 +126,7 @@ async function harness({ start = 'search', routes = {}, suggests = false, approv
   ctx.on('tools/pre-execute', (exec, next) => browserPermission(ctx, exec, next))
   registerPageTools(ctx)
   noteSavedScreenshots(ctx)
+  if (sidebar !== undefined) registerLayout(ctx, sidebar)
   ctx.on('tools/execute', async (exec, next) => {
     if (!exec.name.startsWith('browser_')) return next()
     outer = exec
@@ -336,4 +350,54 @@ test('a screenshot saved under a name says where the image went', async () => {
   // Without a name the image is in the result, and other tools are left alone.
   assert.deepEqual(await texts('browser_take_screenshot', {}), ['### Result\n- [Screenshot of viewport](./page.png)'])
   assert.deepEqual(await texts('browser_evaluate', { function: '() => 1', filename: 'page.md' }), ['### Result\nundefined'])
+})
+
+test('browser_layout lays the current tab out at the width asked for, at the conversation\'s Sidebar endpoint, and shows the page as it is then', async () => {
+  // The desktop app's endpoint, answering as sidebar-browser.mjs does; meanwhile: what the browser does while it answers.
+  const requests = []
+  let meanwhile = () => {}
+  const server = createServer((request, response) => {
+    let text = ''
+    request.setEncoding('utf8').on('data', chunk => { text += chunk }).on('end', () => {
+      const body = JSON.parse(text)
+      requests.push([request.method, request.url, body])
+      meanwhile()
+      if (request.url.startsWith(`/${'b'.repeat(48)}/`)) return response.writeHead(409).end(JSON.stringify({ error: 'The Sidebar browser did not see the page to lay out' }))
+      response.writeHead(200).end(JSON.stringify(body.mode === 'desktop' ? { width: 1280, settled: true } : { width: 1280, settled: false }))
+    })
+  }).listen(0, '127.0.0.1')
+  await once(server, 'listening')
+  const endpoint = secret => `ws://127.0.0.1:${server.address().port}/${secret.repeat(48)}`
+  const at = `/${'a'.repeat(48)}/session-1/layout`
+  try {
+    const browser = await harness({ sidebar: endpoint('a') })
+    await browser.run('browser_read', { url: 'https://library.example/rules', newTab: true })
+    browser.calls.length = 0
+    // Its current tab's page, marked so that the desktop app knows which one it is, then read afresh.
+    const text = await browser.run('browser_layout', { mode: 'desktop' })
+    const [[, , { mark }]] = requests
+    assert.match(mark, /^[0-9a-f]{32}$/u)
+    assert.deepEqual(requests, [['POST', at, { mode: 'desktop', mark }]])
+    assert.deepEqual(browser.calls.map(c => [c.name, c.args.function === READ ? 'read' : c.args.function]), [['browser_evaluate', `() => 'eduwork-layout:${mark}'`], ['browser_evaluate', 'read']])
+    assert.match(text, /^This tab is at desktop width now: its page lays out 1280 px wide\. Only this tab changed, and the page did not reload\.\nA page that chose its layout as it loaded keeps it until it reloads; reload it only if the user has nothing unsaved in it\.\n\n<untrusted_web_content>\nPage: 借阅规则\n/u)
+    // The page read is the one browser_act acts on next, and nothing asked the user.
+    assert.equal(pageOf(browser.agent), 'https://library.example/rules')
+    assert.deepEqual(browser.asked, [])
+    // A page still laying out is said to be; each request has a mark of its own.
+    assert.match(await browser.run('browser_layout', { mode: 'sidebar' }), /^This tab is at the Sidebar's width now, but its page had not laid out at the new width yet; read it again in a moment\./u)
+    assert.deepEqual(requests[1][2].mode, 'sidebar')
+    assert.notEqual(requests[1][2].mark, mark)
+    // A page that cannot be read afterwards, as one gone by then, still shows what was done, and its numbers stand for nothing.
+    meanwhile = () => browser.visit('gone')
+    assert.match(await browser.run('browser_layout', { mode: 'desktop' }), /^This tab is at desktop width now: [^\n]*\n[^\n]*\n\nThe page could not be read: /u)
+    assert.equal(pageOf(browser.agent), undefined)
+    // What the desktop app refuses fails the call.
+    const refused = await harness({ sidebar: endpoint('b') })
+    await assert.rejects(refused.run('browser_layout', { mode: 'desktop' }), { message: 'The Sidebar browser did not see the page to lay out' })
+    // A subagent keeps a browser of its own, without the tool.
+    const tools = async agent => (await browser.ctx.tools.resolve({ agent, signal: AbortSignal.timeout(5000) })).view(agent).get('browser_layout') !== undefined
+    assert.deepEqual([await tools(browser.agent), await tools({ session: { id: 'session-2', header: { origin: 'subagent' } } })], [true, false])
+  } finally {
+    server.close()
+  }
 })

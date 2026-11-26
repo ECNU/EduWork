@@ -148,8 +148,8 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     try { owner(event) } catch { return }
     sidebarBrowser.opened(request, result)
   })
-  ipcMain.on(SIDEBAR_BROWSER_IPC.width, (event, guestId, desktop) => {
-    try { sidebarBrowser.widthShown(owner(event), guestId, desktop) } catch { /* Not the application page. */ }
+  ipcMain.on(SIDEBAR_BROWSER_IPC.width, (event, guestId, desktop, width, request) => {
+    try { sidebarBrowser.widthShown(owner(event), guestId, desktop, width, request) } catch { /* Not the application page. */ }
   })
   session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ['ws://127.0.0.1/*'] }, (details, callback) => {
     callback(getHost()?.socketHeaders(details, getWindow()?.webContents.id) ?? {})

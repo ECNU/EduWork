@@ -6,7 +6,7 @@ if (process.isMainFrame && location.protocol === 'dsh-app:' && location.host ===
   contextBridge.exposeInMainWorld('eduworkSidebarBrowser', {
     bind: (guestId, sessionId, tabId) => ipcRenderer.send('eduwork:sidebar-browser:bind', guestId, sessionId, tabId),
     opened: (request, result) => ipcRenderer.send('eduwork:sidebar-browser:opened', request, result),
-    width: (guestId, desktop) => ipcRenderer.send('eduwork:sidebar-browser:width', guestId, desktop),
+    width: (guestId, desktop, width, request) => ipcRenderer.send('eduwork:sidebar-browser:width', guestId, desktop, width, request),
     onRequest: listener => {
       const handler = (_event, message) => listener(message)
       ipcRenderer.on('eduwork:sidebar-browser:request', handler)

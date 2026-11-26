@@ -1,6 +1,7 @@
 import * as PlaywrightBrowser from '@deepseek-ai/dsh-experimental-browser-use-playwright-mcp'
 import z from '@deepseek-ai/schemastery'
 import { browserConfig } from './config.js'
+import { registerLayout } from './layout.js'
 import { browserGuard, browserPermission } from './permission.js'
 import { noteSavedScreenshots, registerPageTools } from './read-act.js'
 import { mountBrowser, takeSidebarEndpoint } from './sidebar.js'
@@ -11,7 +12,7 @@ export { browserConfig }
 
 // How wide the desktop app shows Sidebar pages (sidebar-client.js). Volatile:
 // DSH keeps it per plugin entry, and the app's own settings row edits it.
-export const Config = z.object({ sidebarWidth: z.union([z.const('desktop'), z.const('sidebar')]).default('desktop').volatile() })
+export const Config = z.object({ sidebarWidth: z.union([z.const('desktop'), z.const('sidebar')]).default('sidebar').volatile() })
 
 // Only the desktop app starts the Host with a Sidebar browser endpoint.
 const sidebar = takeSidebarEndpoint()
@@ -24,4 +25,5 @@ export function apply(ctx, config = {}) {
   registerPageTools(ctx)
   noteSavedScreenshots(ctx)
   mountBrowser(ctx, browser, sidebar)
+  if (sidebar !== undefined) registerLayout(ctx, sidebar)
 }

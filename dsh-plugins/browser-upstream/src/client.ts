@@ -31,7 +31,7 @@ function WidthRow({ useSettings, choose, t }) {
   const settings = useSettings(value => value)
   const [open, setOpen] = useState(false)
   const anchor = useRef(null)
-  const value = settings.value?.sidebarWidth ?? 'desktop'
+  const value = settings.value?.sidebarWidth ?? 'sidebar'
   const button = h('button', {
     ref: anchor, type: 'button', style: selector, 'aria-haspopup': 'menu', 'aria-expanded': open,
     disabled: settings.status !== 'ready' || !settings.writable, onClick: () => setOpen(open => !open),
@@ -55,7 +55,7 @@ export function apply(ctx) {
     bridge, desktop: globalThis.dshDesktop.browser, sidebar: ctx.sidebarRight, document,
     storage: (sessionId, signal) => workspaceStorage(ctx.workspaces.list, sessionId, signal),
     conversation: sessionId => ctx.sessions.binding(sessionId), text: t,
-    desktopWidth: { getSnapshot: () => form.getSnapshot().value?.sidebarWidth !== 'sidebar', subscribe: listener => form.subscribe(listener) },
+    desktopWidth: { getSnapshot: () => form.getSnapshot().value?.sidebarWidth === 'desktop', subscribe: listener => form.subscribe(listener) },
   }))
   ctx.effect(() => ctx.locale.register(width, widthWords))
   // In Settings → General, after DSH's row choosing where links open (order 17).

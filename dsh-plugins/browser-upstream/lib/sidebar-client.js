@@ -92,7 +92,7 @@ export async function workspaceStorage(list, sessionId, signal) {
  * @param storage - (session id, signal) => the Sidebar browser storage of the conversation's workspace.
  * @param conversation - a conversation's DSH session binding: its session, whether its turn runs, and cancel, and its events.
  * @param text - the marker's 'acting' and 'stop' labels.
- * @param desktopWidth - the user's setting, { getSnapshot, subscribe }: whether pages show at desktop width.
+ * @param desktopWidth - the user's setting, { getSnapshot, subscribe }: whether pages show at desktop width rather than the Sidebar's.
  * @returns disconnects from the main process and clears every mark.
  */
 export function connectSidebarBrowser({ bridge, desktop, sidebar, document, storage, conversation, text, desktopWidth }) {
@@ -117,11 +117,12 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
     let guestId
     try { guestId = frame.getWebContentsId() } catch { return } // before dom-ready
     if (tabId && sessionId) bridge.bind(guestId, sessionId, tabId)
-    bridge.width(guestId, desktopFor(frame))
+    report(frame)
   }
 
-  // Each page's width: the user's setting, or their choice for its tab from
-  // the page's menu, which lasts while the application runs.
+  // Each page's width: the user's setting, or the choice for its tab, the
+  // user's from the page's menu or the Agent's, which lasts while the
+  // application runs.
   const chosen = new Map() // `${session id} ${tab id}` -> whether at desktop width
   const followed = new Map() // guest element -> { parent, width, height }: the tab it fills
   const keyOf = frame => {
@@ -142,11 +143,13 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
     Object.assign(frame.style, { flex: 'none', width: `${DESKTOP}px`, height: `${tall}px`, transform: `scale(${scale})`, transformOrigin: '0 0',
       marginRight: `${-DESKTOP}px`, marginBottom: `${-tall}px` })
   }
-  // The main process shows the choice in the page's menu.
-  const report = frame => {
+  // The main process shows the choice in the page's menu, and answers the
+  // Agent's request once the page lays out at the width it is given.
+  const report = (frame, request) => {
     let guestId
     try { guestId = frame.getWebContentsId() } catch { return } // before dom-ready, which reports it
-    bridge.width(guestId, desktopFor(frame))
+    const { width } = followed.get(frame)
+    bridge.width(guestId, desktopFor(frame), desktopFor(frame) && width < DESKTOP ? DESKTOP : width, request)
   }
   const sizes = new ResizeObserver(entries => {
     for (const { target, contentRect } of entries) {
@@ -372,13 +375,17 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
       returnFocus(pressing.previous, pressing.frames)
       pressing = undefined
     },
-    // The user's choice from the page's menu.
-    width({ guestId, desktop }) {
+    // The choice for a tab: the user's from its page's menu, or the Agent's
+    // request for the tab it acts on, fitted to the tab's size now, which
+    // may have changed since the tab last showed as it comes forward.
+    width({ id, guestId, desktop }) {
       const frame = [...followed.keys()].find(frame => { try { return frame.getWebContentsId() === guestId } catch { return false } })
       if (frame === undefined) return
       chosen.set(keyOf(frame), desktop)
+      const { width, height } = frame.parentElement.getBoundingClientRect()
+      if (width > 0 && height > 0) Object.assign(followed.get(frame), { width, height })
       if (followed.get(frame).width !== undefined) fit(frame)
-      report(frame)
+      report(frame, id)
     },
   }
   const unsubscribe = bridge.onRequest(message => handlers[message.type]?.(message))

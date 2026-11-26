@@ -114,14 +114,17 @@
     active: () => ({ id: session(onScreen).active }),
     focus: tabId => focus(onScreen, tabId),
   }
-  // The user's width setting, desktop width as by default.
-  let desktopWidth = true
+  // The user's width setting, the Sidebar's width as by default.
+  let desktopWidth = false
   const widthListeners = new Set()
   const width = { getSnapshot: () => desktopWidth, subscribe: listener => { widthListeners.add(listener); return () => widthListeners.delete(listener) } }
   connectSidebarBrowser({ bridge: window.eduworkSidebarBrowser, desktop, sidebar, document, storage: async id => `storage-${id}`, conversation, text: key => key, desktopWidth: width })
   const fixture = window.fixture = {
     show, focus, expand, openTabIn, storages, stopped, acquireDelay: 0,
     desktopWidth(value) { desktopWidth = value; for (const listener of widthListeners) listener() },
+    // The setting as the Host has it, and its listeners told again, as when the user picks the same value.
+    width: () => desktopWidth,
+    settingsChanged() { for (const listener of widthListeners) listener() },
     held: () => [...held],
     running: (id, value) => conversation(id).set(value),
     event: (id, event) => conversation(id).append(event),

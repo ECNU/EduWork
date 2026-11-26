@@ -91,6 +91,7 @@ try {
     // Settings list a plugin only once it runs; the browser's has its own row rather than a generated form.
     const entry = sidebarBrowser && result.namespaces.find(row => row.ns === sidebarBrowser.id)
     if (sidebarBrowser) assert.ok(['desktop', 'sidebar'].includes(entry?.value.sidebarWidth) && entry.autoGenerate === false, 'Sidebar browser plugin is active')
+    if (sidebarBrowser) assert.equal(entry.base.sidebarWidth, 'sidebar', 'Sidebar pages follow the Sidebar unless the user chose otherwise')
     return { namespaces: result.namespaces.map(row => row.ns) }
   })
   if (!values['launch-only']) {
