@@ -25,11 +25,30 @@ app.commandLine.appendSwitch('no-proxy-server')
 protocol.registerSchemesAsPrivileged([{ scheme: 'dsh-app', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 let window
 const idleCounts = new Map()
-const idleTrace = { events: null }
-const traceIdle = (sessionId, event, data) => {
-  if (sessionId === 'session-a') idleTrace.events?.push({ ms: Math.round(performance.now()), event, ...data })
+let isolatedWorldHold
+process.on('unhandledRejection', reason => {
+  if (reason?.message === 'controlled late rejection') isolatedWorldHold?.unhandled.push(reason.message)
+})
+const holdIsolatedWorld = (url, worldName) => {
+  const guest = webContents.getAllWebContents().find(guest => guest.getType() === 'webview' && guest.getURL() === url)
+  if (!guest) throw new Error(`No Sidebar guest for ${url}`)
+  const sendCommand = guest.debugger.sendCommand.bind(guest.debugger)
+  guest.debugger.sendCommand = (method, params, sessionId) => {
+    if (method !== 'Page.createIsolatedWorld' || params?.worldName !== worldName) return sendCommand(method, params, sessionId)
+    guest.debugger.sendCommand = sendCommand
+    return new Promise((_, reject) => { isolatedWorldHold = { reject, unhandled: [] } })
+  }
 }
-const broker = createSidebarBrowser({ getWindow: () => window, idleMs: 1500, traceIdle })
+const rejectHeldIsolatedWorld = async () => {
+  if (!isolatedWorldHold) throw new Error('No isolated world command is being held')
+  const held = isolatedWorldHold
+  held.reject(new Error('controlled late rejection'))
+  await new Promise(resolve => setImmediate(resolve))
+  await new Promise(resolve => setImmediate(resolve))
+  isolatedWorldHold = undefined
+  return held.unhandled
+}
+const broker = createSidebarBrowser({ getWindow: () => window, idleMs: 1500 })
 const menus = [], externals = [], clearings = []
 Menu.prototype.popup = function () { menus.push(this) }
 // The desktop locale's editing commands, as DSH names them in Chinese.
@@ -59,7 +78,6 @@ void app.whenReady().then(async () => {
       if (type === 'idle') {
         const count = (idleCounts.get(sessionId) ?? 0) + 1
         idleCounts.set(sessionId, count)
-        traceIdle(sessionId, 'idle:send', { count })
       }
     }
     return send(channel, ...args)
@@ -88,7 +106,7 @@ void app.whenReady().then(async () => {
   })
   const environment = await broker.listen()
   process.on('message', async ({ id, code }) => {
-    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker, webContents, menus, externals, clearings, idleCounts, idleTrace, traceIdle }) => { ${code} })(scope)`)({ window, broker, webContents, menus, externals, clearings, idleCounts, idleTrace, traceIdle }) }) }
+    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker, webContents, menus, externals, clearings, idleCounts, holdIsolatedWorld, rejectHeldIsolatedWorld }) => { ${code} })(scope)`)({ window, broker, webContents, menus, externals, clearings, idleCounts, holdIsolatedWorld, rejectHeldIsolatedWorld }) }) }
     catch (error) { process.send({ id, error: error.message }) }
   })
   await window.loadURL('dsh-app://app/index.html')
