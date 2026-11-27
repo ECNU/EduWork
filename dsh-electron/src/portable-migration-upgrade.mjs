@@ -21,7 +21,7 @@ export async function writePortableSourceHint({ localAppData, distribution, root
 export function createPortableMigration({ source, discover, download, reserve, preflight, inspectTasks, confirm, stop, intents,
   launch, quit, fail, cleanup, now = Date.now }) {
   if (!source) return null
-  let policy, candidate, pending, nextCheck = 0, dismissed = false, operation
+  let policy, candidate, pending, nextCheck = 0, dismissed = false, operation, progress, controller
   const synchronize = update => {
     const next = update?.enabled && update.userEnabled ? update.policy : undefined
     if (policy !== next) {
@@ -51,18 +51,31 @@ export function createPortableMigration({ source, discover, download, reserve, p
       return pending = request
     },
     state(update) {
-      if (synchronize(update) && candidate) return { version: candidate.version, dismissed, busy: Boolean(operation) }
+      if (synchronize(update) && candidate) return { version: candidate.version, bytes: candidate.bytes, dismissed, busy: Boolean(operation),
+        ...(progress ? { ...progress, cancellable: Boolean(controller && !controller.signal.aborted) } : {}) }
     },
     dismiss(update) { if (synchronize(update)) dismissed = true },
+    cancel(update) { if (synchronize(update)) controller?.abort() },
     start(update, contentIdle) {
       const channel = synchronize(update)
       if (operation || !channel || !candidate) return
       const installer = candidate
       operation = (async () => {
-        let release, intent, executable, stopped = false, launched = false
+        let release, intent, executable, signal, stopped = false, launched = false
         try {
           release = await reserve(channel, contentIdle)
-          executable = await download(installer)
+          progress = { stage: 'preflight', downloadedBytes: 0, totalBytes: installer.bytes }
+          await preflight()
+          controller = new AbortController()
+          signal = controller.signal
+          progress.stage = 'downloading'
+          executable = await download(installer, { signal, onProgress: next => {
+            progress = next
+            if (next.stage === 'verifying') controller = undefined
+          } })
+          signal.throwIfAborted()
+          controller = undefined
+          progress.stage = 'stopping'
           const portable = await preflight()
           const active = await inspectTasks()
           if (!await confirm()) return
@@ -73,18 +86,20 @@ export function createPortableMigration({ source, discover, download, reserve, p
           launched = true
           quit()
         } catch (error) {
+          controller = undefined
           if (intent) {
             try {
               const releaseIntent = await intents.claim?.(intent.id)
               try { intents.remove(intent.id) } finally { await releaseIntent?.() }
             } catch { /* Preserve recoverable intent */ }
           }
-          await fail(error, stopped)
+          if (!signal?.aborted) await fail(error, stopped)
         } finally {
-          if (executable && !launched) await cleanup?.(executable)
-          release?.()
+          try {
+            if (executable && !launched) await cleanup?.(executable)
+          } finally { release?.() }
         }
-      })().finally(() => { operation = undefined })
+      })().finally(() => { operation = progress = undefined })
       return operation
     },
   }

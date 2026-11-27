@@ -436,9 +436,9 @@ async function prepareDesktop() {
     const installedRoot = join(localAppData, 'Programs', 'EduWork', distribution)
     migration = createPortableMigration({ source: installerSource, intents,
       discover: policy => discoverPortableInstaller({ source: installerSource, policy, version: settings.productVersion }),
-      download: async installer => {
+      download: async (installer, { signal, onProgress }) => {
         await portableMigrationHelper({ mode: 'cleanup' }).catch(error => desktopHostLog(`[portable migration] ${error.message}\n`))
-        return downloadPortableInstaller({ installer, cache })
+        return downloadPortableInstaller({ installer, cache, signal, onProgress })
       },
       cleanup: async executable => { await unlink(executable).catch(() => {}); await rmdir(dirname(executable)).catch(() => {}) },
       reserve: (policy, contentIdle) => software.reserveIdle(policy, contentIdle),

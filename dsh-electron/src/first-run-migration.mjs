@@ -59,8 +59,9 @@ export async function resolveInstalledMigration({ targetRoot, version, intent, s
 export function installedMigrationDialogs(showMessageBox) {
   return {
     conflict: async () => (await showMessageBox({ type: 'warning', title: '安装版已有数据',
-      message: '不会合并或覆盖安装版已有数据。', detail: '保留现有安装版会结束本次迁移，旧便携目录保持原样。',
-      buttons: ['保留现有安装版', '取消退出核对'], cancelId: 1, defaultId: 1, noLink: true })).response === 0,
+      message: '安装版目录中已存在数据，系统不会自动覆盖或合并。',
+      detail: '选择「保留现有安装版」将结束本次迁移并直接打开安装版，原便携目录保持原样；选择「退出以便核对」将暂不启动，可核对数据目录或打开旧便携版取消本次迁移。',
+      buttons: ['保留现有安装版', '退出以便核对'], cancelId: 1, defaultId: 1, noLink: true })).response === 0,
     failed: error => showMessageBox({ type: 'error', title: '迁移未完成', message: error.message,
       detail: '旧目录未修改。迁移意图仍保留，请核对后重新打开安装版。' }),
   }

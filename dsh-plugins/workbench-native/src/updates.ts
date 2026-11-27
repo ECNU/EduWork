@@ -1,6 +1,6 @@
 import React, { useEffect, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
-import { PortableMigrationUpgrade, portableMigrationPrompt } from './portable-migration-upgrade'
+import { PortableMigrationUpgrade, portableMigrationPercent, portableMigrationPrompt } from './portable-migration-upgrade'
 const h = React.createElement
 const accent='var(--dsw-alias-state-business-primary, #3575ef)'
 const border='var(--dsw-alias-border-l2, #ddd)'
@@ -9,6 +9,7 @@ const primary={...button,background:accent,borderColor:accent,color:'#fff'}
 const secondary='var(--dsw-alias-label-secondary, #777)'
 const note={margin:'4px 0 0',color:secondary,fontSize:12,lineHeight:1.55}
 const row={display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16}
+const progressAnimation='@keyframes eduwork-update-progress{from{transform:translateX(-100%)}to{transform:translateX(334%)}}[data-eduwork-update-indeterminate]{animation:eduwork-update-progress 1.4s linear infinite}@media(prefers-reduced-motion:reduce){[data-eduwork-update-indeterminate]{animation:none}}'
 
 // One native state and one poller serve the footer, modal and settings. Closing
 // settings or the modal never stops a native download or loses its progress.
@@ -49,7 +50,7 @@ export function createUpdateController(service) {
   settle()
   if(elapsed)publish({statusError:'无法读取更新状态：读取更新状态超时（10 秒）'})
  }
- const poll=async()=>{await read();if(!stopped)timer=setTimeout(poll,!view.statusError&&[view.status?.update?.state,view.status?.contentUpdate?.state].some(state=>['checking','downloading','verifying','applying'].includes(state))?350:2500)}
+ const poll=async()=>{await read();if(!stopped)timer=setTimeout(poll,!view.statusError&&(Boolean(view.status?.portableMigration?.busy)||[view.status?.update?.state,view.status?.contentUpdate?.state].some(state=>['checking','downloading','verifying','applying'].includes(state)))?350:2500)}
  const run=async(action)=>{
   if(view.working)return
   const started=Date.now(),working=action==='check-updates'?'checking':action==='download-update'?'downloading':action.startsWith('use-')?'switching':action.includes('software-updates')?'settings':''
@@ -66,6 +67,11 @@ export function createUpdateController(service) {
 function useUpdates(controller){return useSyncExternalStore(controller.subscribe,controller.getSnapshot,controller.getSnapshot)}
 const percent=s=>s?.downloadStage==='verifying'?(s.totalFiles>0?Math.min(100,Math.floor(s.checkedFiles/s.totalFiles*100)):0):s?.totalBytes>0?Math.min(100,Math.floor(s.downloadedBytes/s.totalBytes*100)):0
 const size=n=>n<1048576?Math.ceil(Math.max(0,n||0)/1024)+' KB':(Math.max(0,n||0)/1048576).toFixed(1)+' MB'
+function progressBar(label,progress) {
+ const determinate=progress!==undefined
+ return h('div',{role:'progressbar','aria-label':label,'aria-valuemin':0,'aria-valuemax':100,...(determinate?{'aria-valuenow':progress}:{}),style:{height:6,marginTop:10,overflow:'hidden',borderRadius:999,background:border}},
+  h('div',{'data-eduwork-update-indeterminate':determinate?undefined:true,style:{width:determinate?`${progress}%`:'30%',height:'100%',borderRadius:999,background:accent,transition:determinate?'width .2s ease':undefined}}))
+}
 function ContentPanel({controller,content:c,working}) {
  if(!c?.enabled)return null
  const progress=percent(c)
@@ -82,13 +88,13 @@ function ContentPanel({controller,content:c,working}) {
   c.state==='ready'&&h('p',{style:note},'可以继续使用；重启前请先完成正在运行的任务。'))
 }
 export function UpdatePanel({controller}) {
- const {status,statusError,error,working}=useUpdates(controller),s=status?.update,c=status?.contentUpdate
+ const {status,statusError,error,working}=useUpdates(controller),s=status?.update,c=status?.contentUpdate,migration=status?.portableMigration
  const verifyingPackage=s?.state==='verifying',state=verifyingPackage?'verifying':working||s?.state||status?.phase
  const busy=['checking','downloading','verifying','applying','switching','settings'].includes(state)
  const enabled=status&&status.shell!=='web'&&(s?.enabled!==false||c?.enabled)
  const softwareEnabled=s?.userEnabled??s?.enabled
- const toggleLocked=Boolean(working||statusError)||s?.busy||s?.installOnQuit||s?.installOnNextStart||['checking','downloading','verifying','ready','applying'].includes(s?.state)
- const policy=s?.policy||c?.policy||'stable',locked=Boolean(statusError)||busy||state==='ready'||s?.busy||['checking','downloading','ready'].includes(c?.state)
+ const toggleLocked=Boolean(working||statusError||migration?.busy)||s?.busy||s?.installOnQuit||s?.installOnNextStart||['checking','downloading','verifying','ready','applying'].includes(s?.state)
+ const policy=s?.policy||c?.policy||'stable',locked=Boolean(statusError||migration?.busy)||busy||state==='ready'||s?.busy||['checking','downloading','ready'].includes(c?.state)
  const channels=[['stable','仅公测版'],['development','开发版']].filter(([value])=>!s?.policies||s.policies.includes(value))
  const setPolicy=async value=>{if(locked||value===policy)return;await controller.run(value==='development'?'use-development-updates':'use-stable-updates');await controller.run('check-updates')}
  // A Windows delta checks the installed files it reuses before it is ready.
@@ -96,6 +102,7 @@ export function UpdatePanel({controller}) {
  const progress=percent(s),determinate=verifying?s.totalFiles>0:state==='downloading'&&s?.downloadStage!=='extracting'&&s?.totalBytes>0
  const message=state==='available'?`发现新版本 ${s.latestVersion}`:verifyingPackage?'正在校验安装包…':verifying?'正在校验本机文件':state==='downloading'?`${s.downloadStage==='extracting'?'正在准备安装':'正在下载'} ${s.latestVersion}`:state==='checking'?'正在检查更新…':state==='switching'?'正在切换更新渠道…':state==='applying'?'正在退出并安装更新…':state==='installed'?'更新已完成':state==='up_to_date'?'当前已是最新版本':null
  const alert=statusError||(!busy&&(error||s?.error))
+ const showProgress=!statusError&&s?.enabled!==false&&['checking','downloading','verifying','applying'].includes(state)
  // Restore the 0.2 settings layout while sharing native state across both shells.
  // Status-specific content expands below the channel buttons, never in a second UI.
  return h('div',{'data-eduwork-update-panel':true},
@@ -122,11 +129,10 @@ export function UpdatePanel({controller}) {
    h('p',{style:{...note,marginTop:8}},policy==='development'?'接收开发版及更新的公测版。':'仅接收公测版；切换渠道不会降级。')),
   !statusError&&message&&s?.enabled!==false&&h('div',{style:{...row,alignItems:'center',marginTop:12}},
    h('span',{role:'status','aria-live':'polite',style:{fontSize:12,color:secondary}},message),
-   state==='available'&&s&&h('button',{type:'button',style:primary,onClick:()=>controller.run('download-update')},'下载更新')),
-  !statusError&&s?.enabled!==false&&['checking','downloading','verifying','applying'].includes(state)&&h('div',null,
-   h('style',null,'@keyframes eduwork-update-progress{from{transform:translateX(-100%)}to{transform:translateX(334%)}}[data-eduwork-update-indeterminate]{animation:eduwork-update-progress 1.4s linear infinite}@media(prefers-reduced-motion:reduce){[data-eduwork-update-indeterminate]{animation:none}}'),
-   h('div',{role:'progressbar','aria-label':verifyingPackage?'安装包校验进度':verifying?'本机文件校验进度':state==='downloading'?'更新下载进度':'更新处理进度','aria-valuemin':0,'aria-valuemax':100,...(determinate?{'aria-valuenow':progress}:{}),style:{height:6,marginTop:10,overflow:'hidden',borderRadius:999,background:border}},
-    h('div',{'data-eduwork-update-indeterminate':determinate?undefined:true,style:{width:determinate?`${progress}%`:'30%',height:'100%',borderRadius:999,background:accent,transition:determinate?'width .2s ease':undefined}})),
+   state==='available'&&s&&h('button',{type:'button',style:migration?button:primary,disabled:migration?.busy,onClick:()=>controller.run('download-update')},'下载更新')),
+  showProgress&&h('div',null,
+   h('style',null,progressAnimation),
+   progressBar(verifyingPackage?'安装包校验进度':verifying?'本机文件校验进度':state==='downloading'?'更新下载进度':'更新处理进度',determinate?progress:undefined),
    state==='downloading'&&h('div',{style:{...row,marginTop:6,fontSize:11,color:secondary,fontVariantNumeric:'tabular-nums'}},
     h('span',{style:{minWidth:0,overflowWrap:'anywhere'}},verifying?'增量更新沿用的本机文件':s?.downloadStage==='extracting'?'正在解包并校验':s?.fileName||'正在下载发行包'),
     h('span',{style:{flexShrink:0}},verifying?(determinate?`已检查 ${s.checkedFiles} / ${s.totalFiles} 个 · ${progress}%`:'正在准备…'):determinate?`${size(s.downloadedBytes)} / ${size(s.totalBytes)} · ${progress}%`:s?.downloadStage==='extracting'?'请稍候…':'后台下载中…')),
@@ -138,8 +144,9 @@ export function UpdatePanel({controller}) {
     s.canSchedule!==false&&!s.installOnQuit&&!s.installOnNextStart&&h('button',{type:'button',style:button,onClick:()=>controller.run('schedule-update')},'下次启动时安装'),
     h('button',{type:'button',style:primary,onClick:()=>controller.run('install-update')},'立即重启更新'))),
   alert&&h('p',{role:'alert',style:{...note,marginTop:12,color:'var(--dsw-alias-state-error-primary, #a82332)',overflowWrap:'anywhere'}},alert),
-  status?.portableMigration&&h(PortableMigrationUpgrade,{migration:status.portableMigration,run:controller.run,locked:locked||toggleLocked||Boolean(working),button,primary,note}),
-  h(ContentPanel,{controller,content:c,working}),
+  migration?.busy&&!showProgress&&h('style',null,progressAnimation),
+  migration&&h(PortableMigrationUpgrade,{migration,run:controller.run,locked:locked||toggleLocked||Boolean(working),button,primary,note,border,hasPortableUpdate:state==='available'&&s?.enabled!==false,size,progressBar}),
+  h(ContentPanel,{controller,content:c,working:working||migration?.busy}),
   s?.releaseNotesURL&&h('a',{href:s.releaseNotesURL,target:'_blank',rel:'noopener noreferrer',style:{...button,display:'inline-block',marginTop:12}},'查看发行说明'),
   status?.url&&h('a',{href:status.url,target:'_blank',rel:'noopener noreferrer',style:{...button,display:'inline-block',marginTop:12}},'打开下载页面'))
 }
@@ -155,12 +162,14 @@ export function UpdateFooter({controller,wide=true}) {
  const softwareVisible=!officialSoftwareIndicator&&s?.enabled&&['available','downloading','verifying','ready','applying'].includes(state)
  const softwareLabel=statusError?'更新状态不可用':state==='available'?'更新':verifyingPackage?'正在校验…':state==='downloading'?(s?.downloadStage==='verifying'?`校验 ${percent(s)}%`:s?.totalBytes>0?`下载 ${percent(s)}%`:'正在下载…'):state==='ready'?(s.installOnQuit?'退出时更新':'重启更新'):'正在更新…'
  const contentLabel=c?.state==='downloading'?`内容 ${percent(c)}%`:c?.state==='ready'?'内容待生效':'内容更新'
- const migrationPrompt=portableMigrationPrompt(status?.portableMigration)
- const label=migrationPrompt?'升级并迁移':softwareVisible?softwareLabel:contentLabel
+ const migration=status?.portableMigration,migrationPrompt=portableMigrationPrompt(migration)
+ const migrationLabel=migration?.busy&&migration.stage==='downloading'&&migration.totalBytes>0?`迁移下载 ${portableMigrationPercent(migration)}%`
+  :migration?.busy&&migration.stage==='verifying'?'正在校验…':migration?.busy&&migration.stage==='stopping'?'准备安装…':'升级并迁移'
+ const label=migrationPrompt?migrationLabel:softwareVisible?softwareLabel:contentLabel
  const contentPrompt=contentVisible&&!softwareVisible&&!migrationPrompt
  const visible=wide&&(softwareVisible||contentVisible||migrationPrompt)
  return h(React.Fragment,null,
-  visible&&h('button',{type:'button','aria-label':migrationPrompt?'查看便携版迁移选项':contentPrompt?'查看内容更新':'查看更新',title:migrationPrompt?'查看便携版迁移选项':contentPrompt?'查看配置与 Skills 更新':'查看软件及内容更新',onClick:controller.open,'data-eduwork-update-entry':true,'data-chatecnu-update-prompt':migrationPrompt?'portable-migration':softwareVisible?state:c?.state,style:{flex:'0 0 auto',alignSelf:'center',minWidth:42,height:28,margin:'4px 2px 4px 6px',border:0,borderRadius:999,padding:'0 11px',background:'var(--dsw-alias-state-info-primary, #4f78dd)',color:'white',cursor:'pointer',fontSize:11,fontWeight:700,whiteSpace:'nowrap',fontFamily:'system-ui, sans-serif'}},label),
+  visible&&h('button',{type:'button','aria-label':migrationPrompt?`${migrationLabel}，查看便携版迁移选项`:contentPrompt?'查看内容更新':'查看更新',title:migrationPrompt?'查看便携版迁移选项':contentPrompt?'查看配置与 Skills 更新':'查看软件及内容更新',onClick:controller.open,'data-eduwork-update-entry':true,'data-chatecnu-update-prompt':migrationPrompt?'portable-migration':softwareVisible?state:c?.state,style:{flex:'0 0 auto',alignSelf:'center',minWidth:42,height:28,margin:'4px 2px 4px 6px',border:0,borderRadius:999,padding:'0 11px',background:'var(--dsw-alias-state-info-primary, #4f78dd)',color:'white',cursor:'pointer',fontSize:11,fontWeight:700,whiteSpace:'nowrap',fontFamily:'system-ui, sans-serif'}},label),
   open&&createPortal(h('div',{style:{position:'fixed',inset:0,zIndex:11000,display:'grid',placeItems:'center',background:'rgba(0,0,0,.28)',backdropFilter:'blur(3px)'},onMouseDown:e=>{if(e.target===e.currentTarget)controller.close()}},
    h('section',{role:'dialog','aria-modal':true,'aria-label':'更新',style:{boxSizing:'border-box',width:'min(480px, calc(100vw - 32px))',maxHeight:'calc(100vh - 48px)',overflowY:'auto',padding:24,border:`1px solid ${border}`,borderRadius:16,background:'var(--dsw-alias-bg-layer-1, #fff)',color:'var(--dsw-alias-label-primary, #222)',boxShadow:'0 20px 70px #0003'}},
     h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}},h('h2',{style:{fontSize:20,margin:0}},'更新'),h('button',{type:'button','aria-label':'关闭更新面板',disabled:verifyingPackage&&!statusError,onClick:controller.close,style:button},'×')),

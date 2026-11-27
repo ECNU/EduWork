@@ -5,13 +5,35 @@ import { tmpdir } from 'node:os'
 import { mkdtemp, mkdir, readdir, readFile, realpath, rm, writeFile } from 'node:fs/promises'
 import { runInNewContext } from 'node:vm'
 import { migrationIntentStore } from '../src/first-run-migration-intent.mjs'
-import { portableRedirectGate, handlePortableRedirect } from '../src/portable-migrated-redirect.mjs'
+import { portableRedirectGate, handlePortableRedirect, portableRedirectDialogs } from '../src/portable-migrated-redirect.mjs'
 import { refreshPortableShortcuts } from '../src/portable-import-shortcuts.mjs'
 import { writePortableSourceHint } from '../src/portable-migration-upgrade.mjs'
 
 const root = join(tmpdir(), 'old EduWork')
 const intent = { id: 'same', sourceRoot: root, installerVersion: '0.4.15' }
 const settings = { portableMigration: true, distribution: 'eduwork' }
+
+test('pending migration dialogs match the actions actually available', async () => {
+  let options, response
+  const dialog = portableRedirectDialogs(async value => { options = value; return { response } })
+  for (const [available, actions] of [[true, ['resume', 'withdraw', 'exit']], [false, ['withdraw', 'exit']]]) {
+    for (const [index, action] of actions.entries()) {
+      response = index
+      assert.equal(await dialog.choose(available), action)
+    }
+    assert.equal(options.title, '上次迁移到安装版尚未完成')
+    assert.deepEqual(options.buttons, [...(available ? ['打开安装版继续迁移'] : []), '取消迁移并继续用旧版', '退出'])
+    assert.match(options.message, available ? /安装版已就绪/ : /本机尚未安装所需版本/)
+    assert.match(options.detail, available ? /仅清除未完成的迁移记录/ : /回到旧客户端后再重新点击「升级并迁移」/)
+    assert.equal(options.defaultId, available ? 0 : 1)
+    assert.equal(options.cancelId, actions.length - 1)
+  }
+  for (const migrated of [true, false]) {
+    await dialog.fail(Error('synthetic failure'), migrated)
+    assert.equal(options.title, '无法打开 EduWork 安装版')
+    assert.match(options.message, migrated ? /旧客户端不再启动以免产生两份数据/ : /原便携数据未被修改/)
+  }
+})
 
 test('before activation an opt-out skips all portable migration state', () => {
   const read = () => assert.fail('disabled must not read migration state')

@@ -13,7 +13,7 @@ const semver = pathToFileURL(createRequire(new URL('../../scripts/electron-build
 const hook = registerHooks({ resolve(specifier, context, next) {
   return next(specifier === 'semver' && context.parentURL?.endsWith('/first-run-migration.mjs') ? semver : specifier, context)
 } })
-const { installedMigrationIntent, resolveInstalledMigration } = await import('../src/first-run-migration.mjs')
+const { installedMigrationDialogs, installedMigrationIntent, resolveInstalledMigration } = await import('../src/first-run-migration.mjs')
 hook.deregister()
 
 async function fixture(t) {
@@ -113,9 +113,27 @@ test('activation receipt resumes only the same intent and removes its interrupte
 })
 
 test('progress is a labeled native control without a value before copy and after final verification starts', () => {
-  assert.match(migrationProgressPage(), /<progress id="progress"><\/progress>/)
-  assert.match(migrationProgressPage(), /<label for="progress">/)
-  assert.match(migrationProgressPage({ copied: 3, total: 4 }), /<progress id="progress" max="4" value="3">/)
-  assert.match(migrationProgressPage({ copied: 4, total: 4 }), /正在验证/)
-  assert.doesNotMatch(migrationProgressPage({ copied: 4, total: 4 }), /value=/)
+  const initial = migrationProgressPage(), copying = migrationProgressPage({ copied: 3, total: 4 }), verifying = migrationProgressPage({ copied: 4, total: 4 })
+  assert.match(initial, /default-src 'none'; style-src 'unsafe-inline'/)
+  assert.match(initial, /<label for="progress">正在检查原有数据…<\/label><progress id="progress"><\/progress>/)
+  assert.match(initial, /完成后将自动打开工作台，原便携目录不会被修改，请稍候。/)
+  assert.match(copying, /正在迁移数据（3 \/ 4 个文件）…<\/label><progress id="progress" max="4" value="3">/)
+  assert.match(verifying, /正在校验迁移完整性…/)
+  assert.doesNotMatch(verifying, /value=/)
+})
+
+test('an occupied target defaults to exiting for review, with keeping existing data opt-in', async () => {
+  let response = 1
+  const { conflict } = installedMigrationDialogs(async options => {
+    assert.equal(options.title, '安装版已有数据')
+    assert.match(options.message, /不会自动覆盖或合并/)
+    assert.match(options.detail, /打开旧便携版取消本次迁移/)
+    assert.deepEqual(options.buttons, ['保留现有安装版', '退出以便核对'])
+    assert.equal(options.defaultId, 1)
+    assert.equal(options.cancelId, 1)
+    return { response }
+  })
+  assert.equal(await conflict(), false)
+  response = 0
+  assert.equal(await conflict(), true)
 })

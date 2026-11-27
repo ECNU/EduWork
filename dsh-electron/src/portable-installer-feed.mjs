@@ -137,7 +137,7 @@ export async function discoverPortableInstaller({ source, policy, version, fetch
   return candidates.filter(row => semver.gte(row.version, version)).sort((left, right) => semver.rcompare(left.version, right.version))[0] ?? null
 }
 
-export async function downloadPortableInstaller({ installer, cache, signal, fetch = globalThis.fetch }) {
+export async function downloadPortableInstaller({ installer, cache, signal, onProgress, fetch = globalThis.fetch }) {
   const timeout = AbortSignal.timeout(12 * 60 * 1000)
   signal = signal ? AbortSignal.any([signal, timeout]) : timeout
   signal.throwIfAborted()
@@ -149,13 +149,23 @@ export async function downloadPortableInstaller({ installer, cache, signal, fetc
     const body = await resource(fetch, url, installer.provider === 'github' ? githubAsset(url) : channelAsset(new URL('.', url), installer.fileName), signal)
     if (!body) throw Error('安装器未找到')
     const hash = createHash(installer.algorithm)
-    let bytes = 0
+    let bytes = 0, reported = 0
+    const report = stage => {
+      onProgress?.({ stage, downloadedBytes: bytes, totalBytes: installer.bytes })
+      reported = bytes
+    }
     await pipeline(Readable.fromWeb(body), new Transform({ transform(chunk, encoding, callback) {
       bytes += chunk.length
       if (bytes > installer.bytes) return callback(Error('安装器超出预期大小'))
       hash.update(chunk)
+      try {
+        if (!reported || bytes - reported >= 128 * 1024) report('downloading')
+      } catch (error) { return callback(error) }
       callback(null, chunk)
     } }), createWriteStream(part, { flags: 'wx', mode: 0o600 }), { signal })
+    if (bytes !== reported) report('downloading')
+    signal.throwIfAborted()
+    report('verifying')
     if (bytes !== installer.bytes || hash.digest(installer.algorithm === 'sha512' ? 'base64' : 'hex') !== installer.digest) throw Error('安装器校验失败')
     await rename(part, output)
     return output

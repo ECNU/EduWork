@@ -68,6 +68,67 @@ test('dismissing the portable prompt leaves the verified migration in settings',
   assert.equal(find(UpdatePanel({ controller }), node => node.props?.['data-eduwork-portable-migration']), undefined)
 })
 
+test('migration progress polls in 350 ms, updates the dismissed footer, and cancels only the download', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const React = { createElement: (type, props, ...children) => typeof type === 'function'
+    ? type({ ...props, children }) : { type, props, children } }
+  const { createUpdateController, UpdatePanel, UpdateFooter } = loadUpdates(React, () => {}, (_, snapshot) => snapshot(), undefined, new EventTarget())
+  let migration = { version: '0.4.15', bytes: 2048, dismissed: true, busy: true, stage: 'downloading', downloadedBytes: 512, totalBytes: 2048, cancellable: true }
+  const actions = []
+  const controller = createUpdateController(async action => {
+    actions.push(action)
+    if (action === 'cancel-portable-migration') migration = { ...migration, busy: false, cancellable: false }
+    return { shell: 'electron', update: { enabled: true, state: 'idle' }, portableMigration: migration }
+  })
+  t.after(() => controller.dispose())
+  await nextTurn()
+  const progress = () => find(UpdatePanel({ controller }), node => node.props?.['aria-label'] === '迁移安装包下载进度')
+  const cancel = () => find(UpdatePanel({ controller }), node => node.type === 'button' && node.children.includes('取消下载'))
+  const footer = () => find(UpdateFooter({ controller }), node => node.props?.['data-chatecnu-update-prompt'] === 'portable-migration')
+  assert.equal(progress().props.role, 'progressbar')
+  assert.equal(progress().props['aria-valuenow'], 25)
+  assert.ok(find(UpdatePanel({ controller }), node => node.children?.includes('1 KB / 2 KB · 25%')))
+  assert.deepEqual(footer().children, ['迁移下载 25%'])
+  migration = { ...migration, stage: 'verifying', downloadedBytes: 2048, cancellable: false }
+  t.mock.timers.tick(349)
+  await nextTurn()
+  assert.deepEqual(actions, ['status'])
+  t.mock.timers.tick(1)
+  await nextTurn()
+  assert.equal(progress().props['aria-valuenow'], undefined)
+  assert.equal(cancel(), undefined)
+  assert.deepEqual(footer().children, ['正在校验…'])
+  assert.ok(find(UpdatePanel({ controller }), node => node.type === 'style' && node.children[0].includes('@keyframes eduwork-update-progress')))
+  migration = { ...migration, stage: 'stopping' }
+  t.mock.timers.tick(350)
+  await nextTurn()
+  assert.deepEqual(footer().children, ['准备安装…'])
+  assert.ok(find(UpdatePanel({ controller }), node => node.children?.includes('正在关闭当前客户端并启动安装程序…')))
+  migration = { ...migration, stage: 'downloading', cancellable: true }
+  t.mock.timers.tick(350)
+  await nextTurn()
+  await cancel().props.onClick()
+  assert.equal(actions.filter(action => action === 'cancel-portable-migration').length, 1)
+  assert.equal(progress(), undefined)
+  assert.equal(footer(), undefined)
+})
+
+test('ordinary portable download stays primary unless migration is offered', () => {
+  const React = { createElement: (type, props, ...children) => typeof type === 'function'
+    ? type({ ...props, children }) : { type, props, children } }
+  const { UpdatePanel } = loadUpdates(React, undefined, (_, snapshot) => snapshot())
+  const status = { shell: 'electron', update: { enabled: true, state: 'available', latestVersion: '0.4.15' } }
+  const controller = { getSnapshot: () => ({ status }) }
+  const button = text => find(UpdatePanel({ controller }), node => node.type === 'button' && node.children.includes(text))
+  const ordinary = button('下载更新')
+  assert.equal(button('升级并迁移'), undefined)
+  assert.equal(ordinary.props.disabled, undefined)
+  status.portableMigration = { version: '0.4.15', dismissed: false }
+  assert.equal(button('升级并迁移').props.style, ordinary.props.style)
+  assert.equal(button('下载更新').props.style, button('稍后').props.style)
+  assert.ok(find(UpdatePanel({ controller }), node => node.children?.some(child => typeof child === 'string' && child.endsWith('无需先更新便携版，可直接升级并迁移。'))))
+})
+
 for (const outcome of ['ready', 'error']) {
   test(`the installed verification panel stays busy until ${outcome}`, async t => {
     const timeouts = t.mock.timers
@@ -487,7 +548,7 @@ test('every desktop action gate accepts the same actions as the native bridge', 
     return [...list.matchAll(/'([a-z-]+)'/g)].map(match => match[1]).sort()
   }
   const bridge = actions('../../../dsh-electron/src/native-vault.mjs')
-  assert.ok(bridge.includes('start-portable-migration') && bridge.includes('dismiss-portable-migration'))
+  for (const action of ['start-portable-migration', 'dismiss-portable-migration', 'cancel-portable-migration']) assert.ok(bridge.includes(action), action)
   for (const gate of ['../lib/typert-schemas.js', '../lib/index.js', '../../desktop-services/lib/index.js']) {
     assert.deepEqual(actions(gate), bridge, gate)
   }

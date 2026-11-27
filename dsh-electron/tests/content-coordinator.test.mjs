@@ -19,9 +19,10 @@ async function migrationCoordinator(t, { beforeChannel, beforeCheck, duringDownl
   } }
   const software = await softwareUpdateControl({ dataRoot, version: '0.4.14', policy, start: async () => backend })
   const { promise: finished, resolve: onFinished } = Promise.withResolvers()
+  let preflights = 0
   const migration = createPortableMigration({ source: {}, discover: async () => ({ version: '0.4.15-dev.1' }),
     reserve: (...args) => software.reserveIdle(...args), download: async () => { downloads++; await duringDownload?.() },
-    preflight: async () => { throw Error('synthetic download boundary') }, fail: onFinished })
+    preflight: async () => { if (++preflights === 2) throw Error('synthetic download boundary') }, fail: onFinished })
   await migration.check((await software.action('status')).update)
   const content = { state: {}, snapshot: () => ({ state: 'current' }), async selectPolicy() {}, async check() { checks++ } }
   return { coordinator: updateCoordinator({ software, content, migration }), finished, downloads: () => downloads, checks: () => checks }
@@ -60,8 +61,20 @@ test('the default coordinator preserves the baseline status and never forwards m
     content: { snapshot: () => contentUpdate } })
   await assert.rejects(coordinator.action('start-portable-migration'), /未启用/)
   await assert.rejects(coordinator.action('dismiss-portable-migration'), /未启用/)
+  await assert.rejects(coordinator.action('cancel-portable-migration'), /未启用/)
   assert.deepEqual(await coordinator.action('status'), { ...baseline, contentUpdate })
   assert.deepEqual(calls, ['status'])
+})
+
+test('cancelling through the coordinator returns the refreshed migration snapshot', async () => {
+  const update = { enabled: true, userEnabled: true, policy: 'stable' }
+  let cancellable = true
+  const migration = { busy: true, state: () => ({ busy: true, cancellable }), cancel(current) {
+    assert.equal(current, update)
+    cancellable = false
+  } }
+  const coordinator = updateCoordinator({ software: { action: async () => ({ update }) }, content: { snapshot: () => ({}) }, migration })
+  assert.deepEqual((await coordinator.action('cancel-portable-migration')).portableMigration, { busy: true, cancellable: false })
 })
 
 test('one check exposes both statuses, and software download also starts compatible content',async()=>{

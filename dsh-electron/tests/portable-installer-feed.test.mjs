@@ -111,3 +111,40 @@ test('download verifies byte count and digest before renaming, and cleans its ow
   assert.deepEqual(await readFile(path), bytes)
   assert.match((await readdir(cache))[0], new RegExp(`^installer-${process.pid}-[a-zA-Z0-9]{6}$`))
 })
+
+test('streams the first chunk, throttled bytes and final count before verification', async t => {
+  const cache = await mkdtemp(join(tmpdir(), 'eduwork-installer-progress-'))
+  t.after(() => rm(cache, { recursive: true, force: true }))
+  const chunks = [1024, 64 * 1024, 64 * 1024, 512].map(length => Buffer.alloc(length, 42))
+  const data = Buffer.concat(chunks)
+  const { url, fileName } = staticManifest().installer
+  const installer = { provider: 'static', algorithm: 'sha256', url, fileName, bytes: data.length, digest: createHash('sha256').update(data).digest('hex') }
+  const reports = []
+  const fetch = async () => new Response(new ReadableStream({ start(stream) {
+    for (const chunk of chunks) stream.enqueue(chunk)
+    stream.close()
+  } }))
+  const path = await downloadPortableInstaller({ installer, cache, fetch, onProgress: progress => reports.push(progress) })
+  assert.deepEqual(await readFile(path), data)
+  assert.deepEqual(reports, [
+    ['downloading', 1024], ['downloading', 129 * 1024], ['downloading', data.length], ['verifying', data.length],
+  ].map(([stage, downloadedBytes]) => ({ stage, downloadedBytes, totalBytes: data.length })))
+})
+
+test('aborting an active stream removes the partial file and skips verification', async t => {
+  const cache = await mkdtemp(join(tmpdir(), 'eduwork-installer-abort-'))
+  t.after(() => rm(cache, { recursive: true, force: true }))
+  const { url, fileName } = staticManifest().installer
+  const installer = { provider: 'static', algorithm: 'sha256', url, fileName, bytes: bytes.length, digest: sha256 }
+  const abort = new AbortController()
+  const reports = []
+  let cancelled = false
+  const body = new ReadableStream({ start: stream => stream.enqueue(bytes.subarray(0, 3)), cancel() { cancelled = true } })
+  await assert.rejects(downloadPortableInstaller({ installer, cache, signal: abort.signal, fetch: async () => new Response(body), onProgress: progress => {
+    reports.push(progress)
+    abort.abort()
+  } }), { name: 'AbortError' })
+  assert.deepEqual(reports, [{ stage: 'downloading', downloadedBytes: 3, totalBytes: bytes.length }])
+  assert.equal(cancelled, true)
+  assert.deepEqual(await readdir(cache), [])
+})

@@ -14,10 +14,11 @@ export function updateCoordinator({software,content,version,onRestart,onPolicy,b
   return {
     async action(action) {
       if(action==='status')return snapshot()
-      if(action==='start-portable-migration'||action==='dismiss-portable-migration') {
+      if(action==='start-portable-migration'||action==='dismiss-portable-migration'||action==='cancel-portable-migration') {
         if(!migration)throw Error('此客户端未启用便携版迁移')
         const {update}=await snapshot()
         if(action==='dismiss-portable-migration')migration.dismiss(update)
+        else if(action==='cancel-portable-migration')migration.cancel(update)
         else {
           const contentIdle=()=>!restarting&&!content.busy
           if(!contentIdle())throw Error('请先完成当前更新再迁移')
