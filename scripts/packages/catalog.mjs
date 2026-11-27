@@ -8,6 +8,7 @@ export const packages = [
   { id: 'dsh-auto-approval', name: '@eduwork/dsh-auto-approval', directory: 'packages/dsh-auto-approval', group: 'dsh-auto-approval' },
   { id: 'dsh-annotation', name: '@eduwork/dsh-annotation', directory: 'packages/dsh-annotation', group: 'dsh-annotation' },
   { id: 'dsh-side-chat', name: '@eduwork/dsh-side-chat', directory: 'packages/dsh-side-chat', group: 'dsh-side-chat' },
+  { id: 'dsh-message-edit', name: '@eduwork/dsh-message-edit', directory: 'packages/dsh-message-edit', group: 'dsh-message-edit' },
   { id: 'dsh-desktop-pet', name: '@eduwork/dsh-desktop-pet', directory: 'packages/dsh-desktop-pet', group: 'dsh-desktop-pet' },
   { id: 'dsh-literature', name: '@eduwork/dsh-literature', directory: 'packages/dsh-literature', group: 'dsh-literature' },
   { id: 'dsh-oidc', name: '@eduwork/dsh-oidc', directory: 'packages/dsh-oidc', group: 'dsh-oidc' },
@@ -39,6 +40,7 @@ export function changedGroups(files) {
     // These package checks install this Runtime to exercise their mounted plugins.
     if (/^third_party\/dsh\/[^/]+\/npm-runtime\//.test(file)) {
       result.add('dsh-side-chat')
+      result.add('dsh-message-edit')
       result.add('dsh-calendar')
       result.add('dsh-calendar-subscriptions')
       result.add('dsh-academic-calendar')
