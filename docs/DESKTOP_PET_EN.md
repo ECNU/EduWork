@@ -39,7 +39,7 @@ The pet is one more way to show the same state: Needs you, Failed and Done come 
 
 ## Settings
 
-Settings → Desktop pet offers: show the pet, reset position, character, size (50%–200%), status bubbles and napping. Changes apply at once.
+In Settings → Desktop pet you can show the pet, reset its position, and adjust its size (50%–200%), status bubbles and napping. Open “Change character” to browse built-in characters, preview their actions and see artwork credits. In a narrow window, switch between the character list and the action preview. “Use this character” saves your choice, even when the pet is turned off.
 
 `desktop.pet` in `eduwork.jsonc` provides defaults; choices saved in Settings take precedence:
 

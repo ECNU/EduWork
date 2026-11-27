@@ -1,5 +1,7 @@
 import React, { useEffect, useState, useSyncExternalStore } from 'react'
 import remote from '../lib/typert.remote-client.js'
+import { DEFAULT_SKIN } from '../lib/skin.js'
+import { PetSelector, Thumbnail, skinName } from './pet-selector.js'
 
 export const inject = ['slots', 'locale', 'remote', 'configForms']
 const h = React.createElement
@@ -11,7 +13,11 @@ const zh = {
   intro: '桌宠显示在桌面上，随会话状态变化：工作中会思考，完成或需要你处理时头上出现标记，点击它打开对应会话。授权和回答仍在应用内完成。',
   unsupported: '当前客户端不支持桌面宠物。', loading: '正在读取桌宠设置…',
   enabled: '显示桌面宠物', reset: '重置位置', resetDone: '已移回默认位置。',
-  skins: '形象', author: '作者：{author}',
+  skins: '形象', author: '作者：{author}', current: '当前使用', preview: '正在预览', change: '更换形象',
+  close: '关闭', cancel: '取消', back: '← 返回形象列表', use: '使用此形象', saving: '正在保存…',
+  credits: '素材署名', ecnuRights: '形象及校徽版权归华东师范大学', actions: '动作', more: '更多动作',
+  actionLoading: '正在加载动作…', actionError: '动作加载失败。', retry: '重试', replay: '播放', still: '静态预览',
+  actionNames: 'idle=待机|think=思考|work=工作中|attention=需要你|done=完成|failed=出错|sleep=打盹|drag=拖拽|react=点击反应|peek=收边|greet=问候|eat=吃东西|play=玩耍|stretch=伸懒腰|wag=摇尾巴|smile=微笑|hug=拥抱|desk-peek=桌边探头|yawn=打哈欠|blink=眨眼',
   size: '大小', bubbles: '状态变化时显示简短气泡', sleep: '长时间空闲时打盹',
   notes: '托盘菜单和桌宠右键菜单里的“隐藏桌宠”与上面的开关相同；隐藏后可从托盘选择“显示桌宠”。气泡里是否显示会话标题，跟随“通用 → 桌面通知”里的“显示会话与成果标题”。',
   saveFailed: '设置未保存，请重试。',
@@ -21,7 +27,11 @@ const en = {
   intro: 'The pet stays on your desktop and follows your conversations: it thinks while work runs and shows a mark when something is done or needs you. Click it to open that conversation. Approvals and answers still happen in the app.',
   unsupported: 'This client does not support the desktop pet.', loading: 'Loading pet settings…',
   enabled: 'Show desktop pet', reset: 'Reset position', resetDone: 'Moved back to the default position.',
-  skins: 'Character', author: 'By {author}',
+  skins: 'Character', author: 'By {author}', current: 'In use', preview: 'Previewing', change: 'Change character',
+  close: 'Close', cancel: 'Cancel', back: '← Back to characters', use: 'Use this character', saving: 'Saving…',
+  credits: 'Artwork credits', ecnuRights: 'Character and emblem © East China Normal University', actions: 'Actions', more: 'More actions',
+  actionLoading: 'Loading action…', actionError: 'Could not load this action.', retry: 'Retry', replay: 'Play', still: 'Still preview',
+  actionNames: 'idle=Idle|think=Thinking|work=Working|attention=Needs you|done=Done|failed=Error|sleep=Nap|drag=Drag|react=Click reaction|peek=Edge peek|greet=Greeting|eat=Eating|play=Playing|stretch=Stretching|wag=Tail wag|smile=Smile|hug=Hug|desk-peek=Desk peek|yawn=Yawn|blink=Blink',
   size: 'Size', bubbles: 'Show short bubbles when the status changes', sleep: 'Nap after a long idle time',
   notes: '"Hide pet" in the tray menu and the pet\'s context menu is the same as the switch above; choose "Show pet" in the tray to bring it back. Conversation titles appear in bubbles only when "Show conversation and result titles" is on under General → Desktop notifications.',
   saveFailed: 'The setting was not saved. Please try again.',
@@ -35,39 +45,16 @@ const note = { margin: '4px 0 0', color: secondary, fontSize: 12, lineHeight: 1.
 const row = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 0', borderBottom: `1px solid ${border}` }
 const button = { border: `1px solid ${border}`, borderRadius: 8, padding: '6px 12px', background: layer, color: primary, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }
 const box = { accentColor: accent }
-const oneLine = { maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
-
 async function unwrap(operation) {
   const result = await operation
   if (result?.ok === true) return result.value
   throw new Error(result?.error?.message || result?.error?.code || 'desktop pet unavailable')
 }
-const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '')
-const pickText = (value, locale) => value?.[locale] ?? value?.['zh-CN'] ?? value?.en ?? ''
-
-function Preview({ preview }) {
-  const size = 64
-  if (!preview.crop) return h('img', { src: preview.src, alt: '', draggable: false, style: { width: size, height: size, objectFit: 'contain' } })
-  const scale = size / Math.max(preview.crop.width, preview.crop.height)
-  return h('div', { style: { position: 'relative', width: preview.crop.width * scale, height: preview.crop.height * scale, overflow: 'hidden' } },
-    h('img', { src: preview.src, alt: '', draggable: false, style: { position: 'absolute', left: 0, top: 0, transformOrigin: '0 0',
-      transform: `scale(${scale}) translate(${-preview.crop.x}px, ${-preview.crop.y}px)` } }))
-}
-
-function SkinCard({ skin, selected, disabled, onSelect, t }) {
-  const author = skin.author && fill(t('author'), skin)
-  return h('button', { type: 'button', 'aria-pressed': selected, disabled, onClick: onSelect, style: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 0, padding: '10px 8px', borderRadius: 12, cursor: disabled ? 'default' : 'pointer',
-    border: `${selected ? 2 : 1}px solid ${selected ? accent : border}`, background: layer, color: primary, textAlign: 'center', font: 'inherit' } },
-  h(Preview, { preview: skin.preview }),
-  h('strong', { style: { ...oneLine, fontSize: 13, fontWeight: 600 } }, pickText(skin.name, t('locale'))),
-  author && h('span', { title: author, style: { ...oneLine, color: secondary, fontSize: 11 } }, author))
-}
-
 function PetSettings({ scope, service, t }) {
   const snapshot = useSyncExternalStore(listener => scope.subscribe(listener), () => scope.getSnapshot(), () => scope.getSnapshot())
   const [state, setState] = useState(null), [pending, setPending] = useState({}), [message, setMessage] = useState(''), [error, setError] = useState('')
-  useEffect(() => { service.status().then(setState, cause => setError(cause.message)) }, [])
+  const [choosing, setChoosing] = useState(false)
+  useEffect(() => { service.catalog().then(setState, cause => setError(cause.message)) }, [service])
   const saved = snapshot.value ?? {}, locked = snapshot.status !== 'ready' || snapshot.writable !== true
   // Show a choice at once and keep it until the saved settings catch up, so
   // controls neither jump back nor gray out while a write is on its way.
@@ -86,6 +73,13 @@ function PetSettings({ scope, service, t }) {
       setError(t('saveFailed'))
     }
   }
+  const saveSkin = async id => {
+    try {
+      if (!await scope.set('skin', id)) return false
+      setPending(current => scope.getSnapshot().value?.skin === id ? current : { ...current, skin: id })
+      return true
+    } catch { return false }
+  }
   // Dragging only moves the slider; releasing it saves the size once.
   const commitSize = () => { if (pending.size !== undefined && pending.size !== saved.size) void save('size', pending.size) }
   const reset = async () => {
@@ -97,15 +91,20 @@ function PetSettings({ scope, service, t }) {
   const header = h('div', null, h('h3', { style: { margin: 0, fontSize: 16, fontWeight: 650, color: primary } }, t('title')), h('p', { style: note }, t('intro')))
   if (!state) return h('div', null, header, h('p', { role: error ? 'alert' : 'status', style: note }, error || t('loading')))
   if (!state.supported) return h('div', null, header, h('p', { role: 'status', style: note }, t('unsupported')))
+  const current = state.skins.find(skin => skin.id === value.skin) ?? state.skins.find(skin => skin.id === DEFAULT_SKIN)
   return h('div', { 'data-eduwork-desktop-pet': true, style: { color: primary } }, header,
     h('div', { style: row },
       h('label', { style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 } },
         h('input', { type: 'checkbox', role: 'switch', style: box, checked: value.enabled === true, disabled: locked, onChange: event => { void save('enabled', event.target.checked) } }), t('enabled')),
       h('button', { type: 'button', style: { ...button, ...(value.enabled === true ? {} : { opacity: 0.5, cursor: 'default' }) }, disabled: value.enabled !== true, onClick: () => { void reset() } }, t('reset'))),
-    h('section', { style: { padding: '14px 0', borderBottom: `1px solid ${border}` } },
-      h('div', { style: { fontSize: 14, marginBottom: 10 } }, t('skins')),
-      h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 } },
-        ...state.skins.map(skin => h(SkinCard, { key: skin.id, skin, t, selected: value.skin === skin.id, disabled: locked, onSelect: () => { if (value.skin !== skin.id) void save('skin', skin.id) } })))),
+    current && h('section', { style: { ...row, flexWrap: 'wrap' } },
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 } },
+        h(Thumbnail, { preview: current.preview }),
+        h('div', { style: { overflowWrap: 'anywhere' } },
+          h('div', { style: { color: secondary, fontSize: 12 } }, t('current')),
+          h('strong', { style: { fontSize: 14 } }, skinName(current, t)))),
+      h('button', { type: 'button', style: button, onClick: () => setChoosing(true) }, t('change')),
+      choosing && h(PetSelector, { skins: state.skins, current, service, t, locked, onClose: () => setChoosing(false), onSave: saveSkin })),
     h('section', { style: { padding: '14px 0', borderBottom: `1px solid ${border}` } },
       h('label', { style: { display: 'flex', alignItems: 'center', gap: 12, fontSize: 14 } }, t('size'),
         h('input', { type: 'range', min: 50, max: 200, step: 10, value: value.size ?? 100, disabled: locked, style: { flex: 1, maxWidth: 280, accentColor: accent },
@@ -122,7 +121,11 @@ export async function apply(ctx) {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'desktop-pet: dictionaries')
   ctx.inject(['remote.desktopPet'], surface => {
     const t = surface.locale.bind(NS)
-    const service = { status: () => unwrap(surface.remote.desktopPet.status()), reset: () => unwrap(surface.remote.desktopPet.resetPosition()) }
+    const service = {
+      catalog: () => unwrap(surface.remote.desktopPet.catalog()),
+      previewAction: (skinId, action) => unwrap(surface.remote.desktopPet.previewAction({ skinId, action })),
+      reset: () => unwrap(surface.remote.desktopPet.resetPosition()),
+    }
     const scope = surface.configForms.get(ENTRY)
     surface.slots.inject('settings.section', () => surface.slots.register({
       name: 'settings.section', id: 'desktop-pet', order: 15, label: () => t('nav'), locale: NS, inject: () => ({ scope, service, t }),

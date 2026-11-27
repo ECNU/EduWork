@@ -13,6 +13,7 @@ test('the Host plugin sends validated settings, lists built-in skins and closes 
     return next(name, /^(@deepseek-ai\/|zod$)/.test(name) ? { ...context, parentURL: pathToFileURL(join(runtime, 'package.json')).href } : context)
   } })
   const { default: DesktopPet } = await import('../lib/index.js')
+  const { descriptors } = await import('../lib/typert-schemas.js')
   hook.deregister()
   const calls = []
   const ctx = new Context()
@@ -33,6 +34,19 @@ test('the Host plugin sends validated settings, lists built-in skins and closes 
     ['ecnu-huashi-dumpling', '小狮', 'arwen'],
     ['ecnu-huashi-girl', '花狮娘', 'Emily']])
   assert.match(status.skins[0].preview.src, /^data:image\/svg\+xml;base64,/)
+  const catalog = descriptors.find(item => item.method === 'catalog').result.schema.parse(await ctx.desktopPet.catalog())
+  const fish = catalog.skins.find(skin => skin.id === 'dafeiyu')
+  assert.deepEqual(fish.states.working, ['think', 'work'])
+  assert.equal(fish.license, 'MIT')
+  const action = descriptors.find(item => item.method === 'previewAction').result.schema
+  const preview = action.parse(await ctx.desktopPet.previewAction(fish.id, 'work'))
+  assert.ok(preview.animation.frames.length > 1)
+  assert.equal(preview.images.length, 1)
+  assert.match(preview.images[0].src, /^data:image\/png;base64,/)
+  assert.ok(preview.animation.frames.every(frame => frame.file === preview.images[0].file && frame.crop))
+  await assert.rejects(ctx.desktopPet.previewAction('../skins', 'idle'), /Unknown pet skin/)
+  await assert.rejects(ctx.desktopPet.previewAction(fish.id, 'constructor'), /Unknown pet action/)
+  assert.equal(calls.length, 1, 'reading previews does not configure the desktop pet')
   assert.deepEqual(await ctx.desktopPet.resetPosition(), { supported: true })
   assert.deepEqual(calls.at(-1), { action: 'reset-position' })
   await fiber.dispose()
