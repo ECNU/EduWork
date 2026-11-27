@@ -147,12 +147,16 @@ test('NSIS offers a bilingual uninstall choice without preselecting personal dat
 
 test('NSIS only accepts the edition-specific data deletion switch for a non-upgrade silent uninstall', () => {
   const include = installerInclude(desktop)
-  const parser = include.match(/Function un\.ReadEduWorkUninstallArgs\n([\s\S]*?)\nFunctionEnd/)?.[1] ?? ''
-  assert.match(parser, /GetCommandLineW[\s\S]*CommandLineToArgvW[\s\S]*lstrlenW[\s\S]*\$\{NSIS_MAX_STRLEN\}[\s\S]*LocalFree/)
-  assert.match(parser, /== "\/KEEP_APP_DATA"\s+\$\{orIf\} .* == "--updated"/)
-  assert.match(parser, /S== "\/S"[\s\S]*S== "--eduwork-delete-user-data"/)
+  const parser = include.match(/Function un\.ParseUninstallFlags\n([\s\S]*?)\nFunctionEnd/)?.[1] ?? ''
+  assert.match(parser, /GetCommandLineW[\s\S]*lstrlenW[\s\S]*\$\{NSIS_MAX_STRLEN\}[\s\S]*CompareStringOrdinal\(.*w " _\?=".*i 0\)[\s\S]*CommandLineToArgvW[\s\S]*lstrlenW[\s\S]*\$\{NSIS_MAX_STRLEN\}[\s\S]*LocalFree/)
+  assert.match(parser, /CompareStringOrdinal\(.*w "_\?=".*i 0\)/)
+  for (const [flag, ignoreCase] of [['/KEEP_APP_DATA', 1], ['--updated', 1], ['/S', 0], ['--eduwork-delete-user-data', 0]]) {
+    assert.ok(parser.includes(`CompareStringOrdinal(p r3, i -1, w "${flag}", i -1, i ${ignoreCase})i.r6`), flag)
+  }
+  assert.match(parser, /\$\{if\} \$6 = 2/)
+  assert.match(parser, /\$\{andIfNot\} \$\{isUpdated\}/)
   assert.match(parser, /\$\{andIf\} \$\{Silent\}[\s\S]*StrCpy \$DeleteEduWorkUserData "1"/)
-  assert.doesNotMatch(parser, /GetOptions|TestParameter/)
+  assert.doesNotMatch(parser, /GetOptions|TestParameter|\bS?==\s+"(?:\/|--|_\?=)/)
   assert.match(include, /!ifdef BUILD_UNINSTALLER\n[\s\S]*!if "\$\{OPTION\}" S== "--delete-app-data"\s+SetErrors\s+!else\s+!insertmacro GetOptionsCall/)
 })
 
@@ -162,6 +166,7 @@ test('NSIS binds install identity before stock removal and verifies it before da
   assert.match(include, /Function un\.BindEduWorkInstall\n[\s\S]*\$installMode[\s\S]*InstallLocation[\s\S]*GetFileAttributesW[\s\S]*StrCpy \$EduWorkVerifiedInstDir \$INSTDIR/)
   assert.match(include, /!macro unregisterFileAssociations\n\s+!insertmacro EduWorkIfDeleteRequested\s+Call un\.DeletePersonalData/)
   assert.match(include, /Function un\.DeletePersonalData\n[\s\S]*verify-install[\s\S]*\$EduWorkVerifiedInstDir[\s\S]*GetFileAttributesW[\s\S]*"cleanup"[\s\S]*Call un\.DeleteEduWorkTree/)
+  assert.equal([...include.matchAll(/CompareStringOrdinal\(w "\$(?:INSTDIR|0|EduWorkVerifiedInstDir)", i -1, w "\$(?:INSTDIR|LOCALAPPDATA[^\n"]+)", i -1, i 1\)i\.r2'\n\s+\$\{if\} \$2 <> 2/g)].length, 3)
   assert.match(include, /DetailPrint .*\$EduWorkDataCleanupStage.*\$EduWorkDataCleanupError[\s\S]*MessageBox .* \/SD IDOK\s+SetErrorLevel 1/)
 })
 
