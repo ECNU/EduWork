@@ -809,9 +809,11 @@ test('the Agent lays the tab it acts on out at desktop width and back, that tab 
   // A tab out of sight while the Agent rests and the user narrows the Sidebar lays out at the tab's width as it comes forward.
   // A mark from before the Agent rested no longer serves.
   const before = await marked(tab)
+  const idleCount = () => run('return idleCounts.get("session-a") ?? 0')
+  const untilIdle = await idleCount()
   await other.bringToFront()
-  for (const deadline = Date.now() + 5000; await page('document.querySelector("[data-eduwork-agent-render]") !== null');) {
-    assert.ok(Date.now() < deadline, 'the Agent rests')
+  for (const deadline = Date.now() + 5000; await idleCount() === untilIdle;) {
+    assert.ok(Date.now() < deadline, 'session-a sends idle')
     await wait(50)
   }
   assert.deepEqual(await post('session-a', { mode: 'sidebar', mark: before }), unseen)
@@ -848,15 +850,26 @@ test('conversations working at once keep their own marker and the user\'s focus'
   assert.deepEqual(await page('[...document.querySelectorAll("[data-eduwork-agent-acting]")].map(e => e.closest(".session").getAttribute("data-sidebar-right-session")).sort()'),
     ['session-a', 'session-b'])
   // Overlapping clicks, one held up by its page, return focus to the message being typed.
-  await page('chat.focus()')
-  await Promise.all([pageA.getByRole('button', { name: 'Slow' }).click(), pageB.getByRole('button', { name: 'Greet' }).click()])
-  const focusDeadline = Date.now() + 2000
-  let activeId
-  do {
-    await wait(100)
-    activeId = await page('document.activeElement.id')
-  } while (activeId !== 'chat' && Date.now() < focusDeadline)
-  assert.equal(activeId, 'chat')
+  await run('focusTrace.events = []; await window.webContents.executeJavaScript("fixture.startFocusTrace()")')
+  try {
+    await Promise.all([pageA.getByRole('button', { name: 'Slow' }).click(), pageB.getByRole('button', { name: 'Greet' }).click()])
+    const focusDeadline = Date.now() + 2000
+    let activeId
+    do {
+      await wait(100)
+      activeId = await page('document.activeElement.id')
+    } while (activeId !== 'chat' && Date.now() < focusDeadline)
+    assert.equal(activeId, 'chat')
+  } catch (error) {
+    try {
+      const events = await run(`const renderer = await window.webContents.executeJavaScript('fixture.readFocusTrace()')
+        return [...focusTrace.events, ...renderer].sort((left, right) => left.time - right.time)`)
+      console.error(`SIDEBAR_FOCUS_TRACE\n${events.map(event => JSON.stringify(event)).join('\n')}`)
+    } catch (traceError) { console.error('SIDEBAR_FOCUS_TRACE unavailable:', traceError.message) }
+    throw error
+  } finally {
+    await run('focusTrace.events = null; await window.webContents.executeJavaScript("fixture.stopFocusTrace()")')
+  }
   // A background conversation's click, alone or overlapping one in the page the user uses, leaves the user there.
   const focused = () => page('document.activeElement.closest(".session")?.getAttribute("data-sidebar-right-session")')
   await page('document.querySelector("[data-sidebar-right-session=session-a] .cell:not([hidden]) webview").focus()')
