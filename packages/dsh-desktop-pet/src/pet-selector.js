@@ -207,8 +207,8 @@ export function PetSelector({ skins, current, service, locked, onClose, onSave, 
   const confirm = async () => {
     setSaving(true)
     setSaveError(false)
-    if (await onSave(candidate.id)) onClose()
-    else { setSaveError(true); setSaving(false) }
+    setSaveError(!await onSave(candidate.id))
+    setSaving(false)
   }
   const actionNames = new Map(t('actionNames').split('|').map(entry => entry.split('=')))
   const actionButton = name => h('button', { key: name, type: 'button', 'aria-pressed': action === name, onClick: () => setAction(name) },
@@ -232,7 +232,7 @@ export function PetSelector({ skins, current, service, locked, onClose, onSave, 
         canPreview && h('section', { className: 'pet-detail', 'aria-label': t('preview') },
           compact && h('button', { type: 'button', className: 'pet-back', disabled: saving, onClick: () => setShowPreview(false) }, t('back')),
           h('div', { className: 'pet-detail-heading' },
-            h('div', { className: 'pet-preview-label' }, t('preview'), candidate.id === current.id && ` · ${t('current')}`),
+            h('div', { className: 'pet-preview-label', 'aria-live': 'polite' }, t('preview'), candidate.id === current.id && ` · ${t('current')}`),
             h('h3', { ref: previewTitle, tabIndex: -1 }, skinName(candidate, t)),
             h('div', { className: 'pet-attribution' },
               candidate.author && h('span', null, t('author').replace('{author}', candidate.author)),
