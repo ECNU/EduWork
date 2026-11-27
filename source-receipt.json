@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-27T04:27:36.488Z",
-  "fileSetSHA256": "45abb5d11fb436085b48a9e2ab55fed283a8214d27a3c7f43369266c9bb82d57",
+  "createdAt": "2026-11-27T17:09:47.964Z",
+  "fileSetSHA256": "ef98c90fb53c5efe4f3b83142c6c7f20097f8167cba6f573e7d38ada0851642e",
   "files": [
     {
       "path": ".gitattributes",
@@ -297,11 +297,11 @@
     },
     {
       "path": "docs/DESKTOP_NOTIFICATIONS_EN.md",
-      "sha256": "8d7f461c08e2e6ad813413d29d1efd40b20d32c03efa301732f808e6faafb376"
+      "sha256": "be7267b9aa056108ca7ce920a79194af802f28ccae1c698e2aab07ea47556c8b"
     },
     {
       "path": "docs/DESKTOP_NOTIFICATIONS.md",
-      "sha256": "f78941a472efa2e07386d441aacdd47ece018959ce137413dfd5daf83428c73a"
+      "sha256": "cb1b57cb8bf5ed1224d8d684d9ef1e4fc0af044b35ff0a8785dedd92f2e9a1e0"
     },
     {
       "path": "docs/DESKTOP_PET_EN.md",
@@ -1005,7 +1005,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.mjs",
-      "sha256": "b2e8f07ce81f92a9a8b7ca57e6383ddf7d4f3d7c6838903ff7c5957d97909e98"
+      "sha256": "4f9d4f4109b373a82d552feebb304b04d756eaec70571c994490a22cccefd19d"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
@@ -1225,7 +1225,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "06566d6bb56b4e507d00c46659db82d85ca93a8021bbc858085d4c9fc7af00c9"
+      "sha256": "89e4d8b034c6327e708a67c7767e4b90252ec6183ffc4436536580080114534d"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1277,7 +1277,7 @@
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",
-      "sha256": "45a9327ab6320c886f3d56cfc03e715fedf94a2b9de1c4dd03eaa05f7b77ac23"
+      "sha256": "ca8ef7b1d341b7174d73c5206631b07b656f465855ec5004c6d209d98c9ce097"
     },
     {
       "path": "dsh-electron/src/taskbar-badges.png",
@@ -1545,7 +1545,7 @@
     },
     {
       "path": "dsh-electron/tests/task-notifications.test.mjs",
-      "sha256": "a8f8b51fd34206a5508727e8be2393f8d42d94f662d87ef729273c3a5bde8918"
+      "sha256": "54d2fea584afe9aacd4432727ef2974deab4bbb5af2c75e59f56cf3773d8f996"
     },
     {
       "path": "dsh-electron/tests/taskbar-indicator.test.mjs",
@@ -8109,7 +8109,7 @@
     },
     {
       "path": "scripts/pack-windows-installer.mjs",
-      "sha256": "b816137a118b2e63b4f9a908ace9054adfa271f6b30651210be97e1e48fc6c2f"
+      "sha256": "9a1960687cdfcdefaf4c6a69cd8c1481e640889b28c1a32d38abce747b5395d9"
     },
     {
       "path": "scripts/pack-windows-release.mjs",
@@ -8349,7 +8349,7 @@
     },
     {
       "path": "scripts/set-desktop-icon.mjs",
-      "sha256": "b0c975b101e28f24fd10fa522a4960f4cc09a0754adc5235b1b8192ad7eaf8ef"
+      "sha256": "ebebb4e1a7ca8c46a0e2a3b2dafdaf53cd38a894c0e84b1404db68101c4a7f10"
     },
     {
       "path": "scripts/set-desktop-icon.ps1",
@@ -8469,7 +8469,7 @@
     },
     {
       "path": "scripts/test/windows-installer.test.mjs",
-      "sha256": "db60e82cc6352d5938b1bc1a485362cc5317925b249e43c9d8a9f71607aa6d71"
+      "sha256": "1e0510e7a0bb10aa49221ddced22599acec044fccbc74d320db3711dc99a36b8"
     },
     {
       "path": "scripts/test/windows-update-delta.test.mjs",
@@ -8605,7 +8605,7 @@
     },
     {
       "path": "tests/eduwork-windows-release.test.mjs",
-      "sha256": "d5288270aa1258889408198668a11fcb53788c0944c33d6ff08e34bf67a12fad"
+      "sha256": "db27a8d2860a848d9d654b025c1a2e9c9be42f1ff38f2cc1cb58a29dfdca985f"
     },
     {
       "path": "tests/fixtures/audit-stack-probe.mjs",

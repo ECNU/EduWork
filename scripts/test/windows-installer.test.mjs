@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { desktopAppPackage, installedUpdateFeed, installedUpdateYAML } from '../../dsh-electron/scripts/assemble-windows.mjs'
-import { installerInclude, installerProject, packWindowsInstaller, verifyElectronBuilderVersion, verifyInstalledCandidate } from '../pack-windows-installer.mjs'
+import { installedToastActivatorClsid, installerInclude, installerProject, packWindowsInstaller, verifyElectronBuilderVersion, verifyInstalledCandidate } from '../pack-windows-installer.mjs'
 
 const version = '0.4.13-dev.20261116.1'
 const desktop = {
@@ -113,8 +113,46 @@ test('NSIS include pins the per-user program directory per distribution', () => 
   assert.match(include, /WriteRegStr SHELL_CONTEXT "\$\{UNINSTALL_REGISTRY_KEY\}" InstallLocation "\$INSTDIR"/)
 })
 
+test('installed Toast CLSIDs are deterministic RFC 4122 UUIDv5 values per app ID', () => {
+  const eduwork = installedToastActivatorClsid('org.eduwork.eduwork.electron')
+  assert.match(eduwork, /^\{[0-9A-F]{8}-[0-9A-F]{4}-5[0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}\}$/)
+  assert.equal(eduwork, '{EDDC6656-2084-598B-8742-CD6D8831D998}')
+  assert.equal(installedToastActivatorClsid('org.eduwork.eduwork.electron'), eduwork)
+  assert.notEqual(installedToastActivatorClsid('org.eduwork.eduwork-chatecnu.electron'), eduwork)
+  assert.throws(() => installedToastActivatorClsid(''), /app ID/)
+})
+
+test('NSIS writes the Toast CLSID after creating the AUMID shortcut and removes only its own server', () => {
+  const clsid = installedToastActivatorClsid(desktop.appId)
+  const include = installerInclude(desktop)
+  const install = include.match(/!macro customInstall\n([\s\S]*?)\n!macroend/)?.[1] ?? ''
+  const uninstall = include.match(/!macro customUnInstall\n([\s\S]*?)\n!macroend/)?.[1] ?? ''
+  assert.ok(install.indexOf('WriteRegStr SHELL_CONTEXT') < install.indexOf('System::Call'))
+  assert.ok(install.indexOf('IfFileExists "$newStartMenuLink"') < install.indexOf('CoInitializeEx'))
+  assert.match(install, /0000010B-0000-0000-C000-000000000046/)
+  assert.match(install, /886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99/)
+  assert.ok(install.includes(clsid))
+  assert.match(install, /PKEY_AppUserModel_ToastActivatorCLSID/)
+  assert.match(install, /9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3.*i 26/)
+  assert.match(install, /\$newStartMenuLink/)
+  assert.match(install, /IfFileExists "\$newStartMenuLink" 0 installedToastNoShortcut/)
+  assert.match(install, /installedToastNoShortcut:/)
+  assert.match(install, /\$2->5\(w "\$newStartMenuLink", i 2\)/)
+  assert.match(install, /\$2->6\(w "\$newStartMenuLink", i 1\)/)
+  assert.equal((install.match(/System::Alloc /g) ?? []).length, 3)
+  assert.equal((install.match(/Pop \$[456]\n\s+\$\{if\} \$[456] == 0\n\s+Goto installedToastAllocationFailed\n\s+\$\{endif\}/g) ?? []).length, 3)
+  assert.match(install, /installedToastAllocationFailed:[\s\S]*Abort "Unable to allocate the Toast activation identity\."/)
+  assert.doesNotMatch(install, /CreateShortCut|SetDescription|SetIconLocation|SetPath|SetArguments/)
+  assert.match(uninstall, /\$\{ifNot\}\s+\$\{isUpdated\}/)
+  assert.match(uninstall, /\$installMode == "CurrentUser"/)
+  assert.match(uninstall, /HKCU "Software\\Classes\\CLSID\\\{[0-9A-F-]+\}\\LocalServer32"/)
+  assert.match(uninstall, /\$INSTDIR\\EduWork-Electron\.exe/)
+  assert.ok(uninstall.includes(clsid))
+  assert.match(uninstall, /DeleteRegKey HKCU/)
+})
+
 test('NSIS include checks the installer cache path per distribution', () => {
-  assert.ok(installerInclude({ distribution: 'test-edition' }).includes([
+  assert.ok(installerInclude({ ...desktop, distribution: 'test-edition', appId: 'org.eduwork.test-edition.electron' }).includes([
     '!if "${APP_INSTALLER_STORE_FILE}" S!= "eduwork-installer-test-edition-updater\\installer.exe"',
     '  !error "NSIS installer cache path differs from the EduWork updater cache path"',
     '!endif',

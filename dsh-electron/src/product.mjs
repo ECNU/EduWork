@@ -71,6 +71,7 @@ export const productUpdateObserver = createProductUpdateObserver({
 })
 let publisher
 let taskNotifications, notificationAdapter
+let packagedProductName
 const taskbar = createTaskbarIndicator({
   platform: process.platform, nativeImage, getDock: () => app.dock,
   warn: error => desktopHostLog(`[taskbar] ${error.message}\n`),
@@ -162,6 +163,7 @@ export const showDesktop = () => showDesktopWindows(activationWindows())
 export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
+  packagedProductName = settings.productName
   if (settings.schemaVersion !== 1 || settings.shell !== 'electron' || !/^[a-z0-9.-]+$/u.test(settings.appId)) throw new Error('Invalid EduWork desktop identity')
   paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : process.env.LOCALAPPDATA,
     testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, configOverride: process.env.EDUWORK_CONFIG_FILE })
@@ -413,6 +415,9 @@ async function prepareDesktop() {
     onUnreadable: ({ aside }) => desktopHostLog(JSON.stringify({ component: 'credential-vault', event: 'unreadable-backup', kept: basename(aside) }) + '\n') })
   const showNotificationWindow = () => { if (updateCompleted && mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } }
   notificationAdapter = nativeNotificationAdapter({ platform: process.platform, dataLayout: settings.dataLayout, Notification, getTray: () => tray, productName: settings.productName,
+    hasStartMenuShortcut: process.platform === 'win32' && settings.dataLayout === 'installed'
+      ? () => existsSync(join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs', `${packagedProductName}.lnk`))
+      : undefined,
     activate: key => taskNotifications.activate(key), show: showNotificationWindow, failed: () => { taskNotifications.delivery = 'unavailable' } })
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
     show: showNotificationWindow,
