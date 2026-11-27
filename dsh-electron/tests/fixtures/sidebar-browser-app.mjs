@@ -25,7 +25,11 @@ app.commandLine.appendSwitch('no-proxy-server')
 protocol.registerSchemesAsPrivileged([{ scheme: 'dsh-app', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 let window
 const idleCounts = new Map()
-const broker = createSidebarBrowser({ getWindow: () => window, idleMs: 1500 })
+const idleTrace = { events: null }
+const traceIdle = (sessionId, event, data) => {
+  if (sessionId === 'session-a') idleTrace.events?.push({ ms: Math.round(performance.now()), event, ...data })
+}
+const broker = createSidebarBrowser({ getWindow: () => window, idleMs: 1500, traceIdle })
 const menus = [], externals = [], clearings = []
 Menu.prototype.popup = function () { menus.push(this) }
 // The desktop locale's editing commands, as DSH names them in Chinese.
@@ -52,7 +56,11 @@ void app.whenReady().then(async () => {
   window.webContents.send = (channel, ...args) => {
     if (channel === SIDEBAR_BROWSER_IPC.request) {
       const { type, sessionId } = args[0]
-      if (type === 'idle') idleCounts.set(sessionId, (idleCounts.get(sessionId) ?? 0) + 1)
+      if (type === 'idle') {
+        const count = (idleCounts.get(sessionId) ?? 0) + 1
+        idleCounts.set(sessionId, count)
+        traceIdle(sessionId, 'idle:send', { count })
+      }
     }
     return send(channel, ...args)
   }
@@ -80,7 +88,7 @@ void app.whenReady().then(async () => {
   })
   const environment = await broker.listen()
   process.on('message', async ({ id, code }) => {
-    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker, webContents, menus, externals, clearings, idleCounts }) => { ${code} })(scope)`)({ window, broker, webContents, menus, externals, clearings, idleCounts }) }) }
+    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker, webContents, menus, externals, clearings, idleCounts, idleTrace, traceIdle }) => { ${code} })(scope)`)({ window, broker, webContents, menus, externals, clearings, idleCounts, idleTrace, traceIdle }) }) }
     catch (error) { process.send({ id, error: error.message }) }
   })
   await window.loadURL('dsh-app://app/index.html')

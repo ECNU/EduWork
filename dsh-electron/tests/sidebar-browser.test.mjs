@@ -740,6 +740,7 @@ test('a page lays out at the Sidebar\'s width, or at desktop width scaled down t
 })
 
 test('the Agent lays the tab it acts on out at desktop width and back, that tab alone and without reloading it, and its clicks and screenshots follow', live, async () => {
+  await run('idleTrace.events = []')
   const { browser, context } = await connect('session-a')
   const [tab] = context.pages()
   await tab.goto(`${origin}/layout`)
@@ -811,11 +812,17 @@ test('the Agent lays the tab it acts on out at desktop width and back, that tab 
   const before = await marked(tab)
   const idleCount = () => run('return idleCounts.get("session-a") ?? 0')
   const untilIdle = await idleCount()
+  await run(`traceIdle('session-a', 'wait:begin', { count: ${untilIdle} })`)
   await other.bringToFront()
   for (const deadline = Date.now() + 5000; await idleCount() === untilIdle;) {
+    if (Date.now() >= deadline) {
+      const events = await run(`traceIdle('session-a', 'wait:failed', { count: idleCounts.get('session-a') ?? 0 }); return idleTrace.events`)
+      console.error(`SIDEBAR_IDLE_TRACE\n${events.map(event => JSON.stringify(event)).join('\n')}`)
+    }
     assert.ok(Date.now() < deadline, 'session-a sends idle')
     await wait(50)
   }
+  await run('idleTrace.events = null')
   assert.deepEqual(await post('session-a', { mode: 'sidebar', mark: before }), unseen)
   await page('document.body.style.gridTemplateColumns = "1fr 400px"')
   assert.deepEqual(await layOut('session-a', tab, 'sidebar'), [200, { width: 400, settled: true }])
