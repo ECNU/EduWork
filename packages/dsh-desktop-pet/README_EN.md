@@ -2,7 +2,7 @@
 
 [简体中文](README.md)
 
-`@eduwork/dsh-desktop-pet` is an independently maintained and versioned DSH desktop-pet plugin. It includes Page (red and blue), Dafeiyu, Huashi, Huashi Girl and Huashi Boy, with character selection, size, status bubbles and idle napping. It shares the host's notification items with the tray and system notifications; clicking the pet opens a conversation that needs attention or has finished.
+`@eduwork/dsh-desktop-pet` is an independently maintained and versioned DSH desktop-pet plugin. It includes Page (red and blue), Dafeiyu, Huashi, Huashi Girl, Huashi Boy and Xiaoshi, with character selection, size, status bubbles and idle napping. It shares the host's notification items with the tray and system notifications; clicking the pet opens a conversation that needs attention or has finished.
 
 ![Page](skins/eduwork-page/idle.svg)
 
