@@ -32,6 +32,7 @@ const locale = { id: 'zh-CN', messages: { undo: '撤销', redo: '重做', cut: '
 const own = event => event.sender === window?.webContents && event.senderFrame === window.webContents.mainFrame
 ipcMain.on(SIDEBAR_BROWSER_IPC.bind, (event, ...args) => { if (own(event)) void broker.bind(window, ...args).catch(() => {}) })
 ipcMain.on(SIDEBAR_BROWSER_IPC.opened, (event, ...args) => { if (own(event)) broker.opened(...args) })
+ipcMain.on(SIDEBAR_BROWSER_IPC.width, (event, ...args) => { if (own(event)) broker.widthShown(window, ...args) })
 
 // Electron emits ready only after the entry module settles.
 void app.whenReady().then(async () => {
@@ -57,7 +58,8 @@ void app.whenReady().then(async () => {
     broker.data.attach(guest)
     guest.once('dom-ready', () => {
       lease = new URL(guest.getURL()).hash.slice(1)
-      attachSidebarBrowserMenu(window, guest, () => locale, { byAgent: () => broker.byAgent(guest), website: () => broker.website(guest), clearSite: () => clearings.push(guest.getURL()) })
+      attachSidebarBrowserMenu(window, guest, () => locale, { byAgent: () => broker.byAgent(guest),
+        desktopWidth: () => broker.desktopWidth(guest), chooseWidth: desktop => broker.chooseWidth(guest, desktop), website: () => broker.website(guest), clearSite: () => clearings.push(guest.getURL()) })
     })
     guest.setWindowOpenHandler(({ url }) => {
       void window.webContents.executeJavaScript(`fixture.popup(${JSON.stringify(lease)}, ${JSON.stringify(url)})`)

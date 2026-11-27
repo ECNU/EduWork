@@ -1,3 +1,4 @@
+import { request } from 'node:http'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -19,9 +20,10 @@ const prefix = `mcp__${server}__`
 const resourceTools = new Set(['list_mcp_resources', 'list_mcp_resource_templates', 'read_mcp_resource'])
 
 const sidebarGuidance = [
-  'In this conversation the browser tools (browser_read, browser_act and mcp__playwright-mcp__*) control the browser tabs in the right sidebar of the user\'s desktop app. The user watches every step there and shares the same pages and logins.',
+  'In this conversation the browser tools (browser_read, browser_act, browser_layout and mcp__playwright-mcp__*) control the browser tabs in the right sidebar of the user\'s desktop app. The user watches every step there and shares the same pages and logins.',
   'Tabs already open belong to the user: read them freely, but open a new tab for unrelated browsing instead of navigating away from or closing a page the user is on.',
   'When a login, CAPTCHA, payment or other step needs the user, ask them to complete it in the sidebar and wait for their reply before continuing.',
+  'Sidebar tabs lay out at the sidebar\'s own width unless the user chose desktop width, so many websites show their phone layout there. When that hides or gets in the way of what you need, such as a folded menu, filters or sorting, lay the tab out at desktop width with browser_layout.',
   'While the user is not viewing this conversation in the desktop app, for example when they use it from their phone, the open tabs keep working and a new tab opens in the background: it works the same and shares the logins, but the user cannot see it, so ask them to open this conversation in the desktop app before a step that needs them. A page that a link in a sidebar tab opens in a new window loads only once the user returns to this conversation.',
 ].join('\n')
 
@@ -33,6 +35,21 @@ export function takeSidebarEndpoint(environment = process.env) {
 }
 
 export const usesSidebar = agent => agent?.session.header.origin !== 'subagent'
+
+/** A request to the desktop app's Sidebar endpoint, through an agent of its own, which no proxy the Host's environment names configures. */
+export function postToSidebar(url, body, signal) {
+  return new Promise((resolve, reject) => {
+    request(url, { method: 'POST', agent: false, headers: { 'content-type': 'application/json' }, signal }, response => {
+      let text = ''
+      response.setEncoding('utf8').on('data', chunk => { text += chunk }).on('error', reject).on('end', () => {
+        let answer
+        try { answer = JSON.parse(text) } catch { return reject(new Error(`The Sidebar browser answered ${response.statusCode} without saying why`)) }
+        if (response.statusCode === 200) resolve(answer)
+        else reject(new Error(answer.error ?? `The Sidebar browser answered ${response.statusCode}`))
+      })
+    }).on('error', reject).end(JSON.stringify(body))
+  })
+}
 
 /** Server arguments and environment for one Agent's Playwright MCP client. */
 export function serverLaunch(browser, agent, sidebar, cli, environment = process.env) {

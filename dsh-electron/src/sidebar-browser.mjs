@@ -7,7 +7,10 @@
 // automation-browser.mjs. Page sessions cannot reach other targets, and
 // keyboard input goes to the focused frame's own widget: Chromium otherwise
 // routes a guest's CDP keys to whatever the application window has focused.
-// The conversation's Agent clears its workspace's data at <endpoint>/<session id>/clear-data.
+// The conversation's Agent clears its workspace's data at
+// <endpoint>/<session id>/clear-data, and lays a page out at desktop width
+// or the Sidebar's at <endpoint>/<session id>/layout, naming it by a mark it
+// had Playwright evaluate in it just before.
 import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { once } from 'node:events'
 import { createServer } from 'node:http'
@@ -18,15 +21,28 @@ import { createSidebarBrowserData } from './sidebar-browser-data.mjs'
 export const SIDEBAR_BROWSER_ENV = 'EDUWORK_SIDEBAR_BROWSER_SECRET'
 // The user's presses and keys a Sidebar page has had, in its top document (lib/page.js of browser-upstream reads it).
 export const SIDEBAR_INPUT_COUNT = '__eduworkInput'
-export const SIDEBAR_BROWSER_IPC = { bind: 'eduwork:sidebar-browser:bind', opened: 'eduwork:sidebar-browser:opened', request: 'eduwork:sidebar-browser:request', clearData: 'eduwork:sidebar-browser:clear-data' }
+export const SIDEBAR_BROWSER_IPC = { bind: 'eduwork:sidebar-browser:bind', opened: 'eduwork:sidebar-browser:opened', request: 'eduwork:sidebar-browser:request', clearData: 'eduwork:sidebar-browser:clear-data', width: 'eduwork:sidebar-browser:width' }
 
 const OPEN_TIMEOUT_MS = 20_000
+// The application page restyles a guest at once; its page sees the new width a few frames later.
+const LAYOUT_TIMEOUT_MS = 2_000
+// A world of its own, so nothing the page put on its window answers for it.
+const LAYOUT_WORLD = 1002
+// In a script browser_layout has Playwright evaluate in the page of the
+// Agent's current tab (lib/layout.js of browser-upstream), which only that
+// page's own session carries.
+const LAYOUT_MARK = /eduwork-layout:([0-9a-f]{32})/u
 // Domains Playwright uses on a page. The rest reach past the page: other
 // targets, the workspace's shared storage, downloads or certificate checks.
-// The blocked methods do too: cookies belong to the whole shared partition.
+// The blocked methods do too: cookies belong to the whole shared partition,
+// and a Sidebar page is as wide as the user or browser_layout chooses
+// (sidebar-client.js), which Playwright's browser_resize alone would change.
 const pageDomains = new Set(['Accessibility', 'CSS', 'DOM', 'Debugger', 'Emulation', 'Fetch', 'HeapProfiler', 'IO', 'Input', 'Inspector', 'Log', 'Network', 'Overlay', 'Page', 'Profiler', 'Runtime'])
 const pageBlocked = new Set(['Page.setDownloadBehavior', 'Network.clearBrowserCache', 'Network.clearBrowserCookies', 'Network.deleteCookies', 'Network.getAllCookies',
-  'Network.getCookies', 'Network.loadNetworkResource', 'Network.setCookie', 'Network.setCookieControls', 'Network.setCookies'])
+  'Network.getCookies', 'Network.loadNetworkResource', 'Network.setCookie', 'Network.setCookieControls', 'Network.setCookies', 'Emulation.setDeviceMetricsOverride'])
+// Why a blocked method is, where the Agent can do something about it.
+const blockedBecause = { 'Emulation.setDeviceMetricsOverride': 'Sidebar pages cannot be resized: they lay out at the Sidebar\'s own width, which the user changes by dragging the Sidebar, or at desktop width (at least 1280 px, scaled down to fit a narrower tab). '
+  + 'Use browser_layout to lay the current tab out at desktop width or back at the Sidebar\'s width. The user chooses for every page in Settings → General → Sidebar page width (Desktop width or Follow the Sidebar), or for one page by right-clicking a blank part of it and choosing "Show this page at desktop width"' }
 const allowedOnPage = method => method === 'Target.setAutoAttach' || pageDomains.has(method.slice(0, method.indexOf('.'))) && !pageBlocked.has(method)
 // Commands that show the user what the Agent is doing on a page.
 const visibleOnPage = new Set(['Input.dispatchMouseEvent', 'Input.dispatchKeyEvent', 'Input.insertText', 'Page.navigate', 'Page.reload', 'Page.navigateToHistoryEntry', 'Page.captureScreenshot', 'Page.bringToFront'])
@@ -56,6 +72,10 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
   const opening = new Map() // open request id -> { resolve, reject, timer }
   const arrivals = new Map() // `${session} ${tab}` -> resolve(page)
   const binding = new Set() // guest ids whose target id is being read
+  // guest -> { desktop, width }: whether it shows its page at desktop width,
+  // and the width it lays the page out at, as the application page reports.
+  const widths = new WeakMap()
+  const layouts = new Map() // layout request id -> what the application page's answer settles
   let server, newTabUrl, active = 0, presses = 0
 
   const tell = message => {
@@ -119,6 +139,7 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
   }
   const rest = target => {
     clearTimeout(target.idle)
+    target.marked = undefined
     if (!target.active) return
     target.active = false
     target.current = undefined
@@ -244,12 +265,16 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
       const carrier = page ?? target.children.get(sessionId)
       if (!carrier) throw failure('Session with given id not found.')
       touch(target, carrier, visibleOnPage.has(method))
+      if (page && (method === 'Runtime.callFunctionOn' || method === 'Runtime.evaluate')) {
+        const mark = LAYOUT_MARK.exec(JSON.stringify(params))?.[1]
+        if (mark !== undefined) target.marked = { mark, page }
+      }
       const input = method.startsWith('Input.')
       if (input) { carrier.inputs++; carrier.byAgent = true }
       try {
         const result = page && await pageCommand(page, method, params)
         if (result !== undefined) return reply({ result })
-        if (!allowedOnPage(method)) throw failure(`'${method}' is not available in the Sidebar browser`, -32601)
+        if (!allowedOnPage(method)) throw failure(blockedBecause[method] ?? `'${method}' is not available in the Sidebar browser`, -32601)
         reply({ result: await carrier.guest.debugger.sendCommand(method, params, page ? undefined : sessionId) })
       } finally {
         if (input) carrier.inputs--
@@ -273,20 +298,62 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
   // all of it, as the user does from a page's menu: the workspace of its open
   // pages; a site by an address of it. It answers once the pages concerned
   // have reloaded (sidebar-browser-data.mjs).
-  async function clearData(sessionId, request, response) {
+  async function clearData(sessionId, { scope, url }, reply) {
+    const page = [...groups.get(sessionId)?.pages.values() ?? []].find(page => !page.guest.isDestroyed())
+    if (!page) return reply(409, { error: 'No page is open in the browser' })
+    if (scope === 'workspace') { await data.clearWorkspace(page.guest.session); return reply(200, {}) }
+    if (scope !== 'site') return reply(400, { error: 'scope is site or workspace' })
+    if (!website(url)) return reply(400, { error: 'The page is no website\'s: there is no site to clear' })
+    reply(200, { site: await data.clearSite(page.guest.session, url) })
+  }
+
+  // The width a guest's page lays out at, once it follows the width the
+  // application page gave its element, a few frames later, by the deadline.
+  // The page counts its width in whole pixels, rounding up, in its own zoom
+  // against the application window's.
+  async function laidOut(guest, width, deadline) {
+    const expected = width * guest.hostWebContents.getZoomFactor() / guest.getZoomFactor()
+    const late = new Promise(resolve => setTimeout(resolve, deadline - performance.now()))
+    for (let seen; ;) {
+      seen = await Promise.race([guest.executeJavaScriptInIsolatedWorld(LAYOUT_WORLD, [{ code: 'innerWidth' }]), late]) ?? seen
+      if (Math.abs(seen - expected) < 1) return { width: seen, settled: true }
+      if (performance.now() >= deadline) return { width: seen, settled: false }
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+  }
+
+  // The Agent lays a page out at desktop width or at the Sidebar's, as the
+  // user does from the page's menu (sidebar-client.js): the page it marked
+  // last, its current tab's. It acts on that tab visibly, which comes forward
+  // for the user, and is answered with the page's width once the page lays
+  // out at it, or as far as it has by the deadline.
+  async function layOut(sessionId, { mode, mark }, reply) {
+    if (mode !== 'desktop' && mode !== 'sidebar') return reply(400, { error: 'mode is desktop or sidebar' })
+    if (!/^[0-9a-f]{32}$/u.test(mark)) return reply(400, { error: 'mark is the one browser_layout had the page evaluate' })
+    const target = groups.get(sessionId), page = target?.marked?.mark === mark ? target.marked.page : undefined
+    if (page === undefined || pages.get(page.guest.id) !== page) return reply(409, { error: 'The Sidebar browser did not see the page to lay out' })
+    if (!widths.has(page.guest)) return reply(409, { error: 'The Sidebar does not size this tab\'s page' })
+    target.marked = undefined
+    const deadline = performance.now() + LAYOUT_TIMEOUT_MS
+    touch(target, page, true)
+    const asked = id()
+    const { width } = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { layouts.delete(asked); reject(new Error('The desktop app did not answer in time; the tab may still switch once it does')) }, deadline - performance.now())
+      layouts.set(asked, shown => { clearTimeout(timer); layouts.delete(asked); resolve(shown) })
+      tell({ type: 'width', id: asked, guestId: page.guest.id, desktop: mode === 'desktop' })
+    })
+    reply(200, await laidOut(page.guest, width, deadline))
+  }
+
+  // A request of the Host's at a conversation's endpoint, with its JSON body, answered in JSON.
+  async function answer(request, response, handle) {
     const reply = (status, body) => response.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify(body))
     try {
       const chunks = []
       let size = 0
       for await (const chunk of request) if ((size += chunk.length) <= 4096) chunks.push(chunk)
       if (size > 4096) return reply(413, { error: 'The request is too large' })
-      const { scope, url } = JSON.parse(Buffer.concat(chunks).toString('utf8'))
-      const page = [...groups.get(sessionId)?.pages.values() ?? []].find(page => !page.guest.isDestroyed())
-      if (!page) return reply(409, { error: 'No page is open in the browser' })
-      if (scope === 'workspace') { await data.clearWorkspace(page.guest.session); return reply(200, {}) }
-      if (scope !== 'site') return reply(400, { error: 'scope is site or workspace' })
-      if (!website(url)) return reply(400, { error: 'The page is no website\'s: there is no site to clear' })
-      reply(200, { site: await data.clearSite(page.guest.session, url) })
+      await handle(JSON.parse(Buffer.concat(chunks).toString('utf8')), reply)
     } catch (error) {
       reply(400, { error: error.message })
     }
@@ -297,9 +364,11 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
     async listen() {
       server ??= await new Promise((resolve, reject) => {
         const http = createServer((request, response) => {
-          const clearing = request.method === 'POST' && request.headers.origin === undefined ? sessionOf(request.url, '/clear-data') : undefined
+          const action = name => request.method === 'POST' && request.headers.origin === undefined ? sessionOf(request.url, name) : undefined
+          const clearing = action('/clear-data'), layout = action('/layout')
           if (request.method === 'GET' && request.url === '/new-tab') response.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }).end(newTabPage(request.headers['accept-language']))
-          else if (clearing !== undefined) void clearData(clearing, request, response)
+          else if (clearing !== undefined) void answer(request, response, (body, reply) => clearData(clearing, body, reply))
+          else if (layout !== undefined) void answer(request, response, (body, reply) => layOut(layout, body, reply))
           else response.writeHead(404).end()
         })
         // A browser page's WebSocket always carries an Origin; the Host's client does not.
@@ -417,6 +486,34 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
     /** Whether a Sidebar guest shows a website's page, rather than none or the Sidebar's own new-tab page. */
     website(guest) {
       return website(guest.getURL())
+    },
+
+    /**
+     * The application page reports whether a Sidebar guest shows its page at
+     * desktop width, and the width it lays it out at, unknown until its tab
+     * shows (sidebar-client.js): when the user's setting or choice changes,
+     * or in answer to an Agent's layout request.
+     * @param window - the verified application window that sent it.
+     * @param request - the layout request it answers, if any.
+     */
+    widthShown(window, guestId, desktop, width, request) {
+      const guest = Number.isSafeInteger(guestId) ? webContents.fromId(guestId) : undefined
+      if (guest?.getType() !== 'webview' || guest.hostWebContents !== window.webContents || typeof desktop !== 'boolean' || !(width === undefined || Number.isFinite(width))) return
+      widths.set(guest, { desktop, width })
+      if (request !== undefined) layouts.get(request)?.({ desktop, width })
+    },
+
+    /**
+     * Whether a Sidebar guest shows its page at desktop width, or undefined
+     * while the application page has not said, as for a guest it does not size.
+     */
+    desktopWidth(guest) {
+      return widths.get(guest)?.desktop
+    },
+
+    /** The user's choice of width for one Sidebar tab, from its page's menu. */
+    chooseWidth(guest, desktop) {
+      tell({ type: 'width', guestId: guest.id, desktop })
     },
 
     /** Whether the Agent gave a Sidebar guest input since the user last did. */

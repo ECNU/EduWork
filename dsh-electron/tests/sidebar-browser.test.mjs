@@ -5,6 +5,7 @@
 import test, { after, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { once } from 'node:events'
 import { createServer, request } from 'node:http'
 import { createRequire } from 'node:module'
@@ -22,7 +23,16 @@ const pages = {
     <p id="result">-</p><a href="/second">Second</a> <a href="/popup" target="_blank">Popup</a>
     <select id="pick"><option>A</option><option>B</option></select>`,
   '/second': '<title>Second</title><p>second page</p>',
+  // The widths a page sees: at its first script and at each resize.
+  '/first': '<title>First</title><script>window.widths = [innerWidth]; addEventListener("resize", () => widths.push(innerWidth))</script>',
   '/popup': '<title>Popup</title>',
+  // What only a page laid out wider than a phone shows, near its right edge: a button and a red square.
+  // A button it always shows, a field and room to right-click.
+  '/layout': `<title>Layout</title><style>@media (max-width: 900px) { .wide { display: none } }
+    #wide { position: absolute; left: 1100px; top: 10px } #edge { position: absolute; left: 1180px; top: 60px; width: 40px; height: 40px; background: red }</style>
+    <input id="draft" aria-label="Draft"> <button id="any" onclick="clicks.textContent++">Any</button>
+    <button id="wide" class="wide" onclick="clicks.textContent++">Wide</button><div id="edge" class="wide"></div>
+    <p id="clicks">0</p><div id="blank" style="height: 200px"></div>`,
   '/held': '<title>Held</title>',
   '/stalled': '<title>Stalled</title><img src="/never">',
   '/slow': '<title>Slow</title><button onmousedown="for (const end = Date.now() + 300; Date.now() < end;);">Slow</button>',
@@ -93,15 +103,86 @@ const protocol = client => {
   })
 }
 const opened = (session, path) => page(`fixture.openTabIn(${JSON.stringify(session)}, 'browser', { params: { url: ${JSON.stringify(origin + path)} } })`)
-// The top-left pixel of the Agent's screenshot, decoded by the page itself.
-const corner = async tab => tab.evaluate(async png => {
-  const image = new Image()
-  image.src = `data:image/png;base64,${png}`
-  await image.decode()
-  const canvas = new OffscreenCanvas(1, 1), context = canvas.getContext('2d')
-  context.drawImage(image, 0, 0)
-  return [...context.getImageData(0, 0, 1, 1).data]
-}, (await tab.screenshot()).toString('base64'))
+// The Agent's screenshot of a page: its width, and its pixels at some points, decoded by the page itself.
+const screenshot = async (tab, points = [[0, 0]]) => {
+  const png = await tab.screenshot({ scale: 'css' })
+  return [png.readUInt32BE(16), await tab.evaluate(async ({ png, points }) => {
+    const image = new Image()
+    image.src = `data:image/png;base64,${png}`
+    await image.decode()
+    const canvas = new OffscreenCanvas(image.width, image.height), context = canvas.getContext('2d')
+    context.drawImage(image, 0, 0)
+    return points.map(([x, y]) => [...context.getImageData(x, y, 1, 1).data])
+  }, { png: png.toString('base64'), points })]
+}
+// A pixel's color, as the screenshot's color profile shows the page's white and red.
+const color = ([r, g, b]) => r > 200 && g > 200 && b > 200 ? 'white' : r > 200 && g < 100 && b < 100 ? 'red' : `rgb(${r}, ${g}, ${b})`
+// The menus shown, disabled items in brackets, checkboxes with their mark.
+const shown = () => run(`return menus.map(menu => menu.items.map(item => item.type === 'separator' ? '-'
+  : (item.type === 'checkbox' ? (item.checked ? '[x] ' : '[ ] ') : '') + (item.enabled ? item.label : '(' + item.label + ')')))`)
+const choose = label => run(`menus.splice(0).at(-1).items.find(item => item.label === ${JSON.stringify(label)}).click()`)
+// The user's press, routed into the page from the application window as theirs is, on the page as it shows, scaled down to desktop width.
+const press = async (locator, button, x) => {
+  const box = await locator.boundingBox()
+  const [left, top, scale] = await page('(frame => (r => [r.x, r.y, r.width / frame.offsetWidth])(frame.getBoundingClientRect()))(document.querySelector("[data-sidebar-right-session=session-a] .cell:not([hidden]) webview"))')
+  await run(`const input = window.webContents.debugger
+    input.attach('1.3')
+    try {
+      for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await input.sendCommand('Input.dispatchMouseEvent', { type, x: ${left + (box.x + x(box.width)) * scale}, y: ${top + (box.y + 4) * scale},
+        button: type === 'mouseMoved' ? 'none' : '${button}', buttons: type === 'mousePressed' ? ${button === 'right' ? 2 : 1} : 0, clickCount: 1 })
+    }
+    finally { input.detach() }`)
+}
+// A page the Sidebar shows anew takes the user's input only once it is laid
+// out anew, until then going to the page shown before: press an element of it
+// until a press counts.
+const takesInput = async locator => {
+  const inputs = () => locator.page().evaluate(() => document.__eduworkInput ?? 0)
+  for (const before = await inputs(), deadline = Date.now() + 5000; await inputs() === before;) {
+    assert.ok(Date.now() < deadline, 'the page the Sidebar shows takes no input from the user')
+    await press(locator, 'left', width => width / 2)
+  }
+}
+// The menu the user's right click near an element's right edge opens.
+const menuAt = async locator => {
+  await run('menus.length = 0')
+  await press(locator, 'right', width => width - 4)
+  await wait(300)
+  return shown()
+}
+// A Sidebar tab's guest element in session-a, by its page's address.
+const frameOf = tab => `[...document.querySelectorAll('[data-sidebar-right-session=session-a] webview')].find(frame => frame.getURL() === ${JSON.stringify(tab.url())})`
+// Whether the tab's guest element shows over exactly the tab's cell, which the Sidebar sizes.
+const covers = tab => page(`(frame => { const shows = frame.getBoundingClientRect(), tab = frame.closest('.cell').getBoundingClientRect()
+  return ['x', 'y', 'width', 'height'].every(key => Math.abs(shows[key] - tab[key]) < 0.5) })(${frameOf(tab)})`)
+// The tab brought to front by the user: its page's layout width and whether it covers its tab, once they are as expected.
+const layout = async (tab, expected) => {
+  await page(`fixture.focus('session-a', ${frameOf(tab)}.closest('[data-sidebar-right-tab]').getAttribute('data-sidebar-right-tab'))`)
+  const now = async () => [await tab.evaluate(() => innerWidth), await covers(tab)]
+  let seen
+  for (const deadline = Date.now() + 3000; (seen = await now()).join() !== [expected, true].join() && Date.now() < deadline;) await wait(50)
+  return seen
+}
+// The widths a page has seen since its first script ran, but 0: a Sidebar tab's new document may run
+// that script before Chromium gives it its size.
+const widthsSeen = async tab => (await tab.waitForFunction(() => window.widths !== undefined && innerWidth > 0 && [...new Set([...widths, innerWidth].filter(Boolean))])).jsonValue()
+const tabWidth = () => page('document.querySelector("[data-sidebar-right-session=session-a] .cell:not([hidden])").getBoundingClientRect().width')
+// The mark browser_layout has Playwright evaluate in the page of the Agent's current tab.
+const marked = async tab => {
+  const mark = randomUUID().replaceAll('-', '')
+  await tab.evaluate(`'eduwork-layout:${mark}'`)
+  return mark
+}
+// A request to a conversation's layout endpoint, as the Host makes it: the status and the answer.
+const post = (session, body, headers = {}, at = endpoint) => new Promise((resolve, reject) => {
+  request(`${at.replace(/^ws:/u, 'http:')}/${session}/layout`, { method: 'POST', agent: false, headers }, response => {
+    let text = ''
+    response.setEncoding('utf8').on('data', chunk => { text += chunk }).on('end', () => resolve([response.statusCode, text && JSON.parse(text)]))
+  }).on('error', reject).end(JSON.stringify(body))
+})
+// The Agent's browser_layout on a tab of a conversation's.
+const layOut = async (session, tab, mode) => post(session, { mode, mark: await marked(tab) })
+const unseen = [409, { error: 'The Sidebar browser did not see the page to lay out' }]
 const greet = async (tab, name) => {
   await tab.goto(`${origin}/`)
   await tab.getByLabel('Name').fill(name)
@@ -155,7 +236,7 @@ test('each conversation drives only its own tabs, as it would Chrome', live, asy
   await tab.selectOption('#pick', 'B')
   assert.equal(await tab.$eval('#pick', element => element.value), 'B')
   // A page without a background is white, as in Chrome, not see-through.
-  assert.deepEqual(await corner(tab), [255, 255, 255, 255])
+  assert.deepEqual((await screenshot(tab))[1], [[255, 255, 255, 255]])
   await tab.getByRole('link', { name: 'Second' }).click()
   await tab.waitForURL(`${origin}/second`)
   await tab.goBack()
@@ -219,6 +300,11 @@ test('hidden tabs, a collapsed Sidebar and a conversation in the background keep
   await opened('session-a', '/second')
   await page('fixture.focus("session-a", "tab2")')
   const { browser, context } = await connect('session-a')
+  // The tab the user just opened reaches the Agent once its page loads, which may be after it connects.
+  for (const deadline = Date.now() + 5000; context.pages().length < 2;) {
+    assert.ok(Date.now() < deadline, 'the new tab reaches the Agent')
+    await wait(50)
+  }
   for (const tab of context.pages()) await greet(tab, 'hidden')
   // The Sidebar opened once for this connection; after the user collapses it, it stays collapsed.
   await page('fixture.expand("session-a", false)')
@@ -262,7 +348,10 @@ test('a conversation the desktop does not show, as one used from a phone, browse
   await tab.getByLabel('Name').press('End')
   await tab.keyboard.type('!')
   assert.equal(await tab.inputValue('#name'), 'remote!')
-  assert.deepEqual(await corner(tab), [255, 255, 255, 255])
+  assert.deepEqual((await screenshot(tab))[1], [[255, 255, 255, 255]])
+  // The Agent lays it out at desktop width and back as it does a Sidebar tab.
+  assert.deepEqual([await layOut('session-c', tab, 'desktop'), await tab.evaluate(() => innerWidth)], [[200, { width: 1280, settled: true }], 1280])
+  assert.deepEqual([await layOut('session-c', tab, 'sidebar'), await tab.evaluate(() => innerWidth)], [[200, { width: 576, settled: true }], 576])
   // In the storage of the conversation's Sidebar tabs, so with their logins.
   assert.equal(await page('fixture.storages.at(-1)'), 'storage-session-c')
   const [popup] = await Promise.all([context.waitForEvent('page'), tab.getByRole('link', { name: 'Popup' }).click()])
@@ -364,6 +453,7 @@ test('a right click on a page opens the menu for what was clicked, and the Agent
   await tab.goto(`${origin}/menu`)
   // The Agent's turn has ended: the user works in the page.
   await page('fixture.running("session-a", false)')
+  const rightClick = selector => menuAt(tab.locator(selector))
   // What the clipboard holds once the page or the menu has written it.
   const clipboard = async (expected, read = 'clipboard.readText()') => {
     for (const deadline = Date.now() + 2000; ;) {
@@ -372,37 +462,7 @@ test('a right click on a page opens the menu for what was clicked, and the Agent
       await wait(100)
     }
   }
-  // The menus shown, disabled items in brackets.
-  const shown = () => run(`return menus.map(menu => menu.items.map(item => item.type === 'separator' ? '-' : item.enabled ? item.label : '(' + item.label + ')'))`)
-  const choose = label => run(`menus.splice(0).at(-1).items.find(item => item.label === ${JSON.stringify(label)}).click()`)
-  // The user's press, routed into the page from the application window as theirs is.
-  const press = async (locator, button, x) => {
-    const box = await locator.boundingBox()
-    const [left, top] = await page('(r => [r.x, r.y])(document.querySelector("[data-sidebar-right-session=session-a] .cell:not([hidden]) webview").getBoundingClientRect())')
-    await run(`const input = window.webContents.debugger
-      input.attach('1.3')
-      try {
-        for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) await input.sendCommand('Input.dispatchMouseEvent', { type, x: ${left + box.x + x(box.width)}, y: ${top + box.y + 4},
-          button: type === 'mouseMoved' ? 'none' : '${button}', buttons: type === 'mousePressed' ? ${button === 'right' ? 2 : 1} : 0, clickCount: 1 })
-      }
-      finally { input.detach() }`)
-  }
-  // A page the Sidebar shows anew takes the user's input only once it is laid
-  // out anew, until then going to the page shown before: press it until a press counts.
-  const takesInput = async () => {
-    const inputs = () => tab.evaluate(() => document.__eduworkInput ?? 0)
-    for (const before = await inputs(), deadline = Date.now() + 5000; await inputs() === before;) {
-      assert.ok(Date.now() < deadline, 'the page the Sidebar shows takes no input from the user')
-      await press(tab.locator('#blank'), 'left', width => width / 2)
-    }
-  }
-  const rightClick = async selector => {
-    await run('menus.length = 0')
-    await press(tab.locator(selector), 'right', width => width - 4)
-    await wait(300)
-    return shown()
-  }
-  await takesInput()
+  await takesInput(tab.locator('#blank'))
   assert.deepEqual(await rightClick('#link'), [['在新标签页中打开链接', '在系统浏览器中打开链接', '复制链接地址']])
   await choose('复制链接地址')
   assert.equal(await clipboard(`${origin}/second`), `${origin}/second`)
@@ -418,9 +478,9 @@ test('a right click on a page opens the menu for what was clicked, and the Agent
   // The Sidebar shows the page again, as it does once the user closes the tab in front of it.
   await page(`fixture.focus('session-a', [...document.querySelectorAll('[data-sidebar-right-session=session-a] webview')]
     .find(frame => frame.getURL() === ${JSON.stringify(`${origin}/menu`)}).closest('[data-sidebar-right-tab]').getAttribute('data-sidebar-right-tab'))`)
-  await takesInput()
+  await takesInput(tab.locator('#blank'))
   // Links the page may not open, such as javascript:, show no link items; others can still be copied.
-  assert.deepEqual(await rightClick('#script'), [['后退', '(前进)', '刷新', '-', '清除此网站的数据…']])
+  assert.deepEqual(await rightClick('#script'), [['后退', '(前进)', '刷新', '-', '[ ] 按桌面宽度显示此网页', '-', '清除此网站的数据…']])
   assert.deepEqual(await rightClick('#mail'), [['复制链接地址']])
   // An image's pixels when the image has loaded and its frame is in the top document's process.
   assert.deepEqual(await rightClick('#broken'), [['(复制图片)', '复制图片地址']])
@@ -446,7 +506,7 @@ test('a right click on a page opens the menu for what was clicked, and the Agent
   assert.deepEqual(await rightClick('#text'), [['复制']])
   await choose('复制')
   assert.equal(await clipboard('Selected words'), 'Selected words')
-  assert.deepEqual(await rightClick('#blank'), [['后退', '(前进)', '刷新', '-', '清除此网站的数据…']])
+  assert.deepEqual(await rightClick('#blank'), [['后退', '(前进)', '刷新', '-', '[ ] 按桌面宽度显示此网页', '-', '清除此网站的数据…']])
   await choose('清除此网站的数据…')
   assert.deepEqual(await run('return clearings'), [`${origin}/menu`])
   await rightClick('#blank')
@@ -551,9 +611,20 @@ test('clearing a website clears its sign-ins and storage on every subdomain the 
     pages.push(await load())
     for (const page of pages) page.destroy()`)
   assert.equal(cachedLoads, 4)
+  // A tab laid out at desktop width alone keeps it as clearing reloads its page, and its menu still shows it; the other tab still follows the Sidebar.
+  const narrow = await tabWidth()
+  assert.deepEqual(await layOut('session-a', other, 'desktop'), [200, { width: 1280, settled: true }])
   await keep()
   assert.deepEqual(await clear({ scope: 'workspace' }), [200, {}])
   assert.deepEqual(await Promise.all([tab, other].map(page => page.evaluate(() => window.marker ?? null))), [null, null])
+  assert.deepEqual(await layout(other, 1280), [1280, true])
+  // So it does once the setting applies to every tab anew, from each tab's choice.
+  await page('fixture.settingsChanged()')
+  assert.deepEqual([await layout(other, 1280), await layout(tab, narrow)], [[1280, true], [narrow, true]])
+  assert.deepEqual(await run(`menus.length = 0
+    const guests = ${JSON.stringify([tab.url(), other.url()])}.map(url => webContents.getAllWebContents().find(guest => guest.getType() === 'webview' && guest.getURL() === url))
+    guests[1].emit('context-menu', {}, { linkURL: '', srcURL: '', mediaType: 'none', isEditable: false, selectionText: '', editFlags: {}, x: 10, y: 10 })
+    return [menus.at(-1)?.items.find(item => item.label === '按桌面宽度显示此网页')?.checked, guests.map(guest => broker.desktopWidth(guest))]`), [true, [false, true]])
   assert.deepEqual([await cookies(), await kept(tab), await kept(other)], [[], [null, null, null, null], [null, null, null, null]])
   assert.equal(cachedLoads, 5)
   // Only the Host, for a conversation with a page open, and for a website or the workspace.
@@ -586,6 +657,167 @@ test('clearing a website clears its sign-ins and storage on every subdomain the 
   // The workspaces DSH reserved, as the desktop bridge reports them.
   assert.deepEqual(await confirm(0, '(broker.data.reserved("sidebar-workspace"), broker.data.confirmAll(window, locale))'), [true, [['清除侧边栏浏览器的所有数据？', ['清除', '取消']]]])
   assert.deepEqual(await cookies(), [])
+  await other.close()
+  await browser.close()
+})
+
+test('a page lays out at the Sidebar\'s width, or at desktop width scaled down to fill a narrower tab as the user chooses for every page or for its tab', live, async () => {
+  const { browser, context } = await connect('session-a')
+  const [tab] = context.pages()
+  await tab.goto(`${origin}/menu`)
+  await page('fixture.running("session-a", false)')
+  const second = await context.newPage()
+  await second.goto(`${origin}/second`)
+  const narrow = await tabWidth()
+  assert.ok(narrow < 1280)
+  // By default a page follows the Sidebar's width.
+  assert.deepEqual([await layout(second, narrow), await layout(tab, narrow)], [[narrow, true], [narrow, true]])
+  // The user's setting for every page. At desktop width, a tab DSH opens on an address loads its page at that width: the first the page sees.
+  await page('fixture.desktopWidth(true)')
+  const [first] = await Promise.all([context.waitForEvent('page'), opened('session-a', '/first')])
+  assert.deepEqual(await widthsSeen(first), [1280])
+  await first.close()
+  assert.deepEqual([await layout(second, 1280), await layout(tab, 1280)], [[1280, true], [1280, true]])
+  await page('fixture.desktopWidth(false)')
+  assert.deepEqual([await layout(tab, narrow), await layout(second, narrow)], [[narrow, true], [narrow, true]])
+  await page('fixture.desktopWidth(true)')
+  assert.deepEqual(await layout(tab, 1280), [1280, true])
+  // Their choice for one tab, from its menu, which the setting does not change.
+  await takesInput(tab.locator('#blank'))
+  assert.ok((await menuAt(tab.locator('#blank'))).at(-1).includes('[x] 按桌面宽度显示此网页'))
+  await choose('按桌面宽度显示此网页')
+  assert.deepEqual([await layout(tab, narrow), await layout(second, 1280)], [[narrow, true], [1280, true]])
+  await page('fixture.desktopWidth(false)')
+  assert.deepEqual([await layout(second, narrow), await layout(tab, narrow)], [[narrow, true], [narrow, true]])
+  await takesInput(tab.locator('#blank'))
+  assert.ok((await menuAt(tab.locator('#blank'))).at(-1).includes('[ ] 按桌面宽度显示此网页'))
+  await choose('按桌面宽度显示此网页')
+  assert.deepEqual([await layout(tab, 1280), await layout(second, narrow)], [[1280, true], [narrow, true]])
+  await page('fixture.desktopWidth(true)')
+  // As the user narrows the Sidebar, the page still shows over the whole tab.
+  await page('document.body.style.gridTemplateColumns = "1fr 400px"')
+  assert.equal(await tabWidth(), 400)
+  assert.deepEqual(await layout(tab, 1280), [1280, true])
+  // A tab as wide as a desktop or wider lays its page out at its own width.
+  const size = await run('return window.getSize()')
+  await run('window.setSize(1500, 800)')
+  await page('document.body.style.gridTemplateColumns = "0 1fr"')
+  const wide = await tabWidth()
+  assert.ok(wide > 1280)
+  assert.deepEqual([await layout(tab, wide), await page(`${frameOf(tab)}.style.transform`)], [[wide, true], ''])
+  await page('document.body.style.gridTemplateColumns = ""')
+  await run(`window.setSize(${size})`)
+  assert.deepEqual(await layout(tab, 1280), [1280, true])
+  // A guest DSH does not mark as a Sidebar page keeps its own width, and its menu has no width choice.
+  await page(`(() => { const holder = document.createElement('div'); holder.id = 'unmarked'; holder.style.cssText = 'position: fixed; left: 0; top: 0; width: 400px; height: 300px; display: flex'
+    const frame = document.createElement('webview'); frame.setAttribute('partition', 'sidebar-workspace'); frame.setAttribute('src', ${JSON.stringify(`${origin}/second?unmarked`)}); frame.style.flex = '1'
+    holder.append(frame); document.body.append(holder) })()`)
+  const unmarked = `webContents.getAllWebContents().find(guest => guest.getType() === 'webview' && guest.hostWebContents && guest.getURL() === ${JSON.stringify(`${origin}/second?unmarked`)})`
+  for (const deadline = Date.now() + 5000; !await run(`const guest = ${unmarked}; return guest !== undefined && !guest.isLoading() && await guest.executeJavaScript('innerWidth') > 0`);) {
+    assert.ok(Date.now() < deadline, 'the unmarked guest loads and has its size')
+    await wait(50)
+  }
+  assert.deepEqual(await run(`const guest = ${unmarked}; menus.length = 0
+    guest.emit('context-menu', {}, { linkURL: '', srcURL: '', mediaType: 'none', isEditable: false, selectionText: '', editFlags: {}, x: 10, y: 10 })
+    return [await guest.executeJavaScript('innerWidth'), menus.at(-1).items.map(item => item.label ?? '-')]`), [400, ['后退', '前进', '刷新', '', '清除此网站的数据…']])
+  await page('document.getElementById("unmarked").remove()')
+  // Nor does Playwright's resizing, and the Agent is told what it and the user can do instead.
+  const refusal = await tab.setViewportSize({ width: 800, height: 600 }).then(() => 'resized', error => error.message)
+  for (const part of ['cannot be resized', 'dragging the Sidebar', 'at least 1280 px', 'Use browser_layout', 'Settings → General → Sidebar page width', 'Desktop width', 'Follow the Sidebar',
+    'right-clicking a blank part', '"Show this page at desktop width"']) assert.ok(refusal.includes(part), `"${part}" in: ${refusal}`)
+  // A closed tab, which goes with its guest element, is no longer followed.
+  await page(`window.unfollowed = []; window.unobserve = ResizeObserver.prototype.unobserve
+    ResizeObserver.prototype.unobserve = function (target) { unfollowed.push(target); return unobserve.call(this, target) }
+    window.closedTab = ${frameOf(second)}.parentElement; null`)
+  await second.close()
+  for (const deadline = Date.now() + 3000; !await page('!closedTab.isConnected && unfollowed.includes(closedTab)');) {
+    assert.ok(Date.now() < deadline, 'the closed tab is let go')
+    await wait(50)
+  }
+  await page('ResizeObserver.prototype.unobserve = unobserve; null')
+  await page('fixture.desktopWidth(false)')
+  await browser.close()
+})
+
+test('the Agent lays the tab it acts on out at desktop width and back, that tab alone and without reloading it, and its clicks and screenshots follow', live, async () => {
+  const { browser, context } = await connect('session-a')
+  const [tab] = context.pages()
+  await tab.goto(`${origin}/layout`)
+  const other = await context.newPage()
+  await other.goto(`${origin}/second?other`)
+  const narrow = await tabWidth()
+  // Whether each tab, this one, another of this conversation and another conversation's, shows its page at desktop width.
+  const desktopWidths = () => run(`return ${JSON.stringify([tab.url(), other.url(), `${origin}/second`])}
+    .map(url => broker.desktopWidth(webContents.getAllWebContents().find(guest => guest.getType() === 'webview' && guest.getURL() === url)))`)
+  const front = () => page(`document.querySelector('[data-sidebar-right-session=session-a] .cell:not([hidden]) webview') === ${frameOf(tab)}`)
+  const guest = `webContents.getAllWebContents().find(guest => guest.getType() === 'webview' && guest.getURL() === ${JSON.stringify(`${origin}/layout`)})`
+  // Something typed but not submitted, and a mark a reload would take away, in a tab then out of sight.
+  await tab.getByLabel('Draft').fill('unsent')
+  await tab.evaluate(() => { window.kept = true })
+  await other.bringToFront()
+  assert.equal(await front(), false)
+  // Only the page the Agent marked just before, in its own conversation, and only these two ways; a mark serves once.
+  assert.deepEqual(await post('session-a', { mode: 'desktop', mark: '0'.repeat(32) }), unseen)
+  const mark = await marked(tab)
+  assert.deepEqual(await post('session-b', { mode: 'desktop', mark }), unseen)
+  assert.deepEqual(await post('session-a', { mode: 'wide', mark }), [400, { error: 'mode is desktop or sidebar' }])
+  assert.deepEqual(await post('session-a', { mode: 'desktop' }), [400, { error: 'mark is the one browser_layout had the page evaluate' }])
+  // The tab comes forward, and its page lays out at the new width as the answer comes.
+  assert.deepEqual(await post('session-a', { mode: 'desktop', mark }), [200, { width: 1280, settled: true }])
+  assert.deepEqual(await post('session-a', { mode: 'sidebar', mark }), unseen)
+  assert.deepEqual([await front(), await tab.evaluate(() => [innerWidth, document.getElementById('draft').value, window.kept]), await covers(tab)], [true, [1280, 'unsent', true], true])
+  await tab.click('#wide')
+  assert.equal(await tab.textContent('#clicks'), '1')
+  // The red square shows where the page has it, near its right edge.
+  assert.deepEqual((([width, pixels]) => [width, pixels.map(color)])(await screenshot(tab, [[1170, 80], [1200, 80]])), [1280, ['white', 'red']])
+  // A page zoomed in lays out narrower, as the answer says.
+  await run(`${guest}.setZoomFactor(1.25)`)
+  assert.deepEqual(await layOut('session-a', tab, 'desktop'), [200, { width: 1024, settled: true }])
+  await run(`${guest}.setZoomFactor(1)`)
+  // That tab alone: the user's setting is as it was, and the conversation's other tab and another conversation's still follow the Sidebar,
+  assert.equal(await page('fixture.width()'), false)
+  assert.deepEqual(await desktopWidths(), [true, false, false])
+  assert.deepEqual(await layout(other, narrow), [narrow, true])
+  // as they do once the setting applies to every tab anew.
+  await page('fixture.settingsChanged()')
+  assert.deepEqual(await page(`[${frameOf(tab)}, ${frameOf(other)}].map(frame => frame.style.width)`), ['1280px', ''])
+  // The user sees the Agent's choice in the page's menu, and can change it back.
+  await page('fixture.running("session-a", false)')
+  await page(`fixture.focus('session-a', ${frameOf(tab)}.closest('[data-sidebar-right-tab]').getAttribute('data-sidebar-right-tab'))`)
+  await takesInput(tab.locator('#blank'))
+  assert.ok((await menuAt(tab.locator('#blank'))).at(-1).includes('[x] 按桌面宽度显示此网页'))
+  await choose('按桌面宽度显示此网页')
+  assert.deepEqual(await layout(tab, narrow), [narrow, true])
+  await page('fixture.running("session-a", true)')
+  // And back at the Sidebar's width, which the Agent asks for again after laying it out at desktop width.
+  assert.deepEqual(await layOut('session-a', tab, 'desktop'), [200, { width: 1280, settled: true }])
+  assert.deepEqual(await layOut('session-a', tab, 'sidebar'), [200, { width: narrow, settled: true }])
+  assert.deepEqual([await tab.evaluate(() => [innerWidth, document.getElementById('draft').value, window.kept]), await covers(tab)], [[narrow, 'unsent', true], true])
+  assert.equal(await tab.isVisible('#wide'), false)
+  await tab.click('#any')
+  assert.equal(await tab.textContent('#clicks'), '2')
+  assert.equal((await screenshot(tab))[0], narrow)
+  assert.deepEqual(await layOut('session-a', tab, 'sidebar'), [200, { width: narrow, settled: true }])
+  // The choice holds for the next page in the tab, which loads at that width: the first the page sees.
+  assert.deepEqual(await layOut('session-a', tab, 'desktop'), [200, { width: 1280, settled: true }])
+  await tab.goto(`${origin}/first`)
+  assert.deepEqual(await widthsSeen(tab), [1280])
+  // Once the user turns to another tab, the Agent's layout of the tab it acts on leaves the user's choice on screen, as its other actions there do.
+  await page(`fixture.focus('session-a', ${frameOf(other)}.closest('[data-sidebar-right-tab]').getAttribute('data-sidebar-right-tab'))`)
+  assert.deepEqual(await layOut('session-a', tab, 'sidebar'), [200, { width: narrow, settled: true }])
+  assert.deepEqual([await front(), await desktopWidths()], [false, [false, false, false]])
+  // A tab out of sight while the Agent rests and the user narrows the Sidebar lays out at the tab's width as it comes forward.
+  // A mark from before the Agent rested no longer serves.
+  const before = await marked(tab)
+  await other.bringToFront()
+  for (const deadline = Date.now() + 5000; await page('document.querySelector("[data-eduwork-agent-render]") !== null');) {
+    assert.ok(Date.now() < deadline, 'the Agent rests')
+    await wait(50)
+  }
+  assert.deepEqual(await post('session-a', { mode: 'sidebar', mark: before }), unseen)
+  await page('document.body.style.gridTemplateColumns = "1fr 400px"')
+  assert.deepEqual(await layOut('session-a', tab, 'sidebar'), [200, { width: 400, settled: true }])
+  await page('document.body.style.gridTemplateColumns = ""')
   await other.close()
   await browser.close()
 })
@@ -642,12 +874,16 @@ test('conversations working at once keep their own marker and the user\'s focus'
 test('only the Host reaches an endpoint, and pages reach nothing beyond themselves', live, async () => {
   await assert.rejects(socket(`${endpoint.replace(/[0-9a-f]{48}$/u, '0'.repeat(48))}/session-a`), /40\d/u)
   await assert.rejects(socket(`${endpoint}/session-a`, { origin: 'https://example.org' }), /40\d/u)
+  assert.deepEqual(await post('session-a', { mode: 'desktop' }, { origin: 'https://example.org' }), [404, ''])
+  assert.deepEqual(await post('session-a', { mode: 'desktop' }, {}, endpoint.replace(/[0-9a-f]{48}$/u, '0'.repeat(48))), [404, ''])
   // A resumed conversation's new Agent replaces the previous connection.
   // Nothing the previous one asked for answers the new one or keeps it busy,
   // here a new tab the stalled application page has yet to open.
   const old = protocol(await socket(`${endpoint}/session-a`))
   const { targetInfos: [target] } = await old('Target.getTargets')
   const { sessionId: oldSession } = await old('Target.attachToTarget', { targetId: target.targetId, flatten: true })
+  const mark = randomUUID().replaceAll('-', '')
+  await old('Runtime.evaluate', { expression: `'eduwork-layout:${mark}'` }, oldSession)
   await run('void window.webContents.executeJavaScript("for (const end = Date.now() + 3500; Date.now() < end;);")')
   await wait(100)
   const stale = [old('Runtime.evaluate', { expression: 'new Promise(resolve => setTimeout(resolve, 500))', awaitPromise: true }, oldSession), old('Target.createTarget', { url: 'about:blank' })]
@@ -656,6 +892,7 @@ test('only the Host reaches an endpoint, and pages reach nothing beyond themselv
   const received = []
   client.on('message', data => received.push(JSON.parse(data)))
   for (const request of stale) await assert.rejects(request)
+  assert.deepEqual(await post('session-a', { mode: 'desktop', mark }), unseen)
   const send = protocol(client)
   await send('Browser.getVersion')
   await wait(2000)

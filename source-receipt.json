@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-27T03:56:28.643Z",
-  "fileSetSHA256": "df558d9f2b1f0d377df46fe9aa42eca685b4104c228b16c1c62dd47ddc918634",
+  "createdAt": "2026-11-27T04:27:36.488Z",
+  "fileSetSHA256": "20c30579aab5c4320f278fab5533749d6896538830305aac3eec08c266098747",
   "files": [
     {
       "path": ".gitattributes",
@@ -1193,7 +1193,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "5b89239ee57ab92cfd0bea86bb0d0ad833201278ac98cd05a35bd861f476fcd9"
+      "sha256": "e04527db87bea82f710bff9a704db6c8945d918f9e3d1314badb99531901882f"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
@@ -1245,15 +1245,15 @@
     },
     {
       "path": "dsh-electron/src/sidebar-browser-menu.mjs",
-      "sha256": "20424a28c169df1cc1685a747645fe5f57d6e37d4e6aa0e0dac194b1170b6a71"
+      "sha256": "d0c40a4b3d94c30322afa79a856454d872ad7bf858da389c21eb968e1ec3c0e7"
     },
     {
       "path": "dsh-electron/src/sidebar-browser-preload.cjs",
-      "sha256": "66cd262f13fffde0cd842da9c185dd5f2dda3ac10d25f103f14f3e5ea59ebe36"
+      "sha256": "d4588ef5351144e7a11f4c92e3033716f602a03b5a8f4ebe886bde5b332d1a58"
     },
     {
       "path": "dsh-electron/src/sidebar-browser.mjs",
-      "sha256": "12950958cc8c3d599419684558854d0c018149dbced4ede681ec92fc2f753c14"
+      "sha256": "dfa5210c79910664a9bdad88774c7f735c037c5d5b447b32fd9eb39b82ae3484"
     },
     {
       "path": "dsh-electron/src/software-update-control.mjs",
@@ -1365,7 +1365,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-smoke.mjs",
-      "sha256": "fee7784facc1cc78d08dac20c6f3455298d968d1937c2a1f228108a05894a2bf"
+      "sha256": "cf9e8e09e5b615605f19a27d7864f3c90566515703a37e25e0b3e6cf4a2688fd"
     },
     {
       "path": "dsh-electron/tests/desktop-web-paths.test.mjs",
@@ -1413,11 +1413,11 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.html",
-      "sha256": "f156c654b85d04157b9b68d55ba0dfef9bdca72895c69397261a3f8ba66c5b06"
+      "sha256": "d08a93eb06eace83e063bcd8dc387a01129e299c070f0eeb9af253beb1ebff1b"
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.mjs",
-      "sha256": "eb5305c00b0fb0e2785977fd0d9e4bc456f9b96933243bb81b15cca5e6cacbda"
+      "sha256": "a3d338bef07c54bc9d23597379e4d9125a1647bcb4dffad7964af6c8345613b2"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1441,7 +1441,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "3191491d1b898e56322903bba64360fe0c26903aa1258049c69d7853caa94c23"
+      "sha256": "9999fd2eca0ccb2c09adbaad4c563c30341546e333d104b59fd83da916ab4652"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1505,7 +1505,7 @@
     },
     {
       "path": "dsh-electron/tests/sidebar-browser.test.mjs",
-      "sha256": "15dcd9f1907d0fcc82381e22cf344fe0f7612928c2fcae1682dcf2679a4cc3f0"
+      "sha256": "91397dc5c107938ea6b1c2eb82a28aa0cb9db1256476f33b6eaaba0d137ac16f"
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",
@@ -2133,7 +2133,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/clear-data.js",
-      "sha256": "210f6ca02882273ea7d697f1b366f28b3b8a415781bc8bc6aa17be8705607085"
+      "sha256": "243747ef8687e388d655687cd36aa5d29c0336dd4e46bc934fadefb3be229522"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/config.js",
@@ -2141,7 +2141,11 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/index.js",
-      "sha256": "2bf1a5432732fa35c7124d07a05976edaf3b5810961f1caca1155578930206f3"
+      "sha256": "3b2535884e49f4ad615b82773fb7d97c5b4719c7be1d547e9c20859004cb9863"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/lib/layout.js",
+      "sha256": "ee8f8652e0d5dd03e800fa625ca474ae17e766cbd7ba090d3aaf6b13f5f00906"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/page.js",
@@ -2153,31 +2157,31 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/read-act.js",
-      "sha256": "13a2934128b5dcb7dc8eba7d72c90ebfce0b40ba8279f4c919e82dce41a688cc"
+      "sha256": "3cd23aae6a5014eb239ffd52dce8b2fc914655e7d5715ada9b77fe73d31e32db"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/sidebar-client.js",
-      "sha256": "619566ccf0c7764b228a3bd61fbdf0fd1c2a048b4ed08f690189205dfff5af38"
+      "sha256": "e69218dc86baab3e46db1220e4cdaefa438f209c3506d6c978f8c772810ab945"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/sidebar.js",
-      "sha256": "2cd54b9304d6b59d0c90588e9b5b2c1a95c0864a690ca4914d667b385440aff1"
+      "sha256": "c4a7949bd029dc241286c33031b90914e7cee03a3dff24223a58c19c0a211c3a"
     },
     {
       "path": "dsh-plugins/browser-upstream/package.json",
-      "sha256": "c44d3e2cb8008de189326fd238d0119fe57c59af0af4f096018a67cdc6ec672d"
+      "sha256": "1cec8fb43a55d47c8f763cc83bd3fee0f57b00f47535252dd2aef1ccacfd617b"
     },
     {
       "path": "dsh-plugins/browser-upstream/README_EN.md",
-      "sha256": "5b59144cab2cccfef7527aaf325c5976406d49f9515a8eaf0895960792f12db6"
+      "sha256": "f7f6c4c30c0d9aef2bfc3e1c2bb1f3c738b8cecc6055e1158eeedb46b0dfdb61"
     },
     {
       "path": "dsh-plugins/browser-upstream/README.md",
-      "sha256": "201ecbe59905cd362f9ebeb90cd2031e53386cfa5b74b9d5fec0d0bff129e75a"
+      "sha256": "7d0d18f732589919dba7d7c850f2ae506ffd2d007ee1b7d95782e69790315ce3"
     },
     {
       "path": "dsh-plugins/browser-upstream/src/client.ts",
-      "sha256": "10a0287000b12557a16ad57ece51bbb7b75246989d5169f316b501d4b41adf61"
+      "sha256": "7797f58873b01810a62ea8edbdd74bda2b2f6629a5e7bd91ea3bc121d05c04ec"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/page.test.mjs",
@@ -2189,7 +2193,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "6dea269830a5a4b19e67b3c5500d754da8a7295428ca728d3ae611df60064709"
+      "sha256": "36aedd5bab7d51151bd7eeee0179f9f708e37053cc633aabe017260842444340"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/sidebar.test.mjs",
@@ -9484,9 +9488,9 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "6dea269830a5a4b19e67b3c5500d754da8a7295428ca728d3ae611df60064709",
+      "sha256": "36aedd5bab7d51151bd7eeee0179f9f708e37053cc633aabe017260842444340",
       "kind": "synthetic-network-classification-test",
-      "reason": "The private URLs are synthetic addresses in a browser approval classification test: entering a private network from another site asks, links within it do not. They are not configured service endpoints. Keys and all other private content are still audited."
+      "reason": "The private URLs are synthetic addresses in a browser approval classification test: entering a private network from another site asks, links within it do not; a loopback server the test starts stands in for the desktop app's Sidebar endpoint. They are not configured service endpoints. Keys and all other private content are still audited."
     }
   ]
 }
