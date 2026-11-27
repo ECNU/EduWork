@@ -79,3 +79,27 @@ test('a check cannot authorize enabling when saving its executable fails', async
   assert.equal(service.checks.has(row.id), false)
   await assert.rejects(service.manage({op: 'enable', id: row.id, enabled: true}), /check_first/)
 })
+
+test('saved native ACP connections retain their command, arguments and enabled state on rescan', async () => {
+  const saved = ['opencode', 'kimi'].map(id => ({...entry(id), args: ['saved-argument'], enabled: true}))
+  const {service} = manager(saved)
+  const rows = await Connections.prototype.rows.call(service)
+  for (const expected of saved) {
+    const matches = rows.filter(row => row.id === expected.id)
+    assert.equal(matches.length, 1)
+    assert.equal(matches[0].command, expected.command)
+    assert.deepEqual(matches[0].args, expected.args)
+    assert.equal(matches[0].enabled, true)
+    assert.equal(matches[0].checked, false)
+  }
+})
+
+test('saving a manual ACP connection never starts or enables it', async () => {
+  const {service, data} = manager()
+  service.ctx = {subprocess: {spawn() {assert.fail('saving must be passive')}}}
+  service.activate = async () => assert.fail('saving must not activate')
+  await service.manage({op: 'add', name: 'Synthetic ACP', command: process.execPath, args: ['acp']})
+  assert.equal(data.size, 1)
+  assert.equal([...data.values()][0].enabled, false)
+  assert.equal(service.checks.size, 0)
+})

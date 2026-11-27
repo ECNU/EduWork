@@ -2,7 +2,7 @@ import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {mkdtemp, mkdir, writeFile, rm, readFile} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
-import {join} from 'node:path'
+import {join, delimiter} from 'node:path'
 import {Context} from '@deepseek-ai/cordis'
 import LocalSubprocess from '@deepseek-ai/dsh-subprocess-local'
 import {discover, executable, probe} from '../src/discovery.js'
@@ -20,6 +20,45 @@ test('passive discovery finds executable candidates without running them', async
     assert.equal(await executable('.local/bin/agent'), false)
     assert.equal(await executable(home), false)
     await assert.rejects(readFile(marker), {code: 'ENOENT'})
+  } finally { await rm(home, {recursive: true, force: true}) }
+})
+
+for (const platform of ['linux', 'darwin', 'win32']) test(`native ACP discovery is passive on ${platform}`, async () => {
+  const home = await mkdtemp(join(tmpdir(), 'native-acp-'))
+  try {
+    const bin = join(home, 'path with spaces'), dedicated = join(home, '.opencode/bin')
+    await mkdir(bin); await mkdir(dedicated, {recursive: true})
+    const suffix = platform === 'win32' ? '.exe' : ''
+    const marker = join(home, 'executed')
+    for (const file of [join(dedicated, 'opencode' + suffix), join(bin, 'opencode' + suffix), join(bin, 'kimi' + suffix)]) {
+      await writeFile(file, `#!/bin/sh\ntouch '${marker}'\n`, {mode: 0o755})
+    }
+    const rows = await discover({home, path: ['relative', bin, bin].join(delimiter), platform})
+    for (const id of ['opencode', 'kimi']) {
+      const row = rows.find(row => row.id === id)
+      assert.equal(row.kind, 'acp')
+      assert.equal(row.installed, true)
+      assert.deepEqual(row.args, ['acp'])
+      assert.equal(row.command, join(id === 'opencode' ? dedicated : bin, id + suffix))
+    }
+    await assert.rejects(readFile(marker), {code: 'ENOENT'})
+  } finally { await rm(home, {recursive: true, force: true}) }
+})
+
+test('missing native ACP programs and Windows shell shims are not executable candidates', async () => {
+  const home = await mkdtemp(join(tmpdir(), 'missing-acp-'))
+  try {
+    const bin = join(home, '.local/bin')
+    await mkdir(bin, {recursive: true})
+    await mkdir(join(bin, 'opencode.exe'))
+    await writeFile(join(bin, 'kimi.cmd'), '@echo must-not-run')
+    await writeFile(join(bin, 'kimi.ps1'), 'throw "must-not-run"')
+    const rows = await discover({home, path: '', platform: 'win32'})
+    for (const id of ['opencode', 'kimi']) {
+      const row = rows.find(row => row.id === id)
+      assert.equal(row.command, null)
+      assert.equal(row.installed, false)
+    }
   } finally { await rm(home, {recursive: true, force: true}) }
 })
 
