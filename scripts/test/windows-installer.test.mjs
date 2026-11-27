@@ -131,6 +131,46 @@ test('NSIS finish page relaunches a forced update but leaves manual installation
   assert.doesNotMatch(finishPage, /MUI_FINISHPAGE_RUN/)
 })
 
+test('NSIS offers a bilingual uninstall choice without preselecting personal data deletion', () => {
+  const include = installerInclude(desktop)
+  assert.match(include, /!macro customUnWelcomePage\s+!insertmacro MUI_UNPAGE_WELCOME\s+UninstPage custom un\.PersonalDataPage un\.PersonalDataPageLeave/)
+  assert.match(include, /\$LANGUAGE == 2052/)
+  assert.match(include, /MUI_HEADER_TEXT "个人数据选项"/)
+  assert.match(include, /MUI_HEADER_TEXT "Personal Data"/)
+  assert.match(include, /同时删除本机个人数据（会话记录、设置、模型凭据与内置工作区）/)
+  assert.match(include, /Also delete local personal data \(sessions, settings, credentials, and built-in workspaces\)/)
+  assert.match(include, /\$\{NSD_SetState\} .*\$\{BST_UNCHECKED\}/)
+  assert.match(include, /\$\{NSD_GetState\} .*\$DeleteEduWorkUserData/)
+  assert.match(include, /\$\{if\} \$\{Silent\}\s+\$\{orIf\} \$KeepEduWorkUserData == "1"\s+Abort/)
+})
+
+test('NSIS only accepts the edition-specific data deletion switch for a non-upgrade silent uninstall', () => {
+  const include = installerInclude(desktop)
+  const init = include.match(/!macro customUnInit\n([\s\S]*?)\n!macroend/)?.[1] ?? ''
+  assert.match(init, /StrCpy \$DeleteEduWorkUserData "0"/)
+  assert.match(init, /\$\{GetOptions\} \$R0 "\/KEEP_APP_DATA" \$R1/)
+  assert.match(init, /\$\{ifNot\} \$\{Errors\}\s+\$\{orIf\} \$\{isUpdated\}\s+StrCpy \$KeepEduWorkUserData "1"/)
+  assert.match(init, /\$\{elseif\} \$\{Silent\}[\s\S]*"eduwork-delete-user-data"[\s\S]*StrCpy \$DeleteEduWorkUserData "1"/)
+  assert.doesNotMatch(init, /"--delete-app-data"/)
+  assert.match(include, /!macro unregisterFileAssociations\s+\$\{if\} \$DeleteEduWorkUserData == "1"\s+\$\{andIf\} \$KeepEduWorkUserData == "0"\s+\$\{andIfNot\} \$\{isUpdated\}\s+Call un\.DeletePersonalData/)
+  assert.match(include, /GetFileAttributesW\(w "\$INSTDIR"\)/)
+  assert.doesNotMatch(include, /!macro customUnInstall\b/)
+})
+
+test('NSIS binds deletion to the current edition and never follows reparse points', () => {
+  const include = installerInclude({ distribution: 'test-edition' })
+  assert.ok(include.includes('\\EduWork\\test-edition'))
+  assert.ok(include.includes('\\eduwork-installer-test-edition-updater'))
+  assert.ok(include.includes('\\\\?\\'))
+  assert.doesNotMatch(include, /RMDir\s+\/r/i)
+  assert.match(include, /CreateFileW\([^\n]*0x02200000/)
+  assert.match(include, /IntOp \$\w+ \$\w+ & 0x400/)
+  assert.match(include, /RemoveDirectoryW/)
+  assert.match(include, /DeleteFileW/)
+  assert.match(include, /\$\{NSIS_MAX_STRLEN\}/)
+  assert.match(include, /SetErrorLevel 1/)
+})
+
 test('installer project fixes per-user, no-elevation and data-preserving behavior', () => {
   const project = installerProject({ desktop, release, electronVersion: '44.0.0', artifactsDir: 'C:/out/artifacts', icon: 'C:/icon.ico', includePath: 'C:/out/installer.nsh' })
   assert.equal(project.packageJSON.version, version)
