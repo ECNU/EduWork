@@ -4,7 +4,7 @@ import { createTaskbarIndicator } from './taskbar-indicator.mjs'
 import { createDesktopPet } from './desktop-pet.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync, existsSync } from 'node:fs'
-import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
+import { readFile, writeFile, access, mkdir, stat, unlink, rmdir } from 'node:fs/promises'
 import { join, isAbsolute, dirname, basename } from 'node:path'
 import { execFile } from 'node:child_process'
 import { createRequire } from 'node:module'
@@ -18,7 +18,14 @@ import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
 import { firstRunPending, firstRunPendingSync, firstRunDialogs, resolveFirstRunData } from './first-run.mjs'
-import { importPortableData, inspectPortableSource } from './portable-import.mjs'
+import { importPortableData, inspectPortableSource, windowsSourceProcessLister } from './portable-import.mjs'
+import { portableInstallerSource, discoverPortableInstaller, downloadPortableInstaller } from './portable-installer-feed.mjs'
+import { createPortableMigration, launchPortableMigrationHelper, writePortableSourceHint } from './portable-migration-upgrade.mjs'
+import { migrationIntentStore, sameMigrationPath } from './first-run-migration-intent.mjs'
+import { installedMigrationIntent, installedMigrationDialogs, resolveInstalledMigration } from './first-run-migration.mjs'
+import { withMigrationProgress } from './first-run-progress.mjs'
+import { portableMigrationEnabled, portableRedirectGate, handlePortableRedirect, portableRedirectDialogs } from './portable-migrated-redirect.mjs'
+import { refreshPortableShortcuts } from './portable-import-shortcuts.mjs'
 import { portableSourceSuggestion } from './portable-source-hint.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
@@ -159,6 +166,9 @@ const activationWindows = () => [
   ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window)),
 ]
 export const showDesktop = () => showDesktopWindows(activationWindows())
+let pendingInstalledMigration, earlyPortableRedirect, firstRunInProgress = false
+const readPortableRedirect = () => portableRedirectGate({ root: paths.root, settings,
+  localAppData: process.env.LOCALAPPDATA, testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT })
 export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
@@ -173,18 +183,18 @@ export function configureEduworkPaths() {
   attachAppActivation({ app, windows: activationWindows })
   // Own the process tree from the beginning of startup, including when the
   // user quits while configuration is still being prepared.
-  app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
+  app.on('window-all-closed', () => { if (process.platform !== 'darwin' && !firstRunInProgress) app.quit() })
   app.on('before-quit', event => {
     if (desktopExit.complete) return
     event.preventDefault()
     void desktopExit.request()
   })
-  // Only an unsettled installed first-run defers activation, keeping the target
-  // untouched until the user decides. Once the choice is settled the browser
-  // profile must bind to the target before Chromium initializes os_crypt, so the
-  // imported credentials decrypt with the source key; every other layout always
-  // activates immediately.
-  if (!firstRunPendingSync({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) activateEduworkPaths()
+  pendingInstalledMigration = installedMigrationIntent({ dataLayout: settings.dataLayout,
+    localAppData: process.env.LOCALAPPDATA, testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, distribution: settings.distribution })
+  earlyPortableRedirect = readPortableRedirect()
+  if (!pendingInstalledMigration && !earlyPortableRedirect) {
+    if (!firstRunPendingSync({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) activateEduworkPaths()
+  }
 }
 let pathsActivated = false
 export function activateEduworkPaths() {
@@ -198,11 +208,70 @@ export function activateEduworkPaths() {
   process.env.DSH_HOME = paths.home
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
 }
+function portableMigrationHelper(options) {
+  return launchPortableMigrationHelper({ distribution: settings.distribution,
+    helper: join(paths.root, 'resources/update/EduWork-Updater.exe'), ...options })
+}
+
+export async function resolvePortableRedirect() {
+  const gate = readPortableRedirect()
+  if (!gate) return earlyPortableRedirect ? 'relaunch' : 'normal'
+  if (!earlyPortableRedirect && gate.intent) {
+    desktopHostLog('[portable migration] Exiting duplicate portable startup during migration\n')
+    return 'exit'
+  }
+  return handlePortableRedirect({ gate,
+    launch: portableMigrationHelper,
+    canResume: intentId => portableMigrationHelper({ mode: 'probe', intentId }).then(() => true, () => false),
+    withdraw: async () => {
+      const { store, intent } = gate
+      const release = await store.claim(intent.id)
+      try {
+        const installed = join(process.env.LOCALAPPDATA, 'Programs', 'EduWork', settings.distribution)
+        if ((await windowsSourceProcessLister(installed)()).length) throw Error('请先正常退出安装版，再撤销待迁移')
+        await portableMigrationHelper({ mode: 'withdraw', intentId: intent.id })
+      } finally { await release() }
+    }, ...portableRedirectDialogs(options => dialog.showMessageBox(options)) })
+}
+
+export async function recordPortableSource() {
+  if (!portableMigrationEnabled({ settings, testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT })) return
+  try {
+    await writePortableSourceHint({ localAppData: process.env.LOCALAPPDATA, distribution: settings.distribution,
+      root: paths.root, version: settings.productVersion })
+  } catch (error) { desktopHostLog(`[portable migration] ${error.message}\n`) }
+}
+
+async function finishPortableImport(receipt) {
+  if (process.platform !== 'win32' || process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT) return
+  const installed = join(process.env.LOCALAPPDATA, 'Programs', 'EduWork', settings.distribution)
+  if (!sameMigrationPath(paths.root, installed)) return
+  const warnings = []
+  const warn = error => warnings.push(error.message)
+  try {
+    await refreshPortableShortcuts({ desktop: app.getPath('desktop'), sourceRoot: receipt.sourceRoot,
+      executable: join(installed, 'EduWork-Electron.exe'), appId: settings.appId,
+      read: path => shell.readShortcutLink(path), write: (path, operation, options) => shell.writeShortcutLink(path, operation, options), warn })
+  } catch (error) { warn(error) }
+  if (warnings.length) await dialog.showMessageBox({ type: 'warning', title: '数据已导入',
+    message: '部分桌面快捷方式未更新。可以从开始菜单打开安装版。', detail: warnings.join('\n') }).catch(() => {})
+}
+
 export async function resolveInstalledFirstRun() {
+  if (pendingInstalledMigration) {
+    firstRunInProgress = true
+    try {
+      const { action } = await resolveInstalledMigration({ ...pendingInstalledMigration,
+        targetRoot: paths.userRoot, version: settings.productVersion,
+        ...installedMigrationDialogs(options => dialog.showMessageBox(options)),
+        useProgress: run => withMigrationProgress(BrowserWindow, run), finish: finishPortableImport })
+      return action
+    } finally { firstRunInProgress = false }
+  }
   if (!await firstRunPending({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) return 'reuse'
   const suggestedSource = await portableSourceSuggestion({ localAppData: process.env.LOCALAPPDATA,
     distribution: settings.distribution, validate: root => inspectPortableSource({ sourceRoot: root, distribution: settings.distribution }) })
-  const { action } = await resolveFirstRunData({
+  const { action, receipt } = await resolveFirstRunData({
     ...firstRunDialogs({ productName: settings.productName,
       suggestedSource,
       showMessageBox: options => dialog.showMessageBox(options),
@@ -210,6 +279,7 @@ export async function resolveInstalledFirstRun() {
     importSource: sourceRoot => importPortableData({ sourceRoot, targetRoot: paths.userRoot, distribution: settings.distribution }),
     createTarget: () => activateEduworkPaths(),
   })
+  if (receipt) await finishPortableImport(receipt)
   return action
 }
 export function installEduworkFromDmg() {
@@ -338,8 +408,12 @@ async function prepareDesktop() {
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
     await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
   }
+  const installerSource = !process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT && portableInstallerSource({ settings,
+    effective: effectiveUpdateDefaults, bundled: settings.updates, publisher: trustedUpdates?.updates })
+  let migration
   const software = await softwareUpdateControl({dataRoot:paths.updateDataRoot,version:settings.productVersion,
     policy:contentUpdates.policy,defaultEnabled:user.updates.provider!=='disabled',
+    onChecked:installerSource ? update => { void migration?.check(update) } : undefined,
     supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32' && (settings.dataLayout!=='installed' || existsSync(join(process.resourcesPath,'app-update.yml'))),onPolicy:saveUpdatePolicy,
     start:({policy,applyScheduled})=>process.platform==='darwin'
       ? startMacSparkleUpdates({appPath:app.getAppPath(),version:settings.productVersion,enabled:true,
@@ -355,7 +429,38 @@ async function prepareDesktop() {
         version:settings.productVersion,distribution:settings.distribution,
         applyScheduled,onQuit:()=>desktopExit.handoff()})})
   softwareUpdates = software
+  if (installerSource) {
+    const localAppData = process.env.LOCALAPPDATA, distribution = settings.distribution
+    const intents = migrationIntentStore({ localAppData, distribution })
+    const cache = join(intents.directory, `${distribution}.portable-installers`)
+    const installedRoot = join(localAppData, 'Programs', 'EduWork', distribution)
+    migration = createPortableMigration({ source: installerSource, intents,
+      discover: policy => discoverPortableInstaller({ source: installerSource, policy, version: settings.productVersion }),
+      download: async (installer, { signal, onProgress }) => {
+        await portableMigrationHelper({ mode: 'cleanup' }).catch(error => desktopHostLog(`[portable migration] ${error.message}\n`))
+        return downloadPortableInstaller({ installer, cache, signal, onProgress })
+      },
+      cleanup: async executable => { await unlink(executable).catch(() => {}); await rmdir(dirname(executable)).catch(() => {}) },
+      reserve: (policy, contentIdle) => software.reserveIdle(policy, contentIdle),
+      preflight: async () => {
+        if (intents.read()) throw Error('已有待处理的迁移，请重新打开旧客户端继续或撤销')
+        if ((await windowsSourceProcessLister(installedRoot)()).length) throw Error('安装版正在运行，请先正常退出安装版')
+        return inspectPortableSource({ sourceRoot: paths.root, distribution })
+      },
+      inspectTasks: () => lifecycle.updateTasks('inspect'), confirm: () => confirmQuit(),
+      stop: active => desktopExit.prepareInstaller(async () => {
+        if (desktopExit.pending || desktopExit.closing || desktopExit.complete) throw Error('客户端已在退出')
+        await stopDesktopForExit({ beforeInstall: true, requireGraceful: true, activeBeforeConfirmation: active })
+        await stopDesktopForExit()
+      }),
+      launch: (installerPath, installer, intent) => portableMigrationHelper({ mode: 'install', installerPath, installer, intentId: intent.id }),
+      quit: () => app.quit(),
+      fail: (error, stopped) => showDesktopMessageBox({ type: 'error', title: '未启动迁移安装', message: error.message,
+        detail: stopped || lifecycle.closing || lifecycle.hostStop ? '旧数据保留。请退出并重新打开客户端后重试。' : '旧数据保留。请核对后重试。' }),
+    })
+  }
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
+    migration,
     deferInstallResponse:settings.dataLayout==='installed',
     beforeInstall:async()=>{
       if(process.platform==='darwin')return true

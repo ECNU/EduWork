@@ -9,7 +9,9 @@ const root=fileURLToPath(new URL('../../..',import.meta.url)),runtime=process.en
 assert.ok(runtime,'Set EDUWORK_TEST_RUNTIME')
 const req=createRequire(join(runtime,'package.json')),ts=createRequire(join(process.env.EDUWORK_BUILD_TOOLS||join(root,'.cache/client-build-tools'),'package.json'))('typescript')
 const {chromium}=req('playwright-core')
-const component=ts.transpileModule(await readFile(new URL('../src/updates.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText
+const transpile=async file=>ts.transpileModule(await readFile(new URL(`../src/${file}`,import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText
+const migration=(await transpile('portable-migration-upgrade.ts')).replace(/^import React from ['"]react['"];?\n/m,'')
+const component=(await transpile('updates.ts'))
  .replace(/import React, \{ useEffect, useSyncExternalStore \} from ['"]react['"];?/,'const {useEffect,useSyncExternalStore}=React;')
  .replace(/import \{ createPortal \} from ['"]react-dom['"];?/,'const {createPortal}=ReactDOM;')
 assert.doesNotMatch(component,/from ['"]react/)
@@ -22,6 +24,7 @@ const server=createServer(async(request,response)=>{
   response.setHeader('content-type','text/javascript');response.end(await readFile(join(runtime,'node_modules',request.url==='/react.js'?'react/umd/react.development.js':'react-dom/umd/react-dom.development.js')));return
  }
  if(request.url==='/component.js'){response.setHeader('content-type','text/javascript');response.end(component);return}
+ if(request.url==='/portable-migration-upgrade'){response.setHeader('content-type','text/javascript');response.end(migration);return}
  if(request.url.startsWith('/api/')) {
   const action=request.url.slice(5);actions.push(action)
   if(action.startsWith('use-')){policy=action==='use-development-updates'?'development':'stable';state='idle'}

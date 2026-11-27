@@ -92,6 +92,7 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source' 
         development: workspace.parameters.development,
         forUpdate: workspace.parameters.forUpdate,
         edition: workspace.parameters.edition,
+        ...(workspace.parameters.edition === 'EduWork' && workspace.parameters.windowsInstaller === true ? { portableMigration: true } : {}),
       }),
       run: async (workspace) => {
         const { version, edition } = workspace.parameters
@@ -109,6 +110,7 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source' 
           node: inputs.node,
           output: candidate,
           version,
+          portableMigration: edition === 'EduWork' && workspace.parameters.windowsInstaller === true,
         })
         if (workspace.parameters.forUpdate) await buildTransitionLaunchers(candidate, coreRoot)
         const asset = `${edition}-${version}-windows-x64-electron.zip`

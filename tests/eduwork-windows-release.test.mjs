@@ -27,6 +27,16 @@ function extractorFiles(edition,version) {return {asset:{name:`${edition}-${vers
 receipt.portableExtractor=extractorFiles('EduWork',receipt.version)
 receipt.releaseNotes={approved:true,sha256:'c'.repeat(64)}
 
+test('Windows desktop stage fingerprints only the public migration opt-in', () => {
+ const { inputs } = windowsStages({ coreRoot: process.cwd(), receiptBase: {} }).find(stage => stage.name === 'desktop').definition
+ const parameters = { version: '0.4.15', development: false, forUpdate: true, edition: 'EduWork' }
+ const baseline = { ...parameters }
+ assert.deepEqual(inputs({ parameters }), baseline)
+ assert.deepEqual(inputs({ parameters: { ...parameters, windowsInstaller: false } }), baseline)
+ assert.deepEqual(inputs({ parameters: { ...parameters, windowsInstaller: true } }), { ...baseline, portableMigration: true })
+ assert.deepEqual(inputs({ parameters: { ...parameters, edition: 'EduWork-ECNU', windowsInstaller: true } }), { ...baseline, edition: 'EduWork-ECNU' })
+})
+
 test('Windows desktop stage preserves the edition policy of an already qualified Host', async t => {
  const root=await mkdtemp(join(tmpdir(),'eduwork-frozen-host-'))
  t.after(async()=>{

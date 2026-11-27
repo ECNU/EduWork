@@ -90,23 +90,15 @@ export async function inspectPortableSource({ sourceRoot, distribution }) {
   return { root, version: release.version, dshVersion: release.dshVersion, dataRoot, home, browser: join(dataRoot, 'browser'), config: join(root, 'config/eduwork.jsonc') }
 }
 
-// Executables under the source root plus any process whose command line names
-// it (the Host node runs from the product tree but serves the source data).
+// Executables under the source root. Command lines only count when the
+// executable path is unreadable (an elevated process): a bystander that merely
+// mentions the folder — an editor on a log, a scan with a path argument — does
+// not keep the old client alive and must not block the import.
 // The importer's own process chain is excluded; never a global process kill.
-export function windowsSourceProcessLister(sourceRoot, selfPid = process.pid) {
+export function windowsSourceProcessLister(sourceRoot, selfPid = process.pid, enumerate = windowsProcessRows) {
   const root = resolve(sourceRoot)
   return async () => {
-    const { spawn } = await import('node:child_process')
-    // PowerShell 5.1 pipes OEM (GBK) text by default; force UTF-8 or Chinese
-    // paths arrive mojibaked and the running-source check silently misses.
-    const child = spawn('powershell', ['-NoProfile', '-Command', '[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine | ConvertTo-Json -Compress'], { stdio: ['ignore', 'pipe', 'pipe'] })
-    const out = [], err = []
-    child.stdout.on('data', chunk => out.push(chunk)); child.stderr.on('data', chunk => err.push(chunk))
-    const code = await new Promise((done, fail) => { child.once('error', fail); child.once('close', done) })
-    if (code !== 0) throw Error(`无法枚举进程（exit ${code}）：${Buffer.concat(err).toString('utf8').slice(-500)}`)
-    const text = Buffer.concat(out).toString('utf8').trim()
-    const rows = text ? JSON.parse(text) : []
-    const list = Array.isArray(rows) ? rows : [rows]
+    const list = await enumerate()
     const excluded = new Set([selfPid])
     for (let pid = selfPid; ;) {
       const row = list.find(item => item.ProcessId === pid)
@@ -116,14 +108,28 @@ export function windowsSourceProcessLister(sourceRoot, selfPid = process.pid) {
     const prefix = (root + sep).toLowerCase(), reference = root.toLowerCase()
     // A boundary after the root keeps sibling directories like <root>-backup
     // from matching, whatever punctuation or whitespace follows the path.
-    const rootPattern = new RegExp(reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\w.$~-])')
+    const rootPattern = new RegExp(reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\p{N}_.$~-])', 'u')
     return list.filter(row => {
       if (excluded.has(row.ProcessId)) return false
       const exe = typeof row.ExecutablePath === 'string' ? row.ExecutablePath.toLowerCase() : ''
       const command = typeof row.CommandLine === 'string' ? row.CommandLine.toLowerCase() : ''
-      return exe.startsWith(prefix) || rootPattern.test(command)
+      return exe.startsWith(prefix) || (!exe && rootPattern.test(command))
     }).map(row => ({ pid: row.ProcessId, name: row.Name }))
   }
+}
+
+async function windowsProcessRows() {
+  const { spawn } = await import('node:child_process')
+  // PowerShell 5.1 pipes OEM (GBK) text by default; force UTF-8 or Chinese
+  // paths arrive mojibaked and the running-source check silently misses.
+  const child = spawn('powershell', ['-NoProfile', '-Command', '[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-CimInstance Win32_Process | Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine | ConvertTo-Json -Compress'], { stdio: ['ignore', 'pipe', 'pipe'] })
+  const out = [], err = []
+  child.stdout.on('data', chunk => out.push(chunk)); child.stderr.on('data', chunk => err.push(chunk))
+  const code = await new Promise((done, fail) => { child.once('error', fail); child.once('close', done) })
+  if (code !== 0) throw Error(`无法枚举进程（exit ${code}）：${Buffer.concat(err).toString('utf8').slice(-500)}`)
+  const text = Buffer.concat(out).toString('utf8').trim()
+  const rows = text ? JSON.parse(text) : []
+  return Array.isArray(rows) ? rows : [rows]
 }
 
 async function walkTree(base, rel, visit) {
@@ -356,14 +362,18 @@ async function reclaimImportStages(target, distribution, prefix) {
   }
 }
 
-export async function importPortableData({ sourceRoot, targetRoot, distribution, listProcesses, onProgress = () => {}, freeSpace = statfs }) {
+export async function importPortableData({ sourceRoot, targetRoot, distribution, listProcesses, onProgress = () => {}, freeSpace = statfs, intentId, sourceVersion }) {
   const source = await inspectPortableSource({ sourceRoot, distribution })
+  if (intentId && source.version !== sourceVersion) throw Error('旧客户端版本与迁移意图不符')
   if (!targetRoot || !isAbsolute(targetRoot)) throw Error('目标用户目录必须是绝对路径')
   const target = await canonical(targetRoot)
   if (source.root === target || within(source.root, target) || within(target, source.root)) throw Error('Program and user data directories must be separate')
   await assertNoLinks(targetRoot)
-  const running = await (listProcesses ?? windowsSourceProcessLister(source.root))()
-  if (running.length) throw Error(`旧客户端或其后台 Host 仍在运行（${running.map(row => `${row.pid}:${row.name}`).join('、')}），请先正常退出后再导入`)
+  const assertStopped = async () => {
+    const running = await (listProcesses ?? windowsSourceProcessLister(source.root))()
+    if (running.length) throw Error(`旧客户端或其后台 Host 仍在运行（${running.map(row => `${row.pid}:${row.name}`).join('、')}），请先正常退出后再导入`)
+  }
+  await assertStopped()
   const prior = await exists(target)
   if (prior) {
     const entries = await readdir(target)
@@ -371,7 +381,7 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
     else {
       const receipt = entries.includes('.eduwork-migration.json')
         ? await readFile(join(target, '.eduwork-migration.json'), 'utf8').then(JSON.parse).catch(() => null) : null
-      if (receipt?.schemaVersion === 2 && receipt.state === 'imported' && receipt.sourceRoot === source.root && receipt.distribution === distribution) {
+      if (!intentId && receipt?.schemaVersion === 2 && receipt.state === 'imported' && receipt.sourceRoot === source.root && receipt.distribution === distribution) {
         const current = await buildCopyPlan(source, target)
         if (digest(JSON.stringify(current)) !== receipt.planDigest) {
           throw Error('旧目录数据在上次导入后发生变化；请保留现有数据并人工核对后再试')
@@ -422,10 +432,12 @@ export async function importPortableData({ sourceRoot, targetRoot, distribution,
     const moved = await applyWorkspaceRemap({ stage, namespace: basename(source.dataRoot), moves: plan.moves })
     const receipt = { schemaVersion: 2, state: 'imported', sourceRoot: source.root, sourceVersion: source.version, distribution,
       files: plan.files.length, bytes: totalBytes, planDigest: digest(JSON.stringify(plan)), targetDirectoryDigest: await directoryDigest(stage), workspacesMoved: moved,
-      workspacesMissing: plan.moves.filter(move => move.missing).map(move => ({ id: move.id, path: move.oldPath })), createdAt: new Date().toISOString() }
+      workspacesMissing: plan.moves.filter(move => move.missing).map(move => ({ id: move.id, path: move.oldPath })), createdAt: new Date().toISOString(),
+      ...(intentId ? { intentId } : {}) }
     await writeFile(join(stage, '.eduwork-migration.json'), JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx', mode: 0o600 })
     // Keep the progress marker until activation succeeds so an interrupted
     // stage stays recognizable as an import leftover on retry.
+    if (intentId) await assertStopped()
     await rename(stage, target)
     await rm(join(target, '.eduwork-import-progress.json'), { force: true }).catch(() => {})
     return receipt

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import fs, { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink, lstat } from 'node:fs/promises'
+import fs, { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink, lstat, realpath } from 'node:fs/promises'
 import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import { basename, dirname, join, sep } from 'node:path'
@@ -15,7 +15,7 @@ const distribution = 'eduwork'
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
 
 async function fixture() {
-  const base = await mkdtemp(join(tmpdir(), 'eduwork-portable-import-'))
+  const base = await mkdtemp(join(await realpath(tmpdir()), 'eduwork-portable-import-'))
   const source = join(base, 'old-app'), target = join(base, 'user-root')
   const home = join(source, 'data/eduwork-electron/dsh')
   const put = async (rel, content) => { const path = join(source, rel); await mkdir(join(path, '..'), { recursive: true }); await writeFile(path, content) }
@@ -83,6 +83,19 @@ function mockFs(t, name, replacement) {
   syncBuiltinESMExports()
   t.after(() => { mocked.mock.restore(); syncBuiltinESMExports() })
 }
+
+test('an intent is recorded only after both source stops and a verified copy', async t => {
+  const { base, source, target } = await fixture()
+  t.after(() => rm(base, { recursive: true, force: true }))
+  const options = { sourceRoot: source, targetRoot: target, intentId: 'synthetic-intent', sourceVersion: '0.4.13' }
+  let inspections = 0
+  await assert.rejects(run(options, { listProcesses: async () => ++inspections === 1 ? [] : [{ pid: 7, name: 'Host' }] }), /仍在运行/)
+  await assert.rejects(lstat(target), { code: 'ENOENT' })
+  const receipt = await run(options)
+  assert.equal(receipt.intentId, options.intentId)
+  assert.deepEqual(JSON.parse(await readFile(join(target, '.eduwork-migration.json'), 'utf8')), receipt)
+  await assert.rejects(run({ ...options, intentId: 'different-intent' }), /目标用户目录已有数据/)
+})
 
 test('projectKey matches the runtime encoding observed in the shipped sample', () => {
   assert.equal(sessionProjectKey('D:\\Workspace\\EduWork\\wm13\\EduWork\\sample-workspace-internal'), '--D-Workspace-EduWork-wm13-EduWork-sample-workspace-internal--')
@@ -518,27 +531,45 @@ test('the Windows process lister parses real system processes without matching u
   } finally { await rm(base, { recursive: true, force: true }) }
 })
 
-test('the Windows process lister detects command-line references, including Chinese paths, but not sibling directories', { skip: process.platform !== 'win32' }, async () => {
+test('the process filter counts executables under the source root and command lines only when the executable path is unreadable', { skip: process.platform !== 'win32' }, async () => {
+  const root = 'D:\\Apps\\EduWork'
+  const row = (pid, name, executablePath, commandLine) => ({ ProcessId: pid, ParentProcessId: 0, Name: name, ExecutablePath: executablePath, CommandLine: commandLine })
+  const found = await windowsSourceProcessLister(root, 999, async () => [
+    row(10, 'EduWork.exe', `${root}\\EduWork.exe`, `"${root}\\EduWork.exe"`),
+    row(11, 'codex.exe', 'C:\\tools\\codex.exe', `codex "work in ${root}\\data"`),
+    row(12, 'notepad.exe', 'C:\\Windows\\notepad.exe', `notepad "${root}\\logs\\main.log"`),
+    row(13, 'EduWork.exe', null, `"${root}\\EduWork.exe" --elevated`),
+    row(14, 'EduWork.exe', null, `"${root}-backup\\EduWork.exe"`),
+    row(15, 'EduWork.exe', null, `"${root}备份\\EduWork.exe"`)
+  ])()
+  assert.deepEqual(found.map(row => row.pid), [10, 13])
+})
+
+test('the Windows process lister detects a running executable under the source root and ignores processes that only mention the path', { skip: process.platform !== 'win32' }, async () => {
   const { base, source } = await fixture()
   const { spawn } = await import('node:child_process')
+  const { copyFileSync } = await import('node:fs')
   const chineseRoot = join(base, '中文旧客户端')
   await mkdir(chineseRoot, { recursive: true })
+  copyFileSync(process.env.ComSpec, join(chineseRoot, 'cmd.exe'))
   const children = []
   try {
     const referencing = spawn(process.execPath, ['-e', `setTimeout(()=>{},30000) /* ${source} */`], { stdio: 'ignore' })
     const sibling = spawn(process.execPath, ['-e', `setTimeout(()=>{},30000) /* ${source}-backup */`], { stdio: 'ignore' })
-    const punctuation = spawn(process.execPath, ['-e', `setTimeout(()=>{},30000) /* ${source}; */`], { stdio: 'ignore' })
-    const chinese = spawn(process.execPath, ['-e', `setTimeout(()=>{},30000) /* ${chineseRoot} */`], { stdio: 'ignore' })
-    children.push(referencing, sibling, punctuation, chinese)
+    const chinese = spawn(join(chineseRoot, 'cmd.exe'), ['/c', 'ping -n 10 127.0.0.1'], { stdio: 'ignore' })
+    children.push(referencing, sibling, chinese)
     const found = await windowsSourceProcessLister(source)()
-    assert.ok(found.some(row => row.pid === referencing.pid), 'command-line reference under the source root must be detected')
-    assert.ok(found.some(row => row.pid === punctuation.pid), 'punctuation right after the root must still match')
+    assert.ok(!found.some(row => row.pid === referencing.pid), 'a process that only names the folder must not block the import')
     assert.ok(!found.some(row => row.pid === sibling.pid), 'a sibling directory sharing the prefix must not match')
     const chineseFound = await windowsSourceProcessLister(chineseRoot)()
-    assert.ok(chineseFound.some(row => row.pid === chinese.pid), 'Chinese paths must survive the PowerShell pipe encoding')
+    assert.ok(chineseFound.some(row => row.pid === chinese.pid), 'an executable under a Chinese source root must survive the PowerShell pipe encoding')
   } finally {
-    for (const child of children) child.kill()
-    await rm(base, { recursive: true, force: true })
+    await Promise.all(children.map(child => new Promise(done => {
+      if (child.exitCode !== null || child.signalCode !== null) return done()
+      child.once('exit', done)
+      child.kill()
+    })))
+    await rm(base, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 })
   }
 })
 
