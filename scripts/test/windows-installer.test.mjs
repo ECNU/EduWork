@@ -131,6 +131,61 @@ test('NSIS finish page relaunches a forced update but leaves manual installation
   assert.doesNotMatch(finishPage, /MUI_FINISHPAGE_RUN/)
 })
 
+test('NSIS offers a bilingual uninstall choice without preselecting personal data deletion', () => {
+  const include = installerInclude(desktop)
+  assert.match(include, /!macro customUnWelcomePage\s+!insertmacro MUI_UNPAGE_WELCOME\s+UninstPage custom un\.PersonalDataPage un\.PersonalDataPageLeave/)
+  assert.match(include, /\$LANGUAGE == 2052/)
+  assert.match(include, /MUI_HEADER_TEXT "个人数据选项"/)
+  assert.match(include, /MUI_HEADER_TEXT "Personal Data"/)
+  assert.match(include, /GetDlgItem \$0 \$HWNDPARENT 1[\s\S]*WM_SETTEXT.*"STR:卸载\(&U\)"[\s\S]*WM_SETTEXT.*"STR:&Uninstall"/)
+  assert.match(include, /同时删除本机个人数据（会话记录、设置、模型凭据与内置工作区）/)
+  assert.match(include, /Also delete local personal data \(sessions, settings, credentials, and built-in workspaces\)/)
+  assert.match(include, /\$\{NSD_SetState\} .*\$\{BST_UNCHECKED\}/)
+  assert.match(include, /\$\{NSD_GetState\} .*\$DeleteEduWorkUserData/)
+  assert.match(include, /\$\{if\} \$\{Silent\}\s+\$\{orIf\} \$KeepEduWorkUserData == "1"\s+Abort/)
+})
+
+test('NSIS only accepts the edition-specific data deletion switch for a non-upgrade silent uninstall', () => {
+  const include = installerInclude(desktop)
+  const parser = include.match(/Function un\.ParseUninstallFlags\n([\s\S]*?)\nFunctionEnd/)?.[1] ?? ''
+  assert.match(parser, /GetCommandLineW[\s\S]*lstrlenW[\s\S]*\$\{NSIS_MAX_STRLEN\}[\s\S]*CompareStringOrdinal\(.*w " _\?=".*i 0\)[\s\S]*CommandLineToArgvW[\s\S]*lstrlenW[\s\S]*\$\{NSIS_MAX_STRLEN\}[\s\S]*LocalFree/)
+  assert.match(parser, /CompareStringOrdinal\(.*w "_\?=".*i 0\)/)
+  for (const [flag, ignoreCase] of [['/KEEP_APP_DATA', 1], ['--updated', 1], ['/S', 0], ['--eduwork-delete-user-data', 0]]) {
+    assert.ok(parser.includes(`CompareStringOrdinal(p r3, i -1, w "${flag}", i -1, i ${ignoreCase})i.r6`), flag)
+  }
+  assert.match(parser, /\$\{if\} \$6 = 2/)
+  assert.match(parser, /\$\{andIfNot\} \$\{isUpdated\}/)
+  assert.match(parser, /\$\{andIf\} \$\{Silent\}[\s\S]*StrCpy \$DeleteEduWorkUserData "1"/)
+  assert.doesNotMatch(parser, /GetOptions|TestParameter|\bS?==\s+"(?:\/|--|_\?=)/)
+  assert.match(include, /!ifdef BUILD_UNINSTALLER\n[\s\S]*!if "\$\{OPTION\}" S== "--delete-app-data"\s+SetErrors\s+!else\s+!insertmacro GetOptionsCall/)
+})
+
+test('NSIS binds install identity before stock removal and verifies it before data cleanup', () => {
+  const include = installerInclude(desktop)
+  assert.match(include, /!macro customUnInstall\n[\s\S]*Call un\.BindEduWorkInstall/)
+  assert.match(include, /Function un\.BindEduWorkInstall\n[\s\S]*\$installMode[\s\S]*InstallLocation[\s\S]*GetFileAttributesW[\s\S]*StrCpy \$EduWorkVerifiedInstDir \$INSTDIR/)
+  assert.match(include, /!macro unregisterFileAssociations\n\s+!insertmacro EduWorkIfDeleteRequested\s+Call un\.DeletePersonalData/)
+  assert.match(include, /Function un\.DeletePersonalData\n[\s\S]*verify-install[\s\S]*\$EduWorkVerifiedInstDir[\s\S]*GetFileAttributesW[\s\S]*"cleanup"[\s\S]*Call un\.DeleteEduWorkTree/)
+  assert.equal([...include.matchAll(/CompareStringOrdinal\(w "\$(?:INSTDIR|0|EduWorkVerifiedInstDir)", i -1, w "\$(?:INSTDIR|LOCALAPPDATA[^\n"]+)", i -1, i 1\)i\.r2'\n\s+\$\{if\} \$2 <> 2/g)].length, 3)
+  assert.match(include, /DetailPrint .*\$EduWorkDataCleanupStage.*\$EduWorkDataCleanupError[\s\S]*MessageBox .* \/SD IDOK\s+SetErrorLevel 1/)
+})
+
+test('NSIS binds deletion to the current edition and never follows reparse points', () => {
+  const include = installerInclude({ distribution: 'test-edition' })
+  assert.ok(include.includes('\\EduWork\\test-edition'))
+  assert.ok(include.includes('\\eduwork-installer-test-edition-updater'))
+  assert.ok(include.includes('\\\\?\\'))
+  assert.doesNotMatch(include, /RMDir\s+\/r/i)
+  assert.match(include, /CreateFileW\([^\n]*0x02200000/)
+  assert.match(include, /GetFileInformationByHandleEx\(p r1, i 9, p r5, i 8\)[\s\S]*System::Call '\*\$5\(i \.r2\)'/)
+  assert.doesNotMatch(include, /GetFileInformationByHandleEx[^\n]*\*l/)
+  assert.match(include, /IntOp \$\w+ \$\w+ & 0x400/)
+  assert.match(include, /RemoveDirectoryW/)
+  assert.match(include, /DeleteFileW/)
+  assert.match(include, /\$\{NSIS_MAX_STRLEN\}/)
+  assert.match(include, /SetErrorLevel 1/)
+})
+
 test('installer project fixes per-user, no-elevation and data-preserving behavior', () => {
   const project = installerProject({ desktop, release, electronVersion: '44.0.0', artifactsDir: 'C:/out/artifacts', icon: 'C:/icon.ico', includePath: 'C:/out/installer.nsh' })
   assert.equal(project.packageJSON.version, version)
