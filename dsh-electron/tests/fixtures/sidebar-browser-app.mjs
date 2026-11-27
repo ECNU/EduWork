@@ -26,9 +26,6 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'dsh-app', privileges: { standar
 let window
 const idleCounts = new Map()
 let isolatedWorldHold
-process.on('unhandledRejection', reason => {
-  if (reason?.message === 'controlled late rejection') isolatedWorldHold?.unhandled.push(reason.message)
-})
 const holdIsolatedWorld = (url, worldName) => {
   const guest = webContents.getAllWebContents().find(guest => guest.getType() === 'webview' && guest.getURL() === url)
   if (!guest) throw new Error(`No Sidebar guest for ${url}`)
@@ -42,11 +39,17 @@ const holdIsolatedWorld = (url, worldName) => {
 const rejectHeldIsolatedWorld = async () => {
   if (!isolatedWorldHold) throw new Error('No isolated world command is being held')
   const held = isolatedWorldHold
-  held.reject(new Error('controlled late rejection'))
-  await new Promise(resolve => setImmediate(resolve))
-  await new Promise(resolve => setImmediate(resolve))
-  isolatedWorldHold = undefined
-  return held.unhandled
+  const unhandled = reason => held.unhandled.push(reason?.message)
+  process.on('unhandledRejection', unhandled)
+  try {
+    held.reject(new Error('controlled late rejection'))
+    await new Promise(resolve => setImmediate(resolve))
+    await new Promise(resolve => setImmediate(resolve))
+    return held.unhandled
+  } finally {
+    process.off('unhandledRejection', unhandled)
+    isolatedWorldHold = undefined
+  }
 }
 const broker = createSidebarBrowser({ getWindow: () => window, idleMs: 1500 })
 const menus = [], externals = [], clearings = []

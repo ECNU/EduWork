@@ -64,7 +64,7 @@ const newTabPage = language => {
  * @param idleMs - an Agent pauses between tool calls; after this long its tabs
  *   stop painting in the background and the window throttles again.
  */
-export function createSidebarBrowser({ getWindow, idleMs = 15_000, traceIdle }) {
+export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
   const secret = randomBytes(24).toString('hex')
   const data = createSidebarBrowserData()
   const groups = new Map()  // session id -> one conversation's endpoint
@@ -138,7 +138,6 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000, traceIdle }) 
     tell({ type: 'show', sessionId: target.sessionId, tabId: page.tabId })
   }
   const rest = target => {
-    traceIdle?.(target.sessionId, 'rest', { active: !!target.active, marked: !!target.marked })
     clearTimeout(target.idle)
     target.marked = undefined
     if (!target.active) return
@@ -276,7 +275,20 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000, traceIdle }) 
         const result = page && await pageCommand(page, method, params)
         if (result !== undefined) return reply({ result })
         if (!allowedOnPage(method)) throw failure(blockedBecause[method] ?? `'${method}' is not available in the Sidebar browser`, -32601)
-        reply({ result: await carrier.guest.debugger.sendCommand(method, params, page ? undefined : sessionId) })
+        const command = carrier.guest.debugger.sendCommand(method, params, page ? undefined : sessionId)
+        if (method === 'Page.createIsolatedWorld') {
+          let timer
+          try {
+            const timeout = new Promise((_resolveTimeout, rejectTimeout) => {
+              timer = setTimeout(() => rejectTimeout(failure('Page.createIsolatedWorld timed out')), idleMs)
+            })
+            reply({ result: await Promise.race([command, timeout]) })
+          } finally {
+            clearTimeout(timer)
+          }
+        } else {
+          reply({ result: await command })
+        }
       } finally {
         if (input) carrier.inputs--
       }
@@ -336,7 +348,6 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000, traceIdle }) 
     if (!widths.has(page.guest)) return reply(409, { error: 'The Sidebar does not size this tab\'s page' })
     target.marked = undefined
     const deadline = performance.now() + LAYOUT_TIMEOUT_MS
-    traceIdle?.(sessionId, 'layout:begin', { mode, active: !!target.active })
     touch(target, page, true)
     const asked = id()
     const { width } = await new Promise((resolve, reject) => {
@@ -345,7 +356,6 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000, traceIdle }) 
       tell({ type: 'width', id: asked, guestId: page.guest.id, desktop: mode === 'desktop' })
     })
     reply(200, await laidOut(page.guest, width, deadline))
-    traceIdle?.(sessionId, 'layout:reply', { mode, active: !!target.active })
   }
 
   // A request of the Host's at a conversation's endpoint, with its JSON body, answered in JSON.
@@ -387,14 +397,8 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000, traceIdle }) 
             try { message = JSON.parse(data) } catch { return }
             clearTimeout(target.idle)
             busy++
-            traceIdle?.(target.sessionId, 'cdp:begin', { id: message.id, method: message.method, busy, active: !!target.active, marked: !!target.marked })
             await dispatch(target, socket, message)
-            const armsIdle = --busy === 0 && target.client === socket
-            traceIdle?.(target.sessionId, 'cdp:end', { id: message.id, method: message.method, busy, armsIdle, active: !!target.active, marked: !!target.marked })
-            if (armsIdle) target.idle = setTimeout(() => {
-              traceIdle?.(target.sessionId, 'timer:fire')
-              rest(target)
-            }, idleMs)
+            if (--busy === 0 && target.client === socket) target.idle = setTimeout(() => rest(target), idleMs)
           })
           socket.on('close', () => { if (target.client === socket) disconnect(target) })
         })
