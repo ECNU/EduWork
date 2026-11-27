@@ -156,6 +156,9 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   })
   ipcMain.handle(SIDEBAR_BROWSER_IPC.clearData, event => sidebarBrowser.data.confirmAll(owner(event), locale)
     .catch(error => { dialog.showErrorBox(app.getName(), error.message); return false }))
+  ipcMain.on(SIDEBAR_BROWSER_IPC.width, (event, guestId, desktop, width, request) => {
+    try { sidebarBrowser.widthShown(owner(event), guestId, desktop, width, request) } catch { /* Not the application page. */ }
+  })
   session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ['ws://127.0.0.1/*'] }, (details, callback) => {
     callback(getHost()?.socketHeaders(details, getWindow()?.webContents.id) ?? {})
   })
@@ -230,8 +233,8 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
         const releaseShortcuts = shortcuts.attachGuest(window, guest, lease)
         const releaseData = sidebarBrowser.data.attach(guest)
         const clearSite = () => void sidebarBrowser.data.confirmSite(window, locale, guest).catch(error => dialog.showErrorBox(app.getName(), error.message))
-        const releaseMenu = attachSidebarBrowserMenu(window, guest, () => locale,
-          { byAgent: () => sidebarBrowser.byAgent(guest), website: () => sidebarBrowser.website(guest), clearSite })
+        const releaseMenu = attachSidebarBrowserMenu(window, guest, () => locale, { byAgent: () => sidebarBrowser.byAgent(guest),
+          desktopWidth: () => sidebarBrowser.desktopWidth(guest), chooseWidth: desktop => sidebarBrowser.chooseWidth(guest, desktop), website: () => sidebarBrowser.website(guest), clearSite })
         return () => { releaseShortcuts(); releaseData(); releaseMenu() }
       })
       // After bind, which replaces a guest's preferences: Sidebar pages paint

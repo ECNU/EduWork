@@ -13,7 +13,7 @@ const runtime = process.env.EDUWORK_TEST_RUNTIME
 if (!runtime) throw new Error('Set EDUWORK_TEST_RUNTIME to the pinned DSH Runtime')
 const fromRuntime = pathToFileURL(join(runtime, 'package.json')).href
 const core = new URL('../../tool-browser/lib/core.js', import.meta.url).href
-// The browser-use provider that sidebar.js mounts is not in the Runtime; browser_clear_data takes only its rule for which Agents use the Sidebar.
+// The browser-use provider that sidebar.js mounts is not in the Runtime; browser_clear_data and browser_layout take only its rule for which Agents use the Sidebar.
 const provider = {
   '@deepseek-ai/dsh-browser-use/brand': 'export const BrowserUseProviderName = name => name',
   '@deepseek-ai/dsh-experimental-browser-use-runtime': 'export class SessionResources {}',
@@ -30,6 +30,7 @@ const { READ } = await import('../lib/page.js')
 const { browserGuard, browserPermission } = await import('../lib/permission.js')
 const { covered, noteSavedScreenshots, pageOf, registerPageTools } = await import('../lib/read-act.js')
 const { registerClearData } = await import('../lib/clear-data.js')
+const { registerLayout } = await import('../lib/layout.js')
 
 const line = (text, top = 0) => ({ text, top })
 const page = (url, title, lines, refs, extra = {}) => ({ url, title, alerts: [], lines, closed: [], refs, scrollY: 0, truncated: false, ...extra })
@@ -80,6 +81,9 @@ async function harness({ start = 'search', routes = {}, suggests = false, approv
         : next && !here.refs[next] ? 'the page changed' : suggests && /at\(\d+\)\?\.getAttribute/u.test(args.function) ? 'suggestions opened under the field' : ''
       return text(`### Result\n${JSON.stringify(answer)}`)
     }
+    // browser_layout's mark, which the page answers with.
+    const mark = /^\(\) => '(eduwork-layout:[0-9a-f]{32})'$/u.exec(args.function ?? '')?.[1]
+    if (name === 'browser_evaluate' && mark) return text(`### Result\n${JSON.stringify(mark)}`)
     if (name === 'browser_evaluate') return text('### Result\nundefined')
     if (name === 'browser_navigate') return go(Object.keys(pages).find(key => pages[key].url === args.url))
     if (name === 'browser_tabs') {
@@ -125,7 +129,10 @@ async function harness({ start = 'search', routes = {}, suggests = false, approv
   ctx.on('tools/pre-execute', (exec, next) => browserPermission(ctx, exec, next))
   registerPageTools(ctx)
   noteSavedScreenshots(ctx)
-  if (sidebar !== undefined) registerClearData(ctx, sidebar)
+  if (sidebar !== undefined) {
+    registerClearData(ctx, sidebar)
+    registerLayout(ctx, sidebar)
+  }
   ctx.on('tools/execute', async (exec, next) => {
     if (!exec.name.startsWith('browser_')) return next()
     outer = exec
@@ -365,6 +372,7 @@ test('browser_clear_data clears the website of the page read, or the whole works
         response.writeHead(200).write('{"site')
         return setTimeout(() => response.destroy(), 50)
       }
+      if (request.url.endsWith('/layout')) return response.writeHead(200).end(JSON.stringify({ width: 1280, settled: true }))
       if (body.url?.includes('10.0.0.8')) return response.writeHead(409).end(JSON.stringify({ error: 'No page is open in the browser' }))
       response.writeHead(200).end(JSON.stringify(body.scope === 'site' ? { site: new URL(body.url).hostname } : {}))
     })
@@ -394,6 +402,12 @@ test('browser_clear_data clears the website of the page read, or the whole works
     assert.equal(permission('site').displayReason.zh, '允许智能体清除侧边栏浏览器里 10.0.0.8 所在网站在本工作区的数据：登录状态、Cookie、网站存储和缓存。同一工作区其他对话里的这个网站也会退出登录，打开着的这个网站的网页会重新加载')
     assert.equal(permission('workspace').reason, 'Allow the Agent to clear all data of this workspace\'s Sidebar browser: sign-ins, cookies, site storage and cache of every website. They are signed out in the workspace\'s other conversations too, and its open pages reload')
     assert.equal(permission('workspace', 'danger-full-access').kind, 'allow')
+    // The page browser_layout shows counts as read too, here the one the user went back to meanwhile.
+    browser.visit('search')
+    await browser.run('browser_layout', { mode: 'desktop' })
+    assert.match(permission('site').displayReason.zh, /清除侧边栏浏览器里 library\.example 所在网站/u)
+    await browser.run('browser_clear_data', { scope: 'site' })
+    assert.deepEqual(requests.slice(-2).map(([, url, body]) => [url.split('/').at(-1), body.url]), [['layout', undefined], ['clear-data', 'https://library.example']])
     // A subagent keeps a browser of its own, without the tool.
     const tools = async agent => (await browser.ctx.tools.resolve({ agent, signal: AbortSignal.timeout(5000) })).view(agent).get('browser_clear_data') !== undefined
     assert.deepEqual([await tools(browser.agent), await tools({ session: { id: 'session-2', header: { origin: 'subagent' } } })], [true, false])
@@ -407,6 +421,56 @@ test('browser_clear_data clears the website of the page read, or the whole works
     const broken = await harness({ sidebar: endpoint('c') })
     await assert.rejects(broken.run('browser_clear_data', { scope: 'workspace' }), { message: /^(aborted|socket hang up)$/u })
     assert.deepEqual([blank.asked, broken.asked], [['browser_clear_data'], ['browser_clear_data']])
+  } finally {
+    server.close()
+  }
+})
+
+test('browser_layout lays the current tab out at the width asked for, at the conversation\'s Sidebar endpoint, and shows the page as it is then', async () => {
+  // The desktop app's endpoint, answering as sidebar-browser.mjs does; meanwhile: what the browser does while it answers.
+  const requests = []
+  let meanwhile = () => {}
+  const server = createServer((request, response) => {
+    let text = ''
+    request.setEncoding('utf8').on('data', chunk => { text += chunk }).on('end', () => {
+      const body = JSON.parse(text)
+      requests.push([request.method, request.url, body])
+      meanwhile()
+      if (request.url.startsWith(`/${'b'.repeat(48)}/`)) return response.writeHead(409).end(JSON.stringify({ error: 'The Sidebar browser did not see the page to lay out' }))
+      response.writeHead(200).end(JSON.stringify(body.mode === 'desktop' ? { width: 1280, settled: true } : { width: 1280, settled: false }))
+    })
+  }).listen(0, '127.0.0.1')
+  await once(server, 'listening')
+  const endpoint = secret => `ws://127.0.0.1:${server.address().port}/${secret.repeat(48)}`
+  const at = `/${'a'.repeat(48)}/session-1/layout`
+  try {
+    const browser = await harness({ sidebar: endpoint('a') })
+    await browser.run('browser_read', { url: 'https://library.example/rules', newTab: true })
+    browser.calls.length = 0
+    // Its current tab's page, marked so that the desktop app knows which one it is, then read afresh.
+    const text = await browser.run('browser_layout', { mode: 'desktop' })
+    const [[, , { mark }]] = requests
+    assert.match(mark, /^[0-9a-f]{32}$/u)
+    assert.deepEqual(requests, [['POST', at, { mode: 'desktop', mark }]])
+    assert.deepEqual(browser.calls.map(c => [c.name, c.args.function === READ ? 'read' : c.args.function]), [['browser_evaluate', `() => 'eduwork-layout:${mark}'`], ['browser_evaluate', 'read']])
+    assert.match(text, /^This tab is at desktop width now: its page lays out 1280 px wide\. Only this tab changed, and the page did not reload\.\nA page that chose its layout as it loaded keeps it until it reloads; reload it only if the user has nothing unsaved in it\.\n\n<untrusted_web_content>\nPage: 借阅规则\n/u)
+    // The page read is the one browser_act acts on next, and nothing asked the user.
+    assert.equal(pageOf(browser.agent), 'https://library.example/rules')
+    assert.deepEqual(browser.asked, [])
+    // A page still laying out is said to be; each request has a mark of its own.
+    assert.match(await browser.run('browser_layout', { mode: 'sidebar' }), /^This tab is at the Sidebar's width now, but its page had not laid out at the new width yet; read it again in a moment\./u)
+    assert.deepEqual(requests[1][2].mode, 'sidebar')
+    assert.notEqual(requests[1][2].mark, mark)
+    // A page that cannot be read afterwards, as one gone by then, still shows what was done, and its numbers stand for nothing.
+    meanwhile = () => browser.visit('gone')
+    assert.match(await browser.run('browser_layout', { mode: 'desktop' }), /^This tab is at desktop width now: [^\n]*\n[^\n]*\n\nThe page could not be read: /u)
+    assert.equal(pageOf(browser.agent), undefined)
+    // What the desktop app refuses fails the call.
+    const refused = await harness({ sidebar: endpoint('b') })
+    await assert.rejects(refused.run('browser_layout', { mode: 'desktop' }), { message: 'The Sidebar browser did not see the page to lay out' })
+    // A subagent keeps a browser of its own, without the tool.
+    const tools = async agent => (await browser.ctx.tools.resolve({ agent, signal: AbortSignal.timeout(5000) })).view(agent).get('browser_layout') !== undefined
+    assert.deepEqual([await tools(browser.agent), await tools({ session: { id: 'session-2', header: { origin: 'subagent' } } })], [true, false])
   } finally {
     server.close()
   }

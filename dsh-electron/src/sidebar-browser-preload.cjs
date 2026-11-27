@@ -8,6 +8,7 @@ if (process.isMainFrame && location.protocol === 'dsh-app:' && location.host ===
     bind: (guestId, sessionId, tabId) => ipcRenderer.send('eduwork:sidebar-browser:bind', guestId, sessionId, tabId),
     opened: (request, result) => ipcRenderer.send('eduwork:sidebar-browser:opened', request, result),
     clearData: () => ipcRenderer.invoke('eduwork:sidebar-browser:clear-data'),
+    width: (guestId, desktop, width, request) => ipcRenderer.send('eduwork:sidebar-browser:width', guestId, desktop, width, request),
     onRequest: listener => {
       const handler = (_event, message) => listener(message)
       ipcRenderer.on('eduwork:sidebar-browser:request', handler)

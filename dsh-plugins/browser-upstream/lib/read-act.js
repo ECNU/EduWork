@@ -167,7 +167,7 @@ async function act(run, agent, actions) {
 // The report and the page as it is now, and whether it changed from the page
 // the actions were decided on. What ran is reported even when the page cannot
 // be read afterwards; its numbers then stand for nothing.
-async function finish(run, agent, report, seen) {
+export async function finish(run, agent, report, seen) {
   const after = await look(run).catch(error => error)
   if (after instanceof Error) {
     seenBy.delete(agent)
@@ -177,14 +177,15 @@ async function finish(run, agent, report, seen) {
   return `${report.join('\n')}\n\n${view(agent, after)}`
 }
 
-const page = { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] }
+/** A tool's run, whose MCP calls go under its own permission while it lasts. */
+export async function within(ctx, exec, work) {
+  covered.add(exec.token)
+  try { return await work(runner(ctx, exec)) } finally { covered.delete(exec.token) }
+}
+
+export const page = { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] }
 
 export function registerPageTools(ctx) {
-  // Each run's MCP calls go under its own permission while it lasts.
-  const within = async (exec, work) => {
-    covered.add(exec.token)
-    try { return await work(runner(ctx, exec)) } finally { covered.delete(exec.token) }
-  }
   // A browser tool the Agent calls itself, other than one that only looks, may
   // take it to another page or tab. Until it reads again, it has no page whose
   // numbers it can act on, nor one whose address counts as where it is.
@@ -204,7 +205,7 @@ export function registerPageTools(ctx) {
     output: page,
     timeoutMs: 60_000,
     presentCall: args => ({ card: 'generic', title: args.url ? `浏览器 · 打开 ${args.url}` : '浏览器 · 读取页面', kind: 'read' }),
-    execute: (args, exec) => within(exec, async run => {
+    execute: (args, exec) => within(ctx, exec, async run => {
       try {
         if (args.url !== undefined) await (args.newTab ? run('browser_tabs', { action: 'new', url: args.url }) : run('browser_navigate', { url: args.url }))
         return view(exec.agent, await look(run), args.find)
@@ -240,7 +241,7 @@ export function registerPageTools(ctx) {
     output: page,
     timeoutMs: 120_000,
     presentCall: args => ({ card: 'generic', title: `浏览器 · 操作页面（${args.actions?.length ?? 0} 步）`, kind: 'execute' }),
-    execute: (args, exec) => within(exec, run => act(run, exec.agent, args.actions)),
+    execute: (args, exec) => within(ctx, exec, run => act(run, exec.agent, args.actions)),
   }))
 }
 
