@@ -113,6 +113,29 @@ test('migration progress polls in 350 ms, updates the dismissed footer, and canc
   assert.equal(footer(), undefined)
 })
 
+test('starting migration from idle switches an already scheduled slow poll to 350 ms immediately', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { createUpdateController } = loadUpdates({}, undefined, undefined, undefined, new EventTarget())
+  let migration = { version: '0.4.15', bytes: 2048, dismissed: false, busy: false }
+  const actions = []
+  const controller = createUpdateController(async action => {
+    actions.push(action)
+    if (action === 'start-portable-migration') migration = { ...migration, busy: true, stage: 'downloading', downloadedBytes: 0, totalBytes: 2048, cancellable: true }
+    return { shell: 'electron', update: { enabled: true, state: 'idle' }, portableMigration: migration }
+  })
+  t.after(() => controller.dispose())
+  await nextTurn()
+  assert.deepEqual(actions, ['status'])
+  await controller.run('start-portable-migration')
+  await nextTurn()
+  const beforeTick = actions.length
+  migration = { ...migration, downloadedBytes: 1024 }
+  t.mock.timers.tick(350)
+  await nextTurn()
+  assert.equal(actions.length, beforeTick + 1)
+  assert.equal(controller.getSnapshot().status.portableMigration.downloadedBytes, 1024)
+})
+
 test('ordinary portable download stays primary unless migration is offered', () => {
   const React = { createElement: (type, props, ...children) => typeof type === 'function'
     ? type({ ...props, children }) : { type, props, children } }

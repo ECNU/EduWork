@@ -43,7 +43,7 @@ export function portableRedirectDialogs(showMessageBox) {
     choose: async available => {
       const actions = [...(available ? ['resume'] : []), 'withdraw', 'exit']
       const { response } = await showMessageBox({ type: 'question', title: '上次迁移到安装版尚未完成',
-        message: available ? '安装版已就绪，打开安装版即可继续完成数据迁移。' : '上次安装未完成，本机尚未安装所需版本的安装版。',
+        message: available ? '安装版已就绪，打开安装版即可继续完成数据迁移。' : '当前未检测到可继续迁移的安装版。',
         detail: available ? '如暂不迁移，可选择「取消迁移并继续用旧版」，仅清除未完成的迁移记录，原数据不会修改。'
           : '可选择「取消迁移并继续用旧版」，回到旧客户端后再重新点击「升级并迁移」。原数据未做任何修改。',
         buttons: [...(available ? ['打开安装版继续迁移'] : []), '取消迁移并继续用旧版', '退出'], noLink: true,

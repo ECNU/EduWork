@@ -23,7 +23,7 @@ export function PortableMigrationUpgrade({ migration, run, locked, button, prima
       element('p', { role: 'status', style: note }, message),
       progressBar('迁移安装包下载进度', progress),
       determinate && element('p', { style: note }, `${size(migration.downloadedBytes || 0)} / ${size(migration.totalBytes)} · ${progress}%`),
-      element('p', { style: note }, '下载完成后将自动关闭当前客户端并启动安装程序，请先保存或结束正在运行的任务。'),
+      element('p', { style: note }, '下载完成后将确认退出当前客户端并启动安装程序，请先保存正在运行的任务。'),
       migration.cancellable && element('button', { type: 'button', style: { ...button, marginTop: 8 }, onClick: () => run('cancel-portable-migration') }, '取消下载'))
       : element('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 } },
         element('button', { type: 'button', disabled: locked, style: primary, onClick: () => run('start-portable-migration') }, '升级并迁移'),

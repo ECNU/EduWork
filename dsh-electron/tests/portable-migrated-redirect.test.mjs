@@ -23,7 +23,7 @@ test('pending migration dialogs match the actions actually available', async () 
     }
     assert.equal(options.title, '上次迁移到安装版尚未完成')
     assert.deepEqual(options.buttons, [...(available ? ['打开安装版继续迁移'] : []), '取消迁移并继续用旧版', '退出'])
-    assert.match(options.message, available ? /安装版已就绪/ : /本机尚未安装所需版本/)
+    assert.match(options.message, available ? /安装版已就绪/ : /当前未检测到可继续迁移的安装版/)
     assert.match(options.detail, available ? /仅清除未完成的迁移记录/ : /回到旧客户端后再重新点击「升级并迁移」/)
     assert.equal(options.defaultId, available ? 0 : 1)
     assert.equal(options.cancelId, actions.length - 1)

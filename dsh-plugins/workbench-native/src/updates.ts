@@ -50,12 +50,13 @@ export function createUpdateController(service) {
   settle()
   if(elapsed)publish({statusError:'无法读取更新状态：读取更新状态超时（10 秒）'})
  }
- const poll=async()=>{await read();if(!stopped)timer=setTimeout(poll,!view.statusError&&(Boolean(view.status?.portableMigration?.busy)||[view.status?.update?.state,view.status?.contentUpdate?.state].some(state=>['checking','downloading','verifying','applying'].includes(state)))?350:2500)}
+ const activePoll=()=>!view.statusError&&(Boolean(view.status?.portableMigration?.busy)||[view.status?.update?.state,view.status?.contentUpdate?.state].some(state=>['checking','downloading','verifying','applying'].includes(state)))
+ const poll=async()=>{timer=undefined;await read();if(!stopped)timer=setTimeout(poll,activePoll()?350:2500)}
  const run=async(action)=>{
   if(view.working)return
   const started=Date.now(),working=action==='check-updates'?'checking':action==='download-update'?'downloading':action.startsWith('use-')?'switching':action.includes('software-updates')?'settings':''
   publish({error:'',working})
-  try{const status=await service(action);publish({status});if(status.phase==='error'&&!status.update?.error)publish({error:status.message})}catch(e){publish({error:e.message})}
+  try{const status=await service(action);publish({status});if(!stopped&&timer!==undefined&&activePoll()){clearTimeout(timer);timer=setTimeout(poll,350)}if(status.phase==='error'&&!status.update?.error)publish({error:status.message})}catch(e){publish({error:e.message})}
   finally{if(working)await wait(Math.max(0,450-(Date.now()-started))).promise;publish({working:''});void read()}
  }
  void poll()
