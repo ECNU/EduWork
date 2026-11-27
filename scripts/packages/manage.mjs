@@ -33,6 +33,7 @@ if (action === 'list') {
       'dsh-academic-calendar': ['test'],
       'dsh-annotation': ['check'],
       'dsh-side-chat': ['check'],
+      'dsh-message-edit': ['check'],
       'dsh-desktop-pet': ['check'],
       'dsh-literature': ['check'],
       'dsh-oidc': ['check'],
