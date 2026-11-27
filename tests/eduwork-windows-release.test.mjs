@@ -13,6 +13,8 @@ import {promisify} from 'node:util'
 import {installProductHost} from '../dsh-host/install-product-host.mjs'
 import {windowsDeltaName} from '../scripts/windows-update-delta.mjs'
 import {ZipWriter} from '../scripts/lib/zip.mjs'
+import {loadPELibrary} from '../scripts/lib/windows-pe.mjs'
+import {setDesktopVersionInfoResources, windowsFileVersion} from '../scripts/set-desktop-icon.mjs'
 const context={repository:'ECNU/EduWork',version:'0.3.0',commit:'a'.repeat(40)}
 const receipt={schemaVersion:1,kind:'eduwork-windows-release',validationProfile:'ci-build-launch-and-extract-v2',automaticUpdates:true,passed:true,version:'0.3.0',edition:'EduWork',shell:'electron',platform:'windows-x64',coreCommit:'d'.repeat(40),editionCommit:context.commit,checks:Object.fromEntries(['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor','updateContract','installerInstall','installerLaunch'].map(key=>[key,'passed'])),asset:{name:'EduWork-0.3.0-windows-x64-electron.zip',bytes:1024,sha256:'b'.repeat(64)},windowsInstaller:installerFixture('0.3.0').identity}
 function installerFixture(version) {
@@ -26,6 +28,47 @@ function installerFixture(version) {
 function extractorFiles(edition,version) {return {asset:{name:`${edition}-${version}-windows-x64-setup.zip`,bytes:2048,sha256:'e'.repeat(64)},receipt:{name:`${edition}-${version}-windows-x64-setup.zip.json`,bytes:512,sha256:'f'.repeat(64)}}}
 receipt.portableExtractor=extractorFiles('EduWork',receipt.version)
 receipt.releaseNotes={approved:true,sha256:'c'.repeat(64)}
+
+test('Windows executable version resources carry the product identity and numeric file version',async()=>{
+ const version='0.4.13-dev.20261116.1',fileVersion='0.4.13.1',library=await loadPELibrary(),resources={entries:[]}
+ const info=library.Resource.VersionInfo.create(1033,{},[{lang:1033,codepage:1200,values:{ProductName:'Electron',FileDescription:'Electron',CompanyName:'Electron',FileVersion:'0.0.0.0'}}])
+ info.outputToResourceEntries(resources.entries)
+ setDesktopVersionInfoResources(library,resources,{productName:'EduWork',companyName:'EduWork',version})
+ const [updated]=library.Resource.VersionInfo.fromEntries(resources.entries)
+ const values=updated.getStringValues({lang:1033,codepage:1200})
+ assert.equal(values.ProductName,'EduWork')
+ assert.equal(values.FileDescription,'EduWork')
+ assert.equal(values.CompanyName,'EduWork')
+ assert.equal(values.ProductVersion,version)
+ assert.equal(values.FileVersion,fileVersion)
+ assert.equal(windowsFileVersion(version),fileVersion)
+ assert.equal(updated.fixedInfo.fileVersionMS,0x00000004)
+ assert.equal(updated.fixedInfo.fileVersionLS,0x000d0001)
+ assert.equal(updated.fixedInfo.productVersionMS,0x00000004)
+ assert.equal(updated.fixedInfo.productVersionLS,0x000d0001)
+ assert.throws(()=>windowsFileVersion('0.4.13-dev.20261116.0'),/Unsupported/)
+ assert.throws(()=>windowsFileVersion('0.4.13-dev.20261116.65536'),/16 bits/)
+})
+
+test('Windows PE fixed version DWORDs compare unsigned values at WORD boundaries', async () => {
+ for (const [version, ms, ls] of [
+  ['0.0.0', 0, 0],
+  ['32768.32768.32768', 0x80008000, 0x80000000],
+  ['65535.65535.65535', 0xffffffff, 0xffff0000],
+  ['0.0.0-rc.65535', 0, 0x0000ffff],
+ ]) {
+  const library = await loadPELibrary(), resources = { entries: [] }
+  const info = library.Resource.VersionInfo.create(1033, {}, [{ lang: 1033, codepage: 1200, values: {} }])
+  info.outputToResourceEntries(resources.entries)
+  setDesktopVersionInfoResources(library, resources, { productName: 'EduWork', companyName: 'EduWork', version })
+  const [updated] = library.Resource.VersionInfo.fromEntries(resources.entries)
+  assert.equal(updated.fixedInfo.fileVersionMS, ms >>> 0)
+  assert.equal(updated.fixedInfo.fileVersionLS, ls >>> 0)
+  assert.equal(updated.fixedInfo.productVersionMS, ms >>> 0)
+  assert.equal(updated.fixedInfo.productVersionLS, ls >>> 0)
+ }
+ assert.throws(() => windowsFileVersion('65536.0.0'), /16 bits/)
+})
 
 test('Windows desktop stage preserves the edition policy of an already qualified Host', async t => {
  const root=await mkdtemp(join(tmpdir(),'eduwork-frozen-host-'))

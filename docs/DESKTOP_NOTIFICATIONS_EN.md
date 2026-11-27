@@ -48,11 +48,13 @@ Calendar reminders follow the desktop notification master switch, sound, title-p
 
 ## Windows and macOS
 
-Both platforms share event state and preferences. Windows uses the existing tray's `displayBalloon`, without adding Start menu shortcuts or registry entries. macOS uses Electron `Notification`; its menu bar also shows the pending count.
+Both platforms share event state and preferences. The standard Windows installation uses Electron `Notification` to show native Toasts. Its Start menu shortcut and running process share the distribution `appId` (such as `org.eduwork.eduwork.electron`) as their Windows application identity (AUMID). Editing `product.name` changes the name in the app and notification titles, not the system identity of the shortcut or process.
 
-The Windows notification sender uses the same `product.name` as application branding, falling back to the packaged product name. Windows application IDs omit whitespace and are limited to 128 characters; the full brand remains visible inside the app. Distribution identity, user data paths and the macOS bundle ID are unchanged.
+The installed build writes the distribution brand into `EduWork-Electron.exe` PE `VersionInfo`: `ProductName` and `FileDescription` use the distribution name, `CompanyName` is `EduWork`, `ProductVersion` is the release version, and `FileVersion` is its four-part numeric form. Installation derives a deterministic Toast activator CLSID from the distribution `appId` and adds only that property to the existing `EduWork.lnk`, preserving its target, working directory, icon, description and AUMID. Electron can then reuse that shortcut instead of creating `Electron.lnk`. If a user deletes the Start menu shortcut, upgrades respect that choice and the app does not request native Toasts (which could make Electron recreate the shortcut); reminders remain available in the tray. Uninstall removes the CLSID only when its `LocalServer32` points to the executable in the current install directory; upgrades skip cleanup. Portable builds register no Toast CLSID and write neither Start menu shortcuts nor registry entries.
 
-On macOS, both bundle display names use the distribution brand at build time; notification titles use the current product name. Editing `product.name` in user configuration does not rewrite the system display name inside the signed application bundle.
+The portable Windows edition still uses the existing tray's `displayBalloon`, without adding Start menu shortcuts or registry entries for notifications. Its process AUMID uses the product name with whitespace removed, up to 128 characters; the full name remains visible inside the app.
+
+macOS uses Electron `Notification`, and its menu bar shows the pending count. Both bundle display names use the distribution brand at build time; notification titles use the current product name. Editing `product.name` in user configuration does not rewrite the system display name inside the signed application bundle.
 
 The OS may suppress popups because of notification permissions, Do Not Disturb or platform restrictions. EduWork does not bypass them with custom popups; tray items remain available. A successful API call does not prove a notification was seen. macOS signing, notification permissions and release-package behavior require native acceptance.
 

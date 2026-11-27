@@ -10,7 +10,7 @@ import {
   capture, copyFileTo, copyTree, ensureDir, fullPath, isFile, isMainModule,
   pathExists, readJSON, run, runNode, sha256File, writeJSON, writeText,
 } from '../../scripts/lib/build-util.mjs'
-import { setDesktopIcon } from '../../scripts/set-desktop-icon.mjs'
+import { setDesktopIcon, setDesktopVersionInfo } from '../../scripts/set-desktop-icon.mjs'
 import { setUpdaterManifest } from './set-updater-manifest.mjs'
 import { installDesktopConfig } from '../../scripts/install-desktop-config.mjs'
 import { desktopVersion } from '../../scripts/desktop-build-plan.mjs'
@@ -214,7 +214,9 @@ export async function assembleWindows({
     .catch(() => { throw new Error('Windows desktop helper build failed') })
   await setUpdaterManifest({ executable: updaterPath })
   await rename(join(output, 'electron.exe'), join(output, 'EduWork-Electron.exe'))
-  await setDesktopIcon({ executable: join(output, 'EduWork-Electron.exe'), shell: 'electron' })
+  const executable = join(output, 'EduWork-Electron.exe')
+  await setDesktopIcon({ executable, shell: 'electron' })
+  await setDesktopVersionInfo({ executable, productName: name, version })
   let defaultConfig = join(product, 'resources/desktop/eduwork.jsonc')
   if (!await isFile(defaultConfig)) defaultConfig = ''
   await installDesktopConfig({ output, defaultConfig })

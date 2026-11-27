@@ -50,11 +50,13 @@ Electron 客户端在后台运行时，可以通过系统通知提醒用户处�
 
 ## Windows 与 macOS
 
-共用事件状态与设置，系统展示分别适配。Windows 使用已有托盘的 `displayBalloon`，不为通知安装开始菜单快捷方式或修改注册表。macOS 使用 Electron `Notification`，托盘菜单显示相同事项，菜单栏还显示数量。
+两平台共用事件状态与设置。Windows 标准安装版使用 Electron `Notification` 显示原生 Toast。开始菜单快捷方式与运行进程使用相同的发行 `appId`（如 `org.eduwork.eduwork.electron`）作为 Windows 应用标识（AUMID）。修改 `product.name` 会改变应用及通知标题中的产品名称，不会改写快捷方式或进程的系统身份。
 
-Windows 通知来源与应用品牌共用 `product.name`，未设置时使用发行包的产品名称。受 Windows 应用标识限制，来源名称中的空白会被移除，最长 128 个字符；应用内仍显示完整品牌名称。发行标识、用户数据路径和 macOS bundle ID 不受影响。
+安装版构建会将发行品牌写入 `EduWork-Electron.exe` 的 PE `VersionInfo`：`ProductName`/`FileDescription` 为发行品牌，`CompanyName` 为 `EduWork`，`ProductVersion` 为发行版本，`FileVersion` 为四段数字版本。安装时根据发行 `appId` 派生确定性 Toast 激活器 CLSID，只为既有 `EduWork.lnk` 补写该属性；快捷方式原有的目标、工作目录、图标、描述与 AUMID 保持不变。这样 Electron 可复用该快捷方式，不会另建 `Electron.lnk`。如果用户删除开始菜单快捷方式，升级会尊重这一选择；应用不会请求原生 Toast（否则 Electron 可能重建快捷方式），提醒仍可在托盘中查看。卸载时仅在 CLSID 的 `LocalServer32` 指向当前安装目录中的程序时删除该项；升级不会清理。便携版不注册 Toast CLSID，也不写开始菜单或注册表。
 
-macOS 的应用显示名和备用名称在打包时统一写入发行品牌；通知标题使用当前产品名称。修改用户配置中的 `product.name` 不会改写已签名应用包里的系统显示名。
+Windows 便携版继续使用已有托盘的 `displayBalloon`，不为通知添加开始菜单快捷方式或修改注册表。其进程 AUMID 使用去掉空白的产品名称，最长 128 个字符；应用内仍显示完整名称。
+
+macOS 使用 Electron `Notification`，菜单栏还显示待处理数量。应用显示名和备用名称在打包时统一写入发行品牌；通知标题使用当前产品名称。修改用户配置中的 `product.name` 不会改写已签名应用包里的系统显示名。
 
 系统可以因通知权限、勿扰模式或平台限制而隐藏弹窗。应用不会用自绘弹窗绕过这些控制，托盘待处理状态仍保留。API 调用成功不等于用户已看到通知；macOS 的签名、通知权限及实际发行包行为需要原生验收。
 

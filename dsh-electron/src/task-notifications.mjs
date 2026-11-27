@@ -134,15 +134,20 @@ export class TaskNotifications {
 }
 
 /** Presentation only: never interpret plugin targets or complete business work.
- * Windows deliberately keeps tray balloons for the portable distribution.
- * Toast identity/activation registration is deferred to installation issue #176.
- * Windows has one live balloon target. Electron does not forward every native
+ * Installed Windows uses native Toasts; portable Windows keeps tray balloons.
+ * There is one live balloon target. Electron does not forward every native
  * hide event (including quiet-time suppression), so waiting is bounded. After
  * an unacknowledged expiry, balloon clicks only reopen the app: the native event
  * has no ID and must never select an unrelated item. Tray/pet actions keep IDs.
  * This is display serialization, not business completion. */
-export function nativeNotificationAdapter({ platform, Notification, getTray, productName, activate, show = () => {}, failed, now = Date.now }) {
+export function nativeNotificationAdapter({ platform, dataLayout, Notification, getTray, productName, activate, show = () => {}, failed, hasStartMenuShortcut = () => true, now = Date.now }) {
   let current, balloon, ambiguous = false
+  const retiring = new Set()
+  const retire = state => {
+    state.revoked = true
+    if (!state.shown) { retiring.add(state); return }
+    state.notification.close()
+  }
   const expire = () => {
     if (balloon && now() - balloon.startedAt >= 60000) {
       ambiguous = true; balloon = null
@@ -157,13 +162,14 @@ export function nativeNotificationAdapter({ platform, Notification, getTray, pro
     },
     balloonClosed() { balloon = null },
     dismiss() {
-      current?.close(); current = null
+      const previous = current; current = null
+      if (previous) retire(previous)
       // Keep the native slot until Windows acknowledges removal. A late click
       // on the removed bubble must never target the next queued notification.
       if (balloon && !balloon.revoked) { balloon.revoked = true; getTray()?.removeBalloon?.() }
     },
     publish({ title, content, sound, key }) {
-      if (platform === 'win32') {
+      if (platform === 'win32' && dataLayout !== 'installed') {
         const tray = getTray()
         if (!tray) { failed(); return false }
         expire()
@@ -171,13 +177,32 @@ export function nativeNotificationAdapter({ platform, Notification, getTray, pro
         balloon = { key, revoked: false, startedAt: now() }
         try { tray.displayBalloon({ title: `${productName} · ${title}`, content, noSound: !sound, respectQuietTime: true }) }
         catch (error) { balloon = null; throw error }
-      } else if (platform === 'darwin' && Notification.isSupported()) {
-        current?.close()
+      } else if (platform === 'win32' && dataLayout === 'installed' && !hasStartMenuShortcut()) {
+        failed(); return false
+      } else if ((platform === 'darwin' || platform === 'win32') && Notification?.isSupported?.()) {
+        const previous = current; current = null
+        if (previous) retire(previous)
         const notification = new Notification({ title: `${productName} · ${title}`, body: content, silent: !sound })
-        current = notification
-        notification.on('click', () => activate(key))
-        notification.on('failed', () => failed())
-        notification.show()
+        const state = { notification, revoked: false, shown: platform !== 'win32' || dataLayout !== 'installed' }
+        current = state
+        notification.on('click', () => { if (!state.revoked) activate(key) })
+        notification.on('show', () => {
+          state.shown = true
+          if (state.revoked) {
+            try { notification.close() } finally { retiring.delete(state) }
+          }
+        })
+        notification.on('failed', () => {
+          retiring.delete(state)
+          if (current === state) { current = null; failed() }
+        })
+        notification.on('close', () => { if (state.revoked) retiring.delete(state) })
+        try { notification.show() }
+        catch (error) {
+          state.revoked = true; retiring.delete(state)
+          if (current === state) current = null
+          throw error
+        }
       } else { failed(); return false }
     },
   }

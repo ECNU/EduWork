@@ -1,5 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { EventEmitter } from 'node:events'
+import { applyDesktopBrand } from '../src/desktop-brand.mjs'
 import { TaskNotifications, nativeNotificationAdapter, validateAttentionRequest } from '../src/task-notifications.mjs'
 import { DesktopAttention, notificationDefaults } from '../../dsh-plugins/desktop-services/lib/attention.js'
 
@@ -166,7 +168,7 @@ test('Windows uses tray quiet-time flags; macOS failure never bypasses native co
 
 test('Windows serializes balloons and a dismissed bubble cannot click the next target', () => {
   const shown = [], clicks = []
-  const adapter = nativeNotificationAdapter({ platform: 'win32', productName: 'test',
+  const adapter = nativeNotificationAdapter({ platform: 'win32', dataLayout: 'portable', productName: 'test',
     getTray: () => ({ displayBalloon: value => shown.push(value), removeBalloon() {} }),
     activate: key => clicks.push(key), failed() {} })
   adapter.publish({ title: 'First', content: '', key: 'a' })
@@ -180,6 +182,117 @@ test('Windows serializes balloons and a dismissed bubble cannot click the next t
   adapter.publish({ title: 'Third', content: '', key: 'c' })
   adapter.balloonClosed(); adapter.balloonClick()
   assert.deepEqual(clicks, ['b']); assert.equal(shown.length, 3)
+})
+
+test('installed Windows binds its AUMID to the distribution even when the product name changes', () => {
+  const appId = 'org.eduwork.eduwork.electron'
+  for (const [platform, dataLayout, productName, expectedId] of [
+    ['win32', 'installed', 'EduWork', appId],
+    ['win32', 'installed', 'Custom Brand', appId],
+    ['win32', 'portable', 'Custom Brand', 'CustomBrand'],
+    ['win32', undefined, 'Custom Brand ' + 'x'.repeat(128), 'CustomBrand' + 'x'.repeat(117)],
+    ['win32', undefined, ' \t', appId],
+    ['darwin', undefined, 'Custom Brand', appId],
+  ]) {
+    const app = { setName: test.mock.fn(), setAppUserModelId: test.mock.fn() }
+    applyDesktopBrand(app, platform, { productName, appId, dataLayout })
+    assert.deepEqual(app.setName.mock.calls.map(call => call.arguments), [[productName]])
+    assert.deepEqual(app.setAppUserModelId.mock.calls.map(call => call.arguments), [[expectedId]])
+  }
+})
+
+function installedToasts({ hasStartMenuShortcut = () => true, showImmediately = true } = {}) {
+  const events = [], notifications = [], clicks = []
+  class Notification extends EventEmitter {
+    static isSupported = () => true
+    constructor(options) { super(); this.options = options; notifications.push(this) }
+    show() { events.push('show'); if (showImmediately) this.emit('show'); if (this.options.body === 'throw') throw Error('show failed') }
+    close() { events.push('close'); this.emit('close') }
+  }
+  const adapter = nativeNotificationAdapter({ platform: 'win32', dataLayout: 'installed', Notification,
+    getTray: () => assert.fail('Installed Toast must not use the tray balloon'), productName: 'Custom Brand',
+    activate: key => clicks.push(key), failed: () => events.push('failed'), hasStartMenuShortcut })
+  const publish = (key, sound = false, content = 'Open') => adapter.publish({ key, sound, title: 'Ready', content })
+  return { adapter, publish, Notification, events, notifications, clicks }
+}
+
+test('installed Windows does not create Toasts after its Start menu shortcut is deleted', () => {
+  const { publish, events, notifications } = installedToasts({ hasStartMenuShortcut: () => false })
+  assert.equal(publish('missing-shortcut'), false)
+  assert.deepEqual(events, ['failed'])
+  assert.deepEqual(notifications, [])
+})
+
+test('installed Toasts keep click keys and can be replaced or dismissed after timing out', () => {
+  const { adapter, publish, events, notifications, clicks } = installedToasts()
+  publish('first')
+  const [first] = notifications
+  assert.deepEqual(first.options, { title: 'Custom Brand · Ready', body: 'Open', silent: true })
+  first.emit('close')
+  first.emit('click')
+  assert.deepEqual(clicks, ['first'])
+  publish('second', true)
+  const second = notifications[1]
+  assert.equal(second.options.silent, false)
+  first.emit('click'); second.emit('click')
+  assert.deepEqual(clicks, ['first', 'second'])
+  second.emit('close')
+  adapter.dismiss()
+  assert.deepEqual(events, ['show', 'close', 'show', 'close'])
+})
+
+test('installed Toast failures release only the affected instance and never fall back to balloons', () => {
+  const { adapter, publish, Notification, events, notifications } = installedToasts()
+  publish('old'); publish('new')
+  notifications[0].emit('failed')
+  notifications[1].emit('failed')
+  adapter.dismiss()
+  assert.throws(() => publish('throws', false, 'throw'), /show failed/)
+  adapter.dismiss()
+  Notification.isSupported = () => false
+  assert.equal(publish('unsupported'), false)
+  assert.equal(notifications.length, 3)
+  assert.deepEqual(events, ['show', 'close', 'show', 'failed', 'show', 'failed'])
+})
+
+test('pending installed Toasts are revoked before replacement and closed only after show', () => {
+  const { adapter, publish, events, notifications, clicks } = installedToasts({ showImmediately: false })
+  publish('first')
+  publish('second')
+  assert.deepEqual(events, ['show', 'show'])
+  notifications[0].emit('click')
+  notifications[0].emit('show')
+  assert.deepEqual(events, ['show', 'show', 'close'])
+  notifications[1].emit('show')
+  notifications[0].emit('click')
+  notifications[1].emit('click')
+  assert.deepEqual(clicks, ['second'])
+  adapter.dismiss()
+  assert.deepEqual(events, ['show', 'show', 'close', 'close'])
+})
+
+test('dismissing a pending Toast defers close until show and ignores its click', () => {
+  const { adapter, publish, events, notifications, clicks } = installedToasts({ showImmediately: false })
+  publish('pending')
+  adapter.dismiss()
+  assert.deepEqual(events, ['show'])
+  notifications[0].emit('click')
+  assert.deepEqual(clicks, [])
+  notifications[0].emit('show')
+  assert.deepEqual(events, ['show', 'close'])
+})
+
+test('failed pending Toasts release their retiring state without affecting the replacement', () => {
+  const { adapter, publish, events, notifications, clicks } = installedToasts({ showImmediately: false })
+  publish('old')
+  publish('new')
+  notifications[0].emit('failed')
+  notifications[0].emit('click')
+  notifications[1].emit('show')
+  notifications[1].emit('click')
+  assert.deepEqual(events, ['show', 'show'])
+  assert.deepEqual(clicks, ['new'])
+  adapter.dismiss()
 })
 
 test('a busy display adapter leaves the queued notification eligible for the next sync', () => {
