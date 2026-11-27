@@ -850,26 +850,15 @@ test('conversations working at once keep their own marker and the user\'s focus'
   assert.deepEqual(await page('[...document.querySelectorAll("[data-eduwork-agent-acting]")].map(e => e.closest(".session").getAttribute("data-sidebar-right-session")).sort()'),
     ['session-a', 'session-b'])
   // Overlapping clicks, one held up by its page, return focus to the message being typed.
-  await run('focusTrace.events = []; await window.webContents.executeJavaScript("fixture.startFocusTrace()")')
-  try {
-    await Promise.all([pageA.getByRole('button', { name: 'Slow' }).click(), pageB.getByRole('button', { name: 'Greet' }).click()])
-    const focusDeadline = Date.now() + 2000
-    let activeId
-    do {
-      await wait(100)
-      activeId = await page('document.activeElement.id')
-    } while (activeId !== 'chat' && Date.now() < focusDeadline)
-    assert.equal(activeId, 'chat')
-  } catch (error) {
-    try {
-      const events = await run(`const renderer = await window.webContents.executeJavaScript('fixture.readFocusTrace()')
-        return [...focusTrace.events, ...renderer].sort((left, right) => left.time - right.time)`)
-      console.error(`SIDEBAR_FOCUS_TRACE\n${events.map(event => JSON.stringify(event)).join('\n')}`)
-    } catch (traceError) { console.error('SIDEBAR_FOCUS_TRACE unavailable:', traceError.message) }
-    throw error
-  } finally {
-    await run('focusTrace.events = null; await window.webContents.executeJavaScript("fixture.stopFocusTrace()")')
-  }
+  await page('chat.focus()')
+  await Promise.all([pageA.getByRole('button', { name: 'Slow' }).click(), pageB.getByRole('button', { name: 'Greet' }).click()])
+  const focusDeadline = Date.now() + 2000
+  let activeId
+  do {
+    await wait(100)
+    activeId = await page('document.activeElement.id')
+  } while (activeId !== 'chat' && Date.now() < focusDeadline)
+  assert.equal(activeId, 'chat')
   // A background conversation's click, alone or overlapping one in the page the user uses, leaves the user there.
   const focused = () => page('document.activeElement.closest(".session")?.getAttribute("data-sidebar-right-session")')
   await page('document.querySelector("[data-sidebar-right-session=session-a] .cell:not([hidden]) webview").focus()')

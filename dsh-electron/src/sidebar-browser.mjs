@@ -64,7 +64,7 @@ const newTabPage = language => {
  * @param idleMs - an Agent pauses between tool calls; after this long its tabs
  *   stop painting in the background and the window throttles again.
  */
-export function createSidebarBrowser({ getWindow, idleMs = 15_000, traceFocus }) {
+export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
   const secret = randomBytes(24).toString('hex')
   const data = createSidebarBrowserData()
   const groups = new Map()  // session id -> one conversation's endpoint
@@ -76,7 +76,6 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000, traceFocus })
   // and the width it lays the page out at, as the application page reports.
   const widths = new WeakMap()
   const layouts = new Map() // layout request id -> what the application page's answer settles
-  const lastPress = new WeakMap()
   let server, newTabUrl, active = 0, presses = 0
 
   const tell = message => {
@@ -245,24 +244,10 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000, traceFocus })
     switch (method) {
       case 'Input.dispatchMouseEvent': {
         // A press focuses the guest's element in the application window.
-        const gesture = (id, event) => traceFocus?.({ id, event, sessionId: page.group.sessionId, tabId: page.tabId, guestId: page.guest.id })
-        if (traceFocus && params.type === 'mouseReleased') {
-          const press = lastPress.get(page.guest)
-          gesture(press, 'mouseReleased:begin')
-          const response = page.guest.debugger.sendCommand(method, params)
-          void response.then(() => gesture(press, 'mouseReleased:end'), () => gesture(press, 'mouseReleased:error'))
-          return response
-        }
         if (params.type !== 'mousePressed') return page.guest.debugger.sendCommand(method, params)
         const press = ++presses
-        if (traceFocus) lastPress.set(page.guest, press)
         tell({ type: 'press', id: press, sessionId: page.group.sessionId, tabId: page.tabId })
-        gesture(press, 'mousePressed:begin')
-        try { return await page.guest.debugger.sendCommand(method, params) }
-        finally {
-          gesture(press, 'mousePressed:settled')
-          tell({ type: 'pressed', id: press })
-        }
+        try { return await page.guest.debugger.sendCommand(method, params) } finally { tell({ type: 'pressed', id: press }) }
       }
       case 'Page.bringToFront': return {}
       case 'Page.close': close(page); return {}

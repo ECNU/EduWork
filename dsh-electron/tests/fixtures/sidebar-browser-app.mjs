@@ -25,9 +25,7 @@ app.commandLine.appendSwitch('no-proxy-server')
 protocol.registerSchemesAsPrivileged([{ scheme: 'dsh-app', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 let window
 const idleCounts = new Map()
-const focusTrace = { events: null }
-const traceFocus = entry => focusTrace.events?.push({ time: performance.timeOrigin + performance.now(), source: 'main', windowFocused: window.isFocused(), ...entry })
-const broker = createSidebarBrowser({ getWindow: () => window, idleMs: 1500, traceFocus })
+const broker = createSidebarBrowser({ getWindow: () => window, idleMs: 1500 })
 const menus = [], externals = [], clearings = []
 Menu.prototype.popup = function () { menus.push(this) }
 // The desktop locale's editing commands, as DSH names them in Chinese.
@@ -53,13 +51,11 @@ void app.whenReady().then(async () => {
   const send = window.webContents.send.bind(window.webContents)
   window.webContents.send = (channel, ...args) => {
     if (channel === SIDEBAR_BROWSER_IPC.request) {
-      const { type, sessionId, tabId, id } = args[0]
+      const { type, sessionId } = args[0]
       if (type === 'idle') idleCounts.set(sessionId, (idleCounts.get(sessionId) ?? 0) + 1)
-      if (focusTrace.events && ['press', 'pressed', 'show', 'idle'].includes(type)) traceFocus({ event: `${type}:send`, id, sessionId, tabId })
     }
     return send(channel, ...args)
   }
-  for (const event of ['focus', 'blur']) window.on(event, () => traceFocus({ event: `window:${event}` }))
   // The application page's popups go to the system browser (configureWindowNavigation).
   window.webContents.setWindowOpenHandler(({ url }) => { externals.push(url); return { action: 'deny' } })
   // Guests are opaque, as the desktop bridge makes them.
@@ -84,7 +80,7 @@ void app.whenReady().then(async () => {
   })
   const environment = await broker.listen()
   process.on('message', async ({ id, code }) => {
-    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker, webContents, menus, externals, clearings, idleCounts, focusTrace }) => { ${code} })(scope)`)({ window, broker, webContents, menus, externals, clearings, idleCounts, focusTrace }) }) }
+    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker, webContents, menus, externals, clearings, idleCounts }) => { ${code} })(scope)`)({ window, broker, webContents, menus, externals, clearings, idleCounts }) }) }
     catch (error) { process.send({ id, error: error.message }) }
   })
   await window.loadURL('dsh-app://app/index.html')

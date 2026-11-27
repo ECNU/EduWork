@@ -118,26 +118,9 @@
   let desktopWidth = false
   const widthListeners = new Set()
   const width = { getSnapshot: () => desktopWidth, subscribe: listener => { widthListeners.add(listener); return () => widthListeners.delete(listener) } }
-  let focusEvents
-  const describe = node => node?.tagName ? { tag: node.tagName, id: node.id, connected: node.isConnected,
-    sessionId: node.closest('[data-sidebar-right-session]')?.getAttribute('data-sidebar-right-session'),
-    tabId: node.closest('[data-sidebar-right-tab]')?.getAttribute('data-sidebar-right-tab') } : null
-  const traceFocus = (event, { previous, target, ...details } = {}) => focusEvents?.push({
-    time: performance.timeOrigin + performance.now(), source: 'renderer', event, ...details,
-    previous: describe(previous), target: describe(target), active: describe(document.activeElement), hasFocus: document.hasFocus(),
-  })
-  for (const event of ['focus', 'blur']) addEventListener(event, ({ target }) => traceFocus(target === window ? `window:${event}` : `dom:${event}`, { target }), true)
-  connectSidebarBrowser({ bridge: window.eduworkSidebarBrowser, desktop, sidebar, document, storage: async id => `storage-${id}`, conversation, text: key => key, desktopWidth: width, traceFocus })
+  connectSidebarBrowser({ bridge: window.eduworkSidebarBrowser, desktop, sidebar, document, storage: async id => `storage-${id}`, conversation, text: key => key, desktopWidth: width })
   const fixture = window.fixture = {
     show, focus, expand, openTabIn, storages, stopped, acquireDelay: 0,
-    startFocusTrace() {
-      focusEvents = []
-      traceFocus('chat.focus:before')
-      document.getElementById('chat').focus()
-      traceFocus('chat.focus:after')
-    },
-    readFocusTrace() { traceFocus('assertion:failed'); return focusEvents },
-    stopFocusTrace() { focusEvents = undefined },
     desktopWidth(value) { desktopWidth = value; for (const listener of widthListeners) listener() },
     // The setting as the Host has it, and its listeners told again, as when the user picks the same value.
     width: () => desktopWidth,

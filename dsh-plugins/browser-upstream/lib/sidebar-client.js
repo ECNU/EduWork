@@ -95,7 +95,7 @@ export async function workspaceStorage(list, sessionId, signal) {
  * @param desktopWidth - the user's setting, { getSnapshot, subscribe }: whether pages show at desktop width rather than the Sidebar's.
  * @returns disconnects from the main process and clears every mark.
  */
-export function connectSidebarBrowser({ bridge, desktop, sidebar, document, storage, conversation, text, desktopWidth, traceFocus }) {
+export function connectSidebarBrowser({ bridge, desktop, sidebar, document, storage, conversation, text, desktopWidth }) {
   const working = new Set()
   const watched = new WeakSet()
   const acting = new Map() // session id -> { tabId, lock, unsubscribe }
@@ -267,21 +267,15 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
   // Focus that an Agent's click or tab switch pulls into the elements it acts
   // on goes back to where it was, such as a message being typed or a page in
   // another conversation. Focus the user put there, or moved meanwhile, stays.
-  const returnFocus = (previous, regions, ids) => {
+  const returnFocus = (previous, regions) => {
     const inRegion = element => regions.some(region => region?.contains(element))
-    traceFocus?.('restore:schedule', { ids, previous })
     if (regions.every(region => region?.contains(previous))) return
-    requestAnimationFrame(() => {
-      traceFocus?.('restore:frame1', { ids, previous })
-      requestAnimationFrame(() => {
-        const now = document.activeElement
-        traceFocus?.('restore:frame2', { ids, previous })
-        if (now === previous || !inRegion(now) && now !== document.body) return
-        if (previous.isConnected && previous !== document.body) previous.focus({ preventScroll: true })
-        else now.blur()
-        traceFocus?.('restore:done', { ids, previous })
-      })
-    })
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const now = document.activeElement
+      if (now === previous || !inRegion(now) && now !== document.body) return
+      if (previous.isConnected && previous !== document.body) previous.focus({ preventScroll: true })
+      else now.blur()
+    }))
   }
   // Where the user sees the conversation, its Sidebar opens once per
   // connection and shows the tab the Agent acts on.
@@ -329,10 +323,7 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
       const { running } = session.getSnapshot()
       if (!running) stopping = false
       lock.hidden = stopping || !running || asksUser(eventSource.getSnapshot().entries)
-      if (!lock.hidden && document.activeElement === frame) {
-        traceFocus?.('mark.update:blur', { sessionId, tabId })
-        frame.blur()
-      }
+      if (!lock.hidden && document.activeElement === frame) frame.blur()
     }
     stop.addEventListener('click', () => {
       stopping = true
@@ -375,17 +366,13 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
     },
     // Around an Agent's mouse press, which focuses its guest.
     press({ id, sessionId, tabId }) {
-      pressing ??= { previous: document.activeElement, frames: [], pending: new Set(), ids: [] }
+      pressing ??= { previous: document.activeElement, frames: [], pending: new Set() }
       pressing.pending.add(id)
       pressing.frames.push(frameOf(sessionId, tabId))
-      pressing.ids.push(id)
-      traceFocus?.('press:receive', { id, sessionId, tabId, previous: pressing.previous })
     },
     pressed({ id }) {
-      const settled = pressing?.pending.delete(id)
-      traceFocus?.('pressed:receive', { id, settled, pending: pressing && [...pressing.pending] })
-      if (!settled || pressing.pending.size > 0) return
-      returnFocus(pressing.previous, pressing.frames, pressing.ids)
+      if (!pressing?.pending.delete(id) || pressing.pending.size > 0) return
+      returnFocus(pressing.previous, pressing.frames)
       pressing = undefined
     },
     // The choice for a tab: the user's from its page's menu, or the Agent's
