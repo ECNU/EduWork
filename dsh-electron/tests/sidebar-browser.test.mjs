@@ -844,7 +844,7 @@ test('the Agent lays the tab it acts on out at desktop width and back, that tab 
     assert.fail(`Page.createIsolatedWorld did not time out (${outcome.type}); releasing it returned ${late}`)
   }
   assert.match(outcome.error.message, /Page\.createIsolatedWorld timed out/)
-  assert.deepEqual(await run('rejectHeldIsolatedWorld()'), [])
+  assert.deepEqual(await run('return rejectHeldIsolatedWorld()'), [])
   const timedOutAt = Date.now()
   await wait(300)
   assert.equal(await idleCount(), settledBefore, 'the session waits its idle budget after the timed-out request')
