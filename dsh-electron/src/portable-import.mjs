@@ -108,7 +108,7 @@ export function windowsSourceProcessLister(sourceRoot, selfPid = process.pid, en
     const prefix = (root + sep).toLowerCase(), reference = root.toLowerCase()
     // A boundary after the root keeps sibling directories like <root>-backup
     // from matching, whatever punctuation or whitespace follows the path.
-    const rootPattern = new RegExp(reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\w.$~-])')
+    const rootPattern = new RegExp(reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\p{N}_.$~-])', 'u')
     return list.filter(row => {
       if (excluded.has(row.ProcessId)) return false
       const exe = typeof row.ExecutablePath === 'string' ? row.ExecutablePath.toLowerCase() : ''

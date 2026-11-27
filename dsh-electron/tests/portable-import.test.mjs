@@ -539,7 +539,8 @@ test('the process filter counts executables under the source root and command li
     row(11, 'codex.exe', 'C:\\tools\\codex.exe', `codex "work in ${root}\\data"`),
     row(12, 'notepad.exe', 'C:\\Windows\\notepad.exe', `notepad "${root}\\logs\\main.log"`),
     row(13, 'EduWork.exe', null, `"${root}\\EduWork.exe" --elevated`),
-    row(14, 'EduWork.exe', null, `"${root}-backup\\EduWork.exe"`)
+    row(14, 'EduWork.exe', null, `"${root}-backup\\EduWork.exe"`),
+    row(15, 'EduWork.exe', null, `"${root}备份\\EduWork.exe"`)
   ])()
   assert.deepEqual(found.map(row => row.pid), [10, 13])
 })
@@ -563,8 +564,12 @@ test('the Windows process lister detects a running executable under the source r
     const chineseFound = await windowsSourceProcessLister(chineseRoot)()
     assert.ok(chineseFound.some(row => row.pid === chinese.pid), 'an executable under a Chinese source root must survive the PowerShell pipe encoding')
   } finally {
-    for (const child of children) child.kill()
-    await rm(base, { recursive: true, force: true })
+    await Promise.all(children.map(child => new Promise(done => {
+      if (child.exitCode !== null || child.signalCode !== null) return done()
+      child.once('exit', done)
+      child.kill()
+    })))
+    await rm(base, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 })
   }
 })
 

@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-27T04:52:54.380Z",
-  "fileSetSHA256": "a49db525136bef5b80238c8b5f093bc631553d3ae9e8c94661c90ac849ca23b0",
+  "createdAt": "2026-11-27T05:42:17.985Z",
+  "fileSetSHA256": "365e6d9b6144319477f1237b2fa23e76e98bc453f1161f0e432f0a0dfbfd7fd5",
   "files": [
     {
       "path": ".gitattributes",
@@ -1237,7 +1237,7 @@
     },
     {
       "path": "dsh-electron/src/portable-import.mjs",
-      "sha256": "d7ad5e892b59df129170d8f1bd7c86fed6070fe4bc310fa9a819113d89753985"
+      "sha256": "498d1056d980fc19bcd3bef3a96182bc6dcda7260cf40e805f346d85a428f8c6"
     },
     {
       "path": "dsh-electron/src/portable-installer-feed.mjs",
@@ -1521,7 +1521,7 @@
     },
     {
       "path": "dsh-electron/tests/portable-import.test.mjs",
-      "sha256": "829d3dca66cfd1da6299ed135062c4e1ef38b948db1b008334c8dd3a6b1bde9a"
+      "sha256": "9ab16007893e1994552fb2a522bf6c74f2c25d9030e757dce17f48ed90ab26da"
     },
     {
       "path": "dsh-electron/tests/portable-installer-feed.test.mjs",
@@ -3581,7 +3581,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/src/updates.ts",
-      "sha256": "90a0ffb4b548285c2ec37fc392421bced2e78171237b0b58a847d9e8fd096800"
+      "sha256": "3987467703920033c1a46f5ad5e4ff1f980dd2f81559a6e0012c5296fd1cfa56"
     },
     {
       "path": "dsh-plugins/workbench-native/test/build-client.test.mjs",
@@ -3637,7 +3637,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/test/updates.test.mjs",
-      "sha256": "712b961bcaa12bab7b13347e85b747f139a560242b788a5a638e35fed2f05e5d"
+      "sha256": "65fcedc3ecb6e77bf9413c7b056b4867f4792bf3c63f190f1866ecb63c35e53c"
     },
     {
       "path": "dsh-plugins/workbench-native/test/window-drag.electron.mjs",

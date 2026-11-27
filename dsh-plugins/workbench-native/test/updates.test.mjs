@@ -136,6 +136,27 @@ test('starting migration from idle switches an already scheduled slow poll to 35
   assert.equal(controller.getSnapshot().status.portableMigration.downloadedBytes, 1024)
 })
 
+test('a stale status response cannot overwrite a newer action snapshot', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { createUpdateController } = loadUpdates({}, undefined, undefined, undefined, new EventTarget())
+  let finishInitialStatus
+  const controller = createUpdateController(action => {
+    if (action === 'status' && !finishInitialStatus) return new Promise(resolve => { finishInitialStatus = resolve })
+    if (action === 'start-portable-migration') return Promise.resolve({ shell: 'electron', update: { enabled: true, state: 'idle' },
+      portableMigration: { version: '0.4.15', bytes: 2048, dismissed: false, busy: true, stage: 'downloading', downloadedBytes: 0, totalBytes: 2048, cancellable: true } })
+    return Promise.resolve({ shell: 'electron', update: { enabled: true, state: 'idle' },
+      portableMigration: { version: '0.4.15', bytes: 2048, dismissed: false, busy: true, stage: 'downloading', downloadedBytes: 512, totalBytes: 2048, cancellable: true } })
+  })
+  t.after(() => controller.dispose())
+  await nextTurn()
+  await controller.run('start-portable-migration')
+  assert.equal(controller.getSnapshot().status.portableMigration.busy, true)
+  finishInitialStatus({ shell: 'electron', update: { enabled: true, state: 'idle' },
+    portableMigration: { version: '0.4.15', bytes: 2048, dismissed: false, busy: false } })
+  await nextTurn()
+  assert.equal(controller.getSnapshot().status.portableMigration.busy, true)
+})
+
 test('ordinary portable download stays primary unless migration is offered', () => {
   const React = { createElement: (type, props, ...children) => typeof type === 'function'
     ? type({ ...props, children }) : { type, props, children } }

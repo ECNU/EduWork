@@ -40,7 +40,7 @@ export function createUpdateController(service) {
    const revision=statusRevision
    request=Promise.resolve().then(()=>service('status')).then(status=>({ok:true,status}),error=>({ok:false,error})).then(result=>{
     if(statusRequest===request)statusRequest=null
-    if(result.ok)publish({status:result.status,statusError:''})
+    if(result.ok){if(statusRevision===revision)publish({status:result.status,statusError:''});else if(view.statusError)publish({statusError:''})}
     else if(statusRevision===revision)publish({statusError:`无法读取更新状态：${result.error?.message||String(result.error)}`})
    })
    statusRequest=request
