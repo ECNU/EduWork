@@ -157,6 +157,26 @@ test('a stale status response cannot overwrite a newer action snapshot', async t
   assert.equal(controller.getSnapshot().status.portableMigration.busy, true)
 })
 
+test('reopening the update dialog during migration does not trigger check-updates or swallow cancel', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] })
+  const window = new EventTarget()
+  const { createUpdateController } = loadUpdates({}, undefined, undefined, undefined, window)
+  let migration = { version: '0.4.15', bytes: 2048, dismissed: false, busy: true, stage: 'downloading', downloadedBytes: 512, totalBytes: 2048, cancellable: true }
+  const actions = []
+  const controller = createUpdateController(async action => {
+    actions.push(action)
+    if (action === 'cancel-portable-migration') migration = { ...migration, busy: false, cancellable: false }
+    return { shell: 'electron', update: { enabled: true, state: 'up_to_date' }, portableMigration: migration }
+  })
+  t.after(() => controller.dispose())
+  await nextTurn()
+  controller.open()
+  await controller.run('cancel-portable-migration')
+  assert.equal(actions.includes('check-updates'), false)
+  assert.equal(actions.includes('cancel-portable-migration'), true)
+  assert.equal(controller.getSnapshot().status.portableMigration.busy, false)
+})
+
 test('ordinary portable download stays primary unless migration is offered', () => {
   const React = { createElement: (type, props, ...children) => typeof type === 'function'
     ? type({ ...props, children }) : { type, props, children } }

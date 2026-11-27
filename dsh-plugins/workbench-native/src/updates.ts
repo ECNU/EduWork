@@ -60,7 +60,7 @@ export function createUpdateController(service) {
   finally{if(working)await wait(Math.max(0,450-(Date.now()-started))).promise;publish({working:''});void read()}
  }
  void poll()
- const open=()=>{publish({open:true});if(!view.statusError&&!['downloading','ready'].includes(view.status?.contentUpdate?.state)&&(!view.status?.update||['idle','installed','up_to_date','current','error'].includes(view.status.update.state)))void run('check-updates')}
+ const open=()=>{publish({open:true});if(!view.statusError&&!view.status?.portableMigration?.busy&&!['downloading','ready'].includes(view.status?.contentUpdate?.state)&&(!view.status?.update||['idle','installed','up_to_date','current','error'].includes(view.status.update.state)))void run('check-updates')}
  const event=()=>open();window.addEventListener('eduwork:open-updates',event)
  const close=()=>{if(view.statusError||view.status?.update?.state!=='verifying')publish({open:false})}
  return {subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)},getSnapshot:()=>view,run,open,close,retry:read,dispose:()=>{stopped=true;clearTimeout(timer);waits.forEach(settle=>settle());window.removeEventListener('eduwork:open-updates',event)}}

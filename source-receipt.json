@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-27T05:42:17.985Z",
-  "fileSetSHA256": "365e6d9b6144319477f1237b2fa23e76e98bc453f1161f0e432f0a0dfbfd7fd5",
+  "createdAt": "2026-11-27T06:15:29.330Z",
+  "fileSetSHA256": "dba6cc233c40a5614142c9175da0a933fef920229b9c34cab9a4609a7fdbee32",
   "files": [
     {
       "path": ".gitattributes",
@@ -3581,7 +3581,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/src/updates.ts",
-      "sha256": "3987467703920033c1a46f5ad5e4ff1f980dd2f81559a6e0012c5296fd1cfa56"
+      "sha256": "6fe5f010622ad7d350d9a4e61ec59f9fc94e9190a8a78ef555d8b717fe9418c2"
     },
     {
       "path": "dsh-plugins/workbench-native/test/build-client.test.mjs",
@@ -3637,7 +3637,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/test/updates.test.mjs",
-      "sha256": "65fcedc3ecb6e77bf9413c7b056b4867f4792bf3c63f190f1866ecb63c35e53c"
+      "sha256": "14fa893adb637498978b578db31656939307d0904685c179bcb0d889fce6bc3e"
     },
     {
       "path": "dsh-plugins/workbench-native/test/window-drag.electron.mjs",
