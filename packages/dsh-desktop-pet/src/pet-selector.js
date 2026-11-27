@@ -5,7 +5,6 @@ import styles from './pet-selector.css'
 
 const h = React.createElement
 const compactQuery = '(max-width: 42rem)'
-const stage = { width: 248, height: 218 }
 const mainActions = ['idle', 'think', 'work', 'attention', 'done', 'failed', 'sleep']
 const licenses = {
   'CC-BY-4.0': 'https://creativecommons.org/licenses/by/4.0/',
@@ -23,65 +22,122 @@ export function Thumbnail({ preview, size = 48 }) {
       transform: `scale(${scale}) translate(${-x}px, ${-y}px)` } }))
 }
 
-function Artwork({ data, images, action, replay, paused }) {
-  const ref = useRef(null)
+function Artwork({ data, images, action, t }) {
+  const stageRef = useRef(null), canvasRef = useRef(null), markRef = useRef(null), toggleRef = useRef(null)
+  const [playing, setPlaying] = useState(() => !matchMedia('(prefers-reduced-motion: reduce)').matches)
   const { frame, badge, animation, pixelated } = data
-  const scale = Math.min((stage.width - 48) / frame.width, (stage.height - 44) / frame.height)
-  const width = frame.width * scale, height = frame.height * scale
-  const box = { width, height, x: (stage.width - width) / 2, y: (stage.height - height) / 2 }
   const mark = badgeText({ state: action, count: 1 })
-  useEffect(() => {
-    const canvas = ref.current
+
+  useLayoutEffect(() => {
+    const stage = stageRef.current, canvas = canvasRef.current
     const painter = createPetPainter(canvas, canvas.getContext('2d'), images)
     const reduced = matchMedia('(prefers-reduced-motion: reduce)')
-    let timer, start, clock
-    const tick = () => {
-      const elapsed = performance.now() - start
-      const moving = !paused && !document.hidden && (!reduced.matches || replay > 0 && elapsed < 8000)
-      const step = moving ? clock(elapsed) : { index: 0, next: Infinity }
-      const animateMotion = moving && animation.motion && (!reduced.matches || elapsed < 3000)
-      const motion = animateMotion ? motionAt(animation.motion, elapsed) : STILL
-      painter.draw(animation.frames[step.index], box, devicePixelRatio, pixelated, false, motion)
-      const wait = Math.min(step.next, animateMotion ? PACE.motionFrame : Infinity)
-      const remaining = reduced.matches && moving ? 8000 - elapsed : Infinity
-      const next = Math.min(wait, remaining)
-      if (Number.isFinite(next)) timer = setTimeout(tick, Math.max(16, next))
+    let box, ratio, stageWidth, stageHeight
+    let clock = createFrameClock(animation), timer, startedAt, elapsed = 0, stopAt = Infinity
+    let frameIndex = 0, motion = STILL, active = !reduced.matches, finished = false
+
+    const draw = () => {
+      if (box) painter.draw(animation.frames[frameIndex], box, ratio, pixelated, false, motion)
     }
-    const restart = () => {
-      clearTimeout(timer)
-      canvas.width = Math.round(stage.width * devicePixelRatio)
-      canvas.height = Math.round(stage.height * devicePixelRatio)
+    const fit = () => {
+      const { width, height } = stage.getBoundingClientRect()
+      if (!width || !height || width === stageWidth && height === stageHeight && ratio === devicePixelRatio) return
+      stageWidth = width
+      stageHeight = height
+      ratio = devicePixelRatio
+      // Leave room for the shared player's motion and status marker.
+      const margin = Math.min(24, width / 8, height / 8)
+      const scale = Math.min((width - margin * 2) / frame.width, (height - margin * 2) / frame.height)
+      const petWidth = frame.width * scale, petHeight = frame.height * scale
+      box = { x: (width - petWidth) / 2, y: (height - petHeight) / 2, width: petWidth, height: petHeight }
+      canvas.width = Math.round(width * ratio)
+      canvas.height = Math.round(height * ratio)
+      if (markRef.current) {
+        markRef.current.style.left = `${box.x + badge[0] * scale}px`
+        markRef.current.style.top = `${box.y + badge[1] * scale}px`
+      }
       painter.reset()
-      start = performance.now()
-      clock = createFrameClock(animation, { blinkImmediately: replay > 0 })
+      draw()
+      canvas.dataset.ready = 'true'
+    }
+
+    const stopTimer = () => {
+      clearTimeout(timer)
+      if (startedAt === undefined) return
+      elapsed += performance.now() - startedAt
+      startedAt = undefined
+    }
+    const setActive = value => {
+      active = value
+      setPlaying(value)
+    }
+    const tick = () => {
+      const time = elapsed + performance.now() - startedAt
+      const step = clock(time)
+      const moving = animation.motion && time < stopAt
+      frameIndex = step.index
+      motion = moving ? motionAt(animation.motion, time) : STILL
+      draw()
+      const wait = Math.min(step.next, moving ? PACE.motionFrame : Infinity, stopAt - time)
+      if (time >= stopAt || !Number.isFinite(wait)) {
+        finished = true
+        stopTimer()
+        setActive(false)
+        return
+      }
+      timer = setTimeout(tick, Math.max(16, wait))
+    }
+    const syncClock = () => {
+      stopTimer()
+      if (!active || document.hidden) return
+      startedAt = performance.now()
       tick()
     }
-    restart()
-    canvas.dataset.ready = 'true'
-    document.addEventListener('visibilitychange', restart)
-    reduced.addEventListener('change', restart)
-    window.addEventListener('resize', restart)
-    return () => {
-      clearTimeout(timer)
-      document.removeEventListener('visibilitychange', restart)
-      reduced.removeEventListener('change', restart)
-      window.removeEventListener('resize', restart)
+    toggleRef.current = () => {
+      if (!active) {
+        if (finished || elapsed === 0) {
+          elapsed = 0
+          finished = false
+          clock = createFrameClock(animation, { blinkImmediately: true })
+        }
+        stopAt = reduced.matches ? elapsed + 8000 : Infinity
+      }
+      setActive(!active)
+      syncClock()
     }
-  }, [data, images, replay, paused])
-  return h('div', { className: 'pet-artwork', 'aria-hidden': true },
-    h('canvas', { ref }),
-    mark && h('span', { className: 'pet-state-mark', style: {
-      left: `${(box.x + badge[0] * scale) / stage.width * 100}%`,
-      top: `${(box.y + badge[1] * scale) / stage.height * 100}%`,
-    } }, mark))
+    const respectMotionPreference = () => {
+      if (reduced.matches) setActive(false)
+      syncClock()
+    }
+    const observer = new ResizeObserver(fit)
+    observer.observe(stage)
+    fit()
+    syncClock()
+    document.addEventListener('visibilitychange', syncClock)
+    reduced.addEventListener('change', respectMotionPreference)
+    window.addEventListener('resize', fit)
+    return () => {
+      stopTimer()
+      observer.disconnect()
+      document.removeEventListener('visibilitychange', syncClock)
+      reduced.removeEventListener('change', respectMotionPreference)
+      window.removeEventListener('resize', fit)
+    }
+  }, [data, images])
+
+  return h(React.Fragment, null,
+    h('div', { className: 'pet-stage', ref: stageRef, 'aria-hidden': true },
+      h('canvas', { ref: canvasRef }),
+      mark && h('span', { className: 'pet-state-mark', ref: markRef }, mark)),
+    h('div', { className: 'pet-playback' },
+      h('button', { type: 'button', className: 'pet-play-toggle', 'data-playing': playing, onClick: () => toggleRef.current() },
+        t(playing ? 'pause' : 'play'))))
 }
 
 function ActionPreview({ skin, action, service, t }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState(false)
   const [retry, setRetry] = useState(0)
-  const [replay, setReplay] = useState(0)
-  const [paused, setPaused] = useState(false)
   useEffect(() => {
     let active = true
     setError(false)
@@ -99,16 +155,14 @@ function ActionPreview({ skin, action, service, t }) {
     })
     return () => { active = false }
   }, [service, skin.id, action, retry])
+  if (data) return h(Artwork, { ...data, action, t })
   return h(React.Fragment, null,
-    h('div', { className: 'pet-stage' },
-      h('div', { className: 'pet-stage-fallback' }, h(Thumbnail, { preview: skin.preview, size: 120 })),
-      data && h(Artwork, { ...data, action, replay, paused })),
+    h('div', { className: 'pet-stage' }, h(Thumbnail, { preview: skin.preview, size: 120 })),
     h('div', { className: 'pet-playback' },
-      !data && !error && h('span', { role: 'status' }, t('actionLoading')),
-      error && h('span', { role: 'alert' }, t('actionError')),
-      error && h('button', { type: 'button', onClick: () => setRetry(retry + 1) }, t('retry')),
-      data && h('button', { type: 'button', onClick: () => { setPaused(false); setReplay(replay + 1) } }, t('replay')),
-      data && h('button', { type: 'button', 'aria-pressed': paused, onClick: () => setPaused(!paused) }, t('still'))))
+      error ? h(React.Fragment, null,
+        h('span', { role: 'alert' }, t('actionError')),
+        h('button', { type: 'button', onClick: () => setRetry(retry + 1) }, t('retry')))
+        : h('span', { role: 'status' }, t('actionLoading'))))
 }
 
 export function PetSelector({ skins, current, service, locked, onClose, onSave, t }) {
@@ -187,7 +241,7 @@ export function PetSelector({ skins, current, service, locked, onClose, onSave, 
           h(ActionPreview, { key: `${candidate.id}/${action}`, skin: candidate, action, service, t }),
           h('div', { className: 'pet-actions', role: 'group', 'aria-label': t('actions') }, primary.map(actionButton)),
           extra.length > 0 && h('details', { open: extra.includes(action) || undefined },
-            h('summary', null, t('more')), h('div', { className: 'pet-actions' }, extra.map(actionButton)))),
+            h('summary', null, t('more')), h('div', { className: 'pet-actions', role: 'group', 'aria-label': t('more') }, extra.map(actionButton)))),
       ),
       h('footer', { className: 'pet-dialog-footer' },
         saveError && h('p', { role: 'alert' }, t('saveFailed')),
