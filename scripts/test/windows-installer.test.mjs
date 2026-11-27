@@ -152,7 +152,7 @@ test('NSIS only accepts the edition-specific data deletion switch for a non-upgr
   assert.match(init, /\$\{ifNot\} \$\{Errors\}\s+\$\{orIf\} \$\{isUpdated\}\s+StrCpy \$KeepEduWorkUserData "1"/)
   assert.match(init, /\$\{elseif\} \$\{Silent\}[\s\S]*"eduwork-delete-user-data"[\s\S]*StrCpy \$DeleteEduWorkUserData "1"/)
   assert.doesNotMatch(init, /"--delete-app-data"/)
-  assert.match(include, /!macro unregisterFileAssociations\s+\$\{if\} \$DeleteEduWorkUserData == "1"\s+\$\{andIf\} \$KeepEduWorkUserData == "0"\s+\$\{andIfNot\} \$\{isUpdated\}\s+Call un\.DeletePersonalData/)
+  assert.match(include, /!macro unregisterFileAssociations\s+\$\{if\} \$DeleteEduWorkUserData == "1"\s+\$\{andIf\} \$KeepEduWorkUserData == "0"\s+\$\{andIfNot\} \$\{isUpdated\}\s+\$\{andIf\} \$installMode == "CurrentUser"\s+Call un\.DeletePersonalData/)
   assert.match(include, /GetFileAttributesW\(w "\$INSTDIR"\)/)
   assert.doesNotMatch(include, /!macro customUnInstall\b/)
 })
