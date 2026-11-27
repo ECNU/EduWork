@@ -5,7 +5,7 @@
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-27T04:27:36.488Z",
-  "fileSetSHA256": "20c30579aab5c4320f278fab5533749d6896538830305aac3eec08c266098747",
+  "fileSetSHA256": "45abb5d11fb436085b48a9e2ab55fed283a8214d27a3c7f43369266c9bb82d57",
   "files": [
     {
       "path": ".gitattributes",
@@ -297,11 +297,11 @@
     },
     {
       "path": "docs/DESKTOP_NOTIFICATIONS_EN.md",
-      "sha256": "e50ccec60277787fcf0571f42d1b6bf2dd3ed2143e2f6298a50637ce5a5daa8b"
+      "sha256": "8d7f461c08e2e6ad813413d29d1efd40b20d32c03efa301732f808e6faafb376"
     },
     {
       "path": "docs/DESKTOP_NOTIFICATIONS.md",
-      "sha256": "78af067b2f8e0c77f46e71de6ae39063cd28c71326e0ae702ccdb866ffb5e9a6"
+      "sha256": "f78941a472efa2e07386d441aacdd47ece018959ce137413dfd5daf83428c73a"
     },
     {
       "path": "docs/DESKTOP_PET_EN.md",
@@ -1105,7 +1105,7 @@
     },
     {
       "path": "dsh-electron/src/desktop-brand.mjs",
-      "sha256": "414cd6516b03ba6588e02284362c2799433524162a128b3de507c4e80bddedd1"
+      "sha256": "f50c3049878da86abe1a7c492bf280553510a8c942872fce7fa82512b82bc0eb"
     },
     {
       "path": "dsh-electron/src/desktop-exit.mjs",
@@ -1225,7 +1225,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "77dbccf3984d9d867bb0852317067ac1707768b70c397be34d23509b98d8b0a5"
+      "sha256": "06566d6bb56b4e507d00c46659db82d85ca93a8021bbc858085d4c9fc7af00c9"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1277,7 +1277,7 @@
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",
-      "sha256": "7c45b381cbdb10c68f8558118fe0e0b57a25bc9ee0eadbd85613fee359a0b5c0"
+      "sha256": "45a9327ab6320c886f3d56cfc03e715fedf94a2b9de1c4dd03eaa05f7b77ac23"
     },
     {
       "path": "dsh-electron/src/taskbar-badges.png",
@@ -1545,7 +1545,7 @@
     },
     {
       "path": "dsh-electron/tests/task-notifications.test.mjs",
-      "sha256": "bb7306656eadbefadbe89f114bfd1b9635560ea7765b0701001b9a74eb271787"
+      "sha256": "a8f8b51fd34206a5508727e8be2393f8d42d94f662d87ef729273c3a5bde8918"
     },
     {
       "path": "dsh-electron/tests/taskbar-indicator.test.mjs",

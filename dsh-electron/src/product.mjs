@@ -412,7 +412,7 @@ async function prepareDesktop() {
     },
     onUnreadable: ({ aside }) => desktopHostLog(JSON.stringify({ component: 'credential-vault', event: 'unreadable-backup', kept: basename(aside) }) + '\n') })
   const showNotificationWindow = () => { if (updateCompleted && mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } }
-  notificationAdapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
+  notificationAdapter = nativeNotificationAdapter({ platform: process.platform, dataLayout: settings.dataLayout, Notification, getTray: () => tray, productName: settings.productName,
     activate: key => taskNotifications.activate(key), show: showNotificationWindow, failed: () => { taskNotifications.delivery = 'unavailable' } })
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
     show: showNotificationWindow,
