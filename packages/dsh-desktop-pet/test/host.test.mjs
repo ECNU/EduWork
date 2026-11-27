@@ -30,6 +30,7 @@ test('the Host plugin sends validated settings, lists built-in skins and closes 
     ['dafeiyu', '大肥鱼', 'ZipZipPipe (character); whale-girl (vlln)'],
     ['ecnu-huashi', '小花狮', 'EduWork contributors (drawing); character © East China Normal University'],
     ['ecnu-huashi-boy', '花狮郎', 'Michaelee'],
+    ['ecnu-huashi-dumpling', '小狮', 'arwen'],
     ['ecnu-huashi-girl', '花狮娘', 'Emily']])
   assert.match(status.skins[0].preview.src, /^data:image\/svg\+xml;base64,/)
   assert.deepEqual(await ctx.desktopPet.resetPosition(), { supported: true })

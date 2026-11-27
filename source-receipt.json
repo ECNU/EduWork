@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.14",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-27T04:14:25.182Z",
-  "fileSetSHA256": "7786075948d90223733cca2addcfe0bf6133d90e1fa7916938de85a1ce519c95",
+  "createdAt": "2026-11-27T04:27:36.488Z",
+  "fileSetSHA256": "20c30579aab5c4320f278fab5533749d6896538830305aac3eec08c266098747",
   "files": [
     {
       "path": ".gitattributes",
@@ -185,19 +185,19 @@
     },
     {
       "path": "config/desktop/eduwork.jsonc",
-      "sha256": "5308e0bce5d13cdf04121d03e4f21c5acc3b6fbde3a20190b9cbecb232c65b94"
+      "sha256": "ea0bffeecf53ae675eae9d023f833600f12f1343f33f2807a37aa462456f3533"
     },
     {
       "path": "config/desktop/examples/litellm.jsonc",
-      "sha256": "ffbff5111db70387918a49f771c1bcf06cbba2fcc17080ff4ff57153c640f0c5"
+      "sha256": "4cb184cf6584d00fb987d4d6781f0f5cc6c08d9d46668e507e35f2f1f5f9821c"
     },
     {
       "path": "config/desktop/examples/media.jsonc",
-      "sha256": "3321debbc2a4683b01da0f89753e6c69114ca8d0e03526c296554fda2134d660"
+      "sha256": "54c04ea4b946587013383c44ab0531895a2e1c5f1bcc1e570658732efb8913bf"
     },
     {
       "path": "config/desktop/examples/organization.jsonc",
-      "sha256": "607b42d2a16115a050e332e5338fbd1438f1b2bfd59bfdec5f51013eebd5439a"
+      "sha256": "d692fcffc0dcbe4d9d6e8ab9b72b9fdb4271877e2e277c52d8bae88afd6e129e"
     },
     {
       "path": "config/desktop/examples/README_EN.md",
@@ -209,7 +209,7 @@
     },
     {
       "path": "config/desktop/examples/updates.jsonc",
-      "sha256": "7d79db5177fc3cc8aac33a461de4814b642d4d780f3276fb18207794179797de"
+      "sha256": "9e05eff0f8cdd28cbea188304c3db9f729b119863fd6f535b2367f47b27a9a1e"
     },
     {
       "path": "config/desktop/mac-updates.json",
@@ -305,11 +305,11 @@
     },
     {
       "path": "docs/DESKTOP_PET_EN.md",
-      "sha256": "78e912da061344f6817ca4da44ab2c5ccf5cc2b4392fc88f1f950bc6a3cb24fd"
+      "sha256": "b714db301039191dab8a5ce7cbcf4b49f014f11115b98cae8ed59251810bb88b"
     },
     {
       "path": "docs/DESKTOP_PET.md",
-      "sha256": "f69699991f5c5c5793ee49ce56165d258753eb6985cfc6d3061c55e7db191f91"
+      "sha256": "9dc3163b08dcf13843fa3736aa483dd06c99773b12347660c481dedfc3d6b9d9"
     },
     {
       "path": "docs/dev/desktop-source-and-install.md",
@@ -1633,7 +1633,7 @@
     },
     {
       "path": "dsh-host/configuration-reference.mjs",
-      "sha256": "17af4aff299258832b94c55da477a7a2130bc45b4c95f384f0acc956ecdcfd22"
+      "sha256": "06bd35159416429fc13f0ffe17a24caadf93f769418f6ded02fb22678bb0b575"
     },
     {
       "path": "dsh-host/content-update-protocol.mjs",
@@ -3993,11 +3993,11 @@
     },
     {
       "path": "packages/dsh-desktop-pet/README_EN.md",
-      "sha256": "0c72ea384f2dc3d22e94513d508b048a435733be08f42e6884dfed09fbecde36"
+      "sha256": "477aca99dfc763a491643bf398a29799419f045b3c62cc4d66f281f619cba127"
     },
     {
       "path": "packages/dsh-desktop-pet/README.md",
-      "sha256": "c62ecdbeaacfdb4e28a97019788121c0324f61bfbbdfc85e0e750a3b65a5b6ce"
+      "sha256": "13d3c8c72598888c0419e79108370ef79ba74d2af92e0783cf258d248f506f3e"
     },
     {
       "path": "packages/dsh-desktop-pet/scripts/build-huashi-skin.mjs",
@@ -4122,6 +4122,70 @@
     {
       "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-boy/work.webp",
       "sha256": "3652a558da3a5b91ad028504a2298be636dfaa28079756fbc7e42f7574817220"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/attention.webp",
+      "sha256": "8e41122667361bfeb4787dd30b4596a7d2347d6f70aaec711e28c08fd24d5c69"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/desk-peek.webp",
+      "sha256": "cd4cca10ba351e8fdfb1f1d24d64e0987cfb5d40ad193f807c274b0815ffa3d4"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/done.webp",
+      "sha256": "01524497309f265184d97d0b0d61ede47f39a1f97ab8e34ef47d03c8bcd27fba"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/drag.webp",
+      "sha256": "c9a54934b66a47cddcc6effab5ab5982d250bcf46e2ac4e9bdc6b378aa4b4a7f"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/failed.webp",
+      "sha256": "4ac4e20b5cc41d986e6e7a5ac2278767f160af5a40f8f392e8d6c1b45f001c2b"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/greet.webp",
+      "sha256": "e59fb98fd2bcc7a27cc1116aa2f6802fc3cd4bd12986cfb0629d80f9ec10215a"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/hug.webp",
+      "sha256": "5c82b136252b8feb5bd61d9d5727d3ce849e31cdeddfbe74027017690a8b599f"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/idle.webp",
+      "sha256": "f6f781bacb33705bbe1ada95101240365b1595c73636d10b21c175a6254292bf"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/peek.webp",
+      "sha256": "ca5303638f7bcfa86b46ef75eea60d96fd8cf82e30326ff4cc8a755f1b074883"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/react.webp",
+      "sha256": "349224b7979e9115fd96c5b92ac4f2fe1def4a8b2a6044a629ff663d2a9f7383"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/skin.json",
+      "sha256": "71fa007615e44c2c0cf099e0de40192f5d34db01dd0b47911396684391a4c300"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/sleep.webp",
+      "sha256": "1b49b353b1c09d09cabe23c29933982e29eb87cec32a72f37e9d5afdd35fc408"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/smile.webp",
+      "sha256": "a325d62a0b02e2eaa7e81fa8d7cef5aa629d6cb93e31d08a7f13126d656da2f6"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/think.webp",
+      "sha256": "ffd76ef5c4e07b9b4e5adf6e71a447de4a51a8fd07210e1663cd0fc7b44a94f7"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/work.webp",
+      "sha256": "ee15eaf886a554981b5d8062f3ade1db5fce3f73a12a0c1e7780a2240f1d3917"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-dumpling/yawn.webp",
+      "sha256": "81999690be02d63637e3d3233845d038b72746fd5304b143e3a1d0eb921bafbe"
     },
     {
       "path": "packages/dsh-desktop-pet/skins/ecnu-huashi-girl/attention.webp",
@@ -4453,7 +4517,7 @@
     },
     {
       "path": "packages/dsh-desktop-pet/skins/LICENSE",
-      "sha256": "92a1e18fe66331ce425edfd16c841daa152209f65145cf7746f8c89a0c31fb96"
+      "sha256": "b97e3ea012a20c80ea4fe00a35081a09e3bf9207df26dd2561ce351a9bf6dc13"
     },
     {
       "path": "packages/dsh-desktop-pet/src/client.js",
@@ -4461,7 +4525,7 @@
     },
     {
       "path": "packages/dsh-desktop-pet/test/host.test.mjs",
-      "sha256": "ef8c0588f8aeb6f39fdb706da470a2243f607dbe5d182c229c50813c8a16deea"
+      "sha256": "c2286e051db15c6767729dc19e23ec204a19f7aa57ccdcd44d70332aa34c3901"
     },
     {
       "path": "packages/dsh-desktop-pet/test/page-clock.test.mjs",
@@ -4477,7 +4541,7 @@
     },
     {
       "path": "packages/dsh-desktop-pet/test/skin.test.mjs",
-      "sha256": "50dd6e0f9516c3f1d4c2b06b58b39b068069bff4369212ae0c600db19ae214b6"
+      "sha256": "7aa392daf15b2cd56cb320196c1a1e53ca80a4597fba5aa0ae460013f806fb4f"
     },
     {
       "path": "packages/dsh-external-agents/.gitignore",
@@ -8065,7 +8129,7 @@
     },
     {
       "path": "scripts/packages/archive.mjs",
-      "sha256": "6c430a92c64b840781f102fb807e2648ebfa038c92db7f963e3611b04f81508b"
+      "sha256": "741f94508fdbe33684f934033b7f9624ef80494fc86bbe686280f9be89b62072"
     },
     {
       "path": "scripts/packages/catalog.mjs",
@@ -8601,7 +8665,7 @@
     },
     {
       "path": "tests/package-maintenance.test.mjs",
-      "sha256": "e2f4463eecc28037dbecd3696c0a68f2166bbfef23e3018f8a4ecfab29dc4655"
+      "sha256": "74b9f5b9f94f5e78beb29cd6b1cffbef7a1cf9f575b5b62f97b5afc375cfa137"
     },
     {
       "path": "tests/parallel-sets.test.mjs",
