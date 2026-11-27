@@ -137,6 +137,7 @@ test('NSIS offers a bilingual uninstall choice without preselecting personal dat
   assert.match(include, /\$LANGUAGE == 2052/)
   assert.match(include, /MUI_HEADER_TEXT "个人数据选项"/)
   assert.match(include, /MUI_HEADER_TEXT "Personal Data"/)
+  assert.match(include, /GetDlgItem \$0 \$HWNDPARENT 1[\s\S]*WM_SETTEXT.*"STR:卸载\(&U\)"[\s\S]*WM_SETTEXT.*"STR:&Uninstall"/)
   assert.match(include, /同时删除本机个人数据（会话记录、设置、模型凭据与内置工作区）/)
   assert.match(include, /Also delete local personal data \(sessions, settings, credentials, and built-in workspaces\)/)
   assert.match(include, /\$\{NSD_SetState\} .*\$\{BST_UNCHECKED\}/)
@@ -146,15 +147,22 @@ test('NSIS offers a bilingual uninstall choice without preselecting personal dat
 
 test('NSIS only accepts the edition-specific data deletion switch for a non-upgrade silent uninstall', () => {
   const include = installerInclude(desktop)
-  const init = include.match(/!macro customUnInit\n([\s\S]*?)\n!macroend/)?.[1] ?? ''
-  assert.match(init, /StrCpy \$DeleteEduWorkUserData "0"/)
-  assert.match(init, /\$\{GetOptions\} \$R0 "\/KEEP_APP_DATA" \$R1/)
-  assert.match(init, /\$\{ifNot\} \$\{Errors\}\s+\$\{orIf\} \$\{isUpdated\}\s+StrCpy \$KeepEduWorkUserData "1"/)
-  assert.match(init, /\$\{elseif\} \$\{Silent\}[\s\S]*"eduwork-delete-user-data"[\s\S]*StrCpy \$DeleteEduWorkUserData "1"/)
-  assert.doesNotMatch(init, /"--delete-app-data"/)
-  assert.match(include, /!macro unregisterFileAssociations\s+\$\{if\} \$DeleteEduWorkUserData == "1"\s+\$\{andIf\} \$KeepEduWorkUserData == "0"\s+\$\{andIfNot\} \$\{isUpdated\}\s+\$\{andIf\} \$installMode == "CurrentUser"\s+Call un\.DeletePersonalData/)
-  assert.match(include, /GetFileAttributesW\(w "\$INSTDIR"\)/)
-  assert.doesNotMatch(include, /!macro customUnInstall\b/)
+  const parser = include.match(/Function un\.ReadEduWorkUninstallArgs\n([\s\S]*?)\nFunctionEnd/)?.[1] ?? ''
+  assert.match(parser, /GetCommandLineW[\s\S]*CommandLineToArgvW[\s\S]*lstrlenW[\s\S]*\$\{NSIS_MAX_STRLEN\}[\s\S]*LocalFree/)
+  assert.match(parser, /== "\/KEEP_APP_DATA"\s+\$\{orIf\} .* == "--updated"/)
+  assert.match(parser, /S== "\/S"[\s\S]*S== "--eduwork-delete-user-data"/)
+  assert.match(parser, /\$\{andIf\} \$\{Silent\}[\s\S]*StrCpy \$DeleteEduWorkUserData "1"/)
+  assert.doesNotMatch(parser, /GetOptions|TestParameter/)
+  assert.match(include, /!ifdef BUILD_UNINSTALLER\n[\s\S]*!if "\$\{OPTION\}" S== "--delete-app-data"\s+SetErrors\s+!else\s+!insertmacro GetOptionsCall/)
+})
+
+test('NSIS binds install identity before stock removal and verifies it before data cleanup', () => {
+  const include = installerInclude(desktop)
+  assert.match(include, /!macro customUnInstall\n[\s\S]*Call un\.BindEduWorkInstall/)
+  assert.match(include, /Function un\.BindEduWorkInstall\n[\s\S]*\$installMode[\s\S]*InstallLocation[\s\S]*GetFileAttributesW[\s\S]*StrCpy \$EduWorkVerifiedInstDir \$INSTDIR/)
+  assert.match(include, /!macro unregisterFileAssociations\n\s+!insertmacro EduWorkIfDeleteRequested\s+Call un\.DeletePersonalData/)
+  assert.match(include, /Function un\.DeletePersonalData\n[\s\S]*verify-install[\s\S]*\$EduWorkVerifiedInstDir[\s\S]*GetFileAttributesW[\s\S]*"cleanup"[\s\S]*Call un\.DeleteEduWorkTree/)
+  assert.match(include, /DetailPrint .*\$EduWorkDataCleanupStage.*\$EduWorkDataCleanupError[\s\S]*MessageBox .* \/SD IDOK\s+SetErrorLevel 1/)
 })
 
 test('NSIS binds deletion to the current edition and never follows reparse points', () => {
@@ -164,6 +172,8 @@ test('NSIS binds deletion to the current edition and never follows reparse point
   assert.ok(include.includes('\\\\?\\'))
   assert.doesNotMatch(include, /RMDir\s+\/r/i)
   assert.match(include, /CreateFileW\([^\n]*0x02200000/)
+  assert.match(include, /GetFileInformationByHandleEx\(p r1, i 9, p r5, i 8\)[\s\S]*System::Call '\*\$5\(i \.r2\)'/)
+  assert.doesNotMatch(include, /GetFileInformationByHandleEx[^\n]*\*l/)
   assert.match(include, /IntOp \$\w+ \$\w+ & 0x400/)
   assert.match(include, /RemoveDirectoryW/)
   assert.match(include, /DeleteFileW/)
