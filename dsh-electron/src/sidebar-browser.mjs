@@ -275,7 +275,20 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
         const result = page && await pageCommand(page, method, params)
         if (result !== undefined) return reply({ result })
         if (!allowedOnPage(method)) throw failure(blockedBecause[method] ?? `'${method}' is not available in the Sidebar browser`, -32601)
-        reply({ result: await carrier.guest.debugger.sendCommand(method, params, page ? undefined : sessionId) })
+        const command = carrier.guest.debugger.sendCommand(method, params, page ? undefined : sessionId)
+        if (method === 'Page.createIsolatedWorld') {
+          let timer
+          try {
+            const timeout = new Promise((_resolveTimeout, rejectTimeout) => {
+              timer = setTimeout(() => rejectTimeout(failure('Page.createIsolatedWorld timed out')), idleMs)
+            })
+            reply({ result: await Promise.race([command, timeout]) })
+          } finally {
+            clearTimeout(timer)
+          }
+        } else {
+          reply({ result: await command })
+        }
       } finally {
         if (input) carrier.inputs--
       }
