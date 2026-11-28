@@ -809,17 +809,56 @@ test('the Agent lays the tab it acts on out at desktop width and back, that tab 
   // A tab out of sight while the Agent rests and the user narrows the Sidebar lays out at the tab's width as it comes forward.
   // A mark from before the Agent rested no longer serves.
   const before = await marked(tab)
+  const idleCount = () => run('return idleCounts.get("session-a") ?? 0')
+  const untilIdle = await idleCount()
   await other.bringToFront()
-  for (const deadline = Date.now() + 5000; await page('document.querySelector("[data-eduwork-agent-render]") !== null');) {
-    assert.ok(Date.now() < deadline, 'the Agent rests')
+  for (const deadline = Date.now() + 5000; await idleCount() === untilIdle;) {
+    assert.ok(Date.now() < deadline, 'session-a sends idle')
     await wait(50)
   }
   assert.deepEqual(await post('session-a', { mode: 'sidebar', mark: before }), unseen)
   await page('document.body.style.gridTemplateColumns = "1fr 400px"')
   assert.deepEqual(await layOut('session-a', tab, 'sidebar'), [200, { width: 400, settled: true }])
-  await page('document.body.style.gridTemplateColumns = ""')
+
+  const tabUrl = tab.url()
   await other.close()
   await browser.close()
+  const client = await socket(`${endpoint}/session-a`)
+  const send = protocol(client)
+  const [{ targetId }] = (await send('Target.getTargets')).targetInfos.filter(target => target.url === tabUrl)
+  const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true })
+  const { frameTree } = await send('Page.getFrameTree', {}, sessionId)
+  const worldName = `sidebar-flake-${randomUUID()}`
+  await run(`holdIsolatedWorld(${JSON.stringify(tabUrl)}, ${JSON.stringify(worldName)})`)
+  const settledBefore = await idleCount()
+  const isolatedWorld = send('Page.createIsolatedWorld', { frameId: frameTree.frame.id, worldName }, sessionId)
+  const unrelated = await send('Runtime.evaluate', { expression: '6 * 7', returnByValue: true }, sessionId)
+  assert.equal(unrelated.result.value, 42)
+  const outcome = await Promise.race([
+    isolatedWorld.then(() => ({ type: 'resolved' }), error => ({ type: 'rejected', error })),
+    wait(5000).then(() => ({ type: 'deadline' })),
+  ])
+  if (outcome.type !== 'rejected') {
+    await run('rejectHeldIsolatedWorld()')
+    const late = await isolatedWorld.then(() => 'resolved', error => error.message)
+    assert.fail(`Page.createIsolatedWorld did not time out (${outcome.type}); releasing it returned ${late}`)
+  }
+  assert.match(outcome.error.message, /Page\.createIsolatedWorld timed out/)
+  assert.deepEqual(await run('return rejectHeldIsolatedWorld()'), [])
+  const timedOutAt = Date.now()
+  await wait(300)
+  assert.equal(await idleCount(), settledBefore, 'the session waits its idle budget after the timed-out request')
+  for (const deadline = Date.now() + 5000; await idleCount() === settledBefore;) {
+    assert.ok(Date.now() < deadline, 'timed out CDP request settles before session idle')
+    await wait(50)
+  }
+  assert.ok(Date.now() - timedOutAt >= 1300, 'the session waits for idleMs before resting')
+  const disconnected = once(client, 'close')
+  client.close()
+  await disconnected
+  const resumed = await connect('session-a')
+  await page('document.body.style.gridTemplateColumns = ""')
+  await resumed.browser.close()
 })
 
 test('the Sidebar opens once the user sees the Agent at work, then stays as the user leaves it', live, async () => {

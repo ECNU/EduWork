@@ -24,6 +24,33 @@ app.commandLine.appendSwitch('host-resolver-rules', 'MAP *.test 127.0.0.1')
 app.commandLine.appendSwitch('no-proxy-server')
 protocol.registerSchemesAsPrivileged([{ scheme: 'dsh-app', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 let window
+const idleCounts = new Map()
+let isolatedWorldHold
+const holdIsolatedWorld = (url, worldName) => {
+  const guest = webContents.getAllWebContents().find(guest => guest.getType() === 'webview' && guest.getURL() === url)
+  if (!guest) throw new Error(`No Sidebar guest for ${url}`)
+  const sendCommand = guest.debugger.sendCommand.bind(guest.debugger)
+  guest.debugger.sendCommand = (method, params, sessionId) => {
+    if (method !== 'Page.createIsolatedWorld' || params?.worldName !== worldName) return sendCommand(method, params, sessionId)
+    guest.debugger.sendCommand = sendCommand
+    return new Promise((_, reject) => { isolatedWorldHold = { reject, unhandled: [] } })
+  }
+}
+const rejectHeldIsolatedWorld = async () => {
+  if (!isolatedWorldHold) throw new Error('No isolated world command is being held')
+  const held = isolatedWorldHold
+  const unhandled = reason => held.unhandled.push(reason?.message)
+  process.on('unhandledRejection', unhandled)
+  try {
+    held.reject(new Error('controlled late rejection'))
+    await new Promise(resolve => setImmediate(resolve))
+    await new Promise(resolve => setImmediate(resolve))
+    return held.unhandled
+  } finally {
+    process.off('unhandledRejection', unhandled)
+    isolatedWorldHold = undefined
+  }
+}
 const broker = createSidebarBrowser({ getWindow: () => window, idleMs: 1500 })
 const menus = [], externals = [], clearings = []
 Menu.prototype.popup = function () { menus.push(this) }
@@ -47,6 +74,17 @@ void app.whenReady().then(async () => {
   window = new BrowserWindow({ width: 1200, height: 800, webPreferences: {
     preload: join(here, '../../src/sidebar-browser-preload.cjs'), webviewTag: true, sandbox: true, contextIsolation: true,
   } })
+  const send = window.webContents.send.bind(window.webContents)
+  window.webContents.send = (channel, ...args) => {
+    if (channel === SIDEBAR_BROWSER_IPC.request) {
+      const { type, sessionId } = args[0]
+      if (type === 'idle') {
+        const count = (idleCounts.get(sessionId) ?? 0) + 1
+        idleCounts.set(sessionId, count)
+      }
+    }
+    return send(channel, ...args)
+  }
   // The application page's popups go to the system browser (configureWindowNavigation).
   window.webContents.setWindowOpenHandler(({ url }) => { externals.push(url); return { action: 'deny' } })
   // Guests are opaque, as the desktop bridge makes them.
@@ -71,7 +109,7 @@ void app.whenReady().then(async () => {
   })
   const environment = await broker.listen()
   process.on('message', async ({ id, code }) => {
-    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker, webContents, menus, externals, clearings }) => { ${code} })(scope)`)({ window, broker, webContents, menus, externals, clearings }) }) }
+    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker, webContents, menus, externals, clearings, idleCounts, holdIsolatedWorld, rejectHeldIsolatedWorld }) => { ${code} })(scope)`)({ window, broker, webContents, menus, externals, clearings, idleCounts, holdIsolatedWorld, rejectHeldIsolatedWorld }) }) }
     catch (error) { process.send({ id, error: error.message }) }
   })
   await window.loadURL('dsh-app://app/index.html')
