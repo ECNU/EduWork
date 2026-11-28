@@ -22,9 +22,9 @@ const unsupportedMessage = '当前安装包未配置软件更新'
 for (const [canToggle, userEnabled, contentEnabled, description] of [
   [false, true, true, unsupportedMessage],
   [false, false, true, unsupportedMessage],
-  [true, true, true, '启动时在后台检查，发现新版本后提示。'],
-  [true, false, true, '软件更新已关闭，配置与 Skills 更新不受影响。'],
-  [true, false, false, '软件更新已关闭。'],
+  [true, true, true, '允许检查、下载和安装软件更新。'],
+  [true, false, true, '软件更新已关闭。重新开启后沿用所选渠道和设置。'],
+  [true, false, false, '软件更新已关闭。重新开启后沿用所选渠道和设置。'],
 ]) {
   test(`software update description with canToggle=${canToggle}, userEnabled=${userEnabled}, contentEnabled=${contentEnabled}`, () => {
     const React = { createElement: (type, props, ...children) => ({ type, props, children }) }
@@ -39,7 +39,7 @@ for (const [canToggle, userEnabled, contentEnabled, description] of [
     const panel = UpdatePanel({ controller: { getSnapshot: () => ({ status }) } })
     assert.ok(find(panel, node => node.children?.includes(description)))
     if (!canToggle) {
-      const misleading = /^(启动时在后台检查|软件更新已关闭)/
+      const misleading = /^(启动时及运行期间|软件更新已关闭)/
       assert.equal(find(panel, node => node.children?.some(child => typeof child === 'string' && misleading.test(child))), undefined)
     }
   })
@@ -69,9 +69,9 @@ for (const outcome of ['ready', 'error']) {
     assert.ok(progress)
     assert.equal(progress.props['aria-valuenow'], undefined)
     assert.equal(find(panel, node => node.props?.type === 'checkbox').props.disabled, true)
-    const channel = find(panel, node => node.props?.role === 'radio' && node.children.includes('开发版'))
-    assert.equal(channel.props['aria-disabled'], true)
-    await channel.props.onClick()
+    const channel = find(panel, node => node.type === 'select')
+    assert.equal(channel.props.disabled, true)
+    channel.props.onChange({ currentTarget: { value: 'development' } })
     assert.deepEqual(actions, ['status'])
     const footer = UpdateFooter({ controller })
     const close = find(footer, node => node.props?.['aria-label'] === '关闭更新面板')
@@ -123,9 +123,9 @@ test('unreadable verification status allows dismissal and recovers without unloc
   assert.ok(find(panel, node => node.props?.role === 'alert' && node.children.includes('无法读取更新状态：后台连接已断开')))
   assert.equal(find(panel, node => node.props?.role === 'progressbar'), undefined)
   assert.equal(find(panel, node => node.props?.type === 'checkbox').props.disabled, true)
-  const channel = find(panel, node => node.props?.role === 'radio' && node.children.includes('开发版'))
-  assert.equal(channel.props['aria-disabled'], true)
-  await channel.props.onClick()
+  const channel = find(panel, node => node.type === 'select')
+  assert.equal(channel.props.disabled, true)
+  channel.props.onChange({ currentTarget: { value: 'development' } })
   assert.equal(find(panel, node => node.children?.includes('立即重启更新')), undefined)
 
   const footer = UpdateFooter({ controller })

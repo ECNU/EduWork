@@ -82,15 +82,25 @@ const relaunchDesktop = configureDesktopRelaunch(app, process.platform === 'win3
 // Ownership applies only to this shell, not a detached updater's next launch.
 delete process.env.EDUWORK_LAUNCHER_RESTART
 let confirmQuit = async () => true
+let allowAutomaticInstallOnQuit = () => false
 let reportUpdateStopFailure
 let installTasksBeforeConfirmation = false
 const desktopExit = new DesktopExit({
   confirm: () => confirmQuit(),
+  installOnQuit: async () => {
+    if (!allowAutomaticInstallOnQuit()) return
+    try { await softwareUpdates?.prepareForQuit() }
+    catch (error) { desktopHostLog(`[desktop:updates] Quit installation skipped: ${error.message}\n`) }
+  },
   close: () => stopDesktopForExit(),
   relaunch: () => relaunchDesktop(process.argv.slice(1), updateCompleted),
   quit: () => app.quit(), failed: error => desktopHostLog(`[desktop:quit] ${error.message}\n`),
 })
-export function setDesktopQuitGuard(guard, onUpdateStopFailure) { confirmQuit = guard; reportUpdateStopFailure = onUpdateStopFailure }
+export function setDesktopQuitGuard(guard, onUpdateStopFailure, allowInstallOnQuit = () => false) {
+  confirmQuit = guard
+  reportUpdateStopFailure = onUpdateStopFailure
+  allowAutomaticInstallOnQuit = allowInstallOnQuit
+}
 export function restartDesktop(options) {
   return desktopExit.restart(options)
 }
@@ -348,8 +358,8 @@ async function prepareDesktop() {
         ? import('./update-coordinator.ts').then(({ DesktopUpdateCoordinator }) => startInstalledUpdates({
           app, resourcesPath:process.resourcesPath, version:settings.productVersion, policy, onPolicy:saveUpdatePolicy,
           Coordinator:DesktopUpdateCoordinator,
-          stopBeforeInstall:()=>desktopExit.prepareInstaller(()=>stopDesktopForExit({beforeInstall:true,requireGraceful:true,
-            activeBeforeConfirmation:installTasksBeforeConfirmation}),reportUpdateStopFailure),
+          stopBeforeInstall:onQuit=>desktopExit.prepareInstaller(()=>stopDesktopForExit({beforeInstall:true,requireGraceful:true,
+            activeBeforeConfirmation:!onQuit&&installTasksBeforeConfirmation}),onQuit?undefined:reportUpdateStopFailure),
         }))
       : startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
         version:settings.productVersion,distribution:settings.distribution,
@@ -469,7 +479,7 @@ export async function desktopReady(shouldContinue = () => true) {
   desktopPet?.start()
   softwareUpdates?.startBackground({ online: () => net.isOnline(), quitting: isQuitting, powerMonitor,
     diagnose: message => desktopHostLog(`[desktop:updates] ${message}\n`) })
-  if (portableUpdates) void portableUpdates.action('check-updates-background')
+  if (portableUpdates) void portableUpdates.action('check-content-updates-background')
     .then(status => productUpdateObserver.record(status)).catch(()=>{})
 }
 

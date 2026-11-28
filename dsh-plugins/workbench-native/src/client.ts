@@ -1,7 +1,7 @@
 import { downloadDiagnosticArchive } from '../lib/diagnostic-download.js'
 import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import remote from '../lib/typert.remote-client.js'
-import {createUpdateController,UpdatePanel,UpdateFooter} from './updates'
+import {createUpdateController,UpdatePanel,UpdateFooter,ContentUpdateSettings} from './updates'
 import {DataImportPanel} from './data-import'
 import {ConcurrencySettings} from './concurrency'
 import {NotificationSettings, installNotificationNavigation} from './notifications'
@@ -286,6 +286,7 @@ function DesktopSettings({service,controller}) {
  const note={margin:'4px 0 0',color:'var(--dsw-alias-label-secondary)',fontSize:12,lineHeight:1.55}
  return h(React.Fragment,null,
   h('section',{style:section},h(UpdatePanel,{controller})),
+  h(ContentUpdateSettings,{controller,style:section}),
   h('section',{style:section},
    h('div',{style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16}},
     h('div',{style:{minWidth:0}},h('div',{style:{fontSize:14}},'故障诊断'),

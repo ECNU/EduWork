@@ -34,11 +34,17 @@ export function startMacSparkleUpdates({ appPath, version, enabled = false, feed
   }
   const status = () => ({ shell: 'electron', version, phase: failure ? 'error' : 'ready',
     message: failure ? `macOS 更新组件不可用：${failure.message}` : '检查在后台进行；可选择自动下载并在退出时安装，不会强制重启。',
-    update: { enabled: !failure, nativeUI: false, nativeUpdater: true, policy, policies:Object.keys(feeds), ...(failure ? {state:'error',error:failure.message} : nativeStatus()) } })
+    update: { enabled: !failure, nativeUI: false, nativeUpdater: true, canSchedule: false, policy, policies:Object.keys(feeds), ...(failure ? {state:'error',error:failure.message} : nativeStatus()) } })
   return {
+    configureAutomation({ automaticDownload, automaticInstall }) {
+      // Sparkle's background download also commits installation on quit. For
+      // download-only, use its explicit download path and leave the package ready.
+      const downloadAndInstall = automaticDownload && automaticInstall
+      if (!failure && Boolean(addon.snapshot().automaticDownload) !== downloadAndInstall) addon.setAutomaticDownload(downloadAndInstall)
+    },
     action: async action => {
       if (action === 'status') return status()
-      // Sparkle chooses quiet checks or background downloads from its persisted preference.
+      // Sparkle chooses an information check or its own download-and-install flow.
       if (action === 'check-updates' || action === 'check-updates-background') {
         if (failure && action === 'check-updates') throw Error(`macOS 更新组件不可用：${failure.message}`)
         if (!failure) addon.probe()
@@ -65,7 +71,8 @@ export function startMacSparkleUpdates({ appPath, version, enabled = false, feed
       }
       if (action === 'download-update') {
         if (failure) throw Error(`macOS 更新组件不可用：${failure.message}`)
-        addon.check()
+        if (addon.snapshot().automaticDownload) addon.probe()
+        else addon.check()
         return status()
       }
       throw Error('不支持此 macOS 更新操作')

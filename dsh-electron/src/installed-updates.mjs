@@ -10,9 +10,10 @@ export function startInstalledUpdates({ app, resourcesPath, version, policy, onP
     },
     async close() {},
   }
+  let installingOnQuit = false
   const coordinator = new Coordinator(() => {}, async () => {
     if (!enabled()) return false
-    await stopBeforeInstall()
+    await stopBeforeInstall(installingOnQuit)
     return true
   }, undefined, enabled, () => version, undefined, policy === 'development' ? 'nightly' : 'stable')
   let downloadOperation
@@ -26,6 +27,13 @@ export function startInstalledUpdates({ app, resourcesPath, version, policy, onP
         failedOperation: state.failedOperation, error: state.phase === 'error' ? state.message : undefined } }
   }
   return {
+    async installOnQuit() {
+      installingOnQuit = true
+      try {
+        const result = await coordinator.install(coordinator.state.version, undefined, false)
+        if (result.phase === 'error') throw Error(result.message || '退出时安装更新失败')
+      } finally { installingOnQuit = false }
+    },
     async action(action) {
       if (action === 'status') return status()
       if (!enabled()) return status()

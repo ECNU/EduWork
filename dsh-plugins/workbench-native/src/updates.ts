@@ -8,6 +8,7 @@ const primary={...button,background:accent,borderColor:accent,color:'#fff'}
 const secondary='var(--dsw-alias-label-secondary, #777)'
 const note={margin:'4px 0 0',color:secondary,fontSize:12,lineHeight:1.55}
 const row={display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16}
+const optionRow={...row,alignItems:'center',flexWrap:'wrap' as const,gap:'8px 16px',fontSize:13,marginTop:12}
 
 // One native state and one poller serve the footer, modal and settings. Closing
 // settings or the modal never stops a native download or loses its progress.
@@ -51,9 +52,17 @@ export function createUpdateController(service) {
  const poll=async()=>{await read();if(!stopped)timer=setTimeout(poll,!view.statusError&&[view.status?.update?.state,view.status?.contentUpdate?.state].some(state=>['checking','downloading','verifying','applying'].includes(state))?350:2500)}
  const run=async(action)=>{
   if(view.working)return
-  const started=Date.now(),working=action==='check-updates'?'checking':action==='download-update'?'downloading':action.startsWith('use-')?'switching':action.includes('software-updates')?'settings':''
+  const started=Date.now(),working=action==='check-updates'?'checking':action==='download-update'?'downloading':action.startsWith('use-')?'switching':/^(enable|disable)-/.test(action)?'settings':''
   publish({error:'',working})
-  try{const status=await service(action);publish({status});if(status.phase==='error'&&!status.update?.error)publish({error:status.message})}catch(e){publish({error:e.message})}
+  try {
+   const status=await service(action)
+   publish({status})
+   if(status.phase==='error'&&!status.update?.error)publish({error:status.message})
+   return status.phase!=='error'&&!status.update?.error
+  } catch(e) {
+   publish({error:e.message})
+   return false
+  }
   finally{if(working)await wait(Math.max(0,450-(Date.now()-started))).promise;publish({working:''});void read()}
  }
  void poll()
@@ -63,63 +72,88 @@ export function createUpdateController(service) {
  return {subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)},getSnapshot:()=>view,run,open,close,retry:read,dispose:()=>{stopped=true;clearTimeout(timer);waits.forEach(settle=>settle());window.removeEventListener('eduwork:open-updates',event)}}
 }
 function useUpdates(controller){return useSyncExternalStore(controller.subscribe,controller.getSnapshot,controller.getSnapshot)}
+const checkboxStyle={display:'flex',gap:8,alignItems:'flex-start',marginTop:12,fontSize:13}
+function updateOption({controller,action,label,description,checked,disabled}) {
+ return h('label',{style:checkboxStyle},
+  h('input',{type:'checkbox','aria-label':label,checked,disabled,onChange:e=>controller.run(`${e.currentTarget.checked?'enable':'disable'}-${action}`)}),
+  h('span',null,label,h('span',{style:{...note,display:'block'}},description)))
+}
 const percent=s=>s?.downloadStage==='verifying'?(s.totalFiles>0?Math.min(100,Math.floor(s.checkedFiles/s.totalFiles*100)):0):s?.totalBytes>0?Math.min(100,Math.floor(s.downloadedBytes/s.totalBytes*100)):0
 const size=n=>n<1048576?Math.ceil(Math.max(0,n||0)/1024)+' KB':(Math.max(0,n||0)/1048576).toFixed(1)+' MB'
-function ContentPanel({controller,content:c,working}) {
+const softwareAvailable=status=>Boolean(status&&status.shell!=='web'&&status.update?.enabled!==false)
+const contentBusy=c=>['checking','downloading','ready'].includes(c?.state)
+
+function ContentPanel({controller,content:c,working,statusError,showCheck}) {
  if(!c?.enabled)return null
  const progress=percent(c)
  const message=c.state==='available'?`发现内容更新 r${c.latestRevision} · ${size(c.totalBytes)}`:c.state==='checking'?'正在检查内容更新…':c.state==='downloading'?'正在下载内容更新…':c.state==='ready'?'已下载并校验，下次启动生效。':c.state==='requires_software'?'此内容更新需要先升级到兼容的软件版本。':c.state==='error'?c.message:'当前内容已是最新版本'
- return h('div',{'data-eduwork-content-update':true,style:{marginTop:16,paddingTop:16,borderTop:`1px solid ${border}`}},
-  h('div',{style:{fontSize:14}},c.configuration?(c.skills?'配置与 Skills 更新':'配置更新'):'Skills 更新'),
-  h('p',{style:note},[c.configuration&&`配置 ${c.configurationRevision?`r${c.configurationRevision}`:'随软件内置'}`,c.skills&&`Skills ${c.skillsRevision?`r${c.skillsRevision}`:'随软件内置'}`].filter(Boolean).join(' · ')),
+ return h('div',{'data-eduwork-content-update':true},
+  h('div',{style:row},
+   h('div',{style:{minWidth:0}},
+    h('div',{style:{fontSize:14}},c.configuration?(c.skills?'配置与 Skills 更新':'配置更新'):'Skills 更新'),
+    h('p',{style:note},[c.configuration&&`配置 ${c.configurationRevision?`r${c.configurationRevision}`:'随软件内置'}`,c.skills&&`Skills ${c.skillsRevision?`r${c.skillsRevision}`:'随软件内置'}`].filter(Boolean).join(' · '))),
+   showCheck&&h('button',{type:'button',style:button,disabled:Boolean(working||statusError)||contentBusy(c),onClick:()=>controller.run('check-updates')},'检查内容更新')),
   h('p',{role:c.state==='error'?'alert':'status',style:{...note,marginTop:8,overflowWrap:'anywhere',...(c.state==='error'?{color:'var(--dsw-alias-state-error-primary, #a82332)'}:{})}},message),
   c.message&&c.state==='current'&&h('p',{style:note},c.message),
   c.state==='downloading'&&h(React.Fragment,null,
    h('div',{role:'progressbar','aria-label':'内容下载进度','aria-valuemin':0,'aria-valuemax':100,'aria-valuenow':progress,style:{height:6,marginTop:10,borderRadius:999,overflow:'hidden',background:border}},h('div',{style:{width:`${progress}%`,height:'100%',background:accent}})),
    h('p',{style:note},`${size(c.downloadedBytes)} / ${size(c.totalBytes)} · ${progress}%`)),
-  ['available','ready'].includes(c.state)&&h('div',{style:{display:'flex',justifyContent:'flex-end',marginTop:10}},h('button',{type:'button',disabled:Boolean(working),style:primary,onClick:()=>controller.run(c.state==='available'?'download-content-update':'restart-content-update')},c.state==='available'?'下载内容更新':'重启使内容生效')),
+  ['available','ready'].includes(c.state)&&h('div',{style:{display:'flex',justifyContent:'flex-end',marginTop:10}},h('button',{type:'button',disabled:Boolean(working||statusError),style:primary,onClick:()=>controller.run(c.state==='available'?'download-content-update':'restart-content-update')},c.state==='available'?'下载内容更新':'重启使内容生效')),
   c.state==='ready'&&h('p',{style:note},'可以继续使用；重启前请先完成正在运行的任务。'))
 }
+export function ContentUpdateSettings({controller,style}) {
+ const {status,statusError,working}=useUpdates(controller),content=status?.contentUpdate
+ if(!content?.enabled)return null
+ return h('section',{style},h(ContentPanel,{controller,content,statusError,working,showCheck:!softwareAvailable(status)}))
+}
+
 export function UpdatePanel({controller}) {
  const {status,statusError,error,working}=useUpdates(controller),s=status?.update,c=status?.contentUpdate
  const verifyingPackage=s?.state==='verifying',state=verifyingPackage?'verifying':working||s?.state||status?.phase
  const busy=['checking','downloading','verifying','applying','switching','settings'].includes(state)
- const enabled=status&&status.shell!=='web'&&(s?.enabled!==false||c?.enabled)
+ const enabled=softwareAvailable(status)
  const softwareEnabled=s?.userEnabled??s?.enabled
  const toggleLocked=Boolean(working||statusError)||s?.busy||s?.installOnQuit||s?.installOnNextStart||['checking','downloading','verifying','ready','applying'].includes(s?.state)
- const policy=s?.policy||c?.policy||'stable',locked=Boolean(statusError)||busy||state==='ready'||s?.busy||['checking','downloading','ready'].includes(c?.state)
- const channels=[['stable','仅公测版'],['development','开发版']].filter(([value])=>!s?.policies||s.policies.includes(value))
- const setPolicy=async value=>{if(locked||value===policy)return;await controller.run(value==='development'?'use-development-updates':'use-stable-updates');await controller.run('check-updates')}
+ const optionLocked=toggleLocked||!softwareEnabled||!enabled
+ const macInstallNeedsDownload=s?.nativeUpdater&&s.automaticDownload!==true
+ const policy=s?.policy||c?.policy||'stable',locked=Boolean(statusError)||busy||state==='ready'||s?.busy||contentBusy(c)
+ const channels=[['stable','公测版'],['development','开发版']].filter(([value])=>!s?.policies||s.policies.includes(value))
+ const setPolicy=async value=>{
+  if(locked||value===policy)return
+  const saved=await controller.run(value==='development'?'use-development-updates':'use-stable-updates')
+  if(saved&&softwareEnabled)await controller.run('check-updates')
+ }
  // A Windows delta checks the installed files it reuses before it is ready.
  const verifying=state==='downloading'&&s?.downloadStage==='verifying'
  const progress=percent(s),determinate=verifying?s.totalFiles>0:state==='downloading'&&s?.downloadStage!=='extracting'&&s?.totalBytes>0
  const message=state==='available'?`发现新版本 ${s.latestVersion}`:verifyingPackage?'正在校验安装包…':verifying?'正在校验本机文件':state==='downloading'?`${s.downloadStage==='extracting'?'正在准备安装':'正在下载'} ${s.latestVersion}`:state==='checking'?'正在检查更新…':state==='switching'?'正在切换更新渠道…':state==='applying'?'正在退出并安装更新…':state==='installed'?'更新已完成':state==='up_to_date'?'当前已是最新版本':null
  const alert=statusError||(!busy&&(error||s?.error))
- // Restore the 0.2 settings layout while sharing native state across both shells.
- // Status-specific content expands below the channel buttons, never in a second UI.
  return h('div',{'data-eduwork-update-panel':true},
   h('div',{style:row},
    h('div',{style:{minWidth:0}},
-    h('div',{style:{fontSize:14}},(s?.nativeUpdater||s?.nativeUI)?'macOS 应用更新':'自动更新'),
-    h('p',{style:{...note,overflowWrap:'anywhere'}},status?.version?`当前版本 ${status.version}`:'读取当前版本…'),
-    h('p',{style:note},!status?'正在读取更新状态…':s?.canToggle===false?status.message
-     :softwareEnabled?'启动时在后台检查，发现新版本后提示。':c?.enabled?'软件更新已关闭，配置与 Skills 更新不受影响。':'软件更新已关闭。')),
-   h('button',{type:'button',style:{...button,flexShrink:0},disabled:!statusError&&(locked||!enabled),onClick:statusError?controller.retry:()=>controller.run('check-updates')},statusError?'重试读取状态':state==='checking'?'检查中…':!softwareEnabled&&c?.enabled?'检查内容更新':'检查更新')),
-  s?.canToggle&&h('label',{style:{display:'flex',gap:8,alignItems:'flex-start',marginTop:12,fontSize:13}},
-   h('input',{type:'checkbox',checked:Boolean(softwareEnabled),disabled:toggleLocked,onChange:e=>controller.run(e.target.checked?'enable-software-updates':'disable-software-updates')}),
-   h('span',null,'启用软件更新',h('p',{style:note},statusError?'恢复连接后才能修改此设置。':working==='settings'?'正在保存设置…':toggleLocked?'更新正在处理，完成后可修改此设置。':'关闭后停止软件更新检查；重新开启后沿用所选渠道。'))),
-  s?.enabled&&typeof s.automaticDownload==='boolean'&&h('label',{style:{display:'flex',gap:8,alignItems:'flex-start',marginTop:12,fontSize:13}},
-   h('input',{type:'checkbox',checked:s.automaticDownload,disabled:locked||Boolean(working),onChange:e=>controller.run(e.target.checked?'enable-automatic-download':'disable-automatic-download')}),
-   h('span',null,'自动下载，退出时安装',h('p',{style:note},'下载完成后提醒；不会强制重启。关闭窗口不等于退出应用。'))),
-  (enabled||s?.canToggle)&&s&&channels.length>1&&h(React.Fragment,null,
-   h('div',{role:'radiogroup','aria-label':'更新渠道',style:{display:'flex',gap:8,marginTop:12}},
-    ...channels.map(([value,label],index)=>h('button',{
-     key:value,type:'button',role:'radio','aria-checked':policy===value,'aria-disabled':locked,tabIndex:policy===value?0:-1,
-     style:{...(policy===value?primary:{...button,background:'transparent'}),cursor:locked?'default':'pointer',opacity:locked?0.7:1},onClick:()=>setPolicy(value),
-     onKeyDown:e=>{if(locked||!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(e.key))return;e.preventDefault();const next=e.key==='Home'?0:e.key==='End'?1:1-index;e.currentTarget.parentElement.children[next].focus();void setPolicy(channels[next][0])},
-    },label))),
-   h('p',{style:{...note,marginTop:8}},policy==='development'?'接收开发版及更新的公测版。':'仅接收公测版；切换渠道不会降级。')),
-  !statusError&&message&&s?.enabled!==false&&h('div',{style:{...row,alignItems:'center',marginTop:12}},
+    h('div',{style:{fontSize:14}},'软件更新'),
+    h('p',{style:{...note,overflowWrap:'anywhere'}},status?.version?`当前版本 ${status.version}`:statusError?'版本暂不可用':'正在读取版本…'),
+    s?.canToggle===false&&status.message&&h('p',{style:note},status.message)),
+   h('div',{style:{display:'grid',justifyItems:'end',gap:8,flexShrink:0}},
+    h('button',{type:'button',style:button,disabled:!statusError&&(locked||!enabled),onClick:statusError?controller.retry:()=>controller.run('check-updates')},statusError?'重试读取状态':state==='checking'?'检查中…':'检查更新'),
+    s?.releaseNotesURL&&h('a',{href:s.releaseNotesURL,target:'_blank',rel:'noopener noreferrer',style:button},'查看发行说明'))),
+  s?.canToggle&&updateOption({controller,action:'software-updates',label:'启用软件更新',checked:Boolean(softwareEnabled),disabled:toggleLocked,
+   description:statusError?'恢复连接后可修改此设置。':working==='settings'?'正在保存设置…':toggleLocked?'更新完成后可修改此设置。':!softwareEnabled?'软件更新已关闭。重新开启后沿用所选渠道和设置。':'允许检查、下载和安装软件更新。'}),
+  s?.canToggle&&typeof s.checkOnStartup==='boolean'&&h(React.Fragment,null,
+   updateOption({controller,action:'startup-update-check',label:'启动时检查更新',checked:s.checkOnStartup,disabled:optionLocked,
+    description:'每次启动应用后检查一次新版。'}),
+   updateOption({controller,action:'periodic-update-check',label:'定时检查更新',checked:s.periodicChecks,disabled:optionLocked,
+    description:'运行期间每 4 小时检查一次，驻留托盘时也生效。'}),
+   updateOption({controller,action:'automatic-download',label:'自动下载更新包',checked:s.automaticDownload,disabled:optionLocked,
+    description:'发现新版本后在后台下载。'}),
+   updateOption({controller,action:'automatic-install',label:'自动安装更新包',checked:s.automaticInstall,disabled:optionLocked||macInstallNeedsDownload,
+    description:s.nativeUpdater?'开启自动下载后，可在正常退出应用时安装。':s.canSchedule===false?'正常退出应用时安装已校验的更新。':'已校验的更新将在下次启动时安装。'})),
+  (enabled||s?.canToggle)&&s&&channels.length>0&&h('label',{style:optionRow},
+   h('span',null,'更新渠道',h('span',{style:{...note,display:'block'}},policy==='development'?'接收开发版及更新的公测版。':'仅接收公测版。切换渠道不会降级。')),
+   h('select',{'aria-label':'更新渠道',value:policy,disabled:locked||channels.length===1,
+    style:{...button,minWidth:128,cursor:locked||channels.length===1?'default':'pointer'},onChange:e=>void setPolicy(e.currentTarget.value)},
+    ...channels.map(([value,label])=>h('option',{key:value,value},label)))),
+  !statusError&&message&&(s?.enabled!==false||state==='switching')&&h('div',{style:{...row,alignItems:'center',marginTop:12}},
    h('span',{role:'status','aria-live':'polite',style:{fontSize:12,color:secondary}},message),
    state==='available'&&s&&h('button',{type:'button',style:primary,onClick:()=>controller.run('download-update')},'下载更新')),
   !statusError&&s?.enabled!==false&&['checking','downloading','verifying','applying'].includes(state)&&h('div',null,
@@ -137,8 +171,6 @@ export function UpdatePanel({controller}) {
     s.canSchedule!==false&&!s.installOnQuit&&!s.installOnNextStart&&h('button',{type:'button',style:button,onClick:()=>controller.run('schedule-update')},'下次启动时安装'),
     h('button',{type:'button',style:primary,onClick:()=>controller.run('install-update')},'立即重启更新'))),
   alert&&h('p',{role:'alert',style:{...note,marginTop:12,color:'var(--dsw-alias-state-error-primary, #a82332)',overflowWrap:'anywhere'}},alert),
-  h(ContentPanel,{controller,content:c,working}),
-  s?.releaseNotesURL&&h('a',{href:s.releaseNotesURL,target:'_blank',rel:'noopener noreferrer',style:{...button,display:'inline-block',marginTop:12}},'查看发行说明'),
   status?.url&&h('a',{href:status.url,target:'_blank',rel:'noopener noreferrer',style:{...button,display:'inline-block',marginTop:12}},'打开下载页面'))
 }
 export function UpdateFooter({controller,wide=true}) {
@@ -161,6 +193,7 @@ export function UpdateFooter({controller,wide=true}) {
   open&&createPortal(h('div',{style:{position:'fixed',inset:0,zIndex:11000,display:'grid',placeItems:'center',background:'rgba(0,0,0,.28)',backdropFilter:'blur(3px)'},onMouseDown:e=>{if(e.target===e.currentTarget)controller.close()}},
    h('section',{role:'dialog','aria-modal':true,'aria-label':'更新',style:{boxSizing:'border-box',width:'min(480px, calc(100vw - 32px))',maxHeight:'calc(100vh - 48px)',overflowY:'auto',padding:24,border:`1px solid ${border}`,borderRadius:16,background:'var(--dsw-alias-bg-layer-1, #fff)',color:'var(--dsw-alias-label-primary, #222)',boxShadow:'0 20px 70px #0003'}},
     h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}},h('h2',{style:{fontSize:20,margin:0}},'更新'),h('button',{type:'button','aria-label':'关闭更新面板',disabled:verifyingPackage&&!statusError,onClick:controller.close,style:button},'×')),
-    h(UpdatePanel,{controller}))),document.body))
+    h(UpdatePanel,{controller}),
+    h(ContentUpdateSettings,{controller,style:{marginTop:16,paddingTop:16,borderTop:`1px solid ${border}`}}))),document.body))
 }
 

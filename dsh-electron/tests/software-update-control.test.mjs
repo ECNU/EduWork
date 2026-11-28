@@ -117,7 +117,7 @@ test('legacy opt-out is respected and sources are restored only in memory',async
 test('invalid preferences are preserved and never silently interpreted as enabled',async t=>{
   const f=await fixture(t)
   await mkdir(join(f.options.dataRoot,'state'))
-  for(const body of ['{"schemaVersion":1,"enabled":"false"}','null','false','0','""','[]']) {
+  for(const body of ['{"schemaVersion":1,"enabled":"false"}','{"schemaVersion":1,"enabled":true,"automaticInstall":"yes"}','null','false','0','""','[]']) {
     await writeFile(f.prefs,body)
     await assert.rejects(softwareUpdateControl(f.options),/偏好文件无效/)
     assert.equal(f.starts.length,0)
@@ -137,18 +137,18 @@ test('process scheduler goes through the software queue without checking signed 
   software.startBackground(options); software.startBackground(options)
   await nextTurn()
   const checks = () => f.calls.filter(action => action === 'check-updates').length
-  assert.equal(checks(), 0); assert.equal(powerMonitor.listenerCount('resume'), 1)
+  assert.equal(checks(), 1); assert.equal(powerMonitor.listenerCount('resume'), 1)
   time = 1000; powerMonitor.emit('resume'); await nextTurn()
-  assert.equal(checks(), 1); assert.equal(contentChecks, 0)
+  assert.equal(checks(), 2); assert.equal(contentChecks, 0)
   // Shared UI actions update the same scheduler, while content keeps its own path.
   time = 1500; await coordinator.action('check-updates')
-  assert.equal(checks(), 2); assert.equal(contentChecks, 1)
-  time = 2000; powerMonitor.emit('resume'); await nextTurn(); assert.equal(checks(), 2)
+  assert.equal(checks(), 3); assert.equal(contentChecks, 1)
+  time = 2000; powerMonitor.emit('resume'); await nextTurn(); assert.equal(checks(), 3)
   await coordinator.action('disable-software-updates'); assert.equal(timers.size, 0)
-  time = 5000; powerMonitor.emit('resume'); await nextTurn(); assert.equal(checks(), 2)
+  time = 5000; powerMonitor.emit('resume'); await nextTurn(); assert.equal(checks(), 3)
   await coordinator.action('use-stable-updates'); await coordinator.action('enable-software-updates')
   powerMonitor.emit('resume'); await nextTurn()
-  assert.equal(checks(), 3); assert.equal(f.state.policy, 'stable'); assert.equal(contentChecks, 1)
+  assert.equal(checks(), 4); assert.equal(f.state.policy, 'stable'); assert.equal(contentChecks, 1)
   await coordinator.close()
   assert.equal(powerMonitor.listenerCount('resume'), 0); assert.equal(timers.size, 0)
 })
@@ -168,6 +168,7 @@ test('a download queued after a timer snapshot prevents its queued automatic che
   }
   const software = await softwareUpdateControl(f.options)
   t.after(() => software.close())
+  await software.action('disable-startup-update-check')
   let time = 0
   const powerMonitor = new EventEmitter()
   software.startBackground({ powerMonitor, now: () => time, interval: 1000, setTimer: () => 1, clearTimer() {} })
@@ -177,4 +178,71 @@ test('a download queued after a timer snapshot prevents its queued automatic che
   time = 1000; powerMonitor.emit('resume'); await nextTurn(); await download
   assert.equal(f.calls.includes('check-updates'), false)
   assert.equal(f.state.state, 'downloading')
+})
+
+test('legacy files keep both checks on; four options persist separately from the master switch', async t => {
+  const f = await fixture(t), subset = ({ checkOnStartup, periodicChecks, automaticDownload, automaticInstall }) =>
+    [checkOnStartup, periodicChecks, automaticDownload, automaticInstall]
+  await mkdir(join(f.options.dataRoot, 'state'))
+  await writeFile(f.prefs, '{"schemaVersion":1,"enabled":true}')
+  const control = await softwareUpdateControl(f.options)
+  assert.deepEqual(subset((await control.action('status')).update), [true, true, false, false])
+  for (const action of ['disable-startup-update-check', 'disable-periodic-update-check', 'enable-automatic-download', 'enable-automatic-install'])
+    await control.action(action)
+  await control.action('disable-software-updates')
+  assert.deepEqual(subset((await control.action('status')).update), [false, false, true, true])
+  await assert.rejects(control.action('enable-startup-update-check'), /软件更新已关闭/)
+  await control.close()
+  const restarted = await softwareUpdateControl(f.options)
+  t.after(() => restarted.close())
+  assert.deepEqual(subset((await restarted.action('enable-software-updates')).update), [false, false, true, true])
+  assert.equal((await restarted.action('check-updates')).update.enabled, true)
+  assert.equal(f.calls.filter(action => action === 'check-updates').length, 1)
+})
+
+test('a failed native preference change restores the saved values', async t => {
+  const f = await fixture(t), start = f.options.start
+  f.options.start = async options => ({ ...await start(options), configureAutomation(flags) {
+    if (flags.automaticDownload) throw Error('Synthetic native preference failure')
+  } })
+  const control = await softwareUpdateControl(f.options)
+  t.after(() => control.close())
+  await assert.rejects(control.action('enable-automatic-download'), /Synthetic native/)
+  assert.equal((await control.action('status')).update.automaticDownload, false)
+  await assert.rejects(readFile(f.prefs, 'utf8'), { code: 'ENOENT' })
+})
+
+test('a manual check can trigger automatic download and portable scheduling with both automatic checks off', async t => {
+  const f = await fixture(t), start = f.options.start
+  f.options.start = async options => {
+    const backend = await start(options)
+    return { ...backend, action(action) {
+      if (action === 'check-updates') Object.assign(f.state, { state: 'available', latestVersion: '1.1.0' })
+      if (action === 'download-update') f.state.state = 'downloading'
+      if (action === 'schedule-update') f.state.installOnNextStart = true
+      return backend.action(action)
+    } }
+  }
+  const control = await softwareUpdateControl(f.options)
+  t.after(() => control.close())
+  for (const action of ['disable-startup-update-check', 'disable-periodic-update-check', 'enable-automatic-download', 'enable-automatic-install'])
+    await control.action(action)
+  const powerMonitor = new EventEmitter()
+  control.startBackground({ powerMonitor, setTimer: () => 1, clearTimer() {} })
+  await nextTurn()
+  assert.equal(f.calls.includes('check-updates'), false)
+  await control.action('check-updates')
+  powerMonitor.emit('resume')
+  await nextTurn()
+  assert.equal(f.state.state, 'downloading')
+  f.state.state = 'verifying'
+  powerMonitor.emit('resume')
+  await nextTurn()
+  assert.equal(f.calls.includes('schedule-update'), false)
+  f.state.state = 'ready'
+  await control.prepareForQuit()
+  powerMonitor.emit('resume')
+  await nextTurn()
+  assert.deepEqual(f.calls.filter(action => action !== 'status'), ['check-updates', 'download-update', 'schedule-update'])
+  assert.equal(f.state.installOnNextStart, true)
 })

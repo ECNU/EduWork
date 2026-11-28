@@ -43,7 +43,7 @@ For Host or shell development, inspect [the shared recipe](../scripts/ci-eduwork
 
 ## Local data and updates
 
-When software updates are enabled, the client checks at startup and every four hours while running, including in the tray. On wake it checks whether another query is due. The main process reads network status once a minute and catches up on overdue or failed checks after connectivity returns. Failures use bounded backoff and concurrent triggers are coalesced. Automatic checks pause during downloads, pending installation or shutdown, and stop when software updates are disabled. The manual check entry retains its existing behavior. Configuration and Skills updates keep their own controls and check paths.
+General Settings → Software Updates offers separate controls for startup checks, four-hour checks, automatic downloads, and automatic installation. Periodic checks work while the application is in the tray and can catch up after sleep or reconnection. Failed checks use bounded backoff, and repeated triggers are coalesced. Manual checks remain available with both automatic checks off. Automatic installation follows the platform's quit or next-launch flow. See the [update guide](../docs/UPDATES.md). Configuration and Skills updates use their own controls and check paths.
 
 Electron defaults to `<installation>/data/<distribution>-electron/{dsh,browser,logs}`, with system-encrypted credentials stored separately in the browser directory. Wails uses `<installation>/data/<distribution>-wails/dsh` and its own Windows Credential Manager namespace. Move the complete folder only after exit; registered external workspace paths must still resolve.
 

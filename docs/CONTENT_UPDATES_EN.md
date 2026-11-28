@@ -6,7 +6,7 @@ Electron can download small publisher-signed content bundles for organization mo
 
 ## User experience
 
-The existing update area in Settings checks both software and content. Software retains its application version and installation progress. The content section shows separate configuration and Skills revisions, download progress and activation status. The existing small blue sidebar button opens this shared panel.
+Under General Settings → Software Updates, Check for updates checks both software and any enabled content. The Configuration and Skills Updates section shows component revisions, download progress and activation status. If software updates are off or unavailable, you can check for content updates there. This section appears when a content source is configured and enabled. The small blue sidebar button opens the shared update dialog.
 
 Content can be downloaded separately. Downloading available software also starts a compatible content download when one is available. Work can continue after download; content activates on the next launch, or through the explicit restart button. Finish running tasks before restarting. Both mechanisms share the stable/development preference; changing channels never downgrades installed content. Missing dependencies require a compatible software update rather than automatic dependency installation.
 

@@ -5,6 +5,30 @@ import { DesktopExit } from '../src/desktop-exit.mjs'
 import { updateCoordinator } from '../src/update-coordinator.mjs'
 import { DesktopLifecycle } from '../src/lifecycle.mjs'
 
+test('automatic installation only runs after an ordinary quit is approved', async () => {
+  const events = []
+  let approved = false
+  const exit = new DesktopExit({
+    confirm: async () => { events.push('confirm'); return approved },
+    installOnQuit: async () => events.push('install'),
+    close: async () => events.push('close'), relaunch: assert.fail,
+    quit: () => events.push('quit'), failed: assert.fail,
+  })
+  await exit.request()
+  assert.deepEqual(events, ['confirm'])
+  approved = true
+  await Promise.all([exit.request(), exit.request()])
+  assert.deepEqual(events, ['confirm', 'confirm', 'install', 'close', 'quit'])
+})
+
+test('restarting the application does not use the normal quit installation path', async () => {
+  let restarted = false
+  const exit = new DesktopExit({ confirm: async () => true, installOnQuit: assert.fail,
+    close: async () => {}, relaunch: () => { restarted = true }, quit() {}, failed: assert.fail })
+  await exit.restart()
+  assert.equal(restarted, true)
+})
+
 test('installed update stops the Host before installer handoff without awaiting its own queue', { timeout: 500 }, async () => {
   const events = [], lifecycle = new DesktopLifecycle()
   let operation, quitRequest

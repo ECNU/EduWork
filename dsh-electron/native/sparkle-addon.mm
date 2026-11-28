@@ -11,7 +11,7 @@ static SPUUpdater *updater = nil;
 static NSString *currentFeed = nil, *updateState = @"idle", *latestVersion = @"", *lastError = @"";
 static void (^installHandler)(void) = nil;
 static void (^downloadChoice)(SPUUserUpdateChoice) = nil;
-static BOOL manualDownload = NO;
+static BOOL manualDownload = NO, pendingQuitInstall = NO;
 static NSString *releaseNotesURL = @"", *downloadStage = @"";
 static uint64_t downloadedBytes = 0, totalBytes = 0;
 
@@ -20,6 +20,7 @@ static void rememberUpdate(SUAppcastItem *item) {
   releaseNotesURL = (item.infoURL ?: item.releaseNotesURL).absoluteString ?: @"";
 }
 static void beginDownload() {
+  pendingQuitInstall = NO;
   updateState = @"downloading";
   downloadStage = @"downloading";
   downloadedBytes = totalBytes = 0;
@@ -73,18 +74,19 @@ static void beginDownload() {
   // A task/unsaved-work guard may refuse termination. Keep Sparkle's retry
   // available until the host really exits; do not strand the UI in "applying".
   updateState = terminated ? @"applying" : @"ready";
+  if (terminated) pendingQuitInstall = NO;
   installHandler = terminated ? nil : [retry copy];
 }
 - (void)showUpdateNotFoundWithError:(NSError *)error acknowledgement:(void (^)(void))ack {
   updateState = @"up_to_date"; lastError = @""; ack();
 }
 - (void)showUpdaterError:(NSError *)error acknowledgement:(void (^)(void))ack {
-  updateState = @"error"; installHandler = nil; lastError = error.localizedDescription; ack();
+  updateState = @"error"; installHandler = nil; pendingQuitInstall = NO; lastError = error.localizedDescription; ack();
 }
 - (void)dismissUpdateInstallation {
   downloadChoice = nil;
   manualDownload = NO;
-  if (![updateState isEqualToString:@"ready"]) installHandler = nil;
+  if (![updateState isEqualToString:@"ready"]) { installHandler = nil; pendingQuitInstall = NO; }
 }
 @end
 static EduworkUserDriver *userDriver = nil;
@@ -99,6 +101,7 @@ static EduworkUserDriver *userDriver = nil;
   rememberUpdate(item);
   updateState = @"ready";
   installHandler = [handler copy];
+  pendingQuitInstall = YES;
   return YES;
 }
 - (NSString *)feedURLStringForUpdater:(SPUUpdater *)updater { return currentFeed; }
@@ -109,10 +112,10 @@ static EduworkUserDriver *userDriver = nil;
 }
 - (void)updater:(SPUUpdater *)updater didFinishUpdateCycleForUpdateCheck:(SPUUpdateCheck)check error:(NSError *)error {
   if (error.code == SUNoUpdateError) { updateState = @"up_to_date"; lastError = @""; }
-  else if (error && error.code != SUInstallationCanceledError) { installHandler = nil; updateState = @"error"; lastError = error.localizedFailureReason.length ? [NSString stringWithFormat:@"%@: %@", error.localizedDescription, error.localizedFailureReason] : error.localizedDescription;
+  else if (error && error.code != SUInstallationCanceledError) { installHandler = nil; pendingQuitInstall = NO; updateState = @"error"; lastError = error.localizedFailureReason.length ? [NSString stringWithFormat:@"%@: %@", error.localizedDescription, error.localizedFailureReason] : error.localizedDescription;
     NSError *cause = error.userInfo[NSUnderlyingErrorKey];
     if (cause) lastError = [lastError stringByAppendingFormat:@" (%@ %ld: %@)", cause.domain, (long)cause.code, cause.localizedDescription]; }
-  else if (error.code == SUInstallationCanceledError) { installHandler = nil; updateState = @"available"; }
+  else if (error.code == SUInstallationCanceledError) { installHandler = nil; pendingQuitInstall = NO; updateState = @"available"; }
   else if ([updateState isEqualToString:@"checking"]) updateState = @"idle";
 }
 @end
@@ -214,7 +217,7 @@ static napi_value snapshot(napi_env env, napi_callback_info info) {
     napi_value value; napi_create_string_utf8(env, pair.second.UTF8String ?: "", NAPI_AUTO_LENGTH, &value);
     napi_set_named_property(env, result, pair.first, value);
   }
-  for (const auto &pair : {std::make_pair("automaticDownload", (bool)updater.automaticallyDownloadsUpdates), std::make_pair("installOnQuit", installHandler != nil), std::make_pair("busy", (bool)updater.sessionInProgress)}) {
+  for (const auto &pair : {std::make_pair("automaticDownload", (bool)updater.automaticallyDownloadsUpdates), std::make_pair("installOnQuit", (bool)pendingQuitInstall), std::make_pair("busy", (bool)updater.sessionInProgress)}) {
     napi_value value; napi_get_boolean(env, pair.second, &value);
     napi_set_named_property(env, result, pair.first, value);
   }

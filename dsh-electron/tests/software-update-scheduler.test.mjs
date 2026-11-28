@@ -147,6 +147,48 @@ test('production default waits four hours and does not require a renderer timer'
   await f.at(4 * 60 * 60 * 1000); assert.equal(f.checks.length, 1)
 })
 
+test('startup-only checks once after connectivity returns and leaves no timer', async t => {
+  const f = fixture(t, { startupCheck: true })
+  f.update.periodicChecks = false
+  f.online = false
+  f.scheduler.start()
+  await f.at(0)
+  assert.equal(f.checks.length, 0)
+  f.online = true
+  await f.at(40)
+  assert.deepEqual(f.checks, [{ time: 40, policy: 'stable' }])
+  assert.equal(f.timers.size, 0)
+  await f.at(2000)
+  assert.equal(f.checks.length, 1)
+})
+
+test('disabling a pending startup check leaves periodic checking available', async t => {
+  const f = fixture(t, { startupCheck: true })
+  f.online = false
+  f.scheduler.start()
+  await f.at(0)
+  f.update.checkOnStartup = false
+  f.scheduler.record('disable-startup-update-check', f.status())
+  f.online = true
+  await f.at(999)
+  assert.equal(f.checks.length, 0)
+  await f.at(1000)
+  assert.equal(f.checks.length, 1)
+})
+
+test('a rejected automatic preparation does not retry the same package on every poll', async t => {
+  let attempts = 0
+  const f = fixture(t, { advance: async () => { attempts++; throw Error('Synthetic staging failure') } })
+  Object.assign(f.update, { state: 'ready', automaticInstall: true, latestVersion: '1.1.0', periodicChecks: false })
+  f.scheduler.start()
+  await f.at(0)
+  await f.at(1200)
+  assert.equal(attempts, 1)
+  f.update.latestVersion = '1.2.0'
+  await f.at(2400)
+  assert.equal(attempts, 2)
+})
+
 test('late status cannot resurrect a disabled scheduler', async t => {
   let release
   const read = new Promise(resolve => { release = resolve })

@@ -10,6 +10,10 @@ export function updateCoordinator({software,content,version,onRestart,onPolicy,b
   return {
     async action(action) {
       if(action==='status')return snapshot()
+      if(action==='check-content-updates-background') {
+        background(content.check())
+        return snapshot()
+      }
       if(action==='check-updates'||action==='check-updates-background') {
         if(software)await software.action(action==='check-updates-background' && !(await software.action('status')).update?.nativeUI ? 'check-updates' : action)
         background(content.check({retryFailed:action==='check-updates'}));return snapshot()

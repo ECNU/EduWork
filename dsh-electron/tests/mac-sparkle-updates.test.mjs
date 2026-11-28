@@ -1,7 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {join} from 'node:path'
+import {mkdtemp, rm} from 'node:fs/promises'
+import {tmpdir} from 'node:os'
 import { startMacSparkleUpdates, editableMacUpdateConfiguration } from '../src/mac-sparkle-updates.mjs'
+import { softwareUpdateControl } from '../src/software-update-control.mjs'
 import { explicitConfigurationDefaults } from '../../dsh-host/configuration-documentation.mjs'
 
 test('Sparkle stays disabled on Windows or in a candidate without a feed', () => {
@@ -90,7 +93,7 @@ test('automatic download preference uses Sparkle persistence and never forces an
   const bridge=startMacSparkleUpdates({appPath:'/app',version:'1',platform:'darwin',enabled:true,feeds,loadAddon:()=>addon})
   assert.equal((await bridge.action('enable-automatic-download')).update.automaticDownload,true)
   assert.deepEqual(calls,[true,'probe'])
-  await bridge.action('download-update');assert.equal(calls.at(-1),'check')
+  await bridge.action('download-update');assert.equal(calls.at(-1),'probe')
   await bridge.action('disable-automatic-download')
   assert.equal((await bridge.action('status')).update.automaticDownload,false)
   await bridge.action('download-update');assert.equal(calls.at(-1),'check')
@@ -98,6 +101,39 @@ test('automatic download preference uses Sparkle persistence and never forces an
   await bridge.action('install-update');assert.equal(calls.at(-1),'install')
   addon.setAutomaticDownload=()=>{throw Error('busy')}
   await assert.rejects(bridge.action('enable-automatic-download'),/busy/)
+})
+
+test('legacy Sparkle download-and-install is retained and can be split without losing the download preference', async t => {
+  const dataRoot = await mkdtemp(join(tmpdir(), 'eduwork-sparkle-options-'))
+  t.after(() => rm(dataRoot, { recursive: true, force: true }))
+  const calls = []
+  let automaticallyDownloads = true
+  const addon = {
+    start() {}, setFeed() {}, install: assert.fail,
+    snapshot: () => ({ state: 'idle', automaticDownload: automaticallyDownloads }),
+    setAutomaticDownload(enabled) { automaticallyDownloads = enabled },
+    probe: () => calls.push('probe'), check: () => calls.push('download'),
+  }
+  const options = { dataRoot, version: '1', start: () => startMacSparkleUpdates({
+    appPath: '/app', version: '1', platform: 'darwin', enabled: true, feeds, loadAddon: () => addon,
+  }) }
+  const original = await softwareUpdateControl(options)
+  assert.equal((await original.action('status')).update.automaticInstall, true)
+  const downloadOnly = (await original.action('disable-automatic-install')).update
+  assert.equal(downloadOnly.automaticDownload, true)
+  assert.equal(downloadOnly.automaticInstall, false)
+  assert.equal(automaticallyDownloads, false)
+  await original.action('download-update')
+  assert.deepEqual(calls, ['download'])
+  await original.close()
+  const next = await softwareUpdateControl(options)
+  t.after(() => next.close())
+  assert.equal((await next.action('status')).update.automaticDownload, true)
+  assert.equal((await next.action('status')).update.automaticInstall, false)
+  await next.action('enable-automatic-install')
+  assert.equal(automaticallyDownloads, true)
+  await next.action('check-updates')
+  assert.deepEqual(calls, ['download', 'probe'])
 })
 
 
