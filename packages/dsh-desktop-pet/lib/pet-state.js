@@ -83,3 +83,22 @@ export function motionAt(motion, t) {
   }
 }
 export const STILL = Object.freeze({ dx: 0, dy: 0, rotate: 0, scaleY: 1, origin: 'bottom' })
+
+// Blink pauses on frame zero, then plays the remaining frames once.
+export function createFrameClock(animation, { blinkImmediately = false } = {}) {
+  if (animation.playback !== 'blink' || animation.frames.length < 2) return elapsed => frameAt(animation, elapsed)
+  const blink = { frames: animation.frames.slice(1), playback: 'once' }
+  let started, next = blinkImmediately ? 0 : undefined
+  return elapsed => {
+    if (started !== undefined) {
+      const step = frameAt(blink, elapsed - started)
+      if (!step.finished) return { index: step.index + 1, next: step.next }
+      started = undefined
+    }
+    next ??= elapsed + between(PACE.blinkGap, Math.random)
+    if (elapsed < next) return { index: 0, next: next - elapsed }
+    started = elapsed
+    next = undefined
+    return { index: 1, next: blink.frames[0].ms }
+  }
+}

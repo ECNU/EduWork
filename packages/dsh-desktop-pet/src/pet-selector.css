@@ -1,0 +1,193 @@
+.eduwork-pet-picker {
+  --pet-text: var(--dsw-alias-label-primary, CanvasText);
+  --pet-muted: var(--dsw-alias-label-secondary, CanvasText);
+  --pet-bg: var(--dsw-alias-bg-layer-1, Canvas);
+  --pet-border: var(--dsw-alias-border-l2, color-mix(in srgb, CanvasText 22%, Canvas));
+  --pet-accent: var(--chatecnu-logo-accent, var(--dsw-alias-state-business-primary, #b03949));
+  --pet-tint: color-mix(in srgb, var(--pet-accent) 9%, var(--pet-bg));
+  --pet-stage: color-mix(in srgb, var(--pet-text) 4%, var(--pet-bg));
+  box-sizing: border-box;
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  padding: 0;
+  width: min(48rem, calc(100vw - 2rem));
+  max-width: none;
+  max-height: none;
+  overflow: hidden;
+  border: 1px solid var(--pet-border);
+  border-radius: 1rem;
+  background: var(--pet-bg);
+  color: var(--pet-text);
+  box-shadow: 0 1.25rem 4rem #0003;
+  font: inherit;
+  font-size: .875rem;
+  line-height: 1.45;
+}
+
+.eduwork-pet-picker::backdrop { background: #14121780; }
+.eduwork-pet-picker h2, .eduwork-pet-picker h3, .eduwork-pet-picker p { margin: 0; }
+.eduwork-pet-picker h2 { font-size: 1.125rem; font-weight: 650; }
+.eduwork-pet-picker h3 { font-size: 1.25rem; font-weight: 650; overflow-wrap: anywhere; }
+
+.eduwork-pet-picker button {
+  border: 1px solid var(--pet-border);
+  border-radius: .5rem;
+  background: var(--pet-bg);
+  color: var(--pet-text);
+  cursor: pointer;
+  padding: .45rem .7rem;
+  font: inherit;
+  min-height: 2rem;
+  text-align: center;
+}
+
+.eduwork-pet-picker button:hover:not(:disabled) { background: var(--pet-stage); }
+.eduwork-pet-picker button[aria-pressed="true"] {
+  border-color: var(--pet-accent);
+  background: var(--pet-tint);
+  box-shadow: inset 0 0 0 1px var(--pet-accent);
+}
+.eduwork-pet-picker button:disabled { opacity: .55; cursor: default; }
+.eduwork-pet-picker :is(button, a, summary):focus-visible { outline: 2px solid var(--pet-accent); outline-offset: 2px; }
+.eduwork-pet-picker :is(h2, h3):focus { outline: none; }
+
+.eduwork-pet-picker .pet-dialog-layout {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: min(38rem, calc(100dvh - 2rem));
+}
+.eduwork-pet-picker :is(.pet-dialog-header, .pet-dialog-footer) {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .75rem 1rem;
+}
+.eduwork-pet-picker .pet-dialog-header { justify-content: space-between; border-bottom: 1px solid var(--pet-border); }
+.eduwork-pet-picker .pet-close { border-color: transparent; font-size: 1.3rem; line-height: 1; }
+
+.eduwork-pet-picker .pet-dialog-body {
+  display: grid;
+  grid-template-columns: minmax(0, 13.5rem) minmax(0, 1fr);
+  min-height: 0;
+}
+.eduwork-pet-picker :is(.pet-skin-list, .pet-detail) { min-width: 0; overflow: auto; overscroll-behavior: contain; }
+.eduwork-pet-picker .pet-skin-list { padding: .75rem; border-inline-end: 1px solid var(--pet-border); }
+.eduwork-pet-picker .pet-skin-list button {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  width: 100%;
+  margin-bottom: .4rem;
+  padding: .35rem .45rem;
+  min-height: 3.6rem;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.eduwork-pet-picker .pet-skin-list small { display: block; color: var(--pet-muted); }
+.eduwork-pet-picker .pet-thumbnail { flex: 0 0 3rem; display: grid; place-items: center; }
+.eduwork-pet-picker .pet-detail { padding: .85rem 1rem 1rem; }
+.eduwork-pet-picker .pet-back { margin-bottom: .7rem; }
+.eduwork-pet-picker .pet-preview-label, .eduwork-pet-picker .pet-attribution { color: var(--pet-muted); font-size: .78rem; }
+.eduwork-pet-picker .pet-attribution { display: flex; flex-wrap: wrap; gap: .2rem .65rem; overflow-wrap: anywhere; margin-top: .2rem; }
+.eduwork-pet-picker .pet-attribution a { color: inherit; text-decoration: underline; }
+
+.eduwork-pet-picker .pet-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 8rem;
+  height: clamp(8rem, 29dvh, 13.625rem);
+  border-radius: .75rem;
+  background: var(--pet-stage);
+  margin-top: .65rem;
+  overflow: hidden;
+}
+.eduwork-pet-picker .pet-stage canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.eduwork-pet-picker .pet-state-mark {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  background: #392f31;
+  color: #fff;
+  font-weight: bold;
+}
+.eduwork-pet-picker .pet-preview-status {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .4rem;
+  min-height: 2rem;
+  margin-top: .4rem;
+  color: var(--pet-muted);
+}
+.eduwork-pet-picker button.pet-play-toggle {
+  position: absolute;
+  inset-block-start: .5rem;
+  inset-inline-end: .5rem;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px #0002;
+}
+.eduwork-pet-picker button.pet-play-toggle::before {
+  content: '';
+  width: .9rem;
+  height: .9rem;
+  background: currentColor;
+  clip-path: polygon(16% 0, 94% 50%, 16% 100%);
+}
+.eduwork-pet-picker button.pet-play-toggle[data-playing="true"] {
+  border-color: var(--pet-accent);
+  background: var(--pet-tint);
+  box-shadow: inset 0 1px 3px #0002;
+}
+.eduwork-pet-picker button.pet-play-toggle[data-playing="true"]::before {
+  background: linear-gradient(to right, transparent 12%, currentColor 12% 39%, transparent 39% 61%, currentColor 61% 88%, transparent 88%);
+  clip-path: none;
+}
+.eduwork-pet-picker button.pet-play-toggle:active {
+  transform: translateY(1px) scale(.96);
+  box-shadow: inset 0 2px 4px #0003;
+}
+.eduwork-pet-picker .pet-actions {
+  display: flex;
+  align-items: center;
+  justify-content: safe center;
+  gap: .35rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  overscroll-behavior-inline: contain;
+  margin-top: .65rem;
+  padding: 3px;
+}
+.eduwork-pet-picker .pet-actions button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.eduwork-pet-picker details { margin-top: .6rem; }
+.eduwork-pet-picker summary { cursor: pointer; width: fit-content; margin: 0 auto .4rem; }
+.eduwork-pet-picker details .pet-actions { margin-top: 0; }
+.eduwork-pet-picker .pet-dialog-footer { flex-wrap: wrap; justify-content: flex-end; border-top: 1px solid var(--pet-border); }
+.eduwork-pet-picker .pet-dialog-footer p { flex: 1 0 100%; }
+.eduwork-pet-picker [role="alert"] { color: var(--dsw-alias-state-error-primary, #b32d42); }
+.eduwork-pet-picker button.pet-confirm:not(:disabled) {
+  background: var(--pet-accent);
+  border-color: var(--pet-accent);
+  color: #fff;
+}
+.eduwork-pet-picker button.pet-confirm:hover:not(:disabled) { filter: brightness(.9); }
+
+.eduwork-pet-picker[data-compact="true"] .pet-dialog-body { grid-template-columns: minmax(0, 1fr); }
+.eduwork-pet-picker[data-compact="true"] .pet-skin-list { border-inline-end: 0; }
+.eduwork-pet-picker[data-compact="true"] .pet-stage { height: clamp(8rem, 25dvh, 12rem); }
+.eduwork-pet-picker[data-compact="true"] .pet-actions { gap: .4rem; }
+.eduwork-pet-picker[data-compact="true"] .pet-actions button { padding-inline: .65rem; border-radius: .3rem; }

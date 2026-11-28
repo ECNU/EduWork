@@ -3,7 +3,9 @@
 // narrow `eduworkPet` preload API. Text is only ever set as textContent.
 // One clock drives frames, motions and the badge; it stops while the user is away.
 import { localize, normalizeSkin, resolveAnimation } from '../skin.js'
-import { PACE, STILL, animationLength, badgeText, between, deriveStatus, frameAt, motionAt, pick } from '../pet-state.js'
+import { PACE, STILL, animationLength, badgeText, between, deriveStatus, createFrameClock, motionAt, pick } from '../pet-state.js'
+
+import { createPetPainter } from './pet-painter.js'
 
 const api = window.eduworkPet
 const canvas = document.getElementById('pet'), badge = document.getElementById('badge'), bubble = document.getElementById('bubble')
@@ -17,13 +19,13 @@ const COPY = {
 }
 
 let skin, layout, settings, locale, copy
-const images = new Map(), rasters = new Map()
+const images = new Map(), painter = createPetPainter(canvas, context, images)
 let status = deriveStatus([], 0), running = 0, acknowledged
 let away = false, tucked = null, bubbleSide = 'above', dragging = false, direction = 0
 let shot = null, interlude = null, interludeAt = 0, pool = ''
-let view = null, blink = null, blinkAt = 0
+let view = null, frameClock
 let workingUntil = 0, lastActivity = Date.now()
-let badgeAt = 0, bubbleUntil = 0, bubbleFor = null, drawn = '', timer
+let badgeAt = 0, bubbleUntil = 0, bubbleFor = null, timer
 // A hovered actionable bubble freezes its countdown instead of running it down while read.
 let bubbleHeld = 0, bubbleOver = false,
   bubbleUp = false
@@ -35,37 +37,6 @@ function load(file) {
     image.onerror = () => reject(new Error(`无法加载形象图片 ${file}`))
     image.src = `../skin/${encodeURIComponent(file)}`
   })
-}
-
-// Vector frames are rasterized once per size; drawing them is then a copy.
-function source(frame) {
-  const image = images.get(frame.file)
-  if (!frame.file.toLowerCase().endsWith('.svg')) return { image, crop: frame.crop }
-  const key = frame.crop ? `${frame.file}@${frame.crop.x},${frame.crop.y}` : frame.file
-  if (!rasters.has(key)) {
-    const raster = new OffscreenCanvas(Math.round(layout.pet.width * devicePixelRatio), Math.round(layout.pet.height * devicePixelRatio))
-    const crop = frame.crop ?? { x: 0, y: 0, width: image.naturalWidth, height: image.naturalHeight }
-    raster.getContext('2d').drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, raster.width, raster.height)
-    rasters.set(key, raster)
-  }
-  return { image: rasters.get(key), crop: null }
-}
-
-function draw(animation, index, mirror, motion) {
-  const frame = animation.frames[index], key = [frame.file, frame.crop?.x, frame.crop?.y, mirror, motion.dx, motion.dy, motion.rotate, motion.scaleY].join()
-  if (key === drawn) return
-  drawn = key
-  const box = layout.pet, pivot = motion.origin === 'top' ? box.y : box.y + box.height, { image, crop } = source(frame)
-  context.setTransform(1, 0, 0, 1, 0, 0)
-  context.clearRect(0, 0, canvas.width, canvas.height)
-  context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
-  context.translate(box.x + box.width / 2 + motion.dx, pivot + motion.dy)
-  context.rotate(motion.rotate * Math.PI / 180)
-  context.scale(mirror ? -1 : 1, motion.scaleY)
-  context.translate(-box.width / 2, box.y - pivot)
-  context.imageSmoothingEnabled = !skin.pixelated
-  if (crop) context.drawImage(image, crop.x, crop.y, crop.width, crop.height, 0, 0, box.width, box.height)
-  else context.drawImage(image, 0, 0, box.width, box.height)
 }
 
 // Short goal-mode pauses between turns still look like work.
@@ -105,20 +76,6 @@ function choose(now) {
     }
   }
   return interlude ?? { name: list[0] }
-}
-
-// Blink: hold frame 0, then play the other frames once at a random moment.
-function blinking(animation, now) {
-  if (blink === null) {
-    blinkAt ||= now + between(PACE.blinkGap, Math.random)
-    if (now < blinkAt) return { index: 0, next: blinkAt - now }
-    blink = now
-    blinkAt = 0
-  }
-  const step = frameAt({ frames: animation.frames.slice(1), playback: 'once' }, now - blink)
-  if (!step.finished) return { index: step.index + 1, next: step.next }
-  blink = null
-  return blinking(animation, now)
 }
 
 function placeBadge(now) {
@@ -235,13 +192,12 @@ function tick() {
   const mirror = next.face !== undefined && next.face !== (animation.facing ?? 'left')
   if (!view || view.name !== next.name || view.mirror !== mirror || next.start !== undefined && next.start !== view.start) {
     view = { name: next.name, mirror, start: next.start ?? now }
-    blink = null
-    blinkAt = 0
+    frameClock = createFrameClock(animation)
   }
   const frame = view.name === 'sleep' && !skin.animations.sleep ? { index: 0, next: Infinity }
-    : animation.playback === 'blink' && animation.frames.length > 1 ? blinking(animation, now) : frameAt(animation, now - view.start)
+    : frameClock(now - view.start)
   const motion = animation.motion && !reduced.matches && !away ? motionAt(animation.motion, now - view.start) : STILL
-  draw(animation, frame.index, view.mirror, motion)
+  painter.draw(animation.frames[frame.index], layout.pet, devicePixelRatio, skin.pixelated, view.mirror, motion)
   // A visible bubble always has a deadline, even if nothing set one.
   if (!bubble.hidden && !bubbleUntil && !bubbleHeld) bubbleUntil = now + BUBBLE_FLOOR
   if (bubbleUntil && now >= bubbleUntil) hideBubble()
@@ -267,8 +223,7 @@ function resize() {
   canvas.height = Math.round(layout.window.height * devicePixelRatio)
   canvas.style.width = `${layout.window.width}px`
   canvas.style.height = `${layout.window.height}px`
-  rasters.clear()
-  drawn = ''
+  painter.reset()
   // Moving to a display with another scale factor re-rasterizes once.
   resolution?.removeEventListener('change', rescale)
   resolution = matchMedia(`(resolution: ${devicePixelRatio}dppx)`)

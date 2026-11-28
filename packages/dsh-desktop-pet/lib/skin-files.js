@@ -4,6 +4,19 @@ import { DEFAULT_SKIN, LIMITS, imageProblem, normalizeSkin } from './skin.js'
 
 const MIME = { svg: 'image/svg+xml', png: 'image/png', webp: 'image/webp' }
 
+async function skinImage(directory, file) {
+  const data = await readFile(join(directory, file))
+  return `data:${MIME[file.split('.').pop().toLowerCase()]};base64,${data.toString('base64')}`
+}
+
+export async function readActionPreview(directory, skin, action) {
+  if (!Object.hasOwn(skin.animations, action)) throw new Error('Unknown pet action')
+  const animation = skin.animations[action]
+  const files = [...new Set(animation.frames.map(frame => frame.file))]
+  const images = await Promise.all(files.map(async file => ({ file, src: await skinImage(directory, file) })))
+  return { frame: skin.frame, badge: skin.badge, pixelated: skin.pixelated, animation, images }
+}
+
 /** Read one skin directory: manifest, every referenced image and the limits. */
 export async function readSkin(directory, { strict = false } = {}) {
   const regular = async name => {
@@ -26,8 +39,7 @@ export async function readSkin(directory, { strict = false } = {}) {
 /** Small card image for the settings page: the first idle frame. */
 export async function skinPreview(directory, skin) {
   const { file, crop } = skin.animations.idle.frames[0]
-  const data = await readFile(join(directory, file))
-  return { src: `data:${MIME[file.split('.').pop().toLowerCase()]};base64,${data.toString('base64')}`, crop: crop ?? null }
+  return { src: await skinImage(directory, file), crop: crop ?? null }
 }
 
 /**

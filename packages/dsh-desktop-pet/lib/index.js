@@ -1,8 +1,11 @@
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import z from '@deepseek-ai/schemastery'
 import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { DEFAULT_SKIN } from './skin.js'
-import { readBuiltinSkins } from './skin-files.js'
+import { readActionPreview, readBuiltinSkins } from './skin-files.js'
+
+const skinRoot = fileURLToPath(new URL('../skins/', import.meta.url))
 
 const initializers = []
 // The pet window belongs to the desktop shell. This Host part keeps the
@@ -23,7 +26,7 @@ export default class DesktopPet extends TypertRemoteService {
     for (const init of initializers) init.call(this)
     this.config = config
     this.disposed = false
-    this.skins = readBuiltinSkins(fileURLToPath(new URL('../skins/', import.meta.url)), message => ctx.logger.warn(message))
+    this.skins = readBuiltinSkins(skinRoot, message => ctx.logger.warn(message))
     this.applied = Promise.resolve()
     const apply = () => { if (!this.disposed) this.applied = this.applied.then(() => this.apply()) }
     ctx.on('loader/volatile-update', apply)
@@ -52,15 +55,28 @@ export default class DesktopPet extends TypertRemoteService {
     }
     catch (error) { this.ctx.logger.warn(`desktop-pet: ${error.message}`) }
   }
-  async status() {
+  async listSkins(project) {
     await this.applied
-    const skins = [...(await this.skins).values()].map(({ skin, preview }) => ({ id: skin.id, name: skin.name, ...skin.author ? { author: skin.author } : {}, preview }))
+    const skins = [...(await this.skins).values()].map(({ skin, preview }) => ({
+      id: skin.id, name: skin.name, ...skin.author ? { author: skin.author } : {}, preview, ...project?.(skin),
+    }))
     return { supported: this.supported === true, skins }
+  }
+  status() {
+    return this.listSkins()
+  }
+  catalog() {
+    return this.listSkins(({ license, states, animations }) => ({ license, states, actions: Object.keys(animations) }))
+  }
+  async previewAction(skinId, action) {
+    const entry = (await this.skins).get(skinId)
+    if (!entry) throw new Error('Unknown pet skin')
+    return readActionPreview(join(skinRoot, skinId), entry.skin, action)
   }
   async resetPosition() {
     return { supported: (await this.ctx.desktopServices.pet({ action: 'reset-position' })).supported !== false }
   }
 }
-for (const name of ['status', 'resetPosition']) Remote(name)(DesktopPet.prototype[name], {
+for (const name of ['status', 'catalog', 'previewAction', 'resetPosition']) Remote(name)(DesktopPet.prototype[name], {
   kind: 'method', name, static: false, private: false, addInitializer(init) { initializers.push(init) },
 })
