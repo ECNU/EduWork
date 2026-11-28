@@ -135,6 +135,7 @@
   width: 2.5rem;
   height: 2.5rem;
   padding: 0;
+  border-radius: 50%;
   box-shadow: 0 1px 2px #0002;
 }
 .eduwork-pet-picker button.pet-play-toggle::before {
@@ -188,5 +189,5 @@
 .eduwork-pet-picker[data-compact="true"] .pet-dialog-body { grid-template-columns: minmax(0, 1fr); }
 .eduwork-pet-picker[data-compact="true"] .pet-skin-list { border-inline-end: 0; }
 .eduwork-pet-picker[data-compact="true"] .pet-stage { height: clamp(8rem, 25dvh, 12rem); }
-.eduwork-pet-picker[data-compact="true"] .pet-actions { gap: .15rem; }
-.eduwork-pet-picker[data-compact="true"] .pet-actions button { padding-inline: .27rem; border-radius: .3rem; }
+.eduwork-pet-picker[data-compact="true"] .pet-actions { gap: .4rem; }
+.eduwork-pet-picker[data-compact="true"] .pet-actions button { padding-inline: .65rem; border-radius: .3rem; }

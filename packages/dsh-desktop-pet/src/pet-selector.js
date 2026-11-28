@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import { PACE, STILL, badgeText, createFrameClock, motionAt } from '../lib/pet-state.js'
+import { PACE, STILL, animationLength, badgeText, createFrameClock, motionAt } from '../lib/pet-state.js'
 import { createPetPainter } from '../lib/page/pet-painter.js'
 import styles from './pet-selector.css'
 
@@ -24,17 +24,20 @@ export function Thumbnail({ preview, size = 48 }) {
 
 function Artwork({ data, images, action, t }) {
   const stageRef = useRef(null), canvasRef = useRef(null), markRef = useRef(null), toggleRef = useRef(null)
-  const [playing, setPlaying] = useState(() => !matchMedia('(prefers-reduced-motion: reduce)').matches)
   const { frame, badge, animation, pixelated } = data
+  const animated = animation.frames.length > 1 || Boolean(animation.motion)
+  const [playing, setPlaying] = useState(() => animated && !matchMedia('(prefers-reduced-motion: reduce)').matches)
   const mark = badgeText({ state: action, count: 1 })
 
   useLayoutEffect(() => {
     const stage = stageRef.current, canvas = canvasRef.current
     const painter = createPetPainter(canvas, canvas.getContext('2d'), images)
     const reduced = matchMedia('(prefers-reduced-motion: reduce)')
+    // Restart finite clips in the preview, retaining their frame and motion timing.
+    const duration = animation.playback === 'blink' ? Infinity : animationLength(animation)
     let box, ratio, stageWidth, stageHeight
-    let clock = createFrameClock(animation), timer, startedAt, elapsed = 0, stopAt = Infinity
-    let frameIndex = 0, motion = STILL, active = !reduced.matches, finished = false
+    let clock = createFrameClock(animation), timer, startedAt, elapsed = 0
+    let frameIndex = 0, motion = STILL, active = animated && !reduced.matches
 
     const draw = () => {
       if (box) painter.draw(animation.frames[frameIndex], box, ratio, pixelated, false, motion)
@@ -72,19 +75,12 @@ function Artwork({ data, images, action, t }) {
       setPlaying(value)
     }
     const tick = () => {
-      const time = elapsed + performance.now() - startedAt
+      const time = (elapsed + performance.now() - startedAt) % duration
       const step = clock(time)
-      const moving = animation.motion && time < stopAt
       frameIndex = step.index
-      motion = moving ? motionAt(animation.motion, time) : STILL
+      motion = animation.motion ? motionAt(animation.motion, time) : STILL
       draw()
-      const wait = Math.min(step.next, moving ? PACE.motionFrame : Infinity, stopAt - time)
-      if (time >= stopAt || !Number.isFinite(wait)) {
-        finished = true
-        stopTimer()
-        setActive(false)
-        return
-      }
+      const wait = Math.min(step.next, animation.motion ? PACE.motionFrame : Infinity)
       timer = setTimeout(tick, Math.max(16, wait))
     }
     const syncClock = () => {
@@ -94,14 +90,7 @@ function Artwork({ data, images, action, t }) {
       tick()
     }
     toggleRef.current = () => {
-      if (!active) {
-        if (finished || elapsed === 0) {
-          elapsed = 0
-          finished = false
-          clock = createFrameClock(animation, { blinkImmediately: true })
-        }
-        stopAt = reduced.matches ? elapsed + 8000 : Infinity
-      }
+      if (!active && elapsed === 0) clock = createFrameClock(animation, { blinkImmediately: true })
       setActive(!active)
       syncClock()
     }
@@ -123,14 +112,14 @@ function Artwork({ data, images, action, t }) {
       reduced.removeEventListener('change', respectMotionPreference)
       window.removeEventListener('resize', fit)
     }
-  }, [data, images])
+  }, [data, images, animated])
 
   const playbackLabel = t(playing ? 'pause' : 'play')
   return h('div', { className: 'pet-stage', ref: stageRef },
     h('canvas', { ref: canvasRef, 'aria-hidden': true }),
     mark && h('span', { className: 'pet-state-mark', ref: markRef, 'aria-hidden': true }, mark),
     h('button', { type: 'button', className: 'pet-play-toggle', 'data-playing': playing, 'aria-label': playbackLabel,
-      title: playbackLabel, onClick: () => toggleRef.current() }))
+      title: playbackLabel, disabled: !animated, onClick: () => toggleRef.current() }))
 }
 
 function ActionPreview({ skin, action, service, t }) {
