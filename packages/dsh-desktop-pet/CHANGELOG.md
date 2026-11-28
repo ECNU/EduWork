@@ -1,5 +1,12 @@
 # 变更记录 / Changelog
 
+## 未发布 / Unreleased
+
+- 在桌宠设置中新增自适应形象选择器。宽窗口并排展示形象列表和动作预览，窄窗口可在两者之间切换。点击「使用此形象」才会保存，保存后可继续浏览。
+- 动作预览随预览区等比缩放，并循环播放。可通过右上角的圆形按钮暂停和继续。动作栏空间不足时可横向滚动。
+- Add an adaptive character picker to desktop pet settings. Wide windows show the character list alongside the action preview. Narrow windows let users switch between them. “Use this character” saves the choice and leaves the picker open for further browsing.
+- Scale the action preview to fit its display area and play the animation in a loop. The round button in the upper-right corner pauses and resumes playback. Action rows scroll horizontally when space is limited.
+
 ## 0.1.5 — Unreleased
 
 - 兼容 DSH 0.2.2-rc.2；将已验证的 0.2.2 预发布 API 系列纳入有界兼容范围，保留原有受支持的宿主。
