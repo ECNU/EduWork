@@ -125,13 +125,12 @@ function Artwork({ data, images, action, t }) {
     }
   }, [data, images])
 
-  return h(React.Fragment, null,
-    h('div', { className: 'pet-stage', ref: stageRef, 'aria-hidden': true },
-      h('canvas', { ref: canvasRef }),
-      mark && h('span', { className: 'pet-state-mark', ref: markRef }, mark)),
-    h('div', { className: 'pet-playback' },
-      h('button', { type: 'button', className: 'pet-play-toggle', 'data-playing': playing, onClick: () => toggleRef.current() },
-        t(playing ? 'pause' : 'play'))))
+  const playbackLabel = t(playing ? 'pause' : 'play')
+  return h('div', { className: 'pet-stage', ref: stageRef },
+    h('canvas', { ref: canvasRef, 'aria-hidden': true }),
+    mark && h('span', { className: 'pet-state-mark', ref: markRef, 'aria-hidden': true }, mark),
+    h('button', { type: 'button', className: 'pet-play-toggle', 'data-playing': playing, 'aria-label': playbackLabel,
+      title: playbackLabel, onClick: () => toggleRef.current() }))
 }
 
 function ActionPreview({ skin, action, service, t }) {
@@ -158,7 +157,7 @@ function ActionPreview({ skin, action, service, t }) {
   if (data) return h(Artwork, { ...data, action, t })
   return h(React.Fragment, null,
     h('div', { className: 'pet-stage' }, h(Thumbnail, { preview: skin.preview, size: 120 })),
-    h('div', { className: 'pet-playback' },
+    h('div', { className: 'pet-preview-status' },
       error ? h(React.Fragment, null,
         h('span', { role: 'alert' }, t('actionError')),
         h('button', { type: 'button', onClick: () => setRetry(retry + 1) }, t('retry')))
